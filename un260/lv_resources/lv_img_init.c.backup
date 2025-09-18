@@ -1,0 +1,361 @@
+#include "lv_img_init.h"
+#include "lv_image_declear.h"
+#include "un260/lv_system/lv_str.h"
+
+// 全局图片加载模式，默认使用路径加载
+img_load_mode_t g_img_load_mode = IMG_LOAD_PATH;
+
+// 设置图片加载模式
+void set_img_load_mode(img_load_mode_t mode) {
+    g_img_load_mode = mode;
+    printf("Image load mode set to: %s\n", 
+           mode == IMG_LOAD_PATH ? "PATH" : "EMBEDDED");
+}
+
+// 获取当前图片加载模式
+img_load_mode_t get_img_load_mode(void) {
+    return g_img_load_mode;
+}
+
+// 使用路径创建图片对象
+lv_obj_t* create_img_with_path(lv_obj_t* parent, const char* img_name) {
+    if (!parent || !img_name) {
+        printf("create_img_with_path: Invalid parameters\n");
+        return NULL;
+    }
+    
+    lv_obj_t* img = lv_img_create(parent);
+    if (!img) {
+        printf("create_img_with_path: Failed to create image object\n");
+        return NULL;
+    }
+    
+    // 设置透明背景，防止闪烁
+    lv_obj_set_style_bg_opa(img, LV_OPA_TRANSP, 0);
+    
+    if (load_img_from_path(img, img_name)) {
+        printf("Successfully loaded image: %s\n", img_name);
+        return img;
+    } else {
+        printf("Failed to load image: %s\n", img_name);
+        lv_obj_del(img);
+        return NULL;
+    }
+}
+
+// 从路径加载图片
+bool load_img_from_path(lv_obj_t* img_obj, const char* img_name) {
+    if (!img_obj || !img_name) {
+        return false;
+    }
+    
+    // 清除图片缓存，防止闪烁
+    lv_img_cache_invalidate_src(NULL);
+    
+    // 使用LVGL_PATH加载
+    lv_img_set_src(img_obj, LVGL_PATH(img_name));
+    
+    // 设置透明背景
+    lv_obj_set_style_bg_opa(img_obj, LV_OPA_TRANSP, 0);
+    
+    return true;
+}
+
+
+void lv_ui_obj_init(lv_obj_t* parent, ui_element_t* element, int count)
+{
+    lv_obj_t* obj = NULL;
+    for (int i = 0; i < count; i++)
+    {
+        ui_element_t* info = &element[i];
+        switch (info->obj_type) {
+        case LV_OBJ_TYPE_NONE:
+            printf("lv_obj init fail, %s\n", info->obj_name);
+            continue;
+
+        case LV_OBJ_TYPE_BUTTON:
+            obj = lv_btn_create(parent);
+
+            if (info->label_item.label != NULL) {
+                lv_obj_t* label = lv_label_create(obj);
+                const char* tmp_btn_label = get_str_by_name(info->label_item.label);
+                if(!tmp_btn_label)
+                lv_label_set_text(label, info->label_item.label);
+                else
+                {
+                    lv_label_set_text(label, tmp_btn_label);
+
+                }
+                lv_obj_center(label);
+                lv_obj_set_style_text_color(label,
+                    lv_color_make(info->label_item.label_r,
+                        info->label_item.label_g,
+                        info->label_item.label_b), 0);
+            }
+
+            // 两个风格按钮
+            if (info->btn_style == UI_BTN_STYLE_APPLE) {
+                static lv_style_t style_apple_btn;
+                static bool apple_inited = false;
+                if (!apple_inited) {
+                    lv_style_init(&style_apple_btn);
+                    lv_style_set_radius(&style_apple_btn, 20);
+                    lv_style_set_bg_color(&style_apple_btn, lv_color_make(255, 255, 255));
+                    lv_style_set_bg_grad_color(&style_apple_btn, lv_color_make(235, 236, 240));
+                    lv_style_set_bg_grad_dir(&style_apple_btn, LV_GRAD_DIR_VER);
+                    lv_style_set_bg_opa(&style_apple_btn, LV_OPA_80);
+                    lv_style_set_shadow_color(&style_apple_btn, lv_color_black());
+                    lv_style_set_shadow_opa(&style_apple_btn, LV_OPA_20);
+                    lv_style_set_shadow_width(&style_apple_btn, 8);
+                    lv_style_set_shadow_ofs_y(&style_apple_btn, 2);
+                    apple_inited = true;
+                }
+                lv_obj_add_style(obj, &style_apple_btn, 0);
+            }
+            else if (info->btn_style == UI_BTN_STYLE_PRESS_FEEL) {
+                static lv_style_t style_btn_default;
+                static lv_style_t style_btn_pressed;
+                static bool press_style_inited = false;
+                if (!press_style_inited) {
+                    lv_style_init(&style_btn_default);
+                    lv_style_set_bg_opa(&style_btn_default, LV_OPA_TRANSP);  // 默认透明
+                    lv_style_set_shadow_opa(&style_btn_default, LV_OPA_0);
+
+                    lv_style_init(&style_btn_pressed);
+                    lv_style_set_bg_color(&style_btn_pressed, lv_color_make(235, 235, 235));
+                    lv_style_set_bg_opa(&style_btn_pressed, LV_OPA_70);
+                    lv_style_set_transform_zoom(&style_btn_pressed, 240);
+                    lv_style_set_shadow_width(&style_btn_pressed, 0);
+
+                    press_style_inited = true;
+                }
+                lv_obj_add_style(obj, &style_btn_default, LV_STATE_DEFAULT);
+                lv_obj_add_style(obj, &style_btn_pressed, LV_STATE_PRESSED);
+            }
+            else if (info->btn_style == UI_BTN_STYLE_ANDROID) {
+
+                static lv_style_t style_glass_default, style_glass_pressed;
+                static bool style_inited = false;
+
+                if (!style_inited) {
+                    // 默认
+                    lv_style_init(&style_glass_default);
+                    lv_style_set_bg_color(&style_glass_default, lv_color_white());
+                    lv_style_set_bg_opa(&style_glass_default, LV_OPA_100);
+                    lv_style_set_radius(&style_glass_default, 10);
+                    //lv_style_set_shadow_width(&style_glass_default, 6);
+                    //lv_style_set_shadow_color(&style_glass_default, lv_color_hex(0xAAAAAA));
+                    //lv_style_set_shadow_ofs_x(&style_glass_default, 2);
+                    //lv_style_set_shadow_ofs_y(&style_glass_default, 1);
+                    // 按下效果
+                    lv_style_init(&style_glass_pressed);
+                    lv_style_set_bg_opa(&style_glass_pressed, LV_OPA_80);
+                    lv_style_set_transform_zoom(&style_glass_pressed, 253);
+                    lv_style_set_shadow_width(&style_glass_pressed, 5);
+                    lv_style_set_bg_color(&style_glass_pressed, lv_color_hex(0x7BCD82));
+                    lv_style_set_shadow_color(&style_glass_default, lv_color_hex(0xAAAAAA));
+                    style_inited = true;
+                }
+
+                // 清除旧样式
+                lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE);
+                lv_obj_remove_style_all(obj);       
+                lv_obj_add_style(obj, &style_glass_default, LV_STATE_DEFAULT);
+                lv_obj_add_style(obj, &style_glass_pressed, LV_STATE_PRESSED);
+
+            }
+            else if(info->btn_style == UI_BTN_STYLE_NO_FEEDBACK)
+            {
+                static lv_style_t style_no_feedback_default;
+                static bool style_no_feedback_init = false;
+                if (!style_no_feedback_init)
+                {
+                    lv_style_init(&style_no_feedback_default);
+                    lv_style_set_border_opa(&style_no_feedback_default, LV_OPA_0);
+                }
+                lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE);
+                lv_obj_remove_style_all(obj);
+                lv_obj_add_style(obj, &style_no_feedback_default, LV_STATE_DEFAULT);
+            }
+            else if (info->btn_style == UI_BTN_STYLE_NO_FEEDBACK)
+            {
+                static lv_style_t style_no_feedback_default;
+                static bool style_no_feedback_init = false;
+                if (!style_no_feedback_init)
+                {
+                    lv_style_init(&style_no_feedback_default);
+                    lv_style_set_border_opa(&style_no_feedback_default, LV_OPA_0);
+                }
+                lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE);
+                lv_obj_remove_style_all(obj);
+                lv_obj_add_style(obj, &style_no_feedback_default, LV_STATE_DEFAULT);
+            }
+
+            // 文字字体设置
+            if (info->label_item.font) {
+                lv_obj_set_style_text_font(obj, info->label_item.font, 0);
+            }
+            break;
+
+        case LV_OBJ_TYPE_IMAGE:
+            obj = lv_img_create(parent);
+            
+            // 设置透明背景，防止闪烁
+            lv_obj_set_style_bg_opa(obj, LV_OPA_TRANSP, 0);
+            
+            // 根据全局模式或特定条件选择加载方式
+            if (g_img_load_mode == IMG_LOAD_PATH || 
+                (info->obj_name && strstr(info->obj_name, ".png"))) {
+                
+                // 路径加载模式
+                const char* img_name = info->obj_name;
+                if (img_name && !strstr(img_name, ".png")) {
+                    // 如果名称不包含.png，尝试添加
+                    static char temp_name[256];
+                    snprintf(temp_name, sizeof(temp_name), "%s.png", img_name);
+                    img_name = temp_name;
+                }
+                
+                if (img_name) {
+                    printf("Loading image from path: %s\n", img_name);
+                    
+                    // 清除缓存防止闪烁
+                    lv_img_cache_invalidate_src(NULL);
+                    lv_img_set_src(obj, LVGL_PATH(img_name));
+                }
+                
+            } else if (info->img_src) {
+                // 嵌入数据模式
+                printf("Loading image from embedded data\n");
+                lv_img_set_src(obj, info->img_src);
+            } else {
+                printf("Warning: No image source specified for %s\n", 
+                       info->obj_name ? info->obj_name : "unnamed");
+            }
+            break;
+
+        case LV_OBJ_TYPE_LABEL:
+            obj = lv_label_create(parent);
+            if (info->label_item.label) {
+
+                const char* tmp_label = get_str_by_name(info->label_item.label);
+                if(tmp_label)
+                lv_label_set_text(obj, tmp_label);
+                else
+                {
+                    lv_label_set_text(obj, info->label_item.label);
+
+                }
+            }
+            lv_obj_set_style_text_color(obj,
+                lv_color_make(info->label_item.label_r,
+                    info->label_item.label_g,
+                    info->label_item.label_b), 0);
+            lv_obj_set_style_text_align(obj, info->label_item.align, 0);
+            if (info->label_item.font) {
+                lv_obj_set_style_text_font(obj, info->label_item.font, 0);
+            }
+            if (info->obj_style.use_custom_style) {
+                lv_obj_set_style_bg_color(obj,
+                    lv_color_make(info->obj_item.color_r,
+                        info->obj_item.color_g,
+                        info->obj_item.color_b), 0);
+                lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, 0);  // 背景完全不透明
+                lv_obj_set_style_radius(obj, info->obj_style.radius, 0);
+                lv_obj_set_style_border_width(obj, info->obj_style.border_width, 0);
+                lv_obj_set_style_border_color(obj, lv_color_hex(0xCCCCCC), 0); // 可选
+            }
+            break;
+            break;
+        }
+
+        if (obj) {
+            lv_obj_set_pos(obj, info->obj_item.x, info->obj_item.y);
+            lv_obj_set_size(obj, info->obj_item.w, info->obj_item.h);
+            lv_obj_set_style_bg_color(obj,
+                lv_color_make(info->obj_item.color_r,
+                    info->obj_item.color_g,
+                    info->obj_item.color_b), 0);
+            if (info->obj_style.use_custom_style) {
+                lv_obj_set_style_radius(obj, info->obj_style.radius, 0);
+                lv_obj_set_style_border_width(obj, info->obj_style.border_width, 0);
+                lv_obj_set_style_opa(obj, info->obj_style.opacity, 0);
+            }
+            if (info->event_cb) {
+                lv_event_code_t event_code = (info->event_code != 0) ?
+                    info->event_code : LV_EVENT_CLICKED;
+                lv_obj_add_event_cb(obj, info->event_cb, event_code, info->user_data);
+                lv_obj_add_flag(obj, LV_OBJ_FLAG_CLICKABLE);
+            }
+            info->obj_ref = obj;
+        }
+
+    }
+
+}
+
+
+lv_img_dsc_t* get_currency_img(const char* code)
+{
+    if (!code) return NULL;
+
+    if (strcmp(code, "USD") == 0) return &CURR_USD;
+    if (strcmp(code, "CNY") == 0) return &CURR_CNY;
+    if (strcmp(code, "EGP") == 0) return &CURR_EGP;
+    if (strcmp(code, "GBP") == 0) return &CURR_GBP;
+    if (strcmp(code, "ISK") == 0) return &CURR_ISK;
+    if (strcmp(code, "PHP") == 0) return &CURR_PHP;
+    if (strcmp(code, "SOS") == 0) return &CURR_SOS;
+    if (strcmp(code, "TRY") == 0) return &CURR_TRY;
+    if (strcmp(code, "EUR") == 0) return &CURR_EUR;
+
+    return NULL;
+}
+
+// 为页面设置背景图片（路径加载）
+lv_obj_t* set_page_background(lv_obj_t* page, const char* bg_img_name) {
+    if (!page || !bg_img_name) {
+        printf("set_page_background: Invalid parameters\n");
+        return NULL;
+    }
+    
+    lv_obj_t* bg_img = create_img_with_path(page, bg_img_name);
+    if (bg_img) {
+        // 设置背景图片大小和位置
+        lv_obj_set_pos(bg_img, 0, 0);
+        lv_obj_set_size(bg_img, 1280, 400);
+        
+        // 确保背景在最底层
+        lv_obj_move_background(bg_img);
+        
+        printf("Background set successfully: %s\n", bg_img_name);
+    } else {
+        printf("Failed to set background: %s\n", bg_img_name);
+    }
+    
+    return bg_img;
+}
+
+// 批量转换页面为路径加载模式
+void convert_page_to_path_mode(lv_obj_t* page, ui_element_t* elements, 
+                               int count, const char* bg_img_name) {
+    if (!page || !elements) {
+        printf("convert_page_to_path_mode: Invalid parameters\n");
+        return;
+    }
+    
+    // 设置路径加载模式
+    set_img_load_mode(IMG_LOAD_PATH);
+    
+    // 设置背景图片
+    if (bg_img_name) {
+        set_page_background(page, bg_img_name);
+    }
+    
+    // 创建其他UI元素，跳过背景图片项
+    int start_index = (bg_img_name != NULL) ? 1 : 0;
+    lv_ui_obj_init(page, elements + start_index, count - start_index);
+}
+
+
+

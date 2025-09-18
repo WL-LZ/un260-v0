@@ -11,7 +11,7 @@ add_compile_options(-Wall)
 set(CMAKE_C_FLAGS "-O0 -g0")
 
 include_directories(. ./aic_ui)
-
+include_directories(. ./guider_lvgl_demo)
 add_executable(${PROJECT_NAME} main.c
 	aic_ui/aic_dec.c
 	aic_ui/aic_ui.c
@@ -23,6 +23,74 @@ add_executable(${PROJECT_NAME} main.c
 	lv_ge2d.c
 	lv_port_indev.c
 	lv_port_disp.c
+    un260/lv_components/lv_components.c
+    un260/lv_core/lv_page_event.c
+    un260/lv_core/lv_page_manager.c
+    un260/lv_core/page_01_main.c
+    un260/lv_core/page_02_list.c
+    un260/lv_core/page_03_menu.c
+    un260/lv_core/page_05_set_password.c
+    un260/lv_core/page_06_settings.c
+    un260/lv_core/page_07_curr.c
+    un260/lv_refre/lvgl_refre.c
+    un260/lv_resources/lv_img_init.c
+    un260/lv_system/platform_app.c
+    un260/lv_system/lv_str.c
+    un260/lv_system/user_cfg.c
+    #font
+	un260/font/lv_font_montserrat_8.c 
+    un260/font/lv_font_montserrat_10.c
+    un260/font/lv_font_montserrat_12_subpx.c
+    un260/font/lv_font_montserrat_12.c
+    un260/font/lv_font_montserrat_14.c
+    un260/font/lv_font_montserrat_16.c
+    un260/font/lv_font_montserrat_18.c
+    un260/font/lv_font_montserrat_20.c
+    un260/font/lv_font_montserrat_22.c
+    un260/font/lv_font_montserrat_24.c
+    un260/font/lv_font_montserrat_26.c
+    un260/font/lv_font_montserrat_28_compressed.c
+    un260/font/lv_font_montserrat_28.c
+    un260/font/lv_font_montserrat_30.c
+    un260/font/lv_font_montserrat_32.c
+    un260/font/lv_font_montserrat_34.c
+    un260/font/lv_font_montserrat_36.c
+    un260/font/lv_font_montserrat_38.c
+    un260/font/lv_font_montserrat_40.c
+    un260/font/lv_font_montserrat_42.c
+    un260/font/lv_font_montserrat_44.c
+    un260/font/lv_font_montserrat_46.c
+    un260/font/lv_font_montserrat_48.c
+    # img
+    un260/lv_resources/page_01_back.c
+    un260/lv_resources/page_01_collect_icon.c
+    un260/lv_resources/page_01_curr_USD.c
+    un260/lv_resources/page_01_esc_icon.c
+    un260/lv_resources/page_01_list_icon.c
+    un260/lv_resources/page_01_menu_icon.c
+    un260/lv_resources/page_01_mode_icon.c
+    un260/lv_resources/page_01_print_icon.c
+    un260/lv_resources/page_01_set_icon.c
+    un260/lv_resources/page_01_start_icon.c
+    un260/lv_resources/page_01_usb_icon.c
+    un260/lv_resources/page_02_home_icon.c
+    un260/lv_resources/page_02_list_img.c
+    un260/lv_resources/page_03_del_icon.c
+    un260/lv_resources/page_03_menu_bg_img.c
+    un260/lv_resources/page_03_ok_icon.c
+    un260/lv_resources/page_05_set_password_bg_img.c
+    un260/lv_resources/page_07_currency_bg_img.c
+    #img_curr
+    un260/lv_resources/lv_curr/CURR_CNY.c
+    un260/lv_resources/lv_curr/CURR_EGP.c
+    un260/lv_resources/lv_curr/CURR_EUR.c
+    un260/lv_resources/lv_curr/CURR_GBP.c
+    un260/lv_resources/lv_curr/CURR_ISK.c
+    un260/lv_resources/lv_curr/CURR_PHP.c
+    un260/lv_resources/lv_curr/CURR_SOS.c
+    un260/lv_resources/lv_curr/CURR_TRY.c
+    un260/lv_resources/lv_curr/CURR_USD.c
+
 )
 
 # Find libts for link

@@ -10,6 +10,10 @@
 #include "lv_port_indev.h"
 #include "aic_ui.h"
 #include "aic_dec.h"
+#include <string.h>
+#include "un260/lv_refre/lvgl_refre.h"
+#include "un260/lv_core/lv_page_manager.h"
+#include "un260/lv_system/user_cfg.h"
 
 int main(void)
 {
@@ -24,8 +28,8 @@ int main(void)
 
     /*Create a Demo*/
     //lv_demo_widgets();
-    aic_ui_init();
-
+    //aic_ui_init();
+    ui_manager_switch(UI_PAGE_MAIN);
     /*Handle LitlevGL tasks (tickless mode)*/
     while (1) {
         lv_timer_handler();
