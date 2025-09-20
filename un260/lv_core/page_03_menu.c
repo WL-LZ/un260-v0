@@ -320,13 +320,13 @@ ui_element_t page_03_menu_obj[] = {
             page_03_batch_num_keypad_enter_event_cb, LV_EVENT_CLICKED, NULL, NULL, UI_BTN_STYLE_NONE },
 
         { "page_03_del_icon.png", LV_OBJ_TYPE_IMAGE, NULL,
-        { 401, 303, 40, 40, 0, 0, 0 },
+        { 410, 312, 40, 40, 0, 0, 0 },
         { NULL, 0, 0, 0, NULL },
         { 255, 0, 0, false },
         NULL, 0, NULL, NULL },
 
         { "page_03_ok_icon.png", LV_OBJ_TYPE_IMAGE, NULL,
-            { 306, 303, 40, 40, 0, 0, 0 },
+            { 315, 315, 40, 40, 0, 0, 0 },
             { NULL, 0, 0, 0, NULL },
             { 255, 0, 0, false },
             NULL, 0, NULL, NULL },

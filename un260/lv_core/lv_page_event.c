@@ -27,14 +27,14 @@ void page_switch_btn_event_cb(lv_event_t* e)
 
 void page_01_list_btn_event_cb(lv_event_t* e) {
     if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-        icon_feedback_comp("list_img", page_01_main_obj, page_01_main_len);
+        icon_feedback_comp("page_01_list_icon.png", page_01_main_obj, page_01_main_len);
 
         ui_manager_push_page(UI_PAGE_LIST);
     }
 }
 void page_01_menu_btn_event_cb(lv_event_t* e) {
     if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-        icon_feedback_comp("menu_img", page_01_main_obj, page_01_main_len);
+        icon_feedback_comp("page_01_menu_icon.png", page_01_main_obj, page_01_main_len);
 
         ui_manager_push_page(UI_PAGE_MENU);
     }
@@ -48,7 +48,7 @@ void page_01_menu_btn_event_cb(lv_event_t* e) {
  void page_01_start_btn_event_cb(lv_event_t* e) //开始仿真
  {
      if (lv_event_get_code(e) == LV_EVENT_CLICKED)
-         icon_feedback_comp("start_img", page_01_main_obj, page_01_main_len);
+         icon_feedback_comp("page_01_start_icon.png", page_01_main_obj, page_01_main_len);
 
      start_counting_sim();
 
@@ -57,7 +57,7 @@ void page_01_menu_btn_event_cb(lv_event_t* e) {
  void page_01_esc_btn_event_cb(lv_event_t* e)
  {
      if (lv_event_get_code(e) == LV_EVENT_CLICKED)
-         icon_feedback_comp("esc_img", page_01_main_obj, page_01_main_len);
+         icon_feedback_comp("page_01_esc_icon.png", page_01_main_obj, page_01_main_len);
 
      stop_counting_sim();
      sim_clear_all_sn(&sim);
@@ -69,7 +69,7 @@ void page_01_menu_btn_event_cb(lv_event_t* e) {
  {
      if (lv_event_get_code(e) == LV_EVENT_CLICKED)
      {
-         icon_feedback_comp("mode_img", page_01_main_obj, page_01_main_len);
+         icon_feedback_comp("page_01_mode_icon.png", page_01_main_obj, page_01_main_len);
 
          Machine_para.mode = (Machine_para.mode + 1) % (MODE_SDC + 1);
          if (Machine_para.mode == MODE_NONE)
@@ -85,7 +85,7 @@ void page_01_menu_btn_event_cb(lv_event_t* e) {
 
 void page_01_set_btn_event_cb(lv_event_t* e){
  if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-     icon_feedback_comp("set_img", page_01_main_obj, page_01_main_len);
+     icon_feedback_comp("page_01_set_icon.png", page_01_main_obj, page_01_main_len);
 
      ui_manager_switch(UI_PAGE_SET_PASSAGE);
      }
@@ -119,7 +119,7 @@ void page_05_set_password_keypad_event_cb(lv_event_t* e)
 void page_05_set_password_keypad_clear_event_cb(lv_event_t* e)
 {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
-    icon_feedback_comp("05_ok_img", page_05_set_password_obj, page_05_set_password_len);
+    icon_feedback_comp("page_03_ok_icon.png", page_05_set_password_obj, page_05_set_password_len);
 
     memset(input_password,0,sizeof(input_password));
     password_index = 0;
@@ -159,7 +159,7 @@ void page_03_delete_tip_label_cb(lv_timer_t* t) {
 void page_05_set_password_keypad_enter_event_cb(lv_event_t* e)
 {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
-    icon_feedback_comp("05_del_img", page_05_set_password_obj, page_05_set_password_len);
+    icon_feedback_comp("page_03_del_icon.png", page_05_set_password_obj, page_05_set_password_len);
 
     if (page_05_password_del_timer) {
         lv_timer_del(page_05_password_del_timer);
@@ -318,7 +318,7 @@ void page_03_batch_num_keypad_event_cb(lv_event_t* e)
 void page_03_batch_num_keypad_clear_event_cb(lv_event_t* e)
 {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
-    icon_feedback_comp("03_ok_img", page_03_menu_obj, page_03_menu_len);
+    icon_feedback_comp("page_03_ok_icon.png", page_03_menu_obj, page_03_menu_len);
     memset(input_batch_num, 0, sizeof(input_batch_num));
     batch_num_index = 0;
     lv_label_set_text(batch_num_display, "0");
@@ -330,7 +330,7 @@ void page_03_batch_num_keypad_clear_event_cb(lv_event_t* e)
 void page_03_batch_num_keypad_enter_event_cb(lv_event_t* e)
 {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
-    icon_feedback_comp("03_del_img", page_03_menu_obj, page_03_menu_len);
+    icon_feedback_comp("page_03_del_icon.png", page_03_menu_obj, page_03_menu_len);
 
     if (page_03_batch_num_del_timer) {
         lv_timer_del(page_03_batch_num_del_timer);

@@ -17,7 +17,7 @@ Machine_para_t Machine_para = {
     0,                      //cfd
     0,                      //F O
     0,                      //work:auto muanul
-    2,
+    0,
 };
 
 

@@ -197,7 +197,9 @@ void lv_ui_obj_init(lv_obj_t* parent, ui_element_t* element, int count)
 
         if (obj) {
             lv_obj_set_pos(obj, info->obj_item.x, info->obj_item.y);
-            lv_obj_set_size(obj, info->obj_item.w, info->obj_item.h);
+            if(info->obj_type!=LV_OBJ_TYPE_IMAGE)
+            {
+            lv_obj_set_size(obj, info->obj_item.w, info->obj_item.h);            
             lv_obj_set_style_bg_color(obj,
                 lv_color_make(info->obj_item.color_r,
                     info->obj_item.color_g,
@@ -212,6 +214,7 @@ void lv_ui_obj_init(lv_obj_t* parent, ui_element_t* element, int count)
                     info->event_code : LV_EVENT_CLICKED;
                 lv_obj_add_event_cb(obj, info->event_cb, event_code, info->user_data);
                 lv_obj_add_flag(obj, LV_OBJ_FLAG_CLICKABLE);
+            }
             }
             info->obj_ref = obj;
         }

@@ -30,8 +30,8 @@ ui_element_t page_05_set_password_obj[] = {
         page_01_back_btn_event_cb, 0, NULL, NULL, UI_BTN_STYLE_APPLE },
 
     // 返回按钮图标
-    { "page_01_home_icon.png", LV_OBJ_TYPE_IMAGE, NULL,
-        { 1167, 31, 35, 35, 0, 0, 0 },
+    { "page_02_home_icon.png", LV_OBJ_TYPE_IMAGE, NULL,
+        { 1179, 289, 35, 35, 0, 0, 0 },
         { NULL, 0, 0, 0, NULL },
         { 255, 0, 0, false },
         NULL, 0, NULL, NULL },
@@ -119,13 +119,13 @@ ui_element_t page_05_set_password_obj[] = {
 
 
     { "page_03_del_icon.png", LV_OBJ_TYPE_IMAGE, NULL,
-        { 401, 303, 40, 40, 0, 0, 0 },
+        { 768, 339, 40, 40, 0, 0, 0 },
         { NULL, 0, 0, 0, NULL },
         { 255, 0, 0, false },
         NULL, 0, NULL, NULL },
 
     { "page_03_ok_icon.png", LV_OBJ_TYPE_IMAGE, NULL,
-        { 306, 303, 40, 40, 0, 0, 0 },
+        { 679, 342, 40, 40, 0, 0, 0 },
         { NULL, 0, 0, 0, NULL },
         { 255, 0, 0, false },
         NULL, 0, NULL, NULL },

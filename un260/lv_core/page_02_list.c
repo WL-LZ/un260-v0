@@ -80,15 +80,15 @@ ui_element_t page_02_list_obj[] = {
  //***************  IMAGE_LIST **********************//
 //////////////////////////////////////////////////////
 
-    { "02_home_icon.png", LV_OBJ_TYPE_IMAGE, NULL,
-        { 1183, 294, 43, 43, 255, 255, 255 },
+    { "page_02_home_icon.png", LV_OBJ_TYPE_IMAGE, NULL,
+        { 1179, 289, 43, 43, 255, 255, 255 },
         { NULL, 0, 0, 0, NULL },
         { 255, 18, 0, false },
          NULL, 0, NULL, NULL ,
          UI_BTN_STYLE_NONE},
 
-    { "02_print_icon.png", LV_OBJ_TYPE_IMAGE, NULL,
-        { 1183, 171, 43, 43, 255, 255, 255 },
+    { "page_01_print_icon.png", LV_OBJ_TYPE_IMAGE, NULL,
+        { 1187, 180, 43, 43, 255, 255, 255 },
         { NULL, 0, 0, 0, NULL },
         { 255, 18, 0, false },
          NULL, 0, NULL, NULL ,

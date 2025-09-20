@@ -24,7 +24,7 @@ ui_element_t page_06_settins_password_obj[] = {
        //***************    BTN_LIST   *********************/
       //////////////////////////////////////////////////////
           { "03_home_btn", LV_OBJ_TYPE_BUTTON,NULL,
-        { 1149, 189, 100, 100, 244, 244, 255 },
+        { 1154, 276, 101, 78, 255, 255, 255 },
         { NULL, 0, 0, 0, NULL },
         { 255, 18, 0, false },
          page_01_back_btn_event_cb, 0, NULL, NULL ,
@@ -43,6 +43,11 @@ ui_element_t page_06_settins_password_obj[] = {
         { 255, 18, 0, false },
          NULL, 0, NULL, NULL ,
         UI_BTN_STYLE_NONE },
+    { "page_02_home_icon.png", LV_OBJ_TYPE_IMAGE, NULL,
+        { 1179, 289, 35, 35, 0, 0, 0 },
+        { NULL, 0, 0, 0, NULL },
+        { 255, 0, 0, false },
+        NULL, 0, NULL, NULL },
 };
 
 int page_06_settins_password_len = sizeof(page_06_settins_password_obj) / sizeof(page_06_settins_password_obj[0]);
