@@ -806,96 +806,109 @@ static void scroll_snap_event_cb(lv_event_t* e) //页面吸附
     lv_obj_scroll_to_x(cont, next * PAGE_W + X_OFF, LV_ANIM_ON);
 }
 
-static void page_07_cont_click_cb(lv_event_t* e)//图片触摸点击
+static void page_07_cont_click_cb(lv_event_t* e)
 {
-    lv_obj_t* cont = lv_event_get_target(e);
-
-    const int IMG_W = 182;
-    // const int IMG_H = 103;
-    const int SLOT_W = 254;
-    const int PAGE_W = 1072;
-    const int X_OFF = 76;
-
-    lv_point_t scr_p;
-    lv_indev_get_point(lv_indev_get_act(), &scr_p);
-    lv_area_t coords;
-    lv_obj_get_coords(cont, &coords);
-
-    int loc_x = scr_p.x - coords.x1;
-    int loc_y = scr_p.y - coords.y1;
-
-    int rel_x = loc_x + lv_obj_get_scroll_x(cont) - X_OFF;
-    if (rel_x < 0) return;
-
-    int page = rel_x / PAGE_W;
-    int pos_in_page = rel_x % PAGE_W;
-    int col = pos_in_page / SLOT_W;
-
-    int x_in_col = pos_in_page % SLOT_W;
-    if (x_in_col > IMG_W) return;
-
-    int row = -1;
-    if (loc_y >= 23 && loc_y < 156)
-        row = 0;
-    else if (loc_y >= 163 && loc_y < 296)
-        row = 1;
-    else
-        return;
-
-    int idx = page * 8 + row * 4 + col;
+    int idx = (int)(uintptr_t)lv_event_get_user_data(e);
     if (idx >= 0 && idx < currencies_count) {
         memcpy(Machine_para.curr_code, currencies[idx], 4);
         ui_manager_switch(UI_PAGE_MAIN);
     }
+}
 
+#define MAX_PAGES 10
+static lv_obj_t* page_dots[MAX_PAGES];  // 存储小球对象
+static int g_total_pages = 0;  //需要全局声明
+
+//小球指示器函数 需要换文件位置
+void tabview_event_cb(lv_event_t* e)
+{
+    lv_obj_t* tabview = lv_event_get_target(e);
+    int cur = lv_tabview_get_tab_act(tabview);  // 当前页索引
+
+    for (int i = 0; i < g_total_pages; i++) {
+        lv_obj_set_style_bg_color(page_dots[i],
+            (i == cur) ? lv_color_hex(0x0295FF) : lv_color_hex(0xFFFFFF), 0);
+    }
 }
 
 void page_07_curr_img_refre(void)//图片刷新
 {
-    lv_obj_t* cont = lv_obj_create(curr_page);
-    lv_obj_set_pos(cont, 95, 87);
-    lv_obj_set_size(cont, 1072, 301);
+    g_total_pages = (currencies_count + 7) / 8;
 
-    lv_obj_set_scroll_dir(cont, LV_DIR_HOR);
-    lv_obj_set_scrollbar_mode(cont, LV_SCROLLBAR_MODE_OFF);
-    lv_obj_set_style_bg_opa(cont, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_pad_all(cont, 0, 0);
-    lv_obj_set_style_clip_corner(cont, true, 0);
-        
-    lv_obj_set_scroll_snap_x(cont, LV_SCROLL_SNAP_NONE);
-    lv_obj_set_scroll_snap_y(cont, LV_SCROLL_SNAP_NONE);
-    lv_obj_add_event_cb(cont, scroll_snap_event_cb, LV_EVENT_SCROLL_END, NULL);
+    lv_obj_t* tabview = lv_tabview_create(curr_page, LV_DIR_TOP, 0);
+    lv_obj_set_size(tabview, 1051, 301);
+    lv_obj_set_pos(tabview, 113, 84);
+    lv_obj_set_style_bg_opa(tabview, LV_OPA_0, 0);
+    lv_obj_t* tab_btns = lv_tabview_get_tab_btns(tabview);
+    lv_obj_add_flag(tab_btns, LV_OBJ_FLAG_HIDDEN);
+    // 注册事件回调
+    lv_obj_add_event_cb(tabview, tabview_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
 
-    lv_obj_add_flag(cont, LV_OBJ_FLAG_CLICKABLE);  
-    lv_obj_add_event_cb(cont, page_07_cont_click_cb, LV_EVENT_CLICKED, NULL);
-    lv_obj_set_style_border_width(cont, 0, LV_PART_MAIN);
-      
-    int total_slots = ((currencies_count + 7) / 8) * 8;    for (int i = 0; i < currencies_count; i++) {
-        curr_imgs[i] = lv_img_create(cont);
-        lv_img_set_src(curr_imgs[i], get_currency_img(currencies[i]));
+    for (int page = 0; page < g_total_pages; page++) {
+        char tab_name[16];
+        snprintf(tab_name, sizeof(tab_name), "page_%d", page);
+        lv_obj_t* tab = lv_tabview_add_tab(tabview, tab_name);
 
-    }
-    for (int i = currencies_count; i <= total_slots; i++) {
-        curr_imgs[i] = lv_img_create(cont);
-    }
-    const int X_OFF = 76;
-    const int PAGE_W = 1072;
-    for (int i = 0; i <= total_slots; i++) {
-        int page = i / 8;
-        int idx = i % 8;
-        int row = idx / 4;
-        int col = idx % 4;
-        int x = page * PAGE_W + X_OFF + col * 254;
-        int y = (row == 0) ? 23 : 163;
-        lv_obj_set_pos(curr_imgs[i], x, y);
-        if (i < currencies_count) {  
-            lv_obj_t* lbl = lv_label_create(cont);
-            lv_label_set_text(lbl, currencies[i]);
-            lv_coord_t h = lv_obj_get_height(curr_imgs[i]);
+        // 设置tab属性
+        lv_obj_set_style_bg_opa(tab, LV_OPA_0, 0);
+        lv_obj_clear_flag(tab, LV_OBJ_FLAG_SCROLLABLE);
+
+        for (int i = 0; i < 8; i++) {
+            int idx = page * 8 + i;
+            if (idx >= currencies_count) break;
+
+            int row = i / 4;
+            int col = i % 4;
+            int x = 61 + col * 254;
+            int y = 16 + row * 138;
+
+            curr_imgs[idx] = lv_img_create(tab);
+            lv_img_set_src(curr_imgs[idx], get_currency_img(currencies[idx]));
+            lv_obj_set_pos(curr_imgs[idx], x, y);
+            lv_obj_set_size(curr_imgs[idx], 182, 103);
+
+            lv_obj_add_flag(curr_imgs[idx], LV_OBJ_FLAG_CLICKABLE);
+            lv_obj_add_event_cb(curr_imgs[idx], page_07_cont_click_cb, LV_EVENT_CLICKED, (void*)(uintptr_t)idx);
+
+            lv_obj_t* lbl = lv_label_create(tab);
+            lv_label_set_text(lbl, currencies[idx]);
             lv_obj_set_style_text_font(lbl, &lv_font_montserrat_20, 0);
+            lv_obj_set_style_text_color(lbl, lv_color_hex(0x000000), 0);
+            lv_obj_set_pos(lbl, x + 70, y + 102);
+        }
+    }
 
-            lv_obj_set_pos(lbl, x+70, y + h + 110);
+    //小球指示器
+    if (g_total_pages > 1) {
+        lv_obj_t* indicator_cont = lv_obj_create(curr_page);
+        lv_obj_set_style_border_width(indicator_cont, 0, LV_PART_MAIN);
+        lv_obj_set_size(indicator_cont, 1051, 60);
+        lv_obj_set_pos(indicator_cont, 113, 43);
+        lv_obj_set_style_bg_opa(indicator_cont, LV_OPA_TRANSP, 0);
+        lv_obj_clear_flag(indicator_cont, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_move_foreground(indicator_cont);
+
+        int spacing = 20;
+        int radius = 10;
+        int total_w = g_total_pages * (radius * 2 + spacing) - spacing;
+        int start_x = (1051 - total_w) / 2;
+
+        for (int i = 0; i < g_total_pages; i++) {
+            page_dots[i] = lv_obj_create(indicator_cont);
+            lv_obj_set_size(page_dots[i], radius * 2, radius * 2);
+            lv_obj_set_style_radius(page_dots[i], LV_RADIUS_CIRCLE, 0);
+            lv_obj_set_style_bg_color(page_dots[i],(i == 0) ? lv_color_hex(0x0295FF) : lv_color_hex(0xFFFFFF), 0);
+            lv_obj_set_style_bg_opa(page_dots[i], LV_OPA_COVER, 0);
+            lv_obj_set_style_border_width(page_dots[i], 0, LV_PART_MAIN);
+            lv_obj_set_style_outline_width(page_dots[i], 0, LV_PART_MAIN);
+            lv_obj_set_style_shadow_width(page_dots[i], 0, LV_PART_MAIN);
+            lv_obj_clear_flag(page_dots[i], LV_OBJ_FLAG_SCROLLABLE);
+            lv_obj_set_pos(page_dots[i], start_x + i * (radius * 2 + spacing), 5);
+
+
+
         }
     }
 }
+
 

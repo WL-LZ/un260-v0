@@ -29,6 +29,20 @@ ui_element_t page_07_curr_obj[] = {
         { 255, 18, 0, false },
          NULL, 0, NULL, NULL ,
          UI_BTN_STYLE_NONE},
+
+    { "02_home_btn", LV_OBJ_TYPE_BUTTON,NULL,
+        { 1177, 163, 95, 94, 255, 255, 255 },
+        { NULL, 0, 0, 0, NULL },
+        { 255, 18, 0, false },
+         page_01_back_btn_event_cb, 0, NULL, NULL ,
+         UI_BTN_STYLE_APPLE},
+         
+     { "page_02_home_icon.png", LV_OBJ_TYPE_IMAGE, NULL,
+        { 1197, 186, 55, 43, 255, 255, 255 },
+        { NULL, 0, 0, 0, NULL },
+        { 255, 18, 0, false },
+        NULL, 0, NULL, NULL,
+        UI_BTN_STYLE_NONE},        
 //img
  
     /*{ "07_curr_01", LV_OBJ_TYPE_IMAGE, &page_07_currency_bg_img,
