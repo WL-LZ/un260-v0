@@ -16,7 +16,7 @@
 #include "un260/lv_refre/lvgl_refre.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_system/user_cfg.h"
-
+#include "un260/lv_system/platform_app.h"
 //-------------------- UART 打印函数 --------------------
 void uart_printf(int fd, const char *fmt, ...) {
     char buf[256];
@@ -182,6 +182,45 @@ void* uart5_thread(void* arg) {
     return NULL;
 }
 
+void PCCmdHandle(void)
+{
+    if (!gPCRecvComplete) return;  
+    uart_printf(fd6, "enetr PCCmdHandle \n");
+
+    uint8_t *buf = gPCRecvBuff;
+    uint8_t Len = buf[2];  
+    uint8_t cmd = buf[3];  
+    
+    switch (cmd) {
+        case 0x0E:  	//点钞信息
+        {
+            uint32_t amount = ((uint32_t)buf[4] << 24) |((uint32_t)buf[5] << 16) |((uint32_t)buf[6] << 8)  |((uint32_t)buf[7]);
+            uint8_t qty = buf[8];
+            uint8_t status = buf[9];
+            sim.total_amount = amount;
+            sim.total_pcs = qty;
+            sim.err_num = status;
+
+
+
+            ui_refresh_main_page();  			
+            uart_printf(fd6, "Count info: amount=%u, qty=%u, status=0x%02X\n",amount, qty, status);
+            switch (status) {
+                case 0x00: uart_printf(fd6, "Ready to refresh\n"); break;
+                default: uart_printf(fd6, "Unknown status 0x%02X\n", status); break;
+            }
+            break;
+        }
+
+        default:
+            uart_printf(fd6, "Unknown command 0x%02X\n", cmd);
+            break;
+    }
+
+    gPCRecvComplete = 0; 
+}
+
+
 
 //-------------------- 主函数 --------------------
 int main(void) {
@@ -224,7 +263,9 @@ int main(void) {
     }
 
     while(1) {
+        
         lv_timer_handler();
+        PCCmdHandle();        
         usleep(1000);
     }
 
@@ -235,6 +276,7 @@ int main(void) {
 
     return 0;
 }
+
 
 //-------------------- 自定义Tick --------------------
 uint32_t custom_tick_get(void) {
