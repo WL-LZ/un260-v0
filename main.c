@@ -17,6 +17,7 @@
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_system/platform_app.h"
+
 //-------------------- UART 打印函数 --------------------
 void uart_printf(int fd, const char *fmt, ...) {
     char buf[256];
@@ -45,11 +46,13 @@ static int gPCRecvLen = 0;
 static int gPCRecvSig = 0;        // 是否正在接收一帧
 static int gPCRecvComplete = 0;   // 一帧接收完成标志
 
+// 添加互斥锁保护共享变量
+static pthread_mutex_t recv_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 //-------------------- 工具函数 --------------------
 bool check_aa_header(const char* data, int len) {
     return (len >= 2 && (unsigned char)data[0] == 0xFD && (unsigned char)data[1] == 0xDF);
 }
-
 
 void* uart4_thread(void* arg) {
     uint8_t byte;
@@ -57,16 +60,21 @@ void* uart4_thread(void* arg) {
     uart_printf(fd6, "UART4 start\n");
 
     // 清空接收缓存状态
+    pthread_mutex_lock(&recv_mutex);
     gPCRecvIndex = 0;
     gPCRecvLen = 0;
     gPCRecvSig = 0;
     gPCRecvComplete = 0;
+    pthread_mutex_unlock(&recv_mutex);
 
     while (uart_running) {
         int len = uart_recv(fd4, (char*)&byte, 1, 100);
         if (len > 0) {
             uart_printf(fd6, "UART4: receive code 0x%02X\n", byte);
 
+            pthread_mutex_lock(&recv_mutex);
+            
+            // 只有在没有待处理的完整帧时才接收新数据
             if (!gPCRecvComplete) {
                 if (gPCRecvSig) {
                     // 如果正在接收帧，结果又遇到新的 0xFD，就丢弃前面的
@@ -76,6 +84,7 @@ void* uart4_thread(void* arg) {
                         gPCRecvLen = 0;
                         gPCRecvSig = 1; // 重新开始
                         gPCRecvBuff[gPCRecvIndex++] = byte;
+                        pthread_mutex_unlock(&recv_mutex);
                         continue;
                     }
 
@@ -102,9 +111,25 @@ void* uart4_thread(void* arg) {
                     else if (gPCRecvIndex > 3) {
                         gPCRecvLen--;
                         if (gPCRecvLen == 0) {
+                            // 设置完成标志，但不清零其他变量
                             gPCRecvComplete = 1;
                             gPCRecvSig = 0;
-                            uart_printf(fd6, "UART4: receive all frame len=%d\n", gPCRecvIndex);
+                            uart_printf(fd6, "UART4: receive complete frame len=%d\n", gPCRecvIndex);
+                            
+                            // 立即转发到UART5
+                            if (fd5 >= 0) {
+                                int send_len = uart_send(fd5, (const char*)gPCRecvBuff, gPCRecvIndex);
+                                uart_printf(fd6, "UART4: sent UART5, len=%d\n", send_len);
+
+                                uart_printf(fd6, "sent data: ");
+                                for (int i = 0; i < gPCRecvIndex; i++) {
+                                    uart_printf(fd6, "%02X ", gPCRecvBuff[i]);
+                                }
+                                uart_printf(fd6, "\n");
+                            } else {
+                                uart_printf(fd6, "UART4: fd5 < 0, can't send\n");
+                            }
+                            
                         }
                     }
 
@@ -124,26 +149,8 @@ void* uart4_thread(void* arg) {
                     gPCRecvBuff[gPCRecvIndex++] = byte;
                 }
             }
-
-            // 如果一帧接收完成，进行转发
-            if (gPCRecvComplete) {
-                if (fd5 >= 0) {
-                    int send_len = uart_send(fd5, (const char*)gPCRecvBuff, gPCRecvIndex);
-                    uart_printf(fd6, "UART4: sent UART5, len=%d\n", send_len);
-
-                    uart_printf(fd6, "sent data: ");
-                    for (int i = 0; i < gPCRecvIndex; i++) {
-                        uart_printf(fd6, "%02X ", gPCRecvBuff[i]);
-                    }
-                    uart_printf(fd6, "\n");
-                } else {
-                    uart_printf(fd6, "UART4: fd5 < 0, can't send\n");
-                }
-
-                gPCRecvIndex = 0;
-                gPCRecvLen = 0;
-                gPCRecvComplete = 0;
-            }
+            
+            pthread_mutex_unlock(&recv_mutex);
         }
 
         usleep(1000);
@@ -152,8 +159,6 @@ void* uart4_thread(void* arg) {
     uart_printf(fd6, "UART4 end\n");
     return NULL;
 }
-
-
 
 void* uart5_thread(void* arg) {
     uint8_t buf[256];
@@ -184,43 +189,63 @@ void* uart5_thread(void* arg) {
 
 void PCCmdHandle(void)
 {
-    if (!gPCRecvComplete) return;  
-    uart_printf(fd6, "enetr PCCmdHandle \n");
+    pthread_mutex_lock(&recv_mutex);
+    
+    if (!gPCRecvComplete) {
+        pthread_mutex_unlock(&recv_mutex);
+        return;  
+    }
+    
+    uart_printf(fd6, "enter PCCmdHandle \n");
 
     uint8_t *buf = gPCRecvBuff;
     uint8_t Len = buf[2];  
     uint8_t cmd = buf[3];  
     
-    switch (cmd) {
-        case 0x0E:  	//点钞信息
-        {
-            uint32_t amount = ((uint32_t)buf[4] << 24) |((uint32_t)buf[5] << 16) |((uint32_t)buf[6] << 8)  |((uint32_t)buf[7]);
-            uint8_t qty = buf[8];
-            uint8_t status = buf[9];
-            sim.total_amount = amount;
-            sim.total_pcs = qty;
-            sim.err_num = status;
-
-
-
-            ui_refresh_main_page();  			
-            uart_printf(fd6, "Count info: amount=%u, qty=%u, status=0x%02X\n",amount, qty, status);
-            switch (status) {
-                case 0x00: uart_printf(fd6, "Ready to refresh\n"); break;
-                default: uart_printf(fd6, "Unknown status 0x%02X\n", status); break;
-            }
-            break;
+ switch (cmd) {
+    case 0x0E:   // 点钞信息
+    {
+        uint32_t amount = ((uint32_t)buf[4] << 24) |
+                          ((uint32_t)buf[5] << 16) |
+                          ((uint32_t)buf[6] << 8)  |
+                          ((uint32_t)buf[7]);
+        uint8_t qty = buf[8];
+        uint8_t status = buf[9];
+        sim.err_num = status;
+        switch (status) {
+            case 0x00: // 点钞中
+            case 0x01:
+                sim.total_amount = amount;
+                sim.total_pcs = qty;
+                ui_refresh_main_page();
+                uart_printf(fd6, "Count info: amount=%u, qty=%u, status=0x%02X\n",
+                            amount, qty, status);
+                            ui_refresh_main_page(); 
+                break;
+            case 0x02: // 点钞结束
+                uart_printf(fd6, "Count finished\n");
+                ui_refresh_main_page(); 
+                break;
+            default:
+                uart_printf(fd6, "Unknown status 0x%02X\n", status);
+                break;
         }
 
-        default:
-            uart_printf(fd6, "Unknown command 0x%02X\n", cmd);
-            break;
+        break;
     }
 
-    gPCRecvComplete = 0; 
+    default:
+        uart_printf(fd6, "Unknown command 0x%02X\n", cmd);
+        break;
 }
 
-
+    // 处理完成后清零标志和缓冲区
+    gPCRecvComplete = 0;
+    gPCRecvIndex = 0;
+    gPCRecvLen = 0;
+    
+    pthread_mutex_unlock(&recv_mutex);
+}
 
 //-------------------- 主函数 --------------------
 int main(void) {
@@ -263,7 +288,6 @@ int main(void) {
     }
 
     while(1) {
-        
         lv_timer_handler();
         PCCmdHandle();        
         usleep(1000);
@@ -276,7 +300,6 @@ int main(void) {
 
     return 0;
 }
-
 
 //-------------------- 自定义Tick --------------------
 uint32_t custom_tick_get(void) {
