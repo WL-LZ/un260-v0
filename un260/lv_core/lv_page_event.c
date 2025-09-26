@@ -45,14 +45,21 @@ void page_01_menu_btn_event_cb(lv_event_t* e) {
      }
  }
 
- void page_01_start_btn_event_cb(lv_event_t* e) //开始仿真
- {
-     if (lv_event_get_code(e) == LV_EVENT_CLICKED)
-         icon_feedback_comp("page_01_start_icon.png", page_01_main_obj, page_01_main_len);
+void page_01_start_btn_event_cb(lv_event_t* e) // 开始仿真
+{
+    if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
+        icon_feedback_comp("page_01_start_icon.png", page_01_main_obj, page_01_main_len);
 
-     start_counting_sim();
+         //start_counting_sim();
 
- }
+        int fd4 = uart_open("/dev/ttyS4");        
+        uart_config(fd4, 115200, 8, 'N', 1);     
+        unsigned char atb_cmd[6] = {0xFD, 0xDF, 0x06, 0x0A, 0x01 , 0x01};
+        uart_send(fd4, (char*)atb_cmd, 6);           
+        uart_close(fd4);
+    }
+}
+
 
  void page_01_esc_btn_event_cb(lv_event_t* e)
  {

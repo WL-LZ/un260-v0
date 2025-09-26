@@ -37,6 +37,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_system/platform_app.c
     un260/lv_system/lv_str.c
     un260/lv_system/user_cfg.c
+    un260/lv_drivers/lv_drivers.c
     #font
 	un260/font/lv_font_montserrat_8.c 
     un260/font/lv_font_montserrat_10.c
@@ -109,6 +110,7 @@ target_link_libraries(${PROJECT_NAME} ${LIBMPP_GE} ${LIBMPP_DEC} ${LIBMPP_BASE} 
 target_link_libraries(${PROJECT_NAME} lvgl )
 target_link_libraries(${PROJECT_NAME} media_player)
 target_link_libraries(${PROJECT_NAME} m)
+target_link_libraries(${PROJECT_NAME} pthread)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES INSTALL_RPATH "/usr/local/lib")
 

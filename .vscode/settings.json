@@ -1,0 +1,20 @@
+{
+    "files.associations": {
+        "user_cfg.h": "c",
+        "termios.h": "c",
+        "fcntl.h": "c",
+        "platform_app.h": "c",
+        "lv_img_init.h": "c",
+        "stdio.h": "c",
+        "lv_uart.h": "c",
+        "pthread.h": "c",
+        "unistd.h": "c",
+        "lv_page_event.h": "c",
+        "lvgl_refre.h": "c",
+        "lv_image_declear.h": "c",
+        "lv_page_manager.h": "c",
+        "page_03_menu.h": "c",
+        "lv_drivers.h": "c",
+        "aic_dec.h": "c"
+    }
+}
