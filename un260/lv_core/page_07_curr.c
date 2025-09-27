@@ -9,8 +9,8 @@
 #include "un260/lv_refre/lvgl_refre.h"
 
 const char* currencies[] = {
-    "USD", "CNY","GBP","EUR","EGP","ISK","PHP","SOS","TRY", "CNY","GBP","EUR","EGP","ISK","PHP","SOS","TRY", "CNY","GBP","EUR","EGP","ISK","PHP","SOS","TRY"
-};
+"USD", "CNY", "EUR", "AED", "SAR", "OMR", "QAR", "MAD", "EGP", "DZD" };
+
 
 int currencies_count = sizeof(currencies) / sizeof(currencies[0]);
 

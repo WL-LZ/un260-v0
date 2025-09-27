@@ -19,24 +19,9 @@
 #include "un260/lv_system/platform_app.h"
 
 //-------------------- UART 打印函数 --------------------
-void uart_printf(int fd, const char *fmt, ...) {
-    char buf[256];
-    va_list args;
-    va_start(args, fmt);
-    int len = vsnprintf(buf, sizeof(buf), fmt, args);
-    va_end(args);
-
-    if (len > 0) {
-        if (len > sizeof(buf)) len = sizeof(buf);
-        int n = write(fd, buf, len);
-        if (n != len) {
-            printf("UART写失败 %d/%d\n", n, len);
-        }
-    }
-}
 
 //-------------------- 全局变量 --------------------
-static int fd4 = -1, fd5 = -1, fd6 = -1;
+ int fd4 = -1, fd5 = -1, fd6 = -1;
 static bool uart_running = false;
 
 #define RECV_BUF_SIZE 256
@@ -70,7 +55,7 @@ void* uart4_thread(void* arg) {
     while (uart_running) {
         int len = uart_recv(fd4, (char*)&byte, 1, 100);
         if (len > 0) {
-            uart_printf(fd6, "UART4: receive code 0x%02X\n", byte);
+           // uart_printf(fd6, "UART4: receive code 0x%02X\n", byte);
 
             pthread_mutex_lock(&recv_mutex);
             
@@ -99,7 +84,7 @@ void* uart4_thread(void* arg) {
                     }
                     else if (gPCRecvIndex == 3) {
                         gPCRecvLen = byte - 3;
-                        uart_printf(fd6, "UART4: code len gPCRecvLen=%d (all len=%d)\n", gPCRecvLen, byte);
+                       // uart_printf(fd6, "UART4: code len gPCRecvLen=%d (all len=%d)\n", gPCRecvLen, byte);
 
                         if (byte < 3 || byte > RECV_BUF_SIZE) {
                             uart_printf(fd6, "UART4: invalid len=%d, reset\n", byte);
@@ -119,7 +104,7 @@ void* uart4_thread(void* arg) {
                             // 立即转发到UART5
                             if (fd5 >= 0) {
                                 int send_len = uart_send(fd5, (const char*)gPCRecvBuff, gPCRecvIndex);
-                                uart_printf(fd6, "UART4: sent UART5, len=%d\n", send_len);
+                               // uart_printf(fd6, "UART4: sent UART5, len=%d\n", send_len);
 
                                 uart_printf(fd6, "sent data: ");
                                 for (int i = 0; i < gPCRecvIndex; i++) {
@@ -209,18 +194,18 @@ void PCCmdHandle(void)
                           ((uint32_t)buf[5] << 16) |
                           ((uint32_t)buf[6] << 8)  |
                           ((uint32_t)buf[7]);
-        uint8_t qty = buf[8];
-        uint8_t status = buf[9];
-        sim.err_num = status;
+        uint16_t qty = ((uint16_t)buf[8] << 8) | buf[9];
+        uint8_t ret_count = buf[10];   
+        uint8_t status    = buf[11];   
         switch (status) {
             case 0x00: // 点钞中
             case 0x01:
                 sim.total_amount = amount;
                 sim.total_pcs = qty;
+                sim.err_num = ret_count;
                 ui_refresh_main_page();
-                uart_printf(fd6, "Count info: amount=%u, qty=%u, status=0x%02X\n",
-                            amount, qty, status);
-                            ui_refresh_main_page(); 
+                uart_printf(fd6, "Counting: amount=%u, qty=%u, ret=%u, status=0x%02X\n",amount, qty, ret_count, status);
+                ui_refresh_main_page(); 
                 break;
             case 0x02: // 点钞结束
                 uart_printf(fd6, "Count finished\n");
@@ -233,6 +218,40 @@ void PCCmdHandle(void)
 
         break;
     }
+    case 0x03:  //解析curr
+    {
+        uint8_t status = buf[5];
+        if (status == 0x01) {
+         uart_printf(fd6, "Set %s curr suceess\n",Machine_para.curr_code);
+        } else if(status == 0x02)
+        {
+          uart_printf(fd6, "Set %s curr fail\n",Machine_para.curr_code);
+        }
+        
+
+    }
+case 0x0B: // 面额详细列表
+{
+    char denom_str[9] = {0};
+    memcpy(denom_str, &buf[4], 8);
+    int denom_value = atoi(denom_str);
+
+    char pcs_str[4] = {0};
+    memcpy(pcs_str, &buf[12], 3);
+    int pcs_value = atoi(pcs_str);
+    for (int i = 0; i < sim.denom_number; i++) {
+        if (sim.denom[i].value == denom_value) {
+            sim.denom[i].pcs += pcs_value;
+            sim.denom[i].amount = sim.denom[i].value * sim.denom[i].pcs;
+            break;
+        }
+    }
+    uart_printf(fd6, "Denom=%d, pcs=%d, total_amount=%.2f\n",
+                denom_value, pcs_value, (float)(denom_value * pcs_value));
+    ui_refresh_main_page();
+    break;
+}
+
 
     default:
         uart_printf(fd6, "Unknown command 0x%02X\n", cmd);

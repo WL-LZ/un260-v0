@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 #include <unistd.h>
+#include <stdint.h>
 
 /* 打开串口设备 */
 int uart_open(const char *device);
@@ -31,6 +32,14 @@ int uart_send(int fd, const char *send_buf, int data_len);
 
 /* 关闭串口 */
 void uart_close(int fd);
+int send_command(int fd, uint8_t cmd_g, const uint8_t *cmd_s, uint16_t cmd_s_len);
+void uart_printf(int fd, const char *fmt, ...);
+
+extern int fd4;
+extern int fd5;
+extern int fd6;
+#define CHECK1 0xFD
+#define CHECK2 0xDF
 
 #ifdef __cplusplus
 }

@@ -7,6 +7,7 @@
 #include <sys/select.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <stdarg.h>
 
 /* 打开串口 */
 int uart_open(const char *device)
@@ -46,12 +47,12 @@ int uart_config(int fd, int baud, int dataBit, char parity, int stopBit)
         default: return -1;
     }
 
-    // 停止位
+
     if (stopBit == 1) tty.c_cflag &= ~CSTOPB;
     else if (stopBit == 2) tty.c_cflag |= CSTOPB;
     else return -1;
 
-    // 波特率
+
     speed_t speed;
     switch (baud) {
         case 9600: speed = B9600; break;
@@ -62,7 +63,7 @@ int uart_config(int fd, int baud, int dataBit, char parity, int stopBit)
     cfsetispeed(&tty, speed);
     cfsetospeed(&tty, speed);
 
-    // 超时与最小接收字符
+
     tty.c_cc[VTIME] = 1; // 0.1s
     tty.c_cc[VMIN]  = 1;
 
@@ -102,8 +103,49 @@ int uart_send(int fd, const char *send_buf, int data_len)
     return (ret == data_len) ? ret : -1;
 }
 
-/* 关闭串口 */
 void uart_close(int fd)
 {
     if (fd > 0) close(fd);
+}
+
+
+//通用发送指令
+int send_command(int fd, uint8_t cmd_g, const uint8_t *cmd_s, uint16_t cmd_s_len)
+{
+    uint8_t buf[256];
+    int i = 0;
+
+    buf[i++] = CHECK1;
+    buf[i++] = CHECK2;
+    uint16_t len = 2 + 1 + 1 + cmd_s_len + 1; // (CHECK1+CHECK2) + CMD-G + CMD-Sx + CRC
+    buf[i++] = (uint8_t)len;
+    buf[i++] = cmd_g;
+    if (cmd_s && cmd_s_len > 0) {
+        memcpy(&buf[i], cmd_s, cmd_s_len);
+        i += cmd_s_len;
+    }
+    buf[i++] = 0x0A;
+
+    uart_printf(fd6, "Send CMD: 0x%02X, Data:", cmd_g);
+    for (size_t j = 0; j < len; j++) {
+        uart_printf(fd6, " %02X", buf[j]);
+    }
+    
+    return uart_send(fd4, (const char *)buf, i);
+}
+
+void uart_printf(int fd, const char *fmt, ...) {
+    char buf[256];
+    va_list args;
+    va_start(args, fmt);
+    int len = vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+
+    if (len > 0) {
+        if (len > sizeof(buf)) len = sizeof(buf);
+        int n = write(fd, buf, len);
+        if (n != len) {
+            printf("UART写失败 %d/%d\n", n, len);
+        }
+    }
 }

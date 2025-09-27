@@ -19,8 +19,8 @@ lv_obj_t* page_01_main_page_amount_label = NULL;
 lv_timer_t* safe_reset_timer = NULL;
 
 //金额模拟
-const int USD_value[] = { 100,500,20,10,5,1 };
-const int CNY_value[] = { 1000,500,100,50,20,10,5,2,1 };
+const int USD_value[] = { 100,50,20,10,5,1 };
+const int CNY_value[] = { 100,50,20,10,5,1 };
 const int EUR_value[] = { 200,100,50,20,10,5 };
 const int GBP_value[] = { 50,20,10,5,2,1 };
 const int KRW_value[] = { 500,400,300,200,100,50,10,5,1 };

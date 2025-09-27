@@ -8,6 +8,7 @@
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_refre/lvgl_refre.h"
 #include "un260/lv_core/page_03_menu.h"
+#include "un260/lv_drivers/lv_drivers.h"
 
 lv_timer_t* page_03_batch_num_del_timer = NULL;
 lv_timer_t* page_05_password_del_timer = NULL;
@@ -44,7 +45,7 @@ void page_01_menu_btn_event_cb(lv_event_t* e) {
 
      if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
          ui_manager_pop_page();
-        int fd6 = uart_open("/dev/ttyS6");        
+        fd6 = uart_open("/dev/ttyS6");        
         uart_config(fd6, 115200, 8, 'N', 1);     
          uart_printf(fd6, "sim ：amount : %d pcs : %d \n", sim.total_amount, sim.total_pcs);            
         uart_close(fd6);
@@ -58,7 +59,7 @@ void page_01_start_btn_event_cb(lv_event_t* e) // 开始仿真
         icon_feedback_comp("page_01_start_icon.png", page_01_main_obj, page_01_main_len);
 
          //start_counting_sim();
-
+        sim_data_init(); //
         int fd4 = uart_open("/dev/ttyS4");        
         uart_config(fd4, 115200, 8, 'N', 1);     
         unsigned char atb_cmd[6] = {0xFD, 0xDF, 0x06, 0x0A, 0x01 , 0x01};

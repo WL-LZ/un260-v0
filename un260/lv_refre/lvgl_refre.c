@@ -811,6 +811,7 @@ static void page_07_cont_click_cb(lv_event_t* e)
     int idx = (int)(uintptr_t)lv_event_get_user_data(e);
     if (idx >= 0 && idx < currencies_count) {
         memcpy(Machine_para.curr_code, currencies[idx], 4);
+        send_command(fd4, 0x03, (const uint8_t *)currencies[idx], 3);
         ui_manager_switch(UI_PAGE_MAIN);
     }
 }
