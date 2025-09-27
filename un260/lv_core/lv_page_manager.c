@@ -59,7 +59,7 @@ static void create_new_page(ui_page_t page)
         page_01_speed_refre();
         page_01_err_num_refre();
         page_01_curr_img_refre();
-        sim_data_init();
+        //sim_data_init();
         ui_refresh_main_page();
 
         return; // 直接返回，不执行创建

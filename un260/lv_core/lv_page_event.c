@@ -39,9 +39,16 @@ void page_01_menu_btn_event_cb(lv_event_t* e) {
         ui_manager_push_page(UI_PAGE_MENU);
     }
 }
+
  void page_01_back_btn_event_cb(lv_event_t* e) {
+
      if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
          ui_manager_pop_page();
+        int fd6 = uart_open("/dev/ttyS6");        
+        uart_config(fd6, 115200, 8, 'N', 1);     
+         uart_printf(fd6, "sim ：amount : %d pcs : %d \n", sim.total_amount, sim.total_pcs);            
+        uart_close(fd6);
+
      }
  }
 
