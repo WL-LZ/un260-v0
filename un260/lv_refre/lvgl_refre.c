@@ -811,6 +811,7 @@ static void page_07_cont_click_cb(lv_event_t* e)
     int idx = (int)(uintptr_t)lv_event_get_user_data(e);
     if (idx >= 0 && idx < currencies_count) {
         memcpy(Machine_para.curr_code, currencies[idx], 4);
+        set_curr(get_curr_item(currencies[idx]));
         send_command(fd4, 0x03, (const uint8_t *)currencies[idx], 3);
         ui_manager_switch(UI_PAGE_MAIN);
     }
@@ -884,7 +885,7 @@ void page_07_curr_img_refre(void)//图片刷新
         lv_obj_t* indicator_cont = lv_obj_create(curr_page);
         lv_obj_set_style_border_width(indicator_cont, 0, LV_PART_MAIN);
         lv_obj_set_size(indicator_cont, 1051, 60);
-        lv_obj_set_pos(indicator_cont, 113, 43);
+        lv_obj_set_pos(indicator_cont, 113, 33);
         lv_obj_set_style_bg_opa(indicator_cont, LV_OPA_TRANSP, 0);
         lv_obj_clear_flag(indicator_cont, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_move_foreground(indicator_cont);

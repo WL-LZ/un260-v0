@@ -336,11 +336,92 @@ void PCCmdHandle(void) {
                 ui_refresh_main_page();
                 break;
             }
+            // case 0x04:  //   工作模式设置是否成功
+            // {
+            //     uint8_t status = buf[5];
+            //     if (status == 0x01) {
+            //     switch (Machine_work_code.mode_code)
+            //             {
+            //             case  Machine_MODE_MDC:
+            //                 /* code */
+            //                 Machine_para.mode = MODE_MDC;
+            //                 break;
+            //             case Machine_MODE_SDC:
+            //                 Machine_para.mode = MODE_SDC;
+            //                 break;
+            //             case Machine_MODE_CNT:
+            //                 Machine_para.mode = MODE_CNT;
+            //                 break;
+            //             default:
+            //                 break;
+            //             }
+            //             page_01_mode_switch_refre();
+            //             sim_data_init();                        
+            //     } else if(status == 0x02)
+            //     {
+            //       uart_printf(fd6, "Set %s mode fail\n",Machine_para.mode);
+            //     }
+            //     break;
+            // }
+            // case 0x01:
+            // {
+            //     uint8_t status = buf[5];
+            //     if(status == 0x01)
+            //     {
+            //         ui_manager_switch(UI_PAGE_MAIN);
+
+            //     }
+            //     else if(status == 0x02)
+            //     {
+            //         uart_printf(fd6, "Machine reset fail\n");
+            //     }
+            // }
             default:
                 uart_printf(fd6, "Unknown command 0x%02X\n", cmd);
                 break;
         }
     }
+}
+
+static void sent_machine_code(void)
+{
+    send_command(fd4, 0x04, Machine_MODE_MDC, 1); // 发送设置币种命令，默认USD
+}
+static lv_obj_t* g_msgbox_cont = NULL;
+
+static void msgbox_close_cb(lv_event_t* e)
+{
+    if (g_msgbox_cont && lv_obj_is_valid(g_msgbox_cont)) {
+        lv_obj_del(g_msgbox_cont);
+        g_msgbox_cont = NULL;
+    }
+}
+
+void lv_show_center_msgbox(const char* title_text, const char* info_text)
+{
+    lv_obj_t* scr = lv_scr_act();
+
+    g_msgbox_cont = lv_obj_create(scr);
+    lv_obj_set_size(g_msgbox_cont, 400, 200);
+    lv_obj_set_pos(g_msgbox_cont, 440, 100); // 居中在 (1280,400)
+    lv_obj_set_style_bg_color(g_msgbox_cont, lv_color_hex(0xE1E1E1), 0); // 灰色
+    lv_obj_set_style_radius(g_msgbox_cont, 10, 0);
+    lv_obj_set_style_opa(g_msgbox_cont, LV_OPA_COVER, 0);
+
+    lv_obj_add_event_cb(g_msgbox_cont, msgbox_close_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t* label_title = lv_label_create(g_msgbox_cont);
+    lv_label_set_text(label_title, title_text);
+    lv_obj_set_style_text_font(label_title, &lv_font_montserrat_30, 0);
+    lv_obj_align(label_title, LV_ALIGN_TOP_MID, 0, 10);
+
+    lv_obj_t* label_info = lv_label_create(g_msgbox_cont);
+    lv_label_set_text(label_info, info_text);
+    lv_obj_set_style_radius(g_msgbox_cont, 10, 0);
+    lv_obj_set_style_text_font(label_info, &lv_font_montserrat_22, 0);
+
+    lv_obj_align(label_info, LV_ALIGN_TOP_MID, 0, 100);
+    lv_obj_add_event_cb(scr, msgbox_close_cb, LV_EVENT_CLICKED, NULL);
 }
 //-------------------- 主函数 --------------------
 int main(void) {

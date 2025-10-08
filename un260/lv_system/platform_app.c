@@ -5,7 +5,7 @@
 #include "un260/lv_resources/lv_img_init.h" 
 #include "user_cfg.h"
 #include "un260/lv_core/lv_page_manager.h"
-
+#include "un260/lv_system/platform_app.h"
 // 全局变量定义
 counting_sim_t sim = { 0 };
 page_02_report_status_t page_02_a_report_status = { 0 };
@@ -19,7 +19,7 @@ lv_obj_t* page_01_main_page_amount_label = NULL;
 lv_timer_t* safe_reset_timer = NULL;
 
 //金额模拟
-const int USD_value[] = { 100,50,20,10,5,1 };
+const int USD_value[] = { 100,50,20,10,5,2,1 };
 const int CNY_value[] = { 100,50,20,10,5,1 };
 const int EUR_value[] = { 200,100,50,20,10,5 };
 const int GBP_value[] = { 50,20,10,5,2,1 };
@@ -29,6 +29,13 @@ const int ISK_value[] = { 10000, 5000, 2000, 1000, 500, 100 };
 const int PHP_value[] = { 1000, 500, 200, 100, 50, 20 };
 const int SOS_value[] = { 1000, 500, 100, 50, 20, 10, 5, 1 };
 const int TRY_value[] = { 200, 100, 50, 20, 10, 5, 1 };
+const int AED_value[] = { 1000, 500, 200, 100, 50, 20, 10, 5};
+const int SAR_value[] = { 500, 200, 100, 50, 20, 10, 5, 1 };
+const int OMR_value[] = { 5000, 2000, 1000, 500, 100, 50 , 10 };
+const int QAR_value[] = { 500, 200, 100, 50,  10, 5, 1 };
+const int MAD_value[] = { 200, 100, 50, 20};
+const int DZD_value[] = { 2000, 1000, 500, 200};
+
 
 const int USD_value_num = sizeof(USD_value) / sizeof(USD_value[0]);
 const int CNY_value_num = sizeof(CNY_value) / sizeof(CNY_value[0]);
@@ -40,7 +47,12 @@ const int ISK_value_num = sizeof(ISK_value) / sizeof(ISK_value[0]);
 const int PHP_value_num = sizeof(PHP_value) / sizeof(PHP_value[0]);
 const int SOS_value_num = sizeof(SOS_value) / sizeof(SOS_value[0]);
 const int TRY_value_num = sizeof(TRY_value) / sizeof(TRY_value[0]);
-
+const int AED_value_num = sizeof(AED_value) / sizeof(AED_value[0]);
+const int SAR_value_num = sizeof(SAR_value) / sizeof(SAR_value[0]);
+const int OMR_value_num = sizeof(OMR_value) / sizeof(OMR_value[0]);
+const int QAR_value_num = sizeof(QAR_value) / sizeof(QAR_value[0]);
+const int MAD_value_num = sizeof(MAD_value) / sizeof(MAD_value[0]);
+const int DZD_value_num = sizeof(DZD_value) / sizeof(DZD_value[0]);
 // 用于在页面切换时保存计数数据的临时存储
 static counting_sim_t saved_sim_data;
 static bool has_saved_data = false;
@@ -75,7 +87,7 @@ lv_obj_t* find_obj_by_name(const char* name, ui_element_t* page_cfg_obj, int len
 }
 
 /* 把字符串码映射到枚举 */
-static curr_item_t get_curr_item(const char* code) {
+     curr_item_t get_curr_item(const char* code) {
     if (strcmp(code, "CNY") == 0) return CURR_CNY_ITEM;
     if (strcmp(code, "USD") == 0) return CURR_USD_ITEM;
     if (strcmp(code, "EUR") == 0) return CURR_EUR_ITEM;
@@ -86,8 +98,12 @@ static curr_item_t get_curr_item(const char* code) {
     if (strcmp(code, "PHP") == 0) return CURR_PHP_ITEM;
     if (strcmp(code, "SOS") == 0) return CURR_SOS_ITEM;
     if (strcmp(code, "TRY") == 0) return CURR_TRY_ITEM;
-
-
+    if (strcmp(code, "AED") == 0) return CURR_AED_ITEM;
+    if (strcmp(code, "SAR") == 0) return CURR_SAR_ITEM;
+    if (strcmp(code, "OMR") == 0) return CURR_OMR_ITEM;    
+    if (strcmp(code, "QAR") == 0) return CURR_QAR_ITEM;
+    if (strcmp(code, "MAD") == 0) return CURR_MAD_ITEM;
+    if (strcmp(code, "DZD") == 0) return CURR_DZD_ITEM;            
     return CURR_COUNT;  // 不认识
 }
 
@@ -157,6 +173,61 @@ void sim_data_init(void)
         arr = KRW_value;
         count = KRW_value_num;
         strcpy(Machine_para.curr_code, "KRW");
+        break;
+    case CURR_EGP_ITEM:
+        arr = EGP_value;
+        count = EGP_value_num;
+        strcpy(Machine_para.curr_code, "EGP");
+        break;
+    case CURR_ISK_ITEM:
+        arr = ISK_value;
+        count = ISK_value_num;
+        strcpy(Machine_para.curr_code, "ISK");
+        break;
+    case CURR_PHP_ITEM:
+        arr = PHP_value;
+        count = PHP_value_num;
+        strcpy(Machine_para.curr_code, "PHP");
+        break;
+    case CURR_SOS_ITEM:
+        arr = SOS_value;
+        count = SOS_value_num;
+        strcpy(Machine_para.curr_code, "SOS");
+        break;
+    case CURR_TRY_ITEM:
+        arr = TRY_value;
+        count = TRY_value_num;
+        strcpy(Machine_para.curr_code, "TRY");
+        break;
+    case CURR_AED_ITEM:
+        arr = AED_value;
+        count = AED_value_num;
+        strcpy(Machine_para.curr_code, "AED");
+        break;
+    case CURR_SAR_ITEM:
+        arr = SAR_value;
+        count = SAR_value_num;
+        strcpy(Machine_para.curr_code, "SAR");
+        break;
+    case CURR_OMR_ITEM:
+        arr = OMR_value;
+        count = OMR_value_num;
+        strcpy(Machine_para.curr_code, "OMR");
+        break;
+    case CURR_QAR_ITEM:
+        arr = QAR_value;
+        count = QAR_value_num;
+        strcpy(Machine_para.curr_code, "QAR");
+        break;
+    case CURR_MAD_ITEM:
+        arr = MAD_value;
+        count = MAD_value_num;
+        strcpy(Machine_para.curr_code, "MAD");
+        break;
+    case CURR_DZD_ITEM:
+        arr = DZD_value;
+        count = DZD_value_num;
+        strcpy(Machine_para.curr_code, "DZD");
         break;
     default:
         arr = USD_value;
@@ -387,8 +458,6 @@ void ui_refresh_main_page(void) {
         case CURR_KRW_ITEM:
             update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "KRW");
             break;
-
-
         case CURR_EGP_ITEM:
             update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "EGP");
             break;
@@ -404,7 +473,24 @@ void ui_refresh_main_page(void) {
         case CURR_TRY_ITEM:
             update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "TRY");
             break;
-
+        case CURR_AED_ITEM:
+            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "AED");
+            break;
+        case CURR_SAR_ITEM:
+            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "SAR");
+            break;
+        case CURR_OMR_ITEM:
+            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "OMR");
+            break;
+        case CURR_QAR_ITEM:
+            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "QAR");
+            break;
+        case CURR_MAD_ITEM:
+            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "MAD");
+            break;
+        case CURR_DZD_ITEM:
+            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "DZD");
+            break;  
         default:
             update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "NONE");
             break;

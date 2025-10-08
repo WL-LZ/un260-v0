@@ -40,6 +40,20 @@ extern int fd5;
 extern int fd6;
 #define CHECK1 0xFD
 #define CHECK2 0xDF
+typedef uint8_t Machine_Mode_t;
+
+#define Machine_MODE_MDC   0x03
+#define Machine_MODE_SDC   0x04
+#define Machine_MODE_CNT   0x05
+#define Machine_MODE_MAX   0x06
+#define Machine_AUT_MODE_MDC 0X01
+#define Machine_MUL_MODE_MDC 0X02
+#define Machine_CURR_MDOE_MAX 0X03
+
+typedef struct {
+    uint8_t mode_code;
+} Machine_work_code_t;
+extern Machine_work_code_t Machine_work_code;
 
 #ifdef __cplusplus
 }

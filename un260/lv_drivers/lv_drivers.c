@@ -9,6 +9,8 @@
 #include <unistd.h>
 #include <stdarg.h>
 
+Machine_work_code_t Machine_work_code={0};
+
 /* 打开串口 */
 int uart_open(const char *device)
 {

@@ -46,9 +46,7 @@ void page_01_menu_btn_event_cb(lv_event_t* e) {
      if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
          ui_manager_pop_page();
         fd6 = uart_open("/dev/ttyS6");        
-        uart_config(fd6, 115200, 8, 'N', 1);     
-         uart_printf(fd6, "sim ：amount : %d pcs : %d \n", sim.total_amount, sim.total_pcs);            
-        uart_close(fd6);
+
 
      }
  }
@@ -80,17 +78,87 @@ void page_01_start_btn_event_cb(lv_event_t* e) // 开始仿真
 
  }
 
+// static Machine_Mode_t mode_next(int temp_mode)
+// {
+//     switch(temp_mode) {
+//         case MODE_MDC: return Machine_MODE_SDC;
+//         case MODE_SDC: return Machine_MODE_CNT;
+//         case MODE_CNT: return Machine_MODE_MDC;
+//         default:               return Machine_MODE_MDC; // 循环回到起点
+//     }
+// }
+
+
+// void page_01_mode_btn_event_cb(lv_event_t* e)
+// {
+//     if (lv_event_get_code(e) == LV_EVENT_CLICKED)
+//     {   
+//         // 用当前模式来循环，而不是每次都从 MDC 开始
+//         Machine_Mode_t Temp_Mode = mode_next(Machine_para.mode);
+//         Machine_para.mode = Temp_Mode;  // 更新当前模式
+
+//         uart_printf(fd6, "mode:%02X\n", Temp_Mode);
+//         icon_feedback_comp("page_01_mode_icon.png", page_01_main_obj, page_01_main_len);
+
+//         uint8_t send_data = 0;
+
+//         if (strcmp(Machine_para.curr_code, "AUT") == 0)
+//         {
+//             send_data = Machine_AUT_MODE_MDC;
+//         }
+//         else if (strcmp(Machine_para.curr_code, "MUL") == 0)
+//         {
+//             send_data = Machine_MUL_MODE_MDC;
+//         }
+//         else
+//         {
+//             // 普通循环模式
+//             send_data = Temp_Mode;
+//         }
+
+//         send_command(fd4, 0x04, &send_data, 1);  // 发送字节
+//         Machine_work_code.mode_code = send_data; // 保存当前发送的模式代码
+//         uart_printf(fd6, "send_data:%02X\n", send_data);
+        
+//     }
+// }
+
  void page_01_mode_btn_event_cb(lv_event_t* e)
  {
      if (lv_event_get_code(e) == LV_EVENT_CLICKED)
      {
          icon_feedback_comp("page_01_mode_icon.png", page_01_main_obj, page_01_main_len);
 
-         Machine_para.mode = (Machine_para.mode + 1) % (MODE_SDC + 1);
-         if (Machine_para.mode == MODE_NONE)
+         // 循环切换模式: MDC -> CNT -> VER -> SDC -> MDC
+         if (Machine_para.mode == MODE_MDC)
+             Machine_para.mode = MODE_SDC;
+         else if (Machine_para.mode == MODE_SDC)
+             Machine_para.mode = MODE_CNT;
+         else if (Machine_para.mode == MODE_CNT)
+             Machine_para.mode = MODE_MDC;
+         else
              Machine_para.mode = MODE_MDC;
          page_01_mode_switch_refre();
-         stop_counting_sim();
+         
+         // 发送对应的模式命令
+         uint8_t mode_cmd = 0;
+         if(Machine_para.mode == MODE_MDC)
+              mode_cmd = 0x03;
+         else if (Machine_para.mode == MODE_SDC)
+              mode_cmd = 0x04;
+         else if (Machine_para.mode == MODE_CNT)
+              mode_cmd = 0x05;
+         else if (Machine_para.mode == MODE_VER)
+              mode_cmd = 0x06;  // 假设VER模式对应0x06
+         else       
+         {
+            Machine_para.mode = MODE_MDC;
+            mode_cmd = 0x03;
+         }
+         
+         send_command(fd4, 0x04, &mode_cmd, 1);
+         
+        sim_data_init(); //
 
 
      }

@@ -7,5 +7,6 @@
 #include"page_05_set_password.h"
 #include"page_06_settings.h"
 #include"page_07_curr.h"
+#include"page_08_boot.h"
 
 #endif // !LV_PAGE_DECLEAR_H

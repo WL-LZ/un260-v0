@@ -505,6 +505,8 @@ ui_element_t page_01_main_obj[] = {
 
 };
 
+
+
 // 添加数组元素计数变量
 void ui_main_create(lv_obj_t* parent)
 {
@@ -545,6 +547,8 @@ void ui_main_create(lv_obj_t* parent)
     page_01_speed_refre();
     page_01_err_num_refre();
     page_01_curr_img_refre();
+
+
 
 }
 

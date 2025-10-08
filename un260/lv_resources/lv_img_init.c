@@ -267,6 +267,34 @@ const char* get_currency_img(const char* code)
         snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_EUR.png");
         return img_path;
     }
+    if (strcmp(code, "AED") == 0) {
+        snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_AED.png");
+        return img_path;
+    }
+    if (strcmp(code, "SAR") == 0) {
+        snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_SAR.png");
+        return img_path;
+    }
+    if (strcmp(code, "OMR") == 0) {
+        snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_OMR.png");
+        return img_path;
+    }
+    if (strcmp(code, "QAR") == 0) {
+        snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_QAR.png");
+        return img_path;
+    }
+    if (strcmp(code, "MAD") == 0) {
+        snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_MAD.png");
+        return img_path;
+    }
+    if (strcmp(code, "DZD") == 0) {
+        snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_DZD.png");
+        return img_path;
+    }
+    {
+        /* code */
+    }
+    
 
     return NULL;
 }

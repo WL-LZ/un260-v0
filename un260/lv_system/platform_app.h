@@ -2,7 +2,7 @@
 #define PLATFORM_APP_H
 #include "lvgl/lvgl.h"
 #include "un260/lv_resources/lv_img_init.h" 
-
+#include "user_cfg.h"
 
 
 typedef struct {
@@ -59,7 +59,7 @@ lv_obj_t* find_obj_by_name(const char* name, ui_element_t* page_cfg_obj, int len
 void save_counting_data(void);
 void restore_counting_data(void);
 void sim_clear_all_sn(counting_sim_t* sim_data);
-
+ curr_item_t get_curr_item(const char* code);
 void update_label_with_simple_highlight(ui_element_t* page_cfg_obj, int len,
     const char* name, const char* fmt, ...);
 void mode_switch(void);
