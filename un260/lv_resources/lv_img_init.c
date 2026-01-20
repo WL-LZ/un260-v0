@@ -291,6 +291,22 @@ const char* get_currency_img(const char* code)
         snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_DZD.png");
         return img_path;
     }
+    if (strcmp(code, "INR") == 0) {
+        snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_INR.png");
+        return img_path;
+    }
+    if (strcmp(code, "PKR") == 0) {
+        snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_PKR.png");
+        return img_path;
+    }
+    if (strcmp(code, "IQD") == 0) {
+        snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_IQD.png");
+        return img_path;
+    }
+    {
+        /* code */
+    }
+    
     {
         /* code */
     }

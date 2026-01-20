@@ -35,7 +35,9 @@ const int OMR_value[] = { 5000, 2000, 1000, 500, 100, 50 , 10 };
 const int QAR_value[] = { 500, 200, 100, 50,  10, 5, 1 };
 const int MAD_value[] = { 200, 100, 50, 20};
 const int DZD_value[] = { 2000, 1000, 500, 200};
-
+const int INR_value[] = { 500, 200, 100, 50, 20, 10};
+const int PKR_value[] = { 5000, 1000, 500, 100, 75, 50, 20 ,10};
+const int IQD_value[] = { 50000 , 25000, 10000, 5000, 1000, 500, 250 ,100 ,20 ,50 ,1};
 
 const int USD_value_num = sizeof(USD_value) / sizeof(USD_value[0]);
 const int CNY_value_num = sizeof(CNY_value) / sizeof(CNY_value[0]);
@@ -53,6 +55,9 @@ const int OMR_value_num = sizeof(OMR_value) / sizeof(OMR_value[0]);
 const int QAR_value_num = sizeof(QAR_value) / sizeof(QAR_value[0]);
 const int MAD_value_num = sizeof(MAD_value) / sizeof(MAD_value[0]);
 const int DZD_value_num = sizeof(DZD_value) / sizeof(DZD_value[0]);
+const int INR_value_num = sizeof(INR_value) / sizeof(INR_value[0]);
+const int PKR_value_num = sizeof(PKR_value) / sizeof(PKR_value[0]);
+const int IQD_value_num = sizeof(IQD_value) / sizeof(IQD_value[0]);
 // 用于在页面切换时保存计数数据的临时存储
 static counting_sim_t saved_sim_data;
 static bool has_saved_data = false;
@@ -103,7 +108,10 @@ lv_obj_t* find_obj_by_name(const char* name, ui_element_t* page_cfg_obj, int len
     if (strcmp(code, "OMR") == 0) return CURR_OMR_ITEM;    
     if (strcmp(code, "QAR") == 0) return CURR_QAR_ITEM;
     if (strcmp(code, "MAD") == 0) return CURR_MAD_ITEM;
-    if (strcmp(code, "DZD") == 0) return CURR_DZD_ITEM;            
+    if (strcmp(code, "DZD") == 0) return CURR_DZD_ITEM; 
+    if (strcmp(code, "INR") == 0) return CURR_INR_ITEM;
+    if (strcmp(code, "PKR") == 0) return CURR_PKR_ITEM;
+    if (strcmp(code, "IQD") == 0) return CURR_IQD_ITEM;           
     return CURR_COUNT;  // 不认识
 }
 
@@ -228,6 +236,21 @@ void sim_data_init(void)
         arr = DZD_value;
         count = DZD_value_num;
         strcpy(Machine_para.curr_code, "DZD");
+        break;
+    case CURR_INR_ITEM:
+        arr = INR_value;
+        count = INR_value_num;
+        strcpy(Machine_para.curr_code, "INR");
+        break;
+    case CURR_PKR_ITEM:
+        arr = PKR_value;
+        count = PKR_value_num;
+        strcpy(Machine_para.curr_code, "PKR");
+        break;
+    case CURR_IQD_ITEM:
+        arr = IQD_value;
+        count = IQD_value_num;
+        strcpy(Machine_para.curr_code, "IQD");
         break;
     default:
         arr = USD_value;
@@ -491,6 +514,15 @@ void ui_refresh_main_page(void) {
         case CURR_DZD_ITEM:
             update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "DZD");
             break;  
+        case CURR_INR_ITEM:
+            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "INR");
+            break;
+        case CURR_PKR_ITEM:
+            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "PKR");
+            break;
+        case CURR_IQD_ITEM:
+            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "IQD");
+            break;
         default:
             update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "NONE");
             break;

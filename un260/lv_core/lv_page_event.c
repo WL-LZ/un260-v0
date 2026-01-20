@@ -129,7 +129,6 @@ void page_01_start_btn_event_cb(lv_event_t* e) // 开始仿真
      {
          icon_feedback_comp("page_01_mode_icon.png", page_01_main_obj, page_01_main_len);
 
-         // 循环切换模式: MDC -> CNT -> VER -> SDC -> MDC
          if (Machine_para.mode == MODE_MDC)
              Machine_para.mode = MODE_SDC;
          else if (Machine_para.mode == MODE_SDC)
@@ -140,7 +139,6 @@ void page_01_start_btn_event_cb(lv_event_t* e) // 开始仿真
              Machine_para.mode = MODE_MDC;
          page_01_mode_switch_refre();
          
-         // 发送对应的模式命令
          uint8_t mode_cmd = 0;
          if(Machine_para.mode == MODE_MDC)
               mode_cmd = 0x03;
@@ -148,8 +146,6 @@ void page_01_start_btn_event_cb(lv_event_t* e) // 开始仿真
               mode_cmd = 0x04;
          else if (Machine_para.mode == MODE_CNT)
               mode_cmd = 0x05;
-         else if (Machine_para.mode == MODE_VER)
-              mode_cmd = 0x06;  // 假设VER模式对应0x06
          else       
          {
             Machine_para.mode = MODE_MDC;

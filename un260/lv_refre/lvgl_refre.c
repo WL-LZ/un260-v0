@@ -143,7 +143,7 @@ void page_01_create_mian_scrollable_container(void)
         if (obj)
         {
             lv_obj_set_parent(obj, page_01_main_scroll_container);
-            lv_obj_set_pos(obj, 8, (i - 1) * 33);
+            lv_obj_set_pos(obj, 8, (i - 1) * 32);
         }
 
         snprintf(name, sizeof(name), "pcs_%d_label", i);
@@ -151,7 +151,7 @@ void page_01_create_mian_scrollable_container(void)
         if (obj)
         {
             lv_obj_set_parent(obj, page_01_main_scroll_container);
-            lv_obj_set_pos(obj, 106, (i - 1) * 33);
+            lv_obj_set_pos(obj, 106, (i - 1) * 32);
         }
 
 
@@ -160,7 +160,7 @@ void page_01_create_mian_scrollable_container(void)
         if (obj)
         {
             lv_obj_set_parent(obj, page_01_main_scroll_container);
-            lv_obj_set_pos(obj, 213, (i - 1) * 33);
+            lv_obj_set_pos(obj, 213, (i - 1) * 32);
         }
     }
     if (sim.denom_number > PAGE_01_REPORT_ITEM)

@@ -20,6 +20,9 @@ typedef enum {
     CURR_QAR_ITEM,
     CURR_MAD_ITEM,
     CURR_DZD_ITEM,    
+    CURR_INR_ITEM,
+    CURR_PKR_ITEM,
+    CURR_IQD_ITEM,
     CURR_COUNT
 }curr_item_t;
 #define PCS_BATCH_MODE 0
