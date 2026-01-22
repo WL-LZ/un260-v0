@@ -8,6 +8,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <stdarg.h>
+#include "un260/lv_system/user_cfg.h"
 
 Machine_work_code_t Machine_work_code={0};
 
@@ -150,4 +151,15 @@ void uart_printf(int fd, const char *fmt, ...) {
             printf("UART写失败 %d/%d\n", n, len);
         }
     }
+}
+
+void machine_handshake_send(void)
+{
+    uint8_t sub = 0x01;
+
+    uart_printf(fd6, "[HS] Send handshake ATB\n");
+    send_command(fd4, 0x01, &sub, 1);
+
+    Machine_Statue.g_handshake_state = HANDSHAKE_SENT;
+    g_handshake_tick = custom_tick_get();
 }

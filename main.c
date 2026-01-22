@@ -277,6 +277,30 @@ void PCCmdHandle(void) {
         uint8_t cmd = buf[3];  
         uart_printf(fd6, "Processing command 0x%02X, len=%d\n", cmd, frame.len);
         switch (cmd) {
+            case 0x17:  // 查询清分机软件版本
+            {
+                if (frame.len < 18) {
+                    uart_printf(fd6, "0x17: frame too short (%d bytes)\n", frame.len);
+                    break;
+                }
+                snprintf(Machine_Statue.main_app, sizeof(Machine_Statue.main_app),"%d.%d.%d", buf[4], buf[5], buf[6]);
+                snprintf(Machine_Statue.image_app, sizeof(Machine_Statue.image_app),"%d.%d.%d", buf[7], buf[8], buf[9]);
+                snprintf(Machine_Statue.fpga, sizeof(Machine_Statue.fpga),"%d.%d", buf[10], buf[11]);
+                snprintf(Machine_Statue.thka_app, sizeof(Machine_Statue.thka_app),"%d.%d.%d", buf[12], buf[13], buf[14]);
+                snprintf(Machine_Statue.ecb, sizeof(Machine_Statue.ecb),"%d.%d.%d", buf[15], buf[16], buf[17]);
+                strcpy(Machine_Statue.display_app, "N/A");
+                Machine_Statue.version_valid = true;
+                
+                uart_printf(fd6, "Version Info Received:\n");
+                uart_printf(fd6, "  1. MainApp:    %s\n", Machine_Statue.main_app);
+                uart_printf(fd6, "  2. IImageApp:  %s\n", Machine_Statue.image_app);
+                uart_printf(fd6, "  3. FPGA:       %s\n", Machine_Statue.fpga);
+                uart_printf(fd6, "  4. THKAApp:    %s\n", Machine_Statue.thka_app);
+                uart_printf(fd6, "  5. ECB:        %s\n", Machine_Statue.ecb);
+                uart_printf(fd6, "  6. DisplayApp: %s\n", Machine_Statue.display_app);
+                
+                break;
+            }           
             case 0x0E:   // 点钞信息
             {
                 uint32_t amount = ((uint32_t)buf[4] << 24) |
@@ -336,6 +360,19 @@ void PCCmdHandle(void) {
                 ui_refresh_main_page();
                 break;
             }
+            case 0x01:   // 握手应答 BRA
+            {
+                if (frame.len < 6) break;
+                uint8_t sub = buf[4];
+                if (sub == 0x01) {
+                   Machine_Statue.g_handshake_state = HANDSHAKE_OK;
+                  uart_printf(fd6, "[HS] Handshake OK\n");
+                  // ===== 握手成功后可以立即做的事 =====
+                send_command(fd4, 0x17, Query_ver_cmd, 1);  // CMD-G=0x17
+                  }
+                  break;
+            }
+
             // case 0x04:  //   工作模式设置是否成功
             // {
             //     uint8_t status = buf[5];
@@ -456,6 +493,7 @@ int main(void) {
     pthread_create(&thread5, NULL, uart5_thread, NULL);
     pthread_detach(thread4);
     pthread_detach(thread5);
+    machine_handshake_send();
 
     // 测试UART6输出
     for(int i=0;i<5;i++){

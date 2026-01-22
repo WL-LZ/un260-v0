@@ -1,7 +1,7 @@
 #ifndef USER_CFG_H
 #define USER_CFG_H
 #include <stdint.h>
-
+#include "un260/lv_drivers/lv_drivers.h"
 #define LV_DEBUG 1
 typedef enum {
     CURR_CNY_ITEM = 0,
@@ -59,6 +59,20 @@ typedef struct {
 }Machine_para_t;
 
 extern Machine_para_t Machine_para;
+
+typedef struct {
+    // 版本信息
+    char main_app[32];      // 主控软件版本
+    char image_app[32];     // 图像软件版本
+    char fpga[32];          // FPGA版本
+    char thka_app[32];      // 主控BOOT版本
+    char ecb[32];           // 图像BOOT版本
+    char display_app[32];   // 显示软件版本(预留)
+    bool version_valid;     // 版本数据是否有效
+    handshake_state_t g_handshake_state;
+} Machine_Statue_t;
+
+extern Machine_Statue_t Machine_Statue;
 
  enum {
     MODE_NONE,

@@ -19,7 +19,7 @@ Machine_para_t Machine_para = {
     0,                      //work:auto muanul
     0,
 };
-
+Machine_Statue_t Machine_Statue = { 0 };
 
 //void user_data_init(void) {
 //    memcpy(&Machine_para, &default_para, sizeof(Machine_para_t));

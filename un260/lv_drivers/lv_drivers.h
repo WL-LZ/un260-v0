@@ -7,6 +7,7 @@ extern "C" {
 
 #include <unistd.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 /* 打开串口设备 */
 int uart_open(const char *device);
@@ -35,6 +36,8 @@ void uart_close(int fd);
 int send_command(int fd, uint8_t cmd_g, const uint8_t *cmd_s, uint16_t cmd_s_len);
 void uart_printf(int fd, const char *fmt, ...);
 
+extern void machine_handshake_send(void);
+
 extern int fd4;
 extern int fd5;
 extern int fd6;
@@ -50,10 +53,21 @@ typedef uint8_t Machine_Mode_t;
 #define Machine_MUL_MODE_MDC 0X02
 #define Machine_CURR_MDOE_MAX 0X03
 
+#define Query_ver_cmd 0x01
 typedef struct {
     uint8_t mode_code;
 } Machine_work_code_t;
 extern Machine_work_code_t Machine_work_code;
+
+/*握手协议*/
+typedef enum {
+    HANDSHAKE_IDLE = 0,
+    HANDSHAKE_SENT,
+    HANDSHAKE_OK,
+} handshake_state_t;
+static uint32_t g_handshake_tick = 0;
+#define HANDSHAKE_TIMEOUT_MS  1000
+
 
 #ifdef __cplusplus
 }
