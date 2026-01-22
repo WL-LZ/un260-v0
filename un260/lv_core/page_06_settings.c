@@ -8,6 +8,15 @@
 #include "lvgl/lvgl.h"
 #include "../aic_ui/aic_ui.h"
 
+/* 版本信息 */
+static lv_obj_t* label_main_app;
+static lv_obj_t* label_image_app;
+static lv_obj_t* label_fpga;
+static lv_obj_t* label_thka;
+static lv_obj_t* label_ecb;
+static lv_obj_t* label_display;
+
+
 /* =========================
  * 静态对象指针
  * ========================= */
@@ -76,6 +85,51 @@ ui_element_t page_06_settings_obj[] = {
 };
 
 int page_06_settings_obj_len = sizeof(page_06_settings_obj) / sizeof(page_06_settings_obj[0]);
+
+/* 版本信息 */
+static lv_obj_t* create_version_label(lv_obj_t* parent,lv_coord_t x,lv_coord_t y,const char* text)
+{
+    lv_obj_t* label = lv_label_create(parent);
+    lv_label_set_text(label, text);
+    lv_obj_set_pos(label, x, y);
+    return label;
+}
+
+/* 版本详情 */
+static void create_version_page(lv_obj_t* parent)
+{
+    char buf[64];
+    lv_coord_t y = 40;
+
+    if (!Machine_Statue.version_valid) {
+        create_version_label(parent, 40, y, "Version not available");
+        return;
+    }
+
+    snprintf(buf, sizeof(buf), "Main App     : %s", Machine_Statue.main_app);
+    label_main_app = create_version_label(parent, 40, y, buf);
+    y += 40;
+
+    snprintf(buf, sizeof(buf), "Image App    : %s", Machine_Statue.image_app);
+    label_image_app = create_version_label(parent, 40, y, buf);
+    y += 40;
+
+    snprintf(buf, sizeof(buf), "FPGA         : %s", Machine_Statue.fpga);
+    label_fpga = create_version_label(parent, 40, y, buf);
+    y += 40;
+
+    snprintf(buf, sizeof(buf), "Main BOOT    : %s", Machine_Statue.thka_app);
+    label_thka = create_version_label(parent, 40, y, buf);
+    y += 40;
+
+    snprintf(buf, sizeof(buf), "Image BOOT   : %s", Machine_Statue.ecb);
+    label_ecb = create_version_label(parent, 40, y, buf);
+    y += 40;
+
+    snprintf(buf, sizeof(buf), "Display App  : %s", Machine_Statue.display_app);
+    label_display = create_version_label(parent, 40, y, buf);
+}
+
 
 /* =========================
  * 菜单状态刷新
@@ -203,10 +257,24 @@ static lv_obj_t* create_sub_page(lv_obj_t* parent, const char* text)
     lv_obj_clear_flag(page, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_scrollbar_mode(page, LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_style_bg_color(page, lv_color_white(), 0);
+    /* ===== ESC 按键 ===== */
+    lv_obj_t* esc_btn = lv_btn_create(page);
+    lv_obj_set_size(esc_btn, 100, 60);
+    lv_obj_set_pos(esc_btn, 850, 10);   // 右上角
+    lv_obj_clear_flag(esc_btn, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_event_cb(esc_btn, page_01_back_btn_event_cb,
+        LV_EVENT_CLICKED, NULL);
+    lv_obj_t* esc_label = lv_label_create(esc_btn);
+    if(Machine_Statue.g_handshake_state == HANDSHAKE_OK)
+        lv_label_set_text(esc_label, "HANDSHAKE_OK");
+    else
+    lv_label_set_text(esc_label, "ESC");
+    lv_obj_center(esc_label);
 
     lv_obj_t* label = lv_label_create(page);
     lv_label_set_text(label, text);
     lv_obj_center(label);
+
 
     return page;
 }
@@ -236,8 +304,9 @@ void ui_page_06_settings_create(lv_obj_t* parent)
     system_page = create_sub_page(settings_page, "System Settings");
     maintenance_page = create_sub_page(settings_page, "Maintenance Settings");
     user_page = create_sub_page(settings_page, "User Settings");
-    version_page = create_sub_page(settings_page, "Version Information");
+    version_page = create_sub_page(settings_page, " ");
     data_collection_page = create_sub_page(settings_page, "Data Collection Settings");
+    create_version_page(version_page);
 
     // 默认显示 Maintenance 页面（索引1）
     page_06_update_menu_state(1);
