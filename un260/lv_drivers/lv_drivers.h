@@ -65,10 +65,21 @@ typedef enum {
     HANDSHAKE_SENT,
     HANDSHAKE_OK,
 } handshake_state_t;
-static uint32_t g_handshake_tick = 0;
+extern uint32_t g_handshake_tick;
 #define HANDSHAKE_TIMEOUT_MS  1000
 
-
+// CIS校准状态枚举
+typedef enum {
+    CIS_CALIB_IDLE = 0,          // 空闲
+    CIS_CALIB_RUNNING,           // 校验中
+    CIS_CALIB_SUCCESS,           // 校验成功
+    CIS_CALIB_FAIL_UPPER,        // 上CIS失败
+    CIS_CALIB_FAIL_LOWER,        // 下CIS失败
+    CIS_CALIB_FAIL_IR            // 红外失败
+} cis_calib_state_t;
+extern cis_calib_state_t cis_state;
+// CIS校准命令
+#define CIS_Calib_cmd  0x01
 #ifdef __cplusplus
 }
 #endif

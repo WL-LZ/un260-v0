@@ -11,6 +11,8 @@
 #include "un260/lv_system/user_cfg.h"
 
 Machine_work_code_t Machine_work_code={0};
+cis_calib_state_t cis_state = CIS_CALIB_IDLE;
+uint32_t g_handshake_tick = 0;
 
 /* 打开串口 */
 int uart_open(const char *device)
@@ -120,22 +122,27 @@ int send_command(int fd, uint8_t cmd_g, const uint8_t *cmd_s, uint16_t cmd_s_len
 
     buf[i++] = CHECK1;
     buf[i++] = CHECK2;
-    uint16_t len = 2 + 1 + 1 + cmd_s_len + 1; // (CHECK1+CHECK2) + CMD-G + CMD-Sx + CRC
-    buf[i++] = (uint8_t)len;
+
+    // 整帧总长度 = 头(2) + 长度字段(1) + CMD-G(1) + CMD-Sx(N) + CRC(1)
+    uint16_t len = 2 + 1 + 1 + cmd_s_len + 1;
+    buf[i++] = (uint8_t)len;   // 第3字节是整帧长度
     buf[i++] = cmd_g;
+
     if (cmd_s && cmd_s_len > 0) {
         memcpy(&buf[i], cmd_s, cmd_s_len);
         i += cmd_s_len;
     }
-    buf[i++] = 0x0A;
+
+    buf[i++] = 0x0A; // CRC
 
     uart_printf(fd6, "Send CMD: 0x%02X, Data:", cmd_g);
-    for (size_t j = 0; j < len; j++) {
+    for (size_t j = 0; j < i; j++) {
         uart_printf(fd6, " %02X", buf[j]);
     }
-    
+
     return uart_send(fd4, (const char *)buf, i);
 }
+
 
 void uart_printf(int fd, const char *fmt, ...) {
     char buf[256];

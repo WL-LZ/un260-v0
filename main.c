@@ -269,156 +269,157 @@ void* uart5_thread(void* arg) {
 //     pthread_mutex_unlock(&recv_mutex);
 // }
 // 临时验证方案：完全跳过解析
-void PCCmdHandle(void) {
+void PCCmdHandle(void)
+{
     cmd_frame_t frame;
+
     while (dequeue_cmd(&frame)) {
         uint8_t *buf = frame.data;
-        uint8_t Len = buf[2];  
-        uint8_t cmd = buf[3];  
-        uart_printf(fd6, "Processing command 0x%02X, len=%d\n", cmd, frame.len);
+        uint8_t len  = frame.len;
+        uint8_t cmd  = buf[3];
+
+        uart_printf(fd6, "Processing command 0x%02X, len=%d\n", cmd, len);
+
         switch (cmd) {
-            case 0x17:  // 查询清分机软件版本
-            {
-                if (frame.len < 18) {
-                    uart_printf(fd6, "0x17: frame too short (%d bytes)\n", frame.len);
+
+        /* ================== 0x01 握手 ================== */
+        case 0x01:
+        {
+            if (len < 6) break;
+
+            uint8_t sub = buf[4];
+
+            if (sub == 0x01) {
+                Machine_Statue.g_handshake_state = HANDSHAKE_OK;
+                uart_printf(fd6, "[HS] Handshake OK\n");
+
+                uint8_t ver_cmd = Query_ver_cmd;
+                send_command(fd4, 0x17, &ver_cmd, 1);
+            }
+            break;
+        }
+
+        /* ================== 0x17 版本信息 ================== */
+        case 0x17:
+        {
+            if (len < 18) {
+                uart_printf(fd6, "0x17: frame too short (%d)\n", len);
+                break;
+            }
+
+            uint8_t *p = &buf[4];
+
+            snprintf(Machine_Statue.main_app,  sizeof(Machine_Statue.main_app),
+                     "%d.%d.%d", p[0], p[1], p[2]);
+
+            snprintf(Machine_Statue.image_app, sizeof(Machine_Statue.image_app),
+                     "%d.%d.%d", p[3], p[4], p[5]);
+
+            snprintf(Machine_Statue.fpga, sizeof(Machine_Statue.fpga),
+                     "%d.%d", p[6], p[7]);
+
+            snprintf(Machine_Statue.thka_app, sizeof(Machine_Statue.thka_app),
+                     "%d.%d.%d", p[8], p[9], p[10]);
+
+            snprintf(Machine_Statue.ecb, sizeof(Machine_Statue.ecb),
+                     "%d.%d.%d", p[11], p[12], p[13]);
+
+            strcpy(Machine_Statue.display_app, "N/A");
+            Machine_Statue.version_valid = true;
+
+            uart_printf(fd6, "Version Info Received\n");
+            break;
+        }
+
+        /* ================== 0x0E 点钞信息 ================== */
+        case 0x0E:
+        {
+            if (len < 12) break;
+
+            uint8_t *p = &buf[4];
+
+            uint32_t amount = (p[0] << 24) | (p[1] << 16) | (p[2] << 8) | p[3];
+            uint16_t qty    = (p[4] << 8) | p[5];
+            uint8_t  ret    = p[6];
+            uint8_t  status = p[7];
+
+            if (status <= 0x01) {
+                sim.total_amount = amount;
+                sim.total_pcs    = qty;
+                sim.err_num      = ret;
+                ui_refresh_main_page();
+            } else if (status == 0x02) {
+                uart_printf(fd6, "Count finished\n");
+                ui_refresh_main_page();
+            }
+            break;
+        }
+
+        /* ================== 0x03 设置货币 ================== */
+        case 0x03:
+        {
+            if (len < 6) break;
+
+            uint8_t status = buf[5];
+
+            uart_printf(fd6,
+                "Set %s curr %s\n",
+                Machine_para.curr_code,
+                (status == 0x01) ? "success" : "fail");
+
+            break;
+        }
+
+        /* ================== 0x0B 面额明细 ================== */
+        case 0x0B:
+        {
+            if (len < 15) break;
+
+            char denom_str[9] = {0};
+            memcpy(denom_str, &buf[4], 8);
+            int denom = atoi(denom_str);
+
+            char pcs_str[4] = {0};
+            memcpy(pcs_str, &buf[12], 3);
+            int pcs = atoi(pcs_str);
+
+            for (int i = 0; i < sim.denom_number; i++) {
+                if (sim.denom[i].value == denom) {
+                    sim.denom[i].pcs += pcs;
+                    sim.denom[i].amount = denom * sim.denom[i].pcs;
                     break;
                 }
-                snprintf(Machine_Statue.main_app, sizeof(Machine_Statue.main_app),"%d.%d.%d", buf[4], buf[5], buf[6]);
-                snprintf(Machine_Statue.image_app, sizeof(Machine_Statue.image_app),"%d.%d.%d", buf[7], buf[8], buf[9]);
-                snprintf(Machine_Statue.fpga, sizeof(Machine_Statue.fpga),"%d.%d", buf[10], buf[11]);
-                snprintf(Machine_Statue.thka_app, sizeof(Machine_Statue.thka_app),"%d.%d.%d", buf[12], buf[13], buf[14]);
-                snprintf(Machine_Statue.ecb, sizeof(Machine_Statue.ecb),"%d.%d.%d", buf[15], buf[16], buf[17]);
-                strcpy(Machine_Statue.display_app, "N/A");
-                Machine_Statue.version_valid = true;
-                
-                uart_printf(fd6, "Version Info Received:\n");
-                uart_printf(fd6, "  1. MainApp:    %s\n", Machine_Statue.main_app);
-                uart_printf(fd6, "  2. IImageApp:  %s\n", Machine_Statue.image_app);
-                uart_printf(fd6, "  3. FPGA:       %s\n", Machine_Statue.fpga);
-                uart_printf(fd6, "  4. THKAApp:    %s\n", Machine_Statue.thka_app);
-                uart_printf(fd6, "  5. ECB:        %s\n", Machine_Statue.ecb);
-                uart_printf(fd6, "  6. DisplayApp: %s\n", Machine_Statue.display_app);
-                
-                break;
-            }           
-            case 0x0E:   // 点钞信息
-            {
-                uint32_t amount = ((uint32_t)buf[4] << 24) |
-                                  ((uint32_t)buf[5] << 16) |
-                                  ((uint32_t)buf[6] << 8)  |
-                                  ((uint32_t)buf[7]);
-                uint16_t qty = ((uint16_t)buf[8] << 8) | buf[9];
-                uint8_t ret_count = buf[10];   
-                uint8_t status    = buf[11];   
-                switch (status) {
-                    case 0x00: // 点钞中
-                    case 0x01:
-                        sim.total_amount = amount;
-                        sim.total_pcs = qty;
-                        sim.err_num = ret_count;
-                        ui_refresh_main_page();
-                        uart_printf(fd6, "Counting: amount=%u, qty=%u, ret=%u, status=0x%02X\n",amount, qty, ret_count, status);
-                        break;
-                    case 0x02: // 点钞结束
-                        uart_printf(fd6, "Count finished\n");
-                        ui_refresh_main_page(); 
-                        break;
-                    default:
-                        uart_printf(fd6, "Unknown status 0x%02X\n", status);
-                        break;
-                }
-                break;
-            }
-            case 0x03:  //解析curr
-            {
-                uint8_t status = buf[5];
-                if (status == 0x01) {
-                 uart_printf(fd6, "Set %s curr suceess\n",Machine_para.curr_code);
-                } else if(status == 0x02)
-                {
-                  uart_printf(fd6, "Set %s curr fail\n",Machine_para.curr_code);
-                }
-                break;
-            }
-            case 0x0B: // 面额详细列表
-            {
-                char denom_str[9] = {0};
-                memcpy(denom_str, &buf[4], 8);
-                int denom_value = atoi(denom_str);
-                char pcs_str[4] = {0};
-                memcpy(pcs_str, &buf[12], 3);
-                int pcs_value = atoi(pcs_str);
-                for (int i = 0; i < sim.denom_number; i++) {
-                    if (sim.denom[i].value == denom_value) {
-                        sim.denom[i].pcs += pcs_value;
-                        sim.denom[i].amount = sim.denom[i].value * sim.denom[i].pcs;
-                        break;
-                    }
-                }
-                uart_printf(fd6, "Denom=%d, pcs=%d, total_amount=%.2f\n",
-                            denom_value, pcs_value, (float)(denom_value * pcs_value));
-                ui_refresh_main_page();
-                break;
-            }
-            case 0x01:   // 握手应答 BRA
-            {
-                if (frame.len < 6) break;
-                uint8_t sub = buf[4];
-                if (sub == 0x01) {
-                   Machine_Statue.g_handshake_state = HANDSHAKE_OK;
-                  uart_printf(fd6, "[HS] Handshake OK\n");
-                  // ===== 握手成功后可以立即做的事 =====
-                send_command(fd4, 0x17, Query_ver_cmd, 1);  // CMD-G=0x17
-                  }
-                  break;
             }
 
-            // case 0x04:  //   工作模式设置是否成功
-            // {
-            //     uint8_t status = buf[5];
-            //     if (status == 0x01) {
-            //     switch (Machine_work_code.mode_code)
-            //             {
-            //             case  Machine_MODE_MDC:
-            //                 /* code */
-            //                 Machine_para.mode = MODE_MDC;
-            //                 break;
-            //             case Machine_MODE_SDC:
-            //                 Machine_para.mode = MODE_SDC;
-            //                 break;
-            //             case Machine_MODE_CNT:
-            //                 Machine_para.mode = MODE_CNT;
-            //                 break;
-            //             default:
-            //                 break;
-            //             }
-            //             page_01_mode_switch_refre();
-            //             sim_data_init();                        
-            //     } else if(status == 0x02)
-            //     {
-            //       uart_printf(fd6, "Set %s mode fail\n",Machine_para.mode);
-            //     }
-            //     break;
-            // }
-            // case 0x01:
-            // {
-            //     uint8_t status = buf[5];
-            //     if(status == 0x01)
-            //     {
-            //         ui_manager_switch(UI_PAGE_MAIN);
+            ui_refresh_main_page();
+            break;
+        }
 
-            //     }
-            //     else if(status == 0x02)
-            //     {
-            //         uart_printf(fd6, "Machine reset fail\n");
-            //     }
-            // }
-            default:
-                uart_printf(fd6, "Unknown command 0x%02X\n", cmd);
-                break;
+        /* ================== 0x5B CIS 校准 ================== */
+        case 0x5B:
+        {
+            if (len < 5) break;
+
+            switch (buf[4]) {
+            case 0x01: cis_state = CIS_CALIB_RUNNING; break;
+            case 0x02: cis_state = CIS_CALIB_SUCCESS; break;
+            case 0x03: cis_state = CIS_CALIB_FAIL_UPPER; break;
+            case 0x04: cis_state = CIS_CALIB_FAIL_LOWER; break;
+            case 0x05: cis_state = CIS_CALIB_FAIL_IR; break;
+            default:   break;
+            }
+
+            cis_calib_ui_refresh();
+            break;
+        }
+
+        default:
+            uart_printf(fd6, "Unknown command 0x%02X\n", cmd);
+            break;
         }
     }
 }
+
 
 static void sent_machine_code(void)
 {
