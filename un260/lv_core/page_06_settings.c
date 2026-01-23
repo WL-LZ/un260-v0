@@ -7,7 +7,7 @@
 #include <string.h>
 #include "lvgl/lvgl.h"
 #include "../aic_ui/aic_ui.h"
-
+#include "un260/lv_core/page_09_cis_cala.h"
 /* 版本信息 */
 static lv_obj_t* label_main_app;
 static lv_obj_t* label_image_app;
@@ -28,6 +28,9 @@ static lv_obj_t* btn_maintenance = NULL;
 static lv_obj_t* btn_user = NULL;
 static lv_obj_t* btn_version = NULL;
 static lv_obj_t* btn_data_collection = NULL;
+static lv_obj_t* btn_cis_calib = NULL;
+
+
 
 static lv_obj_t* label_system = NULL;
 static lv_obj_t* label_maintenance = NULL;
@@ -129,8 +132,17 @@ static void create_version_page(lv_obj_t* parent)
     snprintf(buf, sizeof(buf), "Display App  : %s", Machine_Statue.display_app);
     label_display = create_version_label(parent, 40, y, buf);
 }
+static void create_maintenance_page_content(lv_obj_t* parent)
+{
+    btn_cis_calib = lv_btn_create(parent);
+    lv_obj_set_size(btn_cis_calib, 300, 80);
+    lv_obj_center(btn_cis_calib);
+    lv_obj_add_event_cb(btn_cis_calib, cis_enter_btn_cb, LV_EVENT_CLICKED, NULL);
 
-
+    lv_obj_t* label = lv_label_create(btn_cis_calib);
+    lv_label_set_text(label, "CIS Calibration");
+    lv_obj_center(label);
+}
 /* =========================
  * 菜单状态刷新
  * ========================= */
@@ -302,7 +314,8 @@ void ui_page_06_settings_create(lv_obj_t* parent)
 
     // 创建右侧子页面
     system_page = create_sub_page(settings_page, "System Settings");
-    maintenance_page = create_sub_page(settings_page, "Maintenance Settings");
+    maintenance_page = create_sub_page(settings_page, " ");
+    create_maintenance_page_content(maintenance_page);
     user_page = create_sub_page(settings_page, "User Settings");
     version_page = create_sub_page(settings_page, " ");
     data_collection_page = create_sub_page(settings_page, "Data Collection Settings");

@@ -122,7 +122,7 @@ void page_01_create_mian_scrollable_container(void)
     lv_obj_t* parent = find_obj_by_name("back_img", page_01_main_obj, page_01_main_len);
     if (!parent)
         parent = lv_scr_act();
-    page_01_main_scroll_container = lv_obj_create(parent);
+    page_01_main_scroll_container = lv_obj_create(main_page);
     lv_obj_set_pos(page_01_main_scroll_container, 720, 54);
     lv_obj_set_size(page_01_main_scroll_container, 300, 240);
     lv_obj_set_style_bg_opa(page_01_main_scroll_container, LV_OPA_TRANSP, 0);

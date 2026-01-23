@@ -13,6 +13,7 @@ extern "C" {
     extern lv_obj_t* settings_page;
     extern lv_obj_t* curr_page;
     extern lv_obj_t* boot_page;
+    extern lv_obj_t* cis_calib_page;
 
 
     typedef enum {
@@ -25,6 +26,7 @@ extern "C" {
         UI_PAGE_CURR,
         // 更多页面...
         UI_PAGE_BOOT,
+        UI_PAGE_CIS_CALIB,
         UI_PAGE_COUNT
     } ui_page_t;
 

@@ -15,7 +15,7 @@ lv_obj_t* set_password_page = NULL;
 lv_obj_t* settings_page = NULL;
 lv_obj_t* curr_page = NULL;
 lv_obj_t* boot_page = NULL;
-
+lv_obj_t* cis_calib_page = NULL;
 
 ui_element_group_t all_ui_groups[] = {
     { page_01_main_obj, 0 },
@@ -45,6 +45,8 @@ static void destroy_current_page(void)
     case UI_PAGE_BOOT: ui_page_08_curr_destroy(); break;
     case UI_PAGE_DETAIL:   break;
     case UI_PAGE_COUNT:   break;
+    case UI_PAGE_CIS_CALIB: ui_page_cis_calib_destroy(); break;
+
     }
 }
 
@@ -74,6 +76,7 @@ static void create_new_page(ui_page_t page)
     case UI_PAGE_SETTING: ui_page_06_settings_create(lv_scr_act()); break;
     case UI_PAGE_CURR: ui_page_07_curr_create(lv_scr_act()); break;
     case UI_PAGE_BOOT: ui_page_08_curr_create(lv_scr_act()); break;
+    case UI_PAGE_CIS_CALIB: ui_page_cis_calib_create(lv_scr_act()); break;
 
     }
 }
