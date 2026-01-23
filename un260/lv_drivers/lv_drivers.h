@@ -54,6 +54,7 @@ typedef uint8_t Machine_Mode_t;
 #define Machine_CURR_MDOE_MAX 0X03
 
 #define Query_ver_cmd 0x01
+#define curr_cmd 0x01
 typedef struct {
     uint8_t mode_code;
 } Machine_work_code_t;
@@ -78,6 +79,17 @@ typedef enum {
     CIS_CALIB_FAIL_IR            // 红外失败
 } cis_calib_state_t;
 extern cis_calib_state_t cis_state;
+
+/* 获取币种状态 */
+typedef enum {
+    CURR_QUERY_IDLE = 0,
+    CURR_QUERY_RUNNING,
+    CURR_QUERY_DONE,
+    CURR_QUERY_FAIL,
+} curr_query_state_t;
+
+extern curr_query_state_t curr_query_state ;
+
 // CIS校准命令
 #define CIS_Calib_cmd  0x01
 #ifdef __cplusplus

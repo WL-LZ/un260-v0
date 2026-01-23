@@ -13,7 +13,7 @@
 Machine_work_code_t Machine_work_code={0};
 cis_calib_state_t cis_state = CIS_CALIB_IDLE;
 uint32_t g_handshake_tick = 0;
-
+curr_query_state_t curr_query_state = CURR_QUERY_IDLE;
 /* 打开串口 */
 int uart_open(const char *device)
 {
