@@ -152,7 +152,7 @@ static void create_maintenance_page_content(lv_obj_t* parent)
     lv_obj_t* btn_debug = lv_btn_create(parent);
     lv_obj_set_size(btn_debug, 300, 80);
     lv_obj_set_pos(btn_debug,150,160);
-    lv_obj_add_event_cb(btn_debug, cis_enter_btn_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(btn_debug, debug_enter_btn_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t* label_1 = lv_label_create(btn_debug);
     lv_label_set_text(label_1, "DEBUG");

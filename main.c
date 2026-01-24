@@ -15,6 +15,7 @@
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_refre/lvgl_refre.h"
 #include "un260/lv_core/lv_page_manager.h"
+#include "un260/lv_core/lv_page_declear.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_system/platform_app.h"
 #include <stdlib.h>
@@ -52,6 +53,17 @@ static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 bool check_aa_header(const char* data, int len) {
     return (len >= 2 && (unsigned char)data[0] == 0xFD && (unsigned char)data[1] == 0xDF);
 }
+
+// ===== RX HEX 转字符串 =====
+static void frame_to_hex_str(const uint8_t *buf, int len, char *out, int out_len)
+{
+    int pos = 0;
+    for (int i = 0; i < len && pos + 3 < out_len; i++) {
+        pos += snprintf(out + pos, out_len - pos, "%02X ", buf[i]);
+    }
+    if (pos > 0) out[pos - 1] = '\0'; // 去掉最后一个空格
+}
+
 
 // 队列入队
 static bool enqueue_cmd(const uint8_t* data, int len) {
@@ -269,6 +281,13 @@ void* uart5_thread(void* arg) {
 //     pthread_mutex_unlock(&recv_mutex);
 // }
 // 临时验证方案：完全跳过解析
+static void boot_selftest_finish_cb(lv_timer_t* timer)
+{
+    ui_manager_switch(UI_PAGE_MAIN); // 切到主页面
+    lv_timer_del(timer);             // 删除定时器
+}
+
+
 void PCCmdHandle(void)
 {
     cmd_frame_t frame;
@@ -278,23 +297,25 @@ void PCCmdHandle(void)
         uint8_t len  = frame.len;
         uint8_t cmd  = buf[3];
 
+    // /* ========= 新增：打印到 Debug 日志 ========= */
+    // char hex_log[256];
+    // frame_to_hex_str(buf, len, hex_log, sizeof(hex_log));
+    // debug_append_rx_log(hex_log);
+    // /* ========================================== */
+
         uart_printf(fd6, "Processing command 0x%02X, len=%d\n", cmd, len);
 
         switch (cmd) {
 
         /* ================== 0x01 握手 ================== */
-        case 0x01:
+        case 0x01: 
         {
-            if (len < 6) break;
-
-            uint8_t sub = buf[4];
-
-            if (sub == 0x01) {
+            if (buf[4] == 0x01) {
                 Machine_Statue.g_handshake_state = HANDSHAKE_OK;
-                uart_printf(fd6, "[HS] Handshake OK\n");
+                g_boot_stage = BOOT_STAGE_SENSOR;
 
-                uint8_t ver_cmd = Query_ver_cmd;
-                send_command(fd4, 0x17, &ver_cmd, 1);
+                bootlog_append("Handshake OK");
+                boot_send_next_selftest();
             }
             break;
         }
@@ -412,6 +433,51 @@ void PCCmdHandle(void)
             cis_calib_ui_refresh();
             break;
         }
+        /* ================== 0x37 自检 ================== */
+        case 0x37:   // 自检响应
+        {
+            uint8_t type   = buf[4];   // 0x01~0x05
+            uint8_t result = buf[5];   // 0x01 成功 / 0x02 失败
+
+            const char *name = NULL;
+
+            switch (type) {
+            case 0x01: name = "Sensor"; break;
+            case 0x02: name = "Motor";  break;
+            case 0x03: name = "Magnet"; break;
+            case 0x04: name = "Config"; break;
+            case 0x05: name = "Image";  break;
+            default: break;
+            }
+
+            if (result == 0x01) {
+                char buf_log[64];
+                snprintf(buf_log, sizeof(buf_log),
+                        "%s self-test SUCCESS", name);
+                bootlog_append(buf_log);
+            } else {
+                char buf_log[64];
+                snprintf(buf_log, sizeof(buf_log),
+                        "%s self-test FAIL", name);
+                bootlog_append(buf_log);
+                g_boot_stage = BOOT_STAGE_FAIL;
+                break;
+            }
+
+            // 进入下一阶段
+            g_boot_stage++;
+
+            if (g_boot_stage <= BOOT_STAGE_IMAGE) {
+                boot_send_next_selftest();
+            } else {
+                bootlog_append("All self-tests finished");
+                g_boot_stage = BOOT_STAGE_DONE;
+            // 创建一个 2 秒后触发的定时器
+                lv_timer_create(boot_selftest_finish_cb, 2000, NULL);     
+            }
+
+            break;
+        }
 
         default:
             uart_printf(fd6, "Unknown command 0x%02X\n", cmd);
@@ -461,6 +527,23 @@ void lv_show_center_msgbox(const char* title_text, const char* info_text)
     lv_obj_align(label_info, LV_ALIGN_TOP_MID, 0, 100);
     lv_obj_add_event_cb(scr, msgbox_close_cb, LV_EVENT_CLICKED, NULL);
 }
+
+//-------------------- 自定义Tick --------------------
+uint32_t custom_tick_get(void) {
+    static uint64_t start_ms = 0;
+    if (start_ms == 0) {
+        struct timeval tv_start;
+        gettimeofday(&tv_start, NULL);
+        start_ms = (tv_start.tv_sec * 1000000 + tv_start.tv_usec) / 1000;
+    }
+
+    struct timeval tv_now;
+    gettimeofday(&tv_now, NULL);
+    uint64_t now_ms = (tv_now.tv_sec * 1000000 + tv_now.tv_usec) / 1000;
+
+    return (uint32_t)(now_ms - start_ms);
+}
+
 //-------------------- 主函数 --------------------
 int main(void) {
     lv_init();
@@ -469,7 +552,7 @@ int main(void) {
 
     lv_port_disp_init();
     lv_port_indev_init();
-    ui_manager_switch(UI_PAGE_MAIN);
+    ui_manager_switch(UI_PAGE_BOOT);
 
     printf("=== 初始化UART4、UART5和UART6 ===\n");
 
@@ -494,7 +577,7 @@ int main(void) {
     pthread_create(&thread5, NULL, uart5_thread, NULL);
     pthread_detach(thread4);
     pthread_detach(thread5);
-    machine_handshake_send();
+   // machine_handshake_send(); 只发一次握手
 
     // 测试UART6输出
     for(int i=0;i<5;i++){
@@ -505,6 +588,15 @@ int main(void) {
     while(1) {
         lv_timer_handler();
         PCCmdHandle();        // 现在PCCmdHandle是队列出队+解析
+        
+    if (g_boot_stage == BOOT_STAGE_HANDSHAKE) {
+        if (Machine_Statue.g_handshake_state == HANDSHAKE_IDLE ||
+            (Machine_Statue.g_handshake_state == HANDSHAKE_SENT &&
+             custom_tick_get() - g_handshake_tick > HANDSHAKE_TIMEOUT_MS)) {
+
+            machine_handshake_send();
+        }
+    }
         usleep(1000);
     }
 
@@ -516,18 +608,3 @@ int main(void) {
     return 0;
 }
 
-//-------------------- 自定义Tick --------------------
-uint32_t custom_tick_get(void) {
-    static uint64_t start_ms = 0;
-    if (start_ms == 0) {
-        struct timeval tv_start;
-        gettimeofday(&tv_start, NULL);
-        start_ms = (tv_start.tv_sec * 1000000 + tv_start.tv_usec) / 1000;
-    }
-
-    struct timeval tv_now;
-    gettimeofday(&tv_now, NULL);
-    uint64_t now_ms = (tv_now.tv_sec * 1000000 + tv_now.tv_usec) / 1000;
-
-    return (uint32_t)(now_ms - start_ms);
-}
