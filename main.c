@@ -297,11 +297,11 @@ void PCCmdHandle(void)
         uint8_t len  = frame.len;
         uint8_t cmd  = buf[3];
 
-    // /* ========= 新增：打印到 Debug 日志 ========= */
-    // char hex_log[256];
-    // frame_to_hex_str(buf, len, hex_log, sizeof(hex_log));
-    // debug_append_rx_log(hex_log);
-    // /* ========================================== */
+    /* ========= 新增：打印到 Debug 日志 ========= */
+    char hex_log[256];
+    frame_to_hex_str(buf, len, hex_log, sizeof(hex_log));
+    debug_append_rx_log(hex_log);
+    /* ========================================== */
 
         uart_printf(fd6, "Processing command 0x%02X, len=%d\n", cmd, len);
 

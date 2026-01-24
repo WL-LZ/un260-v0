@@ -45,9 +45,6 @@ void page_01_menu_btn_event_cb(lv_event_t* e) {
 
      if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
          ui_manager_pop_page();
-        fd6 = uart_open("/dev/ttyS6");        
-
-
      }
  }
 

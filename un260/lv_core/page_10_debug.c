@@ -184,7 +184,9 @@ static void btn_send_event_cb(lv_event_t* e)
     /* ===== UI 显示 ===== */
     append_log("TX", cmd_str, "00FF00");
     tx_count++;
-    lv_label_set_text_fmt(label_tx_count, "TX: %d", tx_count);
+    if (label_tx_count) {  // 检查label_tx_count是否已创建
+        lv_label_set_text_fmt(label_tx_count, "TX: %d", tx_count);
+    }
 
     lv_textarea_set_text(ta_input, "FD DF ");
     lv_textarea_set_cursor_pos(ta_input, LV_TEXTAREA_CURSOR_LAST);
@@ -217,7 +219,11 @@ static void btn_quick_cmd_event_cb(lv_event_t* e) {
     lv_textarea_set_text(ta_input, cmd);
 }
 
+  static void page_10_back_btn_event_cb(lv_event_t* e) {
 
+    ui_manager_switch(UI_PAGE_MAIN);
+
+ }
 /* ========== 主创建函数 ========== */
 void ui_page_10_debug_create(void) {
     // page_debug 已存在，直接使用
@@ -278,7 +284,7 @@ void ui_page_10_debug_create(void) {
     lv_obj_set_size(btn_sec, 110, 30);
     lv_obj_set_pos(btn_sec, 160, 0);
     lv_obj_set_style_bg_color(btn_sec, lv_color_hex(0x00AA00), 0);
-    lv_obj_add_event_cb(btn_sec, page_01_back_btn_event_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(btn_sec, page_10_back_btn_event_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t* btn_esc_label = lv_label_create(btn_sec);
     lv_label_set_text(btn_esc_label, "ESC");
@@ -387,12 +393,21 @@ void ui_page_10_debug_create(void) {
 void ui_page_10_debug_destroy(void) {
     if (page_debug) {
         lv_obj_clean(page_debug);  // 清空子对象，但不删除page_debug本身
+        // 清空指针，避免悬空指针
+        log_area = NULL;
+        label_tx_count = NULL;
+        label_rx_count = NULL;
+        ta_input = NULL;
+        log_label_count = 0;  // 重置日志计数
     }
 }
 
 /* ========== 外部调用：追加接收日志 ========== */
 void debug_append_rx_log(const char* data) {
+    if (!log_area) return;  // 如果debug页面未创建，直接返回
     append_log("RX", data, "4A9EFF");
     rx_count++;
-    lv_label_set_text_fmt(label_rx_count, "RX: %d", rx_count);
+    if (label_rx_count) {  // 检查label_rx_count是否已创建
+        lv_label_set_text_fmt(label_rx_count, "RX: %d", rx_count);
+    }
 }
