@@ -132,6 +132,12 @@ static void create_version_page(lv_obj_t* parent)
     snprintf(buf, sizeof(buf), "Display App  : %s", Machine_Statue.display_app);
     label_display = create_version_label(parent, 40, y, buf);
 }
+
+static void debug_enter_btn_cb(lv_event_t* e)
+{
+    ui_manager_switch(UI_PAGE_DEBUG);
+}
+
 static void create_maintenance_page_content(lv_obj_t* parent)
 {
     btn_cis_calib = lv_btn_create(parent);
@@ -142,6 +148,15 @@ static void create_maintenance_page_content(lv_obj_t* parent)
     lv_obj_t* label = lv_label_create(btn_cis_calib);
     lv_label_set_text(label, "CIS Calibration");
     lv_obj_center(label);
+
+    lv_obj_t* btn_debug = lv_btn_create(parent);
+    lv_obj_set_size(btn_debug, 300, 80);
+    lv_obj_set_pos(btn_debug,150,160);
+    lv_obj_add_event_cb(btn_debug, cis_enter_btn_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t* label_1 = lv_label_create(btn_debug);
+    lv_label_set_text(label_1, "DEBUG");
+    lv_obj_center(label_1);
 }
 /* =========================
  * 菜单状态刷新
