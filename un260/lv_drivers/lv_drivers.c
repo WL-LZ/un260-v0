@@ -9,11 +9,19 @@
 #include <unistd.h>
 #include <stdarg.h>
 #include "un260/lv_system/user_cfg.h"
+#include "un260/lv_core/lv_page_manager.h"
 
 Machine_work_code_t Machine_work_code={0};
 cis_calib_state_t cis_state = CIS_CALIB_IDLE;
 uint32_t g_handshake_tick = 0;
 curr_query_state_t curr_query_state = CURR_QUERY_IDLE;
+boot_stage_t g_boot_stage = BOOT_STAGE_HANDSHAKE;
+
+
+static int selftest_step = 0;   // 当前自检步骤索引
+static int selftest_total = 5;  // 总自检步骤数
+
+
 /* 打开串口 */
 int uart_open(const char *device)
 {
@@ -169,4 +177,36 @@ void machine_handshake_send(void)
 
     Machine_Statue.g_handshake_state = HANDSHAKE_SENT;
     g_handshake_tick = custom_tick_get();
+}
+
+
+void boot_send_next_selftest(void)
+{
+    switch(selftest_step) {
+        case 0:
+            bootlog_append("Sensor self-test running...");
+            send_command(fd4, 0x37, (uint8_t[]){0x01}, 1); // 传感器自检
+            break;
+        case 1:
+            bootlog_append("Motor self-test running...");
+            send_command(fd4, 0x37, (uint8_t[]){0x02}, 1); // 电机自检
+            break;
+        case 2:
+            bootlog_append("Electromagnet self-test running...");
+            send_command(fd4, 0x37, (uint8_t[]){0x03}, 1); // 电磁铁自检
+            break;
+        case 3:
+            bootlog_append("Read Config Parameters...");
+            send_command(fd4, 0x37, (uint8_t[]){0x04}, 1); // 配置参数
+            break;
+        case 4:
+            bootlog_append("Image Board self-test running...");
+            send_command(fd4, 0x37, (uint8_t[]){0x05}, 1); // 图像板自检
+            break;
+        default:
+   
+            return;
+    }
+
+    selftest_step++;
 }

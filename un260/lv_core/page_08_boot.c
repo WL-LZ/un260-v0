@@ -2,7 +2,6 @@
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_resources/lv_image_declear.h" 
 #include "un260/lv_resources/lv_img_init.h" 
-#include "lv_page_event.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_components/lv_components.h"
@@ -35,6 +34,22 @@ static lv_obj_t* boot_label = NULL;
 static lv_timer_t* boot_timer = NULL;
 static char boot_buf[BOOTLOG_BUFFER_SIZE];
 static int boot_line_index = 0;
+
+void bootlog_append(const char* text)
+{
+    if (!boot_label) return;
+
+    strncat(boot_buf, text,
+            BOOTLOG_BUFFER_SIZE - strlen(boot_buf) - 2);
+    strncat(boot_buf, "\n",
+            BOOTLOG_BUFFER_SIZE - strlen(boot_buf) - 1);
+
+    lv_label_set_text(boot_label, boot_buf);
+    lv_obj_scroll_to_y(boot_cont,
+        lv_obj_get_height(boot_label),
+        LV_ANIM_OFF);
+}
+
 
 // 把你给的日志原样按行放到这里
 static const char* boot_lines[] = {
@@ -144,7 +159,7 @@ void bootlog_start(lv_obj_t* parent)
     // 🔹 设置字体为绿色 (85,164,85)
     lv_obj_set_style_text_color(boot_label, lv_color_make(85, 164, 85), 0);
 
-    boot_timer = lv_timer_create(boot_timer_cb, BOOTLOG_LINE_MS, NULL);
+    //boot_timer = lv_timer_create(boot_timer_cb, BOOTLOG_LINE_MS, NULL);
 }
 void bootlog_stop(void)
 {

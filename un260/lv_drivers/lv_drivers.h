@@ -44,6 +44,7 @@ extern int fd6;
 #define CHECK1 0xFD
 #define CHECK2 0xDF
 typedef uint8_t Machine_Mode_t;
+extern void debug_append_rx_log(const char* data); // 接收数据时调用
 
 #define Machine_MODE_MDC   0x03
 #define Machine_MODE_SDC   0x04
@@ -90,6 +91,30 @@ typedef enum {
 
 extern curr_query_state_t curr_query_state ;
 
+typedef enum {
+    BOOT_STAGE_HANDSHAKE = 0,
+
+    BOOT_STAGE_SENSOR,
+    BOOT_STAGE_MOTOR,
+    BOOT_STAGE_MAGNET,
+    BOOT_STAGE_CONFIG,
+    BOOT_STAGE_IMAGE,
+
+    BOOT_STAGE_DONE,
+    BOOT_STAGE_FAIL,
+} boot_stage_t;
+
+extern boot_stage_t g_boot_stage; //boot状态机
+
+typedef enum {
+    SELFTEST_SENSOR = 0x01,
+    SELFTEST_MOTOR  = 0x02,
+    SELFTEST_MAGNET = 0x03,
+    SELFTEST_CONFIG = 0x04,
+    SELFTEST_IMAGE  = 0x05,
+} selftest_type_t; //自检命令枚举
+
+void boot_send_next_selftest(void);
 // CIS校准命令
 #define CIS_Calib_cmd  0x01
 #ifdef __cplusplus
