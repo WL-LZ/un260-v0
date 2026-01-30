@@ -226,8 +226,21 @@ static void btn_quick_cmd_event_cb(lv_event_t* e) {
  }
 /* ========== 主创建函数 ========== */
 void ui_page_10_debug_create(void) {
-    // page_debug 已存在，直接使用
-    page_debug = lv_obj_create(lv_scr_act());
+    // page_debug 已存在，清理后重新创建
+    if (page_debug && lv_obj_is_valid(page_debug)) {
+        lv_obj_clean(page_debug);  // 清理所有子对象
+        lv_obj_clear_flag(page_debug, LV_OBJ_FLAG_HIDDEN);  // 显示page_debug
+        // 重新初始化UI元素指针
+        log_area = NULL;
+        label_tx_count = NULL;
+        label_rx_count = NULL;
+        ta_input = NULL;
+        log_label_count = 0;
+        tx_count = 0;
+        rx_count = 0;
+    } else {
+        page_debug = lv_obj_create(lv_scr_act());
+    }
 
     lv_obj_set_size(page_debug, 1280, 400);
     lv_obj_set_style_bg_color(page_debug, lv_color_hex(0x1a1a1a), 0);
@@ -391,8 +404,9 @@ void ui_page_10_debug_create(void) {
 }
 
 void ui_page_10_debug_destroy(void) {
-    if (page_debug) {
+    if (page_debug && lv_obj_is_valid(page_debug)) {
         lv_obj_clean(page_debug);  // 清空子对象，但不删除page_debug本身
+        lv_obj_add_flag(page_debug, LV_OBJ_FLAG_HIDDEN);  // 隐藏page_debug
         // 清空指针，避免悬空指针
         log_area = NULL;
         label_tx_count = NULL;
