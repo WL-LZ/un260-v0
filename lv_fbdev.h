@@ -26,8 +26,8 @@ extern "C" {
 */
 
 //#define USE_DRAW_BUF
-#define DRAW_BUF_WIDTH          1024
-#define DRAW_BUF_HEIGHT         600
+#define DRAW_BUF_WIDTH          1280
+#define DRAW_BUF_HEIGHT         400
 
 #ifndef FBDEV_PATH
 #define FBDEV_PATH  "/dev/fb0"
