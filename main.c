@@ -187,100 +187,6 @@ void* uart5_thread(void* arg) {
     return NULL;
 }
 
-// void PCCmdHandle(void)
-// {
-//     pthread_mutex_lock(&recv_mutex);
-    
-//     if (!gPCRecvComplete) {
-//         pthread_mutex_unlock(&recv_mutex);
-//         return;  
-//     }
-    
-//     uart_printf(fd6, "enter PCCmdHandle \n");
-
-//     uint8_t *buf = gPCRecvBuff;
-//     uint8_t Len = buf[2];  
-//     uint8_t cmd = buf[3];  
-    
-//  switch (cmd) {
-//     case 0x0E:   // 点钞信息
-//     {
-//         uint32_t amount = ((uint32_t)buf[4] << 24) |
-//                           ((uint32_t)buf[5] << 16) |
-//                           ((uint32_t)buf[6] << 8)  |
-//                           ((uint32_t)buf[7]);
-//         uint16_t qty = ((uint16_t)buf[8] << 8) | buf[9];
-//         uint8_t ret_count = buf[10];   
-//         uint8_t status    = buf[11];   
-//         switch (status) {
-//             case 0x00: // 点钞中
-//             case 0x01:
-//                 sim.total_amount = amount;
-//                 sim.total_pcs = qty;
-//                 sim.err_num = ret_count;
-//                 ui_refresh_main_page();
-//                 uart_printf(fd6, "Counting: amount=%u, qty=%u, ret=%u, status=0x%02X\n",amount, qty, ret_count, status);
-//                 ui_refresh_main_page(); 
-//                 break;
-//             case 0x02: // 点钞结束
-//                 uart_printf(fd6, "Count finished\n");
-//                 ui_refresh_main_page(); 
-//                 break;
-//             default:
-//                 uart_printf(fd6, "Unknown status 0x%02X\n", status);
-//                 break;
-//         }
-
-//         break;
-//     }
-//     case 0x03:  //解析curr
-//     {
-//         uint8_t status = buf[5];
-//         if (status == 0x01) {
-//          uart_printf(fd6, "Set %s curr suceess\n",Machine_para.curr_code);
-//         } else if(status == 0x02)
-//         {
-//           uart_printf(fd6, "Set %s curr fail\n",Machine_para.curr_code);
-//         }
-        
-
-//     }
-// case 0x0B: // 面额详细列表
-// {
-//     char denom_str[9] = {0};
-//     memcpy(denom_str, &buf[4], 8);
-//     int denom_value = atoi(denom_str);
-
-//     char pcs_str[4] = {0};
-//     memcpy(pcs_str, &buf[12], 3);
-//     int pcs_value = atoi(pcs_str);
-//     for (int i = 0; i < sim.denom_number; i++) {
-//         if (sim.denom[i].value == denom_value) {
-//             sim.denom[i].pcs += pcs_value;
-//             sim.denom[i].amount = sim.denom[i].value * sim.denom[i].pcs;
-//             break;
-//         }
-//     }
-//     uart_printf(fd6, "Denom=%d, pcs=%d, total_amount=%.2f\n",
-//                 denom_value, pcs_value, (float)(denom_value * pcs_value));
-//     ui_refresh_main_page();
-//     break;
-// }
-
-
-//     default:
-//         uart_printf(fd6, "Unknown command 0x%02X\n", cmd);
-//         break;
-// }
-
-//     // 处理完成后清零标志和缓冲区
-//     gPCRecvComplete = 0;
-//     gPCRecvIndex = 0;
-//     gPCRecvLen = 0;
-    
-//     pthread_mutex_unlock(&recv_mutex);
-// }
-// 临时验证方案：完全跳过解析
 static void boot_selftest_finish_cb(lv_timer_t* timer)
 {
     ui_manager_switch(UI_PAGE_MAIN); // 切到主页面
@@ -478,6 +384,88 @@ void PCCmdHandle(void)
 
             break;
         }
+        /* ================== 0x58 用户偏好参数 ================== */
+        case 0x58:
+        {
+            if (len < 6) break;
+
+            uint8_t sub = buf[4];
+            if (sub == 0x00) {
+                uart_printf(fd6, "0x58 user preference receive start\n");
+                break;
+            }
+            if (sub == 0xFF) {
+                uart_printf(fd6, "0x58 user preference receive end\n");
+                break;
+            }
+
+            switch (sub) {
+            case 0x01: /* 工作模式 */
+                Machine_para.mode = buf[5];
+                break;
+
+            case 0x02: /* 预置数量 */
+                Machine_para.batch_num = buf[5];
+                break;
+
+            case 0x03: /* 预置金额 */
+                if (len < 10) break;
+                Machine_para.batch_amount = ((uint32_t)buf[5] << 24) |
+                                            ((uint32_t)buf[6] << 16) |
+                                            ((uint32_t)buf[7] << 8)  |
+                                            (uint32_t)buf[8];
+                break;
+
+            case 0x04: /* 退钞口最大容量 */
+                Machine_para.reject_pocket_max = buf[5];
+                break;
+
+            case 0x05: /* 蜂鸣器 */
+                Machine_para.buzzer_enable = (buf[5] == 0x01);
+                break;
+
+            case 0x06: /* 点钞速度 */
+            {
+                uint8_t v = buf[5];
+                if (v >= 1 && v <= SPEED_MODE) {
+                    Machine_para.speed = v - 1;
+                }
+                break;
+            }
+
+            case 0x07: /* 冠字号 */
+                Machine_para.serial_num_enable = (buf[5] == 0x01);
+                break;
+
+            case 0x08: /* 货币索引 */
+                Machine_para.selected_currency = buf[5];
+                break;
+
+            case 0x09: /* 预置模式 */
+                if (buf[5] == 0x01) {
+                    Machine_para.batch_mode = PCS_BATCH_MODE;
+                } else if (buf[5] == 0x02) {
+                    Machine_para.batch_mode = AMOUNT_BATCH_MODE;
+                }
+                break;
+
+            case 0x0A: /* 重张档位 */
+            {
+                uint8_t v = buf[5];
+                if (v >= 1 && v <= CFD_MODE) {
+                    Machine_para.cfd_mode = v - 1;
+                }
+                break;
+            }
+
+            default:
+                break;
+            }
+
+            break;
+        }
+
+
 
         default:
             uart_printf(fd6, "Unknown command 0x%02X\n", cmd);
