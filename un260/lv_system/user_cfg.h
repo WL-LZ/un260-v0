@@ -56,6 +56,10 @@ typedef struct {
     uint8_t work_mode;
     uint8_t language;
     uint8_t selected_currency;
+    uint32_t batch_amount;
+    uint8_t reject_pocket_max;
+    bool buzzer_enable;
+    bool serial_num_enable;
 }Machine_para_t;
 
 extern Machine_para_t Machine_para;
@@ -63,7 +67,7 @@ extern Machine_para_t Machine_para;
 typedef struct {
     // 版本信息
     char main_app[32];      // 主控软件版本
-    char image_app[32];     // 图像软件版本
+    char image_app[32];     // 图像软件版本 
     char fpga[32];          // FPGA版本
     char thka_app[32];      // 主控BOOT版本
     char ecb[32];           // 图像BOOT版本

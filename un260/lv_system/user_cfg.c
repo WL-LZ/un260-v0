@@ -18,6 +18,10 @@ Machine_para_t Machine_para = {
     0,                      //F O
     0,                      //work:auto muanul
     0,
+    0,                      //batch_num
+    0,                      //reject_pocket_max
+    0,                      //buzzer_enable
+    0,                      //serial_num_enable
 };
 Machine_Statue_t Machine_Statue = { 0 };
 
