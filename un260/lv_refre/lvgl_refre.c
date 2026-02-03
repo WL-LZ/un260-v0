@@ -734,7 +734,7 @@ void page_01_cfd_refre(void)
 }
 void page_01_speed_refre(void)
 {
-    int speed[3] = { 800,1000,1200 };
+    int speed[3] = { 600,800,1000 };
     update_label_by_name(page_01_main_obj, page_01_main_len, "speed_num_label", "%d", speed[Machine_para.speed]);
 }
 

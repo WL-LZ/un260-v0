@@ -85,19 +85,19 @@ ui_element_t page_03_menu_obj[] = {
 
     { "03_speed_800_btn", LV_OBJ_TYPE_BUTTON, NULL,
         { 710, 155, 90, 38, 100, 100, 100 },
-        { "800", 255, 255, 255, &lv_font_montserrat_24, LV_TEXT_ALIGN_CENTER },
+        { "600", 255, 255, 255, &lv_font_montserrat_24, LV_TEXT_ALIGN_CENTER },
         { 255, 10, 0, false },
         page_03_speed_mode_event_cb, LV_EVENT_CLICKED, "0", NULL, UI_BTN_STYLE_ANDROID },
 
     { "03_speed_1000_btn", LV_OBJ_TYPE_BUTTON, NULL,
         { 820, 155, 90, 38, 100, 100, 100 },
-        { "1000", 255, 255, 255, &lv_font_montserrat_24, LV_TEXT_ALIGN_CENTER },
+        { "800", 255, 255, 255, &lv_font_montserrat_24, LV_TEXT_ALIGN_CENTER },
         { 255, 10, 0, false },
         page_03_speed_mode_event_cb, LV_EVENT_CLICKED, "1", NULL, UI_BTN_STYLE_ANDROID },
 
     { "03_speed_1200_btn", LV_OBJ_TYPE_BUTTON, NULL,
         { 930, 155, 90, 38, 100, 100, 100 },
-        { "1200", 255, 255, 255, &lv_font_montserrat_24, LV_TEXT_ALIGN_CENTER },
+        { "1000", 255, 255, 255, &lv_font_montserrat_24, LV_TEXT_ALIGN_CENTER },
         { 255, 10, 0, false },
         page_03_speed_mode_event_cb, LV_EVENT_CLICKED, "2", NULL, UI_BTN_STYLE_ANDROID },
 
