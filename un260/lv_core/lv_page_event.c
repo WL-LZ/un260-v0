@@ -567,6 +567,17 @@ void page_03_speed_mode_event_cb(lv_event_t* e)
     uint8_t speed_code = atoi(speed_str);
     Machine_para.speed = speed_code;
     page_03_update_menu_button_states_refresh();
+    /* ================== 0x16 设置清分机点钞速度 ================== */
+    /* 协议定义：0x01=1000张/分钟, 0x02=800张/分钟, 0x03=600张/分钟 */
+    uint8_t speed_cmd = 0x01;
+    if (speed_code == 0) {
+        speed_cmd = 0x03;
+    } else if (speed_code == 1) {
+        speed_cmd = 0x02;
+    } else {
+        speed_cmd = 0x01;
+    }
+    send_command(fd4, 0x16, &speed_cmd, 1);
 #if LV_DEBUG
     printf("速度模式切换到： %d\n", Machine_para.speed);
 #endif // LV_DEBUG
