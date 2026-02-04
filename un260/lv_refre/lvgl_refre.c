@@ -798,7 +798,7 @@ static void scroll_snap_event_cb(lv_event_t* e) //页面吸附
     int next = last_page;
     if (diff > 100)      next++;
     else if (diff < -100) next--;
-    int max_page = (currencies_count + 7) / 8 - 1;
+    int max_page = (Machine_para.currency_count + 7) / 8 - 1;
     if (next < 0)         next = 0;
     if (next > max_page)  next = max_page;
     last_page = next;
@@ -809,10 +809,10 @@ static void scroll_snap_event_cb(lv_event_t* e) //页面吸附
 static void page_07_cont_click_cb(lv_event_t* e)
 {
     int idx = (int)(uintptr_t)lv_event_get_user_data(e);
-    if (idx >= 0 && idx < currencies_count) {
-        memcpy(Machine_para.curr_code, currencies[idx], 4);
-        set_curr(get_curr_item(currencies[idx]));
-        send_command(fd4, 0x03, (const uint8_t *)currencies[idx], 3);
+    if (idx >= 0 && idx < Machine_para.currency_count) {
+        memcpy(Machine_para.curr_code, Machine_para.currencies[idx], 4);
+        set_curr(get_curr_item(Machine_para.currencies[idx]));
+        send_command(fd4, 0x03, (const uint8_t *)Machine_para.currencies[idx], 3);
         ui_manager_switch(UI_PAGE_MAIN);
     }
 }
@@ -835,7 +835,8 @@ void tabview_event_cb(lv_event_t* e)
 
 void page_07_curr_img_refre(void)//图片刷新
 {
-    g_total_pages = (currencies_count + 7) / 8;
+    if (Machine_para.currency_count == 0) return;
+    g_total_pages = (Machine_para.currency_count + 7) / 8;
 
     lv_obj_t* tabview = lv_tabview_create(curr_page, LV_DIR_TOP, 0);
     lv_obj_set_size(tabview, 1051, 301);
@@ -857,7 +858,7 @@ void page_07_curr_img_refre(void)//图片刷新
 
         for (int i = 0; i < 8; i++) {
             int idx = page * 8 + i;
-            if (idx >= currencies_count) break;
+            if (idx >= Machine_para.currency_count) break;
 
             int row = i / 4;
             int col = i % 4;
@@ -865,7 +866,7 @@ void page_07_curr_img_refre(void)//图片刷新
             int y = 16 + row * 138;
 
             curr_imgs[idx] = lv_img_create(tab);
-            lv_img_set_src(curr_imgs[idx], get_currency_img(currencies[idx]));
+            lv_img_set_src(curr_imgs[idx], get_currency_img(Machine_para.currencies[idx]));
             lv_obj_set_pos(curr_imgs[idx], x, y);
             lv_obj_set_size(curr_imgs[idx], 182, 103);
 
@@ -873,7 +874,7 @@ void page_07_curr_img_refre(void)//图片刷新
             lv_obj_add_event_cb(curr_imgs[idx], page_07_cont_click_cb, LV_EVENT_CLICKED, (void*)(uintptr_t)idx);
 
             lv_obj_t* lbl = lv_label_create(tab);
-            lv_label_set_text(lbl, currencies[idx]);
+            lv_label_set_text(lbl, Machine_para.currencies[idx]);
             lv_obj_set_style_text_font(lbl, &lv_font_montserrat_20, 0);
             lv_obj_set_style_text_color(lbl, lv_color_hex(0x000000), 0);
             lv_obj_set_pos(lbl, x + 70, y + 102);
@@ -912,5 +913,3 @@ void page_07_curr_img_refre(void)//图片刷新
         }
     }
 }
-
-

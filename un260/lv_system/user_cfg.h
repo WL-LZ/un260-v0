@@ -39,6 +39,7 @@ typedef enum {
 #define PAGE_02_C_ITEM 9
 #define PAGE_02_DEBUG 1
 #define PAGE_07_CURRENCIES 4
+#define MAX_CURRENCIES 32
 typedef struct {
 
     int mode;
@@ -60,6 +61,8 @@ typedef struct {
     uint8_t reject_pocket_max;
     bool buzzer_enable;
     bool serial_num_enable;
+    uint8_t currency_count;
+    char currencies[MAX_CURRENCIES][4];
 }Machine_para_t;
 
 extern Machine_para_t Machine_para;
@@ -89,9 +92,6 @@ extern Machine_Statue_t Machine_Statue;
 
 
 void user_data_init(void);
-
-extern const char* currencies[];
-extern int  currencies_count;
 
 
 #endif // !USER_CFG_H

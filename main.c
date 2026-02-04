@@ -378,6 +378,7 @@ void PCCmdHandle(void)
             } else {
                 bootlog_append("All self-tests finished");
                 g_boot_stage = BOOT_STAGE_DONE;
+                send_command(fd4, 0x56, (uint8_t[]){0x01}, 1);
             // 创建一个 2 秒后触发的定时器
                 lv_timer_create(boot_selftest_finish_cb, 2000, NULL);     
             }
@@ -462,6 +463,41 @@ void PCCmdHandle(void)
                 break;
             }
 
+            break;
+        }
+        /* ================== 0x56 货币查询 ================== */
+        case 0x56:
+        {
+            if (len < 9) break;
+
+            uint8_t idx = buf[4];
+            uint8_t c1 = buf[5];
+            uint8_t c2 = buf[6];
+            uint8_t c3 = buf[7];
+
+            if (idx == 0x00 && c1 == 0x00 && c2 == 0x00 && c3 == 0x00) {
+                Machine_para.currency_count = 0;
+                memset(Machine_para.currencies, 0, sizeof(Machine_para.currencies));
+                uart_printf(fd6, "0x56 currency query start\n");
+                break;
+            }
+
+            if (idx == 0xFF && c1 == 0xFF && c2 == 0xFF && c3 == 0xFF) {
+                uart_printf(fd6, "0x56 currency query end, count=%d\n", Machine_para.currency_count);
+                break;
+            }
+
+            if (idx >= 1 && idx <= MAX_CURRENCIES) {
+                int pos = (int)idx - 1;
+                Machine_para.currencies[pos][0] = (char)c1;
+                Machine_para.currencies[pos][1] = (char)c2;
+                Machine_para.currencies[pos][2] = (char)c3;
+                Machine_para.currencies[pos][3] = '\0';
+                if (Machine_para.currency_count < idx) {
+                    Machine_para.currency_count = idx;
+                }
+                uart_printf(fd6, "0x56 currency[%d]=%s\n", pos, Machine_para.currencies[pos]);
+            }
             break;
         }
 
@@ -595,4 +631,3 @@ int main(void) {
 
     return 0;
 }
-

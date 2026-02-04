@@ -8,12 +8,6 @@
 
 #include "un260/lv_refre/lvgl_refre.h"
 
-const char* currencies[] = {
-"USD", "CNY", "EUR", "AED", "SAR", "OMR", "QAR", "MAD", "EGP", "DZD", "INR" , "PKR" , "GBP" , "IQD"};
-
-
-int currencies_count = sizeof(currencies) / sizeof(currencies[0]);
-
 ui_element_t page_07_curr_obj[] = {
     // 背景图
 

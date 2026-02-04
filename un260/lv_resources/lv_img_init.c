@@ -235,71 +235,76 @@ const char* get_currency_img(const char* code)
         snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_USD.png");
         return img_path;
     }
-    if (strcmp(code, "CNY") == 0) {
+    else if (strcmp(code, "CNY") == 0) {
         snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_CNY.png");
         return img_path;
     }
-    if (strcmp(code, "EGP") == 0) {
+    else if (strcmp(code, "EGP") == 0) {
         snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_EGP.png");
         return img_path;
     }
-    if (strcmp(code, "GBP") == 0) {
+    else if (strcmp(code, "GBP") == 0) {
         snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_GBP.png");
         return img_path;
     }
-    if (strcmp(code, "ISK") == 0) {
+    else if (strcmp(code, "ISK") == 0) {
         snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_ISK.png");
         return img_path;
     }
-    if (strcmp(code, "PHP") == 0) {
+    else if (strcmp(code, "PHP") == 0) {
         snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_PHP.png");
         return img_path;
     }
-    if (strcmp(code, "SOS") == 0) {
+    else if (strcmp(code, "SOS") == 0) {
         snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_SOS.png");
         return img_path;
     }
-    if (strcmp(code, "TRY") == 0) {
+    else if (strcmp(code, "TRY") == 0) {
         snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_TRY.png");
         return img_path;
     }
-    if (strcmp(code, "EUR") == 0) {
+    else if (strcmp(code, "EUR") == 0) {
         snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_EUR.png");
         return img_path;
     }
-    if (strcmp(code, "AED") == 0) {
+    else if (strcmp(code, "AED") == 0) {
         snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_AED.png");
         return img_path;
     }
-    if (strcmp(code, "SAR") == 0) {
+    else if (strcmp(code, "SAR") == 0) {
         snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_SAR.png");
         return img_path;
     }
-    if (strcmp(code, "OMR") == 0) {
+    else if (strcmp(code, "OMR") == 0) {
         snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_OMR.png");
         return img_path;
     }
-    if (strcmp(code, "QAR") == 0) {
+    else if (strcmp(code, "QAR") == 0) {
         snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_QAR.png");
         return img_path;
     }
-    if (strcmp(code, "MAD") == 0) {
+    else if (strcmp(code, "MAD") == 0) {
         snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_MAD.png");
         return img_path;
     }
-    if (strcmp(code, "DZD") == 0) {
+    else if (strcmp(code, "DZD") == 0) {
         snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_DZD.png");
         return img_path;
     }
-    if (strcmp(code, "INR") == 0) {
+    else if (strcmp(code, "INR") == 0) {
         snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_INR.png");
         return img_path;
     }
-    if (strcmp(code, "PKR") == 0) {
+    else if (strcmp(code, "PKR") == 0) {
         snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_PKR.png");
         return img_path;
     }
-    if (strcmp(code, "IQD") == 0) {
+    else if (strcmp(code, "IQD") == 0) {
+        snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_IQD.png");
+        return img_path;
+    }
+    else
+     {
         snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_IQD.png");
         return img_path;
     }
