@@ -14,6 +14,7 @@ extern lv_obj_t* batch_num_display;
 extern int batch_num;
 extern int batch_num_index;
 extern char input_batch_num[9];
+extern bool pcs_batch_num_lock_200;
 
 /*****************定时器********************/
 void page_03_delete_tip_label_cb(lv_timer_t* t);
@@ -70,5 +71,4 @@ void page_03_c_down_event_cb(lv_event_t* e);
 
 
 #endif // !LV_PAGE_EVENT_H
-
 

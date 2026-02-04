@@ -15,6 +15,7 @@ lv_timer_t* page_05_password_del_timer = NULL;
 
 // 声明外部变量
 
+bool pcs_batch_num_lock_200 = false;
 
 //跳转页面
 void page_switch_btn_event_cb(lv_event_t* e)
@@ -347,6 +348,12 @@ void page_03_batch_num_keypad_event_cb(lv_event_t* e)
     const char* password_get_txt = lv_event_get_user_data(e);
     if (!password_get_txt) return;
     char input_num = password_get_txt[0];
+
+    if (Machine_para.batch_mode == PCS_BATCH_MODE && pcs_batch_num_lock_200) {
+        lv_label_set_text(batch_num_display, "200");
+        lv_obj_set_align(batch_num_display, LV_ALIGN_RIGHT_MID);
+        return;
+    }
     // 禁止多位前导0
     if (input_num == '0')
     {
@@ -388,6 +395,21 @@ void page_03_batch_num_keypad_event_cb(lv_event_t* e)
 
     }
     lv_label_set_text(batch_num_display,input_batch_num);
+        /* ================== 0x06 设置清分机预置数量 ================== */
+    int num = atoi(input_batch_num);
+    if (Machine_para.batch_mode == PCS_BATCH_MODE) {
+        if (num > 200) {
+            num = 200;
+            pcs_batch_num_lock_200 = true;
+            strcpy(input_batch_num, "200");
+            batch_num_index = 3;
+            lv_label_set_text(batch_num_display, "200");
+        }
+        if (!pcs_batch_num_lock_200 && num < 5) num = 5;
+        if (!pcs_batch_num_lock_200 && num > 200) num = 200;
+        uint8_t batch_cmd = (uint8_t)num;
+        send_command(fd4, 0x06, &batch_cmd, 1);
+    }
     lv_obj_set_align(batch_num_display, LV_ALIGN_RIGHT_MID);
 }
 
@@ -395,6 +417,7 @@ void page_03_batch_num_keypad_clear_event_cb(lv_event_t* e)
 {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
     icon_feedback_comp("page_03_ok_icon.png", page_03_menu_obj, page_03_menu_len);
+    pcs_batch_num_lock_200 = false;
     memset(input_batch_num, 0, sizeof(input_batch_num));
     batch_num_index = 0;
     lv_label_set_text(batch_num_display, "0");
@@ -416,6 +439,7 @@ void page_03_batch_num_keypad_enter_event_cb(lv_event_t* e)
     }
     int num = atoi(input_batch_num);
     Machine_para.batch_num = num;
+    pcs_batch_num_lock_200 = false;
     // 清空输入缓存
     memset(input_batch_num, 0, sizeof(input_batch_num));
     batch_num_index = 0;
@@ -697,4 +721,3 @@ void page_03_c_down_event_cb(lv_event_t* e) {
         page_02_c_page_num_refre();
     }
 }
-

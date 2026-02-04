@@ -8,6 +8,8 @@
 #include "un260/lv_components/lv_components.h"
 #include "un260/lv_refre/lvgl_refre.h"
 #include "../aic_ui/aic_ui.h"
+#include <stdlib.h>
+#include <string.h>
 
 
 lv_obj_t* batch_num_display;
@@ -397,6 +399,14 @@ void switch_to_pcs_batch(void)
     lv_obj_set_style_text_opa(amount_obj, 40, 0);  
     lv_obj_set_style_text_opa(pcs_obj, 255, 0);  
 
+    int num = atoi(input_batch_num);
+    if (num > 200) {
+        pcs_batch_num_lock_200 = true;
+        strcpy(input_batch_num, "200");
+        batch_num_index = 3;
+        lv_label_set_text(batch_num_display, "200");
+        lv_obj_set_align(batch_num_display, LV_ALIGN_RIGHT_MID);
+    }
 
 }
 
