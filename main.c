@@ -297,30 +297,71 @@ void PCCmdHandle(void)
             break;
         }
 
-        /* ================== 0x0B 面额明细 ================== */
-        case 0x0B:
-        {
-            if (len < 15) break;
+       /* ================== 0x0B 面额明细 ================== */
+case 0x0B:
+{
+    if (len < 15) break;
 
-            char denom_str[9] = {0};
-            memcpy(denom_str, &buf[4], 8);
-            int denom = atoi(denom_str);
+    /* start frame: 00...00 (11 bytes payload are 0) */
+    bool all_zero = true;
+    for (int i = 4; i < 15; i++) {
+        if (buf[i] != 0x00) { all_zero = false; break; }
+    }
+    if (all_zero) {
+        memset(sim.denom, 0, sizeof(sim.denom));
+        sim.denom_number = 0;
+        uart_printf(fd6, "0x0B denom detail receive start\n");
+        ui_refresh_main_page();
+        break;
+    }
 
-            char pcs_str[4] = {0};
-            memcpy(pcs_str, &buf[12], 3);
-            int pcs = atoi(pcs_str);
+    /* end frame: FF...FF (11 bytes payload are 0xFF) */
+    bool all_ff = true;
+    for (int i = 4; i < 15; i++) {
+        if (buf[i] != 0xFF) { all_ff = false; break; }
+    }
+    if (all_ff) {
+        uart_printf(fd6, "0x0B denom detail receive end\n");
+        ui_refresh_main_page();
+        break;
+    }
 
-            for (int i = 0; i < sim.denom_number; i++) {
-                if (sim.denom[i].value == denom) {
-                    sim.denom[i].pcs += pcs;
-                    sim.denom[i].amount = denom * sim.denom[i].pcs;
-                    break;
-                }
-            }
+    /* normal data frame: denom(8 ascii) + pcs(3 ascii) */
+    char denom_str[9] = {0};
+    memcpy(denom_str, &buf[4], 8);
+    int denom = atoi(denom_str);
 
-            ui_refresh_main_page();
+    char pcs_str[4] = {0};
+    memcpy(pcs_str, &buf[12], 3);
+    int pcs = atoi(pcs_str);
+
+    if (denom <= 0) break;
+
+    int found = 0;
+    for (int i = 0; i < sim.denom_number; i++) {
+        if (sim.denom[i].value == denom) {
+            sim.denom[i].pcs += pcs;
+            sim.denom[i].amount = denom * sim.denom[i].pcs;
+            found = 1;
             break;
         }
+    }
+
+    /* NEW: append if not found */
+    if (!found) {
+        if (sim.denom_number < 16 /* 你sim里数组上限 */) {
+            int i = sim.denom_number;
+            sim.denom[i].value = denom;
+            sim.denom[i].pcs = pcs;
+            sim.denom[i].amount = denom * pcs;
+            sim.denom_number++;
+        }
+    }
+
+    ui_refresh_main_page();
+    break;
+}
+
 
         /* ================== 0x5B CIS 校准 ================== */
         case 0x5B:
