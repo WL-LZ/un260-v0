@@ -30,7 +30,9 @@ void page_switch_btn_event_cb(lv_event_t* e)
 void page_01_list_btn_event_cb(lv_event_t* e) {
     if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
         icon_feedback_comp("page_01_list_icon.png", page_01_main_obj, page_01_main_len);
-
+        sim_clear_sn_only(&sim);
+        uint8_t req[2] = {0x01, 0x01};
+        send_command(fd4, 0x0D, req, 2);
         ui_manager_push_page(UI_PAGE_LIST);
     }
 }
@@ -660,6 +662,8 @@ void page_03_work_mode_event_cb(lv_event_t* e)
     const char* word_str = lv_event_get_user_data(e);
     uint8_t word_code = atoi(word_str);
     Machine_para.work_mode = word_code;
+    uint8_t work_cmd = (word_code == 1) ? 0x00 : 0x01;
+    send_command(fd4, 0x38, &work_cmd, 1);
     page_03_update_menu_button_states_refresh();
 #if LV_DEBUG
     printf("工作模式切换为：%s\n", (Machine_para.work_mode > 0) ? "MANUAL" : "AUTO");
