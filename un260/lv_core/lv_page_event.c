@@ -55,12 +55,15 @@ void page_01_start_btn_event_cb(lv_event_t* e) // 开始仿真
         icon_feedback_comp("page_01_start_icon.png", page_01_main_obj, page_01_main_len);
 
          //start_counting_sim();
-        sim_data_init(); //
-        int fd4 = uart_open("/dev/ttyS4");        
-        uart_config(fd4, 115200, 8, 'N', 1);     
-        unsigned char atb_cmd[6] = {0xFD, 0xDF, 0x06, 0x0A, 0x01 , 0x01};
-        uart_send(fd4, (char*)atb_cmd, 6);           
-        uart_close(fd4);
+        //sim_data_init(); //
+        //sim_clear_all_sn(&sim);
+        // int fd4 = uart_open("/dev/ttyS4");        
+        // uart_config(fd4, 115200, 8, 'N', 1);     
+        // unsigned char atb_cmd[6] = {0xFD, 0xDF, 0x06, 0x0A, 0x01 , 0x01};
+        // uart_send(fd4, (char*)atb_cmd, 6);           
+        // uart_close(fd4);
+        uint8_t start_cmd = 0x01;
+        send_command(fd4,0x0A,&start_cmd,1);
     }
 }
 
@@ -152,7 +155,8 @@ void page_01_start_btn_event_cb(lv_event_t* e) // 开始仿真
          
          send_command(fd4, 0x04, &mode_cmd, 1);
          
-        sim_data_init(); //
+        //sim_data_init(); //
+        sim_clear_all_sn(&sim);
 
 
      }

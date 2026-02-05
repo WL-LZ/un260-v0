@@ -141,7 +141,8 @@ void set_curr(curr_item_t curr)
     if (curr == Machine_para.current_currency) return;
 
     Machine_para.current_currency = curr;
-    sim_data_init();
+    //sim_data_init();
+    sim_clear_all_sn(&sim);
     ui_refresh_main_page();
 
 }
@@ -375,7 +376,8 @@ void sim_timer_cb(lv_timer_t* timer)
 
 void safe_reset_cb(lv_timer_t* timer)
 {
-    sim_data_init();
+    //sim_data_init();
+    sim_clear_all_sn(&sim);
     ui_refresh_main_page();
     safe_reset_timer = NULL;
 }
@@ -720,4 +722,7 @@ void sim_clear_all_sn(counting_sim_t* sim_data)
     sim_data->total_amount = 0;
     sim_data->err_num = 0;
     ui_refresh_main_page();
+    int clear_data_cmd;
+    clear_data_cmd = 0x01;
+    send_command(fd4,0x3b,&clear_data_cmd,1);
 }

@@ -169,7 +169,8 @@ void ui_manager_init(void) {
     // 显示主页面
 
     ui_manager_switch(UI_PAGE_MAIN);
-    sim_data_init();           // 初始化面额列表、count=0、amount=0
+    //sim_data_init();           // 初始化面额列表、count=0、amount=0
+    sim_clear_all_sn(&sim);
 
 }
 
