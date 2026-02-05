@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <fcntl.h>
+#include <ctype.h>
 #include "lvgl/lvgl.h"
 #include "lv_port_disp.h"
 #include "lv_port_indev.h"
@@ -52,6 +53,53 @@ static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 //-------------------- 工具函数 --------------------
 bool check_aa_header(const char* data, int len) {
     return (len >= 2 && (unsigned char)data[0] == 0xFD && (unsigned char)data[1] == 0xDF);
+}
+
+static void sim_clear_sn_only(counting_sim_t* sim_data)
+{
+    if (!sim_data) return;
+    if (sim_data->sn_str != NULL) {
+        for (int i = 0; i < sim_data->total_pcs; i++) {
+            if (sim_data->sn_str[i] != NULL) {
+                free(sim_data->sn_str[i]);
+                sim_data->sn_str[i] = NULL;
+            }
+        }
+        free(sim_data->sn_str);
+        sim_data->sn_str = NULL;
+    }
+    sim_data->total_pcs = 0;
+    memset(sim_data->denom_mix, 0, sizeof(sim_data->denom_mix));
+}
+
+static bool sim_ensure_sn_capacity(counting_sim_t* sim_data, int new_total)
+{
+    if (!sim_data || new_total <= 0) return false;
+    if (new_total > (int)(sizeof(sim_data->denom_mix) / sizeof(sim_data->denom_mix[0]))) {
+        return false;
+    }
+
+    int old_total = sim_data->total_pcs;
+    if (new_total <= old_total) return true;
+
+    char** temp_sn_str = malloc(sizeof(char*) * new_total);
+    if (temp_sn_str == NULL) {
+        return false;
+    }
+
+    for (int i = 0; i < old_total; i++) {
+        temp_sn_str[i] = sim_data->sn_str ? sim_data->sn_str[i] : NULL;
+    }
+    for (int i = old_total; i < new_total; i++) {
+        temp_sn_str[i] = NULL;
+    }
+
+    if (sim_data->sn_str) {
+        free(sim_data->sn_str);
+    }
+    sim_data->sn_str = temp_sn_str;
+    sim_data->total_pcs = new_total;
+    return true;
 }
 
 // ===== RX HEX 转字符串 =====
@@ -297,7 +345,7 @@ void PCCmdHandle(void)
             break;
         }
 
-       /* ================== 0x0B 面额明细 ================== */
+        /* ================== 0x0B 面额明细 ================== */
 case 0x0B:
 {
     if (len < 15) break;
@@ -322,6 +370,8 @@ case 0x0B:
     }
     if (all_ff) {
         uart_printf(fd6, "0x0B denom detail receive end\n");
+        uint8_t req[2] = {0x01, 0x01};
+        send_command(fd4, 0x0D, req, 2);
         ui_refresh_main_page();
         break;
     }
@@ -359,8 +409,102 @@ case 0x0B:
     }
 
     ui_refresh_main_page();
+
     break;
 }
+
+        /* ================== 0x0D 冠字号明细 ================== */
+        case 0x0D:
+        {
+            if (len < 6) break;
+
+            int payload_len = len - 4; // buf[4..] 为 payload
+            if (payload_len < 2) break;
+
+            // start frame: payload 全 0x00
+            bool all_zero = true;
+            for (int i = 4; i < len; i++) {
+                if (buf[i] != 0x00) { all_zero = false; break; }
+            }
+            if (all_zero) {
+                sim_clear_sn_only(&sim);
+                uart_printf(fd6, "0x0D serial detail receive start\n");
+                break;
+            }
+
+            // end frame: payload 全 0xFF
+            bool all_ff = true;
+            for (int i = 4; i < len; i++) {
+                if (buf[i] != 0xFF) { all_ff = false; break; }
+            }
+            if (all_ff) {
+                uart_printf(fd6, "0x0D serial detail receive end, total=%d\n", sim.total_pcs);
+                page_02_report_init();
+                page_02_b_page_refre();
+                page_02_b_page_num_refre();
+                break;
+            }
+
+            uint8_t seq = buf[4];
+            if (seq == 0x00 || seq == 0xFF) break;
+            int idx = (int)seq - 1;
+            if (idx < 0 || idx >= 10000) break;
+
+            int data_len = payload_len - 1; // 去掉序号字节
+            if (data_len <= 0) break;
+
+            // 协议末尾 1 字节校验，默认忽略
+            int ascii_len = data_len - 1;
+            if (ascii_len <= 0) break;
+
+            char ascii_buf[32];
+            if (ascii_len >= (int)sizeof(ascii_buf)) {
+                ascii_len = (int)sizeof(ascii_buf) - 1;
+            }
+            memcpy(ascii_buf, &buf[5], ascii_len);
+            ascii_buf[ascii_len] = '\0';
+
+            // trim right spaces
+            int r = ascii_len - 1;
+            while (r >= 0 && ascii_buf[r] == ' ') {
+                ascii_buf[r] = '\0';
+                r--;
+            }
+
+            // trim left spaces
+            char *p = ascii_buf;
+            while (*p == ' ') p++;
+            if (*p == '\0') break;
+
+            // parse denom at head
+            int denom = 0;
+            while (*p && isdigit((unsigned char)*p)) {
+                denom = denom * 10 + (*p - '0');
+                p++;
+            }
+            while (*p == ' ') p++;
+            if (*p == '\0') break;
+
+            // ensure capacity and store
+            if (!sim_ensure_sn_capacity(&sim, idx + 1)) {
+                uart_printf(fd6, "0x0D: SN capacity fail idx=%d\n", idx);
+                break;
+            }
+
+            if (sim.sn_str[idx]) {
+                free(sim.sn_str[idx]);
+                sim.sn_str[idx] = NULL;
+            }
+            size_t sn_len = strlen(p);
+            sim.sn_str[idx] = malloc(sn_len + 1);
+            if (!sim.sn_str[idx]) {
+                uart_printf(fd6, "0x0D: SN malloc fail idx=%d\n", idx);
+                break;
+            }
+            memcpy(sim.sn_str[idx], p, sn_len + 1);
+            sim.denom_mix[idx] = denom;
+            break;
+        }
 
 
         /* ================== 0x5B CIS 校准 ================== */

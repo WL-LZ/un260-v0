@@ -30,9 +30,7 @@ void page_switch_btn_event_cb(lv_event_t* e)
 void page_01_list_btn_event_cb(lv_event_t* e) {
     if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
         icon_feedback_comp("page_01_list_icon.png", page_01_main_obj, page_01_main_len);
-        sim_clear_sn_only(&sim);
-        uint8_t req[2] = {0x01, 0x01};
-        send_command(fd4, 0x0D, req, 2);
+        //sim_clear_sn_only(&sim);
         ui_manager_push_page(UI_PAGE_LIST);
     }
 }
