@@ -563,7 +563,41 @@ case 0x0B:
             break;
         }
 
-
+        /* ================== 0x3A F/O 面向模式 ================== */
+        case 0x3A:
+        {
+            if (len < 6) {
+                uart_printf(fd6, "0x3A: frame too short (%d)\n", len);
+                break;
+            }
+            uint8_t type = buf[4];   
+            uint8_t val  = buf[5];   
+            if (type == 0x05) {
+                if (val >= 0x01 && val <= 0x04) {
+                    Machine_para.fo_mode = (uint8_t)(val - 1); // 存回 UI 值 0~3
+                    uart_printf(fd6, "FO boot sync: mode=0x%02X -> ui=%u\n",
+                                val, Machine_para.fo_mode);
+                } else {
+                    uart_printf(fd6, "FO boot sync: invalid mode=0x%02X\n", val);
+                }
+                break;
+            }
+            if (type >= 0x01 && type <= 0x04) {
+                if (val == 0x01) {
+                    Machine_para.fo_mode = (uint8_t)(type - 1); // 0~3
+                    uart_printf(fd6, "FO set SUCCESS: type=0x%02X -> ui=%u\n",
+                                type, Machine_para.fo_mode);
+                } else if (val == 0x02) {
+                    uart_printf(fd6, "FO set FAIL: type=0x%02X\n", type);
+                    page_03_update_menu_button_states_refresh();
+                } else {
+                    uart_printf(fd6, "FO set UNKNOWN result: type=0x%02X, res=0x%02X\n", type, val);
+                }
+            } else {
+                uart_printf(fd6, "0x3A: unknown type=0x%02X, val=0x%02X\n", type, val);
+            }
+            break;
+        }
 
         default:
             uart_printf(fd6, "Unknown command 0x%02X\n", cmd);

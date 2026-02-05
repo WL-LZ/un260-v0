@@ -638,11 +638,16 @@ void page_03_fo_mode_event_cb(lv_event_t* e)
     const char* fo_str = lv_event_get_user_data(e);
     uint8_t fo_code = atoi(fo_str);
     Machine_para.fo_mode = fo_code;
-    page_03_update_menu_button_states_refresh();
+    uint8_t fo_cmd;
+    if (fo_code <= 3) {
+        fo_cmd = (uint8_t)(fo_code + 1);
+        send_command(fd4, 0x3a, &fo_cmd, 1);
+    } 
 #if LV_DEBUG
     char* fo[] = {"OFF","F","O","F/O"};
     printf("F/O 模式切换为：%s\n", fo[Machine_para.fo_mode]);
 #endif // LV_DEBUG
+    page_03_update_menu_button_states_refresh();
 
 
 }
