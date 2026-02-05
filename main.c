@@ -598,7 +598,38 @@ case 0x0B:
             }
             break;
         }
+        /* ================== 0x38 手动/自动模式 ================== */
 
+        case 0x38:
+        {
+            if (len < 5) break;
+
+            if (len == 7 && buf[4] == 0x02) {
+                uint8_t mode = buf[5];
+                if (mode == 0x00) {
+                    Machine_para.work_mode = 1;
+                } else if (mode == 0x01) {
+                    Machine_para.work_mode = 0;
+                }
+                uart_printf(fd6, "0x38 BOOT mode=0x%02X\n", mode);
+                break;
+            }
+
+            uint8_t res = buf[4];
+            if (res == 0x00) {
+                Machine_para.work_mode = 1;
+                page_03_update_menu_button_states_refresh();
+                uart_printf(fd6, "0x38 MANUAL OK\n");
+            } else if (res == 0x01) {
+                Machine_para.work_mode = 0;
+                page_03_update_menu_button_states_refresh();
+                uart_printf(fd6, "0x38 AUTO OK\n");
+            } else {
+                uart_printf(fd6, "0x38 RES=0x%02X\n", res);
+            }
+                break;
+            }
+        
         default:
             uart_printf(fd6, "Unknown command 0x%02X\n", cmd);
             break;
