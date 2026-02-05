@@ -692,7 +692,7 @@ void page_02_c_page_num_refre(void)
 void page_01_add_refre(void)
 {
     
-    update_label_by_name(page_01_main_obj, page_01_main_len, "add_label", "%s", Machine_para.add_enabel == true?"ADD:ON":"ADD:OFF");
+    update_label_by_name(page_01_main_obj, page_01_main_len, "add_label", "%s", Machine_para.add_enable == true?"ADD:ON":"ADD:OFF");
 
 }
 void page_01_work_refre(void)

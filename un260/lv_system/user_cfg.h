@@ -45,7 +45,7 @@ typedef struct {
     int mode;
     char curr_code[4];
     uint8_t speed;
-    bool add_enabel;
+    bool add_enable;
     bool start_auto;
     curr_item_t current_currency;
     char password[5];
