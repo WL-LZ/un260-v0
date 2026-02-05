@@ -813,6 +813,7 @@ static void page_07_cont_click_cb(lv_event_t* e)
         memcpy(Machine_para.curr_code, Machine_para.currencies[idx], 4);
         set_curr(get_curr_item(Machine_para.currencies[idx]));
         send_command(fd4, 0x03, (const uint8_t *)Machine_para.currencies[idx], 3);
+        sim_data_init();
         ui_manager_switch(UI_PAGE_MAIN);
     }
 }
