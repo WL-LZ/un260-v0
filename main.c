@@ -541,6 +541,32 @@ case 0x0B:
             }
             break;
         }
+        /* ================== 0x39 ADD setting ================== */
+        case 0x39:
+        {
+            if (len < 6) break;
+
+            /* 这里 buf[4] 是 RES 的第1字节（你工程里按 RES 解析） */
+            uint8_t sub = buf[4];
+
+            if (sub == 0x00) { /* success */
+                uart_printf(fd6, "ADD set success\n");
+            } else if (sub == 0x01) { /* fail */
+                uart_printf(fd6, "ADD set failed\n");
+                /* 失败就把本地 toggle 回去，避免UI显示和机器不一致 */
+                Machine_para.add_enable = !Machine_para.add_enable;
+                page_03_update_menu_button_states_refresh();
+            } else if (sub == 0x02) { /* boot send status */
+                if (len < 7) break;
+                uint8_t v = buf[5];
+                /* 按协议说明：0x00/0x01 的含义可能有歧义，你可根据主控实际确认后调整 */
+                Machine_para.add_enable = (v == 0x00) ? true : false;
+                uart_printf(fd6, "ADD boot status: %s\n", Machine_para.add_enable ? "ON" : "OFF");
+                page_03_update_menu_button_states_refresh();
+            }
+
+            break;
+        }
 
 
 

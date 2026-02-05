@@ -539,7 +539,7 @@ void page_03_update_menu_button_states_refresh(void)
     //ADD 处理
         lv_obj_t* tmp_add_on_obj = find_obj_by_name(page_03_add_mode_obj[0], page_03_menu_obj, page_03_menu_len);
         lv_obj_t* tmp_add_off_obj = find_obj_by_name(page_03_add_mode_obj[1], page_03_menu_obj, page_03_menu_len);
-        bool sel =  Machine_para.add_enabel;
+        bool sel =  Machine_para.add_enable;
         if (sel)
         {
             lv_obj_set_style_bg_color(tmp_add_on_obj,selected_color , 0);
@@ -614,10 +614,16 @@ void page_03_add_mode_event_cb(lv_event_t* e)
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
     const char* add_str = lv_event_get_user_data(e);
     uint8_t add_code = atoi(add_str);
-    Machine_para.add_enabel = (add_code > 0) ? true : false;
+    Machine_para.add_enable = (add_code > 0) ? true : false;
+    uint8_t add_cmd;
+    if(add_code == 0)
+    add_cmd = 0x00;
+    else if(add_code == 1)
+    add_cmd = 0x01;
+    send_command(fd4, 0x39, &add_cmd, 1);
     page_03_update_menu_button_states_refresh();
 #if LV_DEBUG
-    printf("ADD模式切换为：%s\n", Machine_para.add_enabel ? "ON" : "OFF");
+    printf("ADD模式切换为：%s\n", Machine_para.add_enable ? "ON" : "OFF");
 #endif // LV_DEBUG
 }
 
