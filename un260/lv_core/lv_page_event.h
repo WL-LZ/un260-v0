@@ -4,6 +4,8 @@
 #include "lvgl/lvgl.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_components/lv_components.h"
+#include <stdlib.h>
+#include <string.h>
 
 extern lv_obj_t* password_display;
 extern char input_password[5];
