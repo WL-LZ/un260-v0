@@ -70,6 +70,7 @@ static void sim_clear_sn_only(counting_sim_t* sim_data)
     }
     sim_data->total_pcs = 0;
     memset(sim_data->denom_mix, 0, sizeof(sim_data->denom_mix));
+    sim_data->sn_capacity = 0;
 }
 
 static bool sim_ensure_sn_capacity(counting_sim_t* sim_data, int new_total)
@@ -79,25 +80,36 @@ static bool sim_ensure_sn_capacity(counting_sim_t* sim_data, int new_total)
         return false;
     }
 
-    int old_total = sim_data->total_pcs;
-    if (new_total <= old_total) return true;
+    if (sim_data->sn_str == NULL) {
+        sim_data->sn_capacity = 0;
+    }
 
-    char** temp_sn_str = malloc(sizeof(char*) * new_total);
-    if (temp_sn_str == NULL) {
+    if (new_total <= sim_data->sn_capacity) {
+        if (sim_data->total_pcs < new_total) {
+            sim_data->total_pcs = new_total;
+        }
+        return true;
+    }
+
+    int new_cap = sim_data->sn_capacity > 0 ? sim_data->sn_capacity : 64;
+    while (new_cap < new_total) {
+        new_cap *= 2;
+        if (new_cap > 10000) {
+            new_cap = 10000;
+            break;
+        }
+    }
+    if (new_cap < new_total) return false;
+
+    char** new_ptr = realloc(sim_data->sn_str, sizeof(char*) * new_cap);
+    if (new_ptr == NULL) {
         return false;
     }
-
-    for (int i = 0; i < old_total; i++) {
-        temp_sn_str[i] = sim_data->sn_str ? sim_data->sn_str[i] : NULL;
+    if (new_cap > sim_data->sn_capacity) {
+        memset(new_ptr + sim_data->sn_capacity, 0, sizeof(char*) * (new_cap - sim_data->sn_capacity));
     }
-    for (int i = old_total; i < new_total; i++) {
-        temp_sn_str[i] = NULL;
-    }
-
-    if (sim_data->sn_str) {
-        free(sim_data->sn_str);
-    }
-    sim_data->sn_str = temp_sn_str;
+    sim_data->sn_str = new_ptr;
+    sim_data->sn_capacity = new_cap;
     sim_data->total_pcs = new_total;
     return true;
 }
@@ -245,8 +257,9 @@ static void boot_selftest_finish_cb(lv_timer_t* timer)
 void PCCmdHandle(void)
 {
     cmd_frame_t frame;
-
+    //int processed = 0;
     while (dequeue_cmd(&frame)) {
+    //    if (processed++ >= 16) break;
         uint8_t *buf = frame.data;
         uint8_t len  = frame.len;
         uint8_t cmd  = buf[3];
@@ -439,9 +452,9 @@ case 0x0B:
             }
             if (all_ff) {
                 uart_printf(fd6, "0x0D serial detail receive end, total=%d\n", sim.total_pcs);
-                page_02_report_init();
-                page_02_b_page_refre();
-                page_02_b_page_num_refre();
+               // page_02_report_init();
+                //page_02_b_page_refre();
+               // page_02_b_page_num_refre();
                 break;
             }
 

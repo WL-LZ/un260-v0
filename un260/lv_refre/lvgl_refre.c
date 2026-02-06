@@ -561,6 +561,7 @@ void page_02_b_page_refre(void)
     lv_obj_t* b_denom;
     lv_obj_t* b_sn;
     char b_no_buf[32], b_denom_buf[32], b_sn_buf[32];
+    if (page_02_list_len <= 0) return;
     for (int i = 0; i < PAGE_02_B_ITEM; i++)
     {
         int row;
@@ -571,6 +572,9 @@ void page_02_b_page_refre(void)
         b_no = find_obj_by_name(b_no_buf, page_02_list_obj, page_02_list_len);
         b_denom = find_obj_by_name(b_denom_buf, page_02_list_obj, page_02_list_len);
         b_sn = find_obj_by_name(b_sn_buf, page_02_list_obj, page_02_list_len);
+        if (!b_no || !b_denom || !b_sn) {
+            continue;
+        }
         int temp_current;
         temp_current = i + (page_02_b_report_status.curent_page - 1) * PAGE_02_B_ITEM;
         if (temp_current < sim.total_pcs)

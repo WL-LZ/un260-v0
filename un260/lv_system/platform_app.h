@@ -17,6 +17,7 @@ typedef struct {
     int total_pcs;
     float total_amount;
     char** sn_str;
+    int sn_capacity;
     char** err_str;
     bool is_paused;
     uint16_t err_num;
@@ -65,4 +66,3 @@ void update_label_with_simple_highlight(ui_element_t* page_cfg_obj, int len,
 void mode_switch(void);
 void page_02_report_init(void);
 #endif // !PLATFORM_APP_H
-

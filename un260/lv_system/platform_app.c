@@ -710,6 +710,7 @@ void sim_clear_all_sn(counting_sim_t* sim_data)
         free(sim_data->sn_str);
         sim_data->sn_str = NULL;
     }
+    sim_data->sn_capacity = 0;
 
     // 重置所有计数
     for (int i = 0; i < sim_data->denom_number; i++)
