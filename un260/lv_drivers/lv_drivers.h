@@ -9,6 +9,9 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 
+extern const char* g_currency_error_desc[0x32];
+
+
 /* 打开串口设备 */
 int uart_open(const char *device);
 

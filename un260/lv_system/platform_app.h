@@ -19,6 +19,8 @@ typedef struct {
     char** sn_str;
     int sn_capacity;
     char** err_str;
+    uint8_t* err_pcs;
+    int err_capacity;
     bool is_paused;
     uint16_t err_num;
     int denom_mix[10000];
@@ -65,4 +67,6 @@ void update_label_with_simple_highlight(ui_element_t* page_cfg_obj, int len,
     const char* name, const char* fmt, ...);
 void mode_switch(void);
 void page_02_report_init(void);
+void sim_clear_err_only(counting_sim_t* sim_data);
+bool sim_ensure_err_capacity(counting_sim_t* sim_data, int new_total);
 #endif // !PLATFORM_APP_H

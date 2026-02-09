@@ -607,11 +607,9 @@ void page_02_c_page_refre(void)
     lv_obj_t* c_denom;
     lv_obj_t* c_reject;
     char c_no_buf[32], c_denom_buf[32], c_reject_buf[32];
-    //模拟报错
-    sim.err_str = malloc(sizeof(char*) * sim.err_num);
-    sim.err_str[0] = malloc(32);
-    strcpy(sim.err_str[0], "IMG 163");
-    for (int i = 0; i < PAGE_02_B_ITEM; i++)
+    if (page_02_list_len <= 0) return;
+
+    for (int i = 0; i < PAGE_02_C_ITEM; i++)
     {
         int row;
         row = i + 1;
@@ -621,13 +619,24 @@ void page_02_c_page_refre(void)
         c_no = find_obj_by_name(c_no_buf, page_02_list_obj, page_02_list_len);
         c_denom = find_obj_by_name(c_denom_buf, page_02_list_obj, page_02_list_len);
         c_reject = find_obj_by_name(c_reject_buf, page_02_list_obj, page_02_list_len);
+        if (!c_no || !c_denom || !c_reject) {
+            continue;
+        }
         int temp_current;
-        temp_current = i + (page_02_c_report_status.curent_page - 1) * PAGE_02_A_ITEM;
+        temp_current = i + (page_02_c_report_status.curent_page - 1) * PAGE_02_C_ITEM;
         if (temp_current < sim.err_num)
         {
-            update_label_by_name(page_02_list_obj, page_02_list_len, c_no_buf, "%d", (page_02_c_report_status.curent_page - 1) * PAGE_02_A_ITEM + i + 1);
-            update_label_by_name(page_02_list_obj, page_02_list_len, c_denom_buf, "%d", sim.denom[temp_current].value);
-            update_label_by_name(page_02_list_obj, page_02_list_len, c_reject_buf, "%s", sim.err_str[temp_current]);
+            update_label_by_name(page_02_list_obj, page_02_list_len, c_no_buf, "%d", (page_02_c_report_status.curent_page - 1) * PAGE_02_C_ITEM + i + 1);
+            if (sim.err_pcs != NULL) {
+                update_label_by_name(page_02_list_obj, page_02_list_len, c_denom_buf, "%d", sim.err_pcs[temp_current]);
+            } else {
+                update_label_by_name(page_02_list_obj, page_02_list_len, c_denom_buf, "%s", "-");
+            }
+            if (sim.err_str != NULL && sim.err_str[temp_current] != NULL) {
+                update_label_by_name(page_02_list_obj, page_02_list_len, c_reject_buf, "%s", sim.err_str[temp_current]);
+            } else {
+                update_label_by_name(page_02_list_obj, page_02_list_len, c_reject_buf, "%s", "Unknown Error");
+            }
             lv_obj_clear_flag(c_no, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(c_denom, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(c_reject, LV_OBJ_FLAG_HIDDEN);
@@ -639,9 +648,7 @@ void page_02_c_page_refre(void)
             lv_obj_add_flag(c_reject, LV_OBJ_FLAG_HIDDEN);
 
         }
-
     }
-    printf("sim.err_num = %d\n", sim.err_num);
 }
 
 

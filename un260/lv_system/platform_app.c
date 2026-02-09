@@ -620,6 +620,7 @@ void cleanup_counting_sim(void) {
     page_01_main_page_pcs_label = NULL;
     page_01_main_scroll_container = NULL;
 
+    sim_clear_all_sn(&sim);
     memset(&sim, 0, sizeof(counting_sim_t));
 }
 
@@ -691,12 +692,32 @@ void page_02_report_init(void)
     page_02_b_report_status.curent_page = 1;
     page_02_b_report_status.total_page = (sim.total_pcs == 0) ? 1 : ((sim.total_pcs + PAGE_02_B_ITEM - 1) / PAGE_02_B_ITEM);
     page_02_c_report_status.curent_page = 1;
-    page_02_c_report_status.total_page = 1;
+    page_02_c_report_status.total_page = (sim.err_num == 0) ? 1 : ((sim.err_num + PAGE_02_C_ITEM - 1) / PAGE_02_C_ITEM);
 }
 
 // 清空所有冠字号的函数
 void sim_clear_all_sn(counting_sim_t* sim_data)
 {
+    if (sim_data->err_str != NULL)
+    {
+        for (int i = 0; i < sim_data->err_num; i++)
+        {
+            if (sim_data->err_str[i] != NULL)
+            {
+                free(sim_data->err_str[i]);
+                sim_data->err_str[i] = NULL;
+            }
+        }
+        free(sim_data->err_str);
+        sim_data->err_str = NULL;
+    }
+    if (sim_data->err_pcs != NULL)
+    {
+        free(sim_data->err_pcs);
+        sim_data->err_pcs = NULL;
+    }
+    sim_data->err_capacity = 0;
+
     if (sim_data->sn_str != NULL)
     {
         for (int i = 0; i < sim_data->total_pcs; i++)
@@ -726,4 +747,62 @@ void sim_clear_all_sn(counting_sim_t* sim_data)
     int clear_data_cmd;
     clear_data_cmd = 0x01;
     send_command(fd4,0x3b,&clear_data_cmd,1);
+}
+
+
+void sim_clear_err_only(counting_sim_t* sim_data)
+{
+    if (!sim_data) return;
+    if (sim_data->err_str != NULL) {
+        for (int i = 0; i < sim_data->err_num; i++) {
+            if (sim_data->err_str[i] != NULL) {
+                free(sim_data->err_str[i]);
+                sim_data->err_str[i] = NULL;
+            }
+        }
+        free(sim_data->err_str);
+        sim_data->err_str = NULL;
+    }
+    if (sim_data->err_pcs != NULL) {
+        free(sim_data->err_pcs);
+        sim_data->err_pcs = NULL;
+    }
+    sim_data->err_num = 0;
+    sim_data->err_capacity = 0;
+}
+
+bool sim_ensure_err_capacity(counting_sim_t* sim_data, int new_total)
+{
+    if (!sim_data || new_total <= 0) return false;
+    if (sim_data->err_str == NULL || sim_data->err_pcs == NULL) {
+        sim_data->err_capacity = 0;
+    }
+
+    if (new_total <= sim_data->err_capacity) return true;
+
+    int new_cap = sim_data->err_capacity > 0 ? sim_data->err_capacity : 32;
+    while (new_cap < new_total) {
+        new_cap *= 2;
+        if (new_cap > 10000) {
+            new_cap = 10000;
+            break;
+        }
+    }
+    if (new_cap < new_total) return false;
+
+    int old_cap = sim_data->err_capacity;
+    char** new_err_str = realloc(sim_data->err_str, sizeof(char*) * new_cap);
+    if (new_err_str == NULL) return false;
+    sim_data->err_str = new_err_str;
+
+    uint8_t* new_err_pcs = realloc(sim_data->err_pcs, sizeof(uint8_t) * new_cap);
+    if (new_err_pcs == NULL) return false;
+    sim_data->err_pcs = new_err_pcs;
+
+    if (new_cap > old_cap) {
+        memset(sim_data->err_str + old_cap, 0, sizeof(char*) * (new_cap - old_cap));
+        memset(sim_data->err_pcs + old_cap, 0, sizeof(uint8_t) * (new_cap - old_cap));
+    }
+    sim_data->err_capacity = new_cap;
+    return true;
 }

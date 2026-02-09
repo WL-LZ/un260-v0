@@ -269,8 +269,8 @@ ui_element_t page_01_main_obj[] = {
         NULL, 0, NULL, NULL },
 
     { "list_demo_label", LV_OBJ_TYPE_LABEL, NULL,
-        { 728, 24, 54, 23, 0, 0, 0 },
-        { "DEMO", 121, 150, 0, &lv_font_montserrat_16, LV_TEXT_ALIGN_CENTER },
+        { 728, 24, 70, 23, 0, 0, 0 },
+        { "DENOM", 121, 150, 0, &lv_font_montserrat_16, LV_TEXT_ALIGN_CENTER },
         { 255, 0, 0, false },
         NULL, 0, NULL, NULL },
 

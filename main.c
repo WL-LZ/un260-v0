@@ -57,6 +57,15 @@ bool check_aa_header(const char* data, int len) {
 
 uint32_t custom_tick_get(void);
 
+static const char* get_currency_error_desc(uint8_t code)
+{
+    if (code < sizeof(g_currency_error_desc) / sizeof(g_currency_error_desc[0]) &&
+        g_currency_error_desc[code] != NULL) {
+        return g_currency_error_desc[code];
+    }
+    return "Unknown Error";
+}
+
 static void sim_clear_sn_only(counting_sim_t* sim_data)
 {
     if (!sim_data) return;
@@ -370,74 +379,130 @@ void PCCmdHandle(void)
 
             break;
         }
+        /* ================== 0x0a 返回主界面 ================== */
+        case 0x0a:
+        {
+            if (len < 6) break;
 
-        /* ================== 0x0B 面额明细 ================== */
-case 0x0B:
-{
-    if (len < 15) break;
-
-    /* start frame: 00...00 (11 bytes payload are 0) */
-    bool all_zero = true;
-    for (int i = 4; i < 15; i++) {
-        if (buf[i] != 0x00) { all_zero = false; break; }
-    }
-    if (all_zero) {
-        memset(sim.denom, 0, sizeof(sim.denom));
-        sim.denom_number = 0;
-        uart_printf(fd6, "0x0B denom detail receive start\n");
-        ui_refresh_main_page_throttled();
-        break;
-    }
-
-    /* end frame: FF...FF (11 bytes payload are 0xFF) */
-    bool all_ff = true;
-    for (int i = 4; i < 15; i++) {
-        if (buf[i] != 0xFF) { all_ff = false; break; }
-    }
-    if (all_ff) {
-        uart_printf(fd6, "0x0B denom detail receive end\n");
-        uint8_t req[2] = {0x01, 0x01};
-        send_command(fd4, 0x0D, req, 2);
-        ui_refresh_main_page();
-        break;
-    }
-
-    /* normal data frame: denom(8 ascii) + pcs(3 ascii) */
-    char denom_str[9] = {0};
-    memcpy(denom_str, &buf[4], 8);
-    int denom = atoi(denom_str);
-
-    char pcs_str[4] = {0};
-    memcpy(pcs_str, &buf[12], 3);
-    int pcs = atoi(pcs_str);
-
-    if (denom <= 0) break;
-
-    int found = 0;
-    for (int i = 0; i < sim.denom_number; i++) {
-        if (sim.denom[i].value == denom) {
-            sim.denom[i].pcs += pcs;
-            sim.denom[i].amount = denom * sim.denom[i].pcs;
-            found = 1;
+            uint8_t status = buf[5];
+            if(buf[5]==0x01)
+            {
+            ui_manager_switch(UI_PAGE_MAIN);
+            }
             break;
         }
-    }
+                /* ================== 0x0B 面额明细 ================== */
+        case 0x0B:
+        {
+            if (len < 15) break;
 
-    /* NEW: append if not found */
-    if (!found) {
-        if (sim.denom_number < 16 /* 你sim里数组上限 */) {
-            int i = sim.denom_number;
-            sim.denom[i].value = denom;
-            sim.denom[i].pcs = pcs;
-            sim.denom[i].amount = denom * pcs;
-            sim.denom_number++;
+            /* start frame: 00...00 (11 bytes payload are 0) */
+            bool all_zero = true;
+            for (int i = 4; i < 15; i++) {
+                if (buf[i] != 0x00) { all_zero = false; break; }
+            }
+            if (all_zero) {
+                memset(sim.denom, 0, sizeof(sim.denom));
+                sim.denom_number = 0;
+                uart_printf(fd6, "0x0B denom detail receive start\n");
+                ui_refresh_main_page_throttled();
+                break;
+            }
+
+            /* end frame: FF...FF (11 bytes payload are 0xFF) */
+            bool all_ff = true;
+            for (int i = 4; i < 15; i++) {
+                if (buf[i] != 0xFF) { all_ff = false; break; }
+            }
+            if (all_ff) {
+                uart_printf(fd6, "0x0B denom detail receive end\n");
+                uint8_t req[2] = {0x01, 0x01};
+                send_command(fd4, 0x0D, req, 2);
+                ui_refresh_main_page();
+                break;
+            }
+
+            /* normal data frame: denom(8 ascii) + pcs(3 ascii) */
+            char denom_str[9] = {0};
+            memcpy(denom_str, &buf[4], 8);
+            int denom = atoi(denom_str);
+
+            char pcs_str[4] = {0};
+            memcpy(pcs_str, &buf[12], 3);
+            int pcs = atoi(pcs_str);
+
+            if (denom <= 0) break;
+
+            int found = 0;
+            for (int i = 0; i < sim.denom_number; i++) {
+                if (sim.denom[i].value == denom) {
+                    sim.denom[i].pcs += pcs;
+                    sim.denom[i].amount = denom * sim.denom[i].pcs;
+                    found = 1;
+                    break;
+                }
+            }
+
+            /* NEW: append if not found */
+            if (!found) {
+                if (sim.denom_number < 16 /* 你sim里数组上限 */) {
+                    int i = sim.denom_number;
+                    sim.denom[i].value = denom;
+                    sim.denom[i].pcs = pcs;
+                    sim.denom[i].amount = denom * pcs;
+                    sim.denom_number++;
+                }
+            }
+
+            ui_refresh_main_page_throttled();
+
+            break;
         }
-    }
 
-    ui_refresh_main_page_throttled();
+        /* ================== 0x0C 退钞明细 ================== */
+        case 0x0C:
+        {
+            if (len < 7) break;
 
-    break;
-}
+            uint8_t err_code = buf[4];
+            uint8_t pcs = buf[5];
+
+            if (err_code == 0x00 && pcs == 0x00) {
+                sim_clear_err_only(&sim);
+                uart_printf(fd6, "0x0C reject detail receive start\n");
+                break;
+            }
+
+            if (err_code == 0xFF && pcs == 0xFF) {
+                page_02_c_report_status.curent_page = 1;
+                page_02_c_report_status.total_page = (sim.err_num == 0)
+                    ? 1
+                    : ((sim.err_num + PAGE_02_C_ITEM - 1) / PAGE_02_C_ITEM);
+                page_02_c_page_refre();
+                page_02_c_page_num_refre();
+                uart_printf(fd6, "0x0C reject detail receive end, total=%u\n", sim.err_num);
+                break;
+            }
+
+            if (!sim_ensure_err_capacity(&sim, (int)sim.err_num + 1)) {
+                uart_printf(fd6, "0x0C: err capacity fail idx=%u\n", sim.err_num);
+                break;
+            }
+
+            int idx = sim.err_num;
+            const char* desc = get_currency_error_desc(err_code);
+            size_t desc_len = strlen(desc);
+
+            sim.err_str[idx] = malloc(desc_len + 1);
+            if (sim.err_str[idx] == NULL) {
+                uart_printf(fd6, "0x0C: err malloc fail idx=%d\n", idx);
+                break;
+            }
+            memcpy(sim.err_str[idx], desc, desc_len + 1);
+            sim.err_pcs[idx] = pcs;
+            sim.err_num++;
+            break;
+        }
 
         /* ================== 0x0D 冠字号明细 ================== */
         case 0x0D:

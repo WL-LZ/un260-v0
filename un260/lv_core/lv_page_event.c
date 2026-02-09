@@ -31,6 +31,8 @@ void page_01_list_btn_event_cb(lv_event_t* e) {
     if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
         icon_feedback_comp("page_01_list_icon.png", page_01_main_obj, page_01_main_len);
         //sim_clear_sn_only(&sim);
+        uint8_t sn_cmd = 0x01;
+        send_command(fd4,0x0c,&sn_cmd,1);
         ui_manager_push_page(UI_PAGE_LIST);
     }
 }
@@ -721,7 +723,7 @@ void page_03_c_up_event_cb(lv_event_t* e) {
         page_02_c_report_status.curent_page--;
 
         if (page_02_c_report_status.curent_page == 0)
-            page_02_c_report_status.curent_page = PAGE_02_DEBUG;
+            page_02_c_report_status.curent_page = page_02_c_report_status.total_page;
 
         page_02_c_page_refre();
         page_02_c_page_num_refre();
@@ -731,7 +733,7 @@ void page_03_c_down_event_cb(lv_event_t* e) {
     if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
         page_02_c_report_status.curent_page++;
 
-        if (page_02_c_report_status.curent_page > PAGE_02_DEBUG)
+        if (page_02_c_report_status.curent_page > page_02_c_report_status.total_page)
             page_02_c_report_status.curent_page = 1;
 
         page_02_c_page_refre();
