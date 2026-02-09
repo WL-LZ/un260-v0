@@ -303,22 +303,59 @@ const char* get_currency_img(const char* code)
         snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_IQD.png");
         return img_path;
     }
-    else
-     {
+    // New conditions for missing currencies:
+    else if (strcmp(code, "IRR") == 0) {
+        snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_IRR.png");
+        return img_path;
+    }
+    else if (strcmp(code, "SGD") == 0) {
+        snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_SGD.png");
+        return img_path;
+    }
+    else if (strcmp(code, "CAD") == 0) {
+        snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_CAD.png");
+        return img_path;
+    }
+    else if (strcmp(code, "CHF") == 0) {
+        snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_CHF.png");
+        return img_path;
+    }
+    else if (strcmp(code, "KRW") == 0) {
+        snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_KRW.png");
+        return img_path;
+    }
+    else if (strcmp(code, "MXN") == 0) {
+        snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_MXN.png");
+        return img_path;
+    }
+    else if (strcmp(code, "HKD") == 0) {
+        snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_HKD.png");
+        return img_path;
+    }
+    else if (strcmp(code, "PLN") == 0) {
+        snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_PLN.png");
+        return img_path;
+    }
+    else if (strcmp(code, "JPY") == 0) {
+        snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_JPY.png");
+        return img_path;
+    }
+    else if (strcmp(code, "ILS") == 0) {
+        snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_ILS.png");
+        return img_path;
+    }
+    else if (strcmp(code, "AUD") == 0) {
+        snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_AUD.png");
+        return img_path;
+    }
+    else {
         snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_IQD.png");
         return img_path;
     }
-    {
-        /* code */
-    }
-    
-    {
-        /* code */
-    }
-    
 
     return NULL;
 }
+
 
 
 
