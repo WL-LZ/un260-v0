@@ -26,7 +26,7 @@
 //-------------------- 全局变量 --------------------
  int fd4 = -1, fd5 = -1, fd6 = -1;
 static bool uart_running = false;
-
+#define MAX_CMD_PER_TICK  8
 #define RECV_BUF_SIZE 512
 #define MAX_CMD_QUEUE 32
 
@@ -54,6 +54,8 @@ static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 bool check_aa_header(const char* data, int len) {
     return (len >= 2 && (unsigned char)data[0] == 0xFD && (unsigned char)data[1] == 0xDF);
 }
+
+uint32_t custom_tick_get(void);
 
 static void sim_clear_sn_only(counting_sim_t* sim_data)
 {
@@ -112,6 +114,17 @@ static bool sim_ensure_sn_capacity(counting_sim_t* sim_data, int new_total)
     sim_data->sn_capacity = new_cap;
     sim_data->total_pcs = new_total;
     return true;
+}
+
+static void ui_refresh_main_page_throttled(void)
+{
+    static uint32_t last_ms = 0;
+    uint32_t now = custom_tick_get();
+    if ((uint32_t)(now - last_ms) < 50) {
+        return;
+    }
+    last_ms = now;
+    ui_refresh_main_page();
 }
 
 // ===== RX HEX 转字符串 =====
@@ -257,9 +270,9 @@ static void boot_selftest_finish_cb(lv_timer_t* timer)
 void PCCmdHandle(void)
 {
     cmd_frame_t frame;
-    //int processed = 0;
+    int processed = 0;
     while (dequeue_cmd(&frame)) {
-    //    if (processed++ >= 16) break;
+    if (processed++ >= MAX_CMD_PER_TICK) break; //每轮处理8帧协议
         uint8_t *buf = frame.data;
         uint8_t len  = frame.len;
         uint8_t cmd  = buf[3];
@@ -335,7 +348,7 @@ void PCCmdHandle(void)
                 sim.total_amount = amount;
                 sim.total_pcs    = qty;
                 sim.err_num      = ret;
-                ui_refresh_main_page();
+                ui_refresh_main_page_throttled();
             } else if (status == 0x02) {
                 uart_printf(fd6, "Count finished\n");
                 ui_refresh_main_page();
@@ -372,7 +385,7 @@ case 0x0B:
         memset(sim.denom, 0, sizeof(sim.denom));
         sim.denom_number = 0;
         uart_printf(fd6, "0x0B denom detail receive start\n");
-        ui_refresh_main_page();
+        ui_refresh_main_page_throttled();
         break;
     }
 
@@ -421,7 +434,7 @@ case 0x0B:
         }
     }
 
-    ui_refresh_main_page();
+    ui_refresh_main_page_throttled();
 
     break;
 }
@@ -796,8 +809,8 @@ case 0x0B:
 
 
 static void sent_machine_code(void)
-{
-    send_command(fd4, 0x04, Machine_MODE_MDC, 1); // 发送设置币种命令，默认USD
+{   uint8_t mdc_cmd = 0x03;
+    send_command(fd4, 0x04, &mdc_cmd, 1); // 发送设置币种命令，默认USD
 }
 static lv_obj_t* g_msgbox_cont = NULL;
 
