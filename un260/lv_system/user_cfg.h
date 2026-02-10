@@ -63,6 +63,12 @@ typedef struct {
     bool serial_num_enable;
     uint8_t currency_count;
     char currencies[MAX_CURRENCIES][4];
+    uint16_t year;
+    uint8_t  month;
+    uint8_t  day;
+    uint8_t  hour;
+    uint8_t  minute;
+    uint8_t  second;
 }Machine_para_t;
 
 extern Machine_para_t Machine_para;

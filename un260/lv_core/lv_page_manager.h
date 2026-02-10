@@ -29,6 +29,7 @@ extern "C" {
         UI_PAGE_BOOT,
         UI_PAGE_CIS_CALIB,
         UI_PAGE_DEBUG,
+        UI_PAGE_TIMESET,
         UI_PAGE_COUNT
     } ui_page_t;
 

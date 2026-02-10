@@ -28,6 +28,12 @@ Machine_para_t Machine_para = {
     .currency_count = DEFAULT_CURRENCY_COUNT,
     .currencies = { "USD", "CNY", "EUR", "AED", "SAR", "OMR", "QAR", "MAD",
                     "EGP", "DZD", "INR", "PKR", "GBP", "IQD" },
+    .year = 2024,
+    .month = 10,
+    .day = 26,
+    .hour = 11,
+    .minute = 28,
+    .second = 30,
 };
 Machine_Statue_t Machine_Statue = { 0 };
 

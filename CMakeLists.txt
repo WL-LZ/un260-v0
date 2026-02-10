@@ -35,12 +35,14 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_core/page_08_boot.c
     un260/lv_core/page_09_cis_cala.c 
     un260/lv_core/page_10_debug.c 
+    un260/lv_core/page_11_timeset.c
 
     un260/lv_refre/lvgl_refre.c
     un260/lv_resources/lv_img_init.c
     un260/lv_system/platform_app.c
     un260/lv_system/lv_str.c
     un260/lv_system/user_cfg.c
+    un260/lv_system/machine_time.c
     un260/lv_drivers/lv_drivers.c
     #font
 	un260/font/lv_font_montserrat_8.c 

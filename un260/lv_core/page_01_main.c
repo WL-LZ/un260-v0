@@ -22,6 +22,32 @@ int page_01_main_len = 0;
 //          event_cb, event_code, user_data, obj_ref ,btn_style}
 //label 背景默认透明
 
+
+static void time_area_clicked_cb(lv_event_t* e)
+{
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+    ui_manager_push_page(UI_PAGE_TIMESET);   /* 你的页面跳转接口按工程实际替换 */
+}
+
+static lv_obj_t* s_time_label = NULL;
+static lv_timer_t* s_time_timer = NULL;
+
+static void main_time_refresh(void)
+{
+    char buf[16];
+    lv_snprintf(buf, sizeof(buf), "%02u:%02u:%02u",
+        (unsigned)Machine_para.hour,
+        (unsigned)Machine_para.minute,
+        (unsigned)Machine_para.second);
+    if (s_time_label) lv_label_set_text(s_time_label, buf);
+}
+
+static void main_time_timer_cb(lv_timer_t* t)
+{
+    (void)t;
+    main_time_refresh();
+}
+
 ui_element_t page_01_main_obj[] = {
     //////////////////////////////////////////////////////
   //***************    BG_IMG_LIST  *******************//
@@ -77,7 +103,7 @@ ui_element_t page_01_main_obj[] = {
             { 15, 243, 75, 73, 255, 255, 255 },
             { NULL, 0, 0, 0, NULL },
             { 255, 18, 0, true },
-            NULL, 0, NULL, NULL ,UI_BTN_STYLE_PRESS_FEEL },
+            page_01_print_btn_event_cb, 0, NULL, NULL ,UI_BTN_STYLE_PRESS_FEEL },
 
         { "curr_img_btn", LV_OBJ_TYPE_BUTTON, NULL,
             { 159, 33, 184, 100, 255, 255, 255 },
@@ -505,8 +531,30 @@ ui_element_t page_01_main_obj[] = {
 
 };
 
+static lv_obj_t* time_label = NULL;
+static lv_obj_t* time_btn = NULL;
+static void PAGE_01_time_obj_creat(void)
+{
+time_label = lv_label_create(main_page);
+lv_obj_set_pos(time_label, 569, 24);
+lv_obj_set_size(time_label, 269, 60);
+lv_obj_set_style_text_color(time_label, lv_color_make(136, 136, 136),0);
+lv_obj_set_style_text_font(time_label, &lv_font_montserrat_20, 0);
+lv_label_set_text(time_label, "");
+    
+}
 
-
+static void PAGE_01_time_btn_obj_creat(void)
+{
+time_btn = lv_btn_create(main_page);
+lv_obj_set_pos(time_btn, 534, 0);
+lv_obj_set_size(time_btn, 133, 62);
+lv_obj_set_style_bg_opa(time_btn, LV_OPA_TRANSP, 0);
+lv_obj_set_style_border_opa(time_btn, LV_OPA_TRANSP, 0);
+lv_obj_set_style_shadow_opa(time_btn, LV_OPA_TRANSP, 0);
+lv_obj_add_event_cb(time_btn, time_area_clicked_cb, LV_EVENT_CLICKED, NULL);
+    
+}
 // 添加数组元素计数变量
 void ui_main_create(lv_obj_t* parent)
 {
@@ -536,9 +584,9 @@ void ui_main_create(lv_obj_t* parent)
     }
     // 创建滚动容器并将标签放入容器
    // sim_data_init();           // 初始化面额列表、count=0、amount=0
+    machine_time_init();
     ui_refresh_main_page();    // 把面额+"0"+"0.00"写到每一行
     page_01_create_mian_scrollable_container();
-
     page_01_add_refre();
     page_01_work_refre();
     page_01_batch_refre();
@@ -547,6 +595,11 @@ void ui_main_create(lv_obj_t* parent)
     page_01_speed_refre();
     page_01_err_num_refre();
     page_01_curr_img_refre();
+    PAGE_01_time_obj_creat();
+    PAGE_01_time_btn_obj_creat();
+    s_time_label = time_label;
+    main_time_refresh();
+    if (!s_time_timer) s_time_timer = lv_timer_create(main_time_timer_cb, 1000, NULL);
 
 
 
