@@ -24,7 +24,7 @@ void page_05_error_label_timer_cb(lv_timer_t* t);
 extern lv_timer_t* page_03_batch_num_del_timer;
 extern lv_timer_t* page_05_password_del_timer;
 
-
+void page_01_print_btn_event_cb(lv_event_t* e);
 
 /*****************事件函数********************/
 

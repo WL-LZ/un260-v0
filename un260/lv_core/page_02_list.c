@@ -37,7 +37,7 @@ ui_element_t page_02_list_obj[] = {
         { 1154, 160, 101, 78, 255, 255, 255 },
         { NULL, 0, 0, 0, NULL },
         { 255, 18, 0, false },
-         NULL, 0, NULL, NULL ,
+         page_01_print_btn_event_cb, 0, NULL, NULL ,
          UI_BTN_STYLE_APPLE},
     { "02_a_up", LV_OBJ_TYPE_BUTTON,NULL,
         { 25, 79, 359, 141, 255, 255, 255 },

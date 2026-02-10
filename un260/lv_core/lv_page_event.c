@@ -167,12 +167,28 @@ void page_01_start_btn_event_cb(lv_event_t* e) // 开始仿真
 
 
 void page_01_set_btn_event_cb(lv_event_t* e){
- if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-     icon_feedback_comp("page_01_set_icon.png", page_01_main_obj, page_01_main_len);
+    if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
+        icon_feedback_comp("page_01_set_icon.png", page_01_main_obj, page_01_main_len);
 
-     ui_manager_switch(UI_PAGE_SET_PASSAGE);
-     }
+        ui_manager_switch(UI_PAGE_SET_PASSAGE);
+        }
  }
+
+void page_01_print_btn_event_cb(lv_event_t* e)
+{
+    uint8_t payload[9];
+    payload[0] = (uint8_t)Machine_para.curr_code[0];
+    payload[1] = (uint8_t)Machine_para.curr_code[1];
+    payload[2] = (uint8_t)Machine_para.curr_code[2];
+    payload[3] = (uint8_t)(Machine_para.year >= 2000? (Machine_para.year - 2000): Machine_para.year);
+    payload[4] = Machine_para.month;
+    payload[5] = Machine_para.day;
+    payload[6] = Machine_para.hour;
+    payload[7] = Machine_para.minute;
+    payload[8] = Machine_para.second;
+
+    send_command(fd4, 0x3C, payload, 9);
+}
 
 void page_01_curr_btn_event_cb(lv_event_t* e)
 {
