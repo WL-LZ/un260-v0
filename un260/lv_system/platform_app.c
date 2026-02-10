@@ -464,73 +464,7 @@ void ui_refresh_main_page(void) {
 
     if (curr_label && lv_obj_is_valid(curr_label))
     {
-        switch (get_curr_item(Machine_para.curr_code))
-        {
-
-        case CURR_USD_ITEM:
-            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "USD");
-            break;
-        case CURR_CNY_ITEM:
-            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "CNY");
-            break;
-        case CURR_GBP_ITEM:
-            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "GBP");
-            break;
-        case CURR_EUR_ITEM:
-            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "EUR");
-            break;
-
-        case CURR_KRW_ITEM:
-            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "KRW");
-            break;
-        case CURR_EGP_ITEM:
-            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "EGP");
-            break;
-        case CURR_ISK_ITEM:
-            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "ISK");
-            break;
-        case CURR_PHP_ITEM:
-            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "PHP");
-            break;
-        case CURR_SOS_ITEM:
-            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "SOS");
-            break;
-        case CURR_TRY_ITEM:
-            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "TRY");
-            break;
-        case CURR_AED_ITEM:
-            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "AED");
-            break;
-        case CURR_SAR_ITEM:
-            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "SAR");
-            break;
-        case CURR_OMR_ITEM:
-            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "OMR");
-            break;
-        case CURR_QAR_ITEM:
-            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "QAR");
-            break;
-        case CURR_MAD_ITEM:
-            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "MAD");
-            break;
-        case CURR_DZD_ITEM:
-            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "DZD");
-            break;  
-        case CURR_INR_ITEM:
-            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "INR");
-            break;
-        case CURR_PKR_ITEM:
-            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "PKR");
-            break;
-        case CURR_IQD_ITEM:
-            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "IQD");
-            break;
-        default:
-            update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", "NONE");
-            break;
-        }
-
-
+        update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", Machine_para.curr_code);
     }
     if (page_01_main_page_pcs_label == NULL || !lv_obj_is_valid(page_01_main_page_pcs_label))
     {
