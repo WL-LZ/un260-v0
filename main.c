@@ -379,6 +379,22 @@ void PCCmdHandle(void)
 
             break;
         }
+        /* ================== 0x0F 点钞过程中清分机状态 ================== */
+        case 0x0F:
+        {
+            if (len < 6) break;
+            uint8_t fault = buf[4];
+            if (fault == 0x00) {
+                hide_system_error_popup();
+                g_sys_err_last_code = 0x00;
+                break;
+            }
+            if (ui_manager_get_current_page() == UI_PAGE_MAIN) {
+                show_system_error_popup(fault);
+            }
+            uart_printf(fd6, "0x0F fault=0x%02X %s\n", fault, get_system_error_desc(fault));
+            break;
+        }
         /* ================== 0x0a 返回主界面 ================== */
         case 0x0a:
         {
