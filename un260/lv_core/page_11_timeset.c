@@ -112,7 +112,7 @@ void ui_page_11_timeset_create(lv_obj_t* parent)
     lv_obj_set_pos(esc, 1280 - 100 - 20, 15);
     lv_obj_add_event_cb(esc, esc_btn_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_set_style_radius(esc, 12, 0);
-    lv_obj_set_style_bg_color(esc, lv_color_make(235, 235, 235), 0);
+    lv_obj_set_style_bg_color(esc, lv_color_hex(0x3ec1f7), 0);
     lv_obj_set_style_bg_opa(esc, LV_OPA_COVER, 0);
     lv_obj_t* esc_label = lv_label_create(esc);
     lv_label_set_text(esc_label, "ESC");
