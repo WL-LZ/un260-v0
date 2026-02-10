@@ -332,7 +332,7 @@ ui_element_t page_01_main_obj[] = {
         NULL, 0, NULL, NULL },
 //list_label
         { "denom_1_label", LV_OBJ_TYPE_LABEL, NULL,
-            { 728, 54, 54, 23, 0, 0, 0 },
+            { 714, 54, 77, 23, 0, 0, 0 },
             { "---", 142, 143, 145, &lv_font_montserrat_16, LV_TEXT_ALIGN_CENTER },
             { 255, 0, 0, false },
             NULL, 0, NULL, NULL },
@@ -350,7 +350,7 @@ ui_element_t page_01_main_obj[] = {
             NULL, 0, NULL, NULL },
 
         { "denom_2_label", LV_OBJ_TYPE_LABEL, NULL,
-            { 728, 84, 54, 23, 0, 0, 0 },
+            { 714, 84, 77, 23, 0, 0, 0 },
             { "---", 142, 143, 145, &lv_font_montserrat_16, LV_TEXT_ALIGN_CENTER },
             { 255, 0, 0, false },
             NULL, 0, NULL, NULL },
@@ -368,7 +368,7 @@ ui_element_t page_01_main_obj[] = {
             NULL, 0, NULL, NULL },
 
         { "denom_3_label", LV_OBJ_TYPE_LABEL, NULL,
-            { 0, 114, 54, 23, 0, 0, 0 },
+            { 0, 114, 77, 23, 0, 0, 0 },
             { "---", 142, 143, 145, &lv_font_montserrat_16, LV_TEXT_ALIGN_CENTER },
             { 255, 0, 0, false },
             NULL, 0, NULL, NULL },
@@ -386,7 +386,7 @@ ui_element_t page_01_main_obj[] = {
             NULL, 0, NULL, NULL },
 
         { "denom_4_label", LV_OBJ_TYPE_LABEL, NULL,
-            { 728, 144, 54, 23, 0, 0, 0 },
+            { 714, 144, 77, 23, 0, 0, 0 },
             { "---", 142, 143, 145, &lv_font_montserrat_16, LV_TEXT_ALIGN_CENTER },
             { 255, 0, 0, false },
             NULL, 0, NULL, NULL },
@@ -404,7 +404,7 @@ ui_element_t page_01_main_obj[] = {
             NULL, 0, NULL, NULL },
 
         { "denom_5_label", LV_OBJ_TYPE_LABEL, NULL,
-            { 728, 174, 54, 23, 0, 0, 0 },
+            { 714, 174, 77, 23, 0, 0, 0 },
             { "---", 142, 143, 145, &lv_font_montserrat_16, LV_TEXT_ALIGN_CENTER },
             { 255, 0, 0, false },
             NULL, 0, NULL, NULL },
@@ -422,7 +422,7 @@ ui_element_t page_01_main_obj[] = {
             NULL, 0, NULL, NULL },
 
         { "denom_6_label", LV_OBJ_TYPE_LABEL, NULL,
-            { 728, 204, 54, 23, 0, 0, 0 },
+            { 714, 204, 77, 23, 0, 0, 0 },
             { "---", 142, 143, 145, &lv_font_montserrat_16, LV_TEXT_ALIGN_CENTER },
             { 255, 0, 0, false },
             NULL, 0, NULL, NULL },
@@ -440,7 +440,7 @@ ui_element_t page_01_main_obj[] = {
             NULL, 0, NULL, NULL },
 
         { "denom_7_label", LV_OBJ_TYPE_LABEL, NULL,
-            { 728, 234, 54, 23, 0, 0, 0 },
+            { 714, 234, 77, 23, 0, 0, 0 },
             { "---", 142, 143, 145, &lv_font_montserrat_16, LV_TEXT_ALIGN_CENTER },
             { 255, 0, 0, false },
             NULL, 0, NULL, NULL },
@@ -458,7 +458,7 @@ ui_element_t page_01_main_obj[] = {
             NULL, 0, NULL, NULL },
 
         { "denom_8_label", LV_OBJ_TYPE_LABEL, NULL,
-            { 728, 264, 54, 23, 0, 0, 0 },
+            { 714, 264, 77, 23, 0, 0, 0 },
             { "---", 142, 143, 145, &lv_font_montserrat_16, LV_TEXT_ALIGN_CENTER },
             { 255, 0, 0, false },
             NULL, 0, NULL, NULL },
@@ -476,7 +476,7 @@ ui_element_t page_01_main_obj[] = {
             NULL, 0, NULL, NULL },
 
         { "denom_9_label", LV_OBJ_TYPE_LABEL, NULL,
-            { 728, 294, 54, 23, 0, 0, 0 },
+            { 714, 294, 77, 23, 0, 0, 0 },
             { "---", 142, 143, 145, &lv_font_montserrat_16, LV_TEXT_ALIGN_CENTER },
             { 255, 0, 0, false },
             NULL, 0, NULL, NULL },
@@ -494,7 +494,7 @@ ui_element_t page_01_main_obj[] = {
             NULL, 0, NULL, NULL },
 
         { "denom_10_label", LV_OBJ_TYPE_LABEL, NULL,
-            { 728, 324, 54, 23, 0, 0, 0 },
+            { 714, 324, 77, 23, 0, 0, 0 },
             { "---", 142, 143, 145, &lv_font_montserrat_16, LV_TEXT_ALIGN_CENTER },
             { 255, 0, 0, false },
             NULL, 0, NULL, NULL },
