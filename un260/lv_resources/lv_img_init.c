@@ -308,6 +308,10 @@ const char* get_currency_img(const char* code)
         snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_IRR.png");
         return img_path;
     }
+    else if (strcmp(code, "CHF") == 0) {
+        snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_CHF.png");
+        return img_path;
+    }   
     else if (strcmp(code, "SGD") == 0) {
         snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_SGD.png");
         return img_path;
