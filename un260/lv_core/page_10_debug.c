@@ -219,9 +219,9 @@ static void btn_quick_cmd_event_cb(lv_event_t* e) {
     lv_textarea_set_text(ta_input, cmd);
 }
 
-  static void page_10_back_btn_event_cb(lv_event_t* e) {
+void page_10_back_btn_event_cb(lv_event_t* e) {
 
-    ui_manager_switch(UI_PAGE_MAIN);
+    ui_manager_switch(UI_PAGE_SETTING);
 
  }
 /* ========== 主创建函数 ========== */
@@ -297,7 +297,7 @@ void ui_page_10_debug_create(void) {
     lv_obj_set_size(btn_sec, 110, 30);
     lv_obj_set_pos(btn_sec, 160, 0);
     lv_obj_set_style_bg_color(btn_sec, lv_color_hex(0x00AA00), 0);
-    lv_obj_add_event_cb(btn_sec, page_10_back_btn_event_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(btn_sec, page_06_back_btn_event_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t* btn_esc_label = lv_label_create(btn_sec);
     lv_label_set_text(btn_esc_label, "ESC");

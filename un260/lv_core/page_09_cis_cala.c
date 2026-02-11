@@ -41,7 +41,7 @@ void ui_page_cis_calib_create(lv_obj_t* parent)
     lv_obj_t* esc_btn = lv_btn_create(cis_page);
     lv_obj_set_size(esc_btn, 100, 60);
     lv_obj_set_pos(esc_btn, 1150, 10);
-    lv_obj_add_event_cb(esc_btn, page_01_back_btn_event_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(esc_btn, page_06_back_btn_event_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t* esc_label = lv_label_create(esc_btn);
     lv_label_set_text(esc_label, "ESC");

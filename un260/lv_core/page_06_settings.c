@@ -138,11 +138,17 @@ static void debug_enter_btn_cb(lv_event_t* e)
     ui_manager_switch(UI_PAGE_DEBUG);
 }
 
+static void sensor_enter_btn_cb(lv_event_t* e)
+{
+    (void)e;
+    ui_manager_push_page(UI_PAGE_SENSOR);
+}
+
 static void create_maintenance_page_content(lv_obj_t* parent)
 {
     btn_cis_calib = lv_btn_create(parent);
     lv_obj_set_size(btn_cis_calib, 300, 80);
-    lv_obj_center(btn_cis_calib);
+    lv_obj_set_pos(btn_cis_calib,54,7);
     lv_obj_add_event_cb(btn_cis_calib, cis_enter_btn_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t* label = lv_label_create(btn_cis_calib);
@@ -151,12 +157,29 @@ static void create_maintenance_page_content(lv_obj_t* parent)
 
     lv_obj_t* btn_debug = lv_btn_create(parent);
     lv_obj_set_size(btn_debug, 300, 80);
-    lv_obj_set_pos(btn_debug,150,160);
+    lv_obj_set_pos(btn_debug,54,104);
     lv_obj_add_event_cb(btn_debug, debug_enter_btn_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t* label_1 = lv_label_create(btn_debug);
     lv_label_set_text(label_1, "DEBUG");
     lv_obj_center(label_1);
+
+    lv_obj_t* btn_motor = lv_btn_create(parent);
+    lv_obj_set_size(btn_motor, 300, 80);
+    lv_obj_set_pos(btn_motor,54,196);
+
+    lv_obj_t* label_2 = lv_label_create(btn_motor);
+    lv_label_set_text(label_2, "MOTOR TEST");
+    lv_obj_center(label_2);
+
+    lv_obj_t* btn_sensor = lv_btn_create(parent);
+    lv_obj_set_size(btn_sensor, 300, 80);
+    lv_obj_set_pos(btn_sensor,54,293);
+    lv_obj_add_event_cb(btn_sensor, sensor_enter_btn_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t* label_3 = lv_label_create(btn_sensor);
+    lv_label_set_text(label_3, "SENSOR PARAMETERS");
+    lv_obj_center(label_3);
 }
 /* =========================
  * 菜单状态刷新
@@ -287,17 +310,13 @@ static lv_obj_t* create_sub_page(lv_obj_t* parent, const char* text)
     /* ===== ESC 按键 ===== */
     lv_obj_t* esc_btn = lv_btn_create(page);
     lv_obj_set_size(esc_btn, 100, 60);
-    lv_obj_set_pos(esc_btn, 850, 10);   // 右上角
+    lv_obj_set_pos(esc_btn, 830, 7);   // 右上角
     lv_obj_clear_flag(esc_btn, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_event_cb(esc_btn, page_01_back_btn_event_cb,
         LV_EVENT_CLICKED, NULL);
     lv_obj_t* esc_label = lv_label_create(esc_btn);
-    if(Machine_Statue.g_handshake_state == HANDSHAKE_OK)
-        lv_label_set_text(esc_label, "HANDSHAKE_OK");
-    else
     lv_label_set_text(esc_label, "ESC");
     lv_obj_center(esc_label);
-
     lv_obj_t* label = lv_label_create(page);
     lv_label_set_text(label, text);
     lv_obj_center(label);
