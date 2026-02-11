@@ -47,7 +47,14 @@ void page_01_menu_btn_event_cb(lv_event_t* e) {
  void page_01_back_btn_event_cb(lv_event_t* e) {
 
      if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-         ui_manager_pop_page();
+        ui_manager_push_page(UI_PAGE_MAIN);
+     }
+ }
+
+ void page_06_back_btn_event_cb(lv_event_t* e) {
+
+     if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
+        ui_manager_push_page(UI_PAGE_SETTING);
      }
  }
 
@@ -169,7 +176,8 @@ void page_01_start_btn_event_cb(lv_event_t* e) // 开始仿真
 void page_01_set_btn_event_cb(lv_event_t* e){
     if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
         icon_feedback_comp("page_01_set_icon.png", page_01_main_obj, page_01_main_len);
-
+        uint8_t version_cmd = 0x01;
+        send_command(fd4, 0x17, &version_cmd, 1);
         ui_manager_switch(UI_PAGE_SET_PASSAGE);
         }
  }

@@ -36,6 +36,7 @@ Machine_para_t Machine_para = {
     .second = 30,
 };
 Machine_Statue_t Machine_Statue = { 0 };
+sensor_voltage_t g_sensor_voltage = { 0 };
 
 //void user_data_init(void) {
 //    memcpy(&Machine_para, &default_para, sizeof(Machine_para_t));

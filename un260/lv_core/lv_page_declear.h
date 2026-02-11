@@ -9,4 +9,5 @@
 #include"page_07_curr.h"
 #include"page_08_boot.h"
 #include"page_11_timeset.h"
+#include"page_12_sensor.h"
 #endif // !LV_PAGE_DECLEAR_H

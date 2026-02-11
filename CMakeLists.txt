@@ -36,6 +36,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_core/page_09_cis_cala.c 
     un260/lv_core/page_10_debug.c 
     un260/lv_core/page_11_timeset.c
+    un260/lv_core/page_12_sensor.c
 
     un260/lv_refre/lvgl_refre.c
     un260/lv_resources/lv_img_init.c

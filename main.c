@@ -275,6 +275,24 @@ static void boot_selftest_finish_cb(lv_timer_t* timer)
     lv_timer_del(timer);             // 删除定时器
 }
 
+static int sensor_idx_to_ch(uint8_t idx)
+{
+    switch (idx) {
+    case 0x01: return 0;  // QTH
+    case 0x02: return 1;  // QTL
+    case 0x03: return 2;  // RJH
+    case 0x04: return 3;  // RJL
+    case 0x05: return 4;  // PS1L
+    case 0x06: return 5;  // PS1R
+    case 0x07: return 6;  // PS2
+    case 0x08: return 7;  // PS5L
+    case 0x09: return 8;  // PS5R
+    case 0x0A: return 9;  // ST
+    case 0x0B: return 10;  // SD
+    default:   return -1;
+    }
+}
+
 
 void PCCmdHandle(void)
 {
@@ -610,6 +628,32 @@ void PCCmdHandle(void)
             }
             memcpy(sim.sn_str[idx], p, sn_len + 1);
             sim.denom_mix[idx] = denom;
+            break;
+        }
+        /* ================== 0x1D 传感器电压 ================== */
+        case 0x1D:
+        {
+            if (len < 7) break;
+
+            uint8_t idx = buf[4];
+            uint8_t val = buf[5];
+
+            if (idx == 0x00 && val == 0x00) {
+                memset(g_sensor_voltage.valid, 0, sizeof(g_sensor_voltage.valid));
+                break;
+            }
+
+            if (idx == 0xFF && val == 0xFF) {
+                break;
+            }
+
+            int ch = sensor_idx_to_ch(idx);
+            if (ch >= 0) {
+                g_sensor_voltage.raw[ch] = val;
+                g_sensor_voltage.valid[ch] = true;
+                g_sensor_voltage.update_count++;
+            }
+
             break;
         }
 
