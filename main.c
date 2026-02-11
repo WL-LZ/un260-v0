@@ -17,6 +17,7 @@
 #include "un260/lv_refre/lvgl_refre.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/lv_page_declear.h"
+#include "un260/lv_components/lv_components.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_system/platform_app.h"
 #include <stdlib.h>
@@ -416,15 +417,33 @@ void PCCmdHandle(void)
         /* ================== 0x0a 返回主界面 ================== */
         case 0x0a:
         {
-            if (len < 6) break;
+            if (len < 7) break;
 
-            uint8_t status = buf[5];
-            if(buf[5]==0x01)
-            {
-            ui_manager_switch(UI_PAGE_MAIN);
+            uint8_t type = buf[4];
+            uint8_t val  = buf[5];
+
+            if (type == 0x01) {
+                if (val == 0x01) {
+                    hide_counting_error_popup();
+                    ui_manager_switch(UI_PAGE_MAIN);
+                } else {
+                    show_counting_error_popup(val);
+                    uart_printf(fd6, "0x0A start fail (normal): val=%02X desc=%s\n",
+                                val, get_counting_error_desc(val));
+                }
+            } else if (type == 0x02) {
+                show_counting_error_popup(val);
+                uart_printf(fd6, "0x0A start fail (fault): code=%02X desc=%s\n",
+                            val, get_counting_error_desc(val));
+            } else {
+                show_counting_error_popup(type);
+                uart_printf(fd6, "0x0A start fail (unknown type): type=%02X val=%02X\n",
+                            type, val);
             }
+
             break;
         }
+
                 /* ================== 0x0B 面额明细 ================== */
         case 0x0B:
         {

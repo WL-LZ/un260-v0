@@ -293,3 +293,128 @@ void show_system_error_popup(uint8_t code)
 
     g_sys_err_last_code = code;
 }
+
+/* 启动点钞(0x0A)异常原因表：
+ * 按协议“8.启动点钞 -> 2.异常原因表”维护。
+ */
+static const char* g_counting_error_desc[0x100] = {
+    [0x01] = "Upper Channel Sensor Blocked",
+    [0x02] = "Lower Channel Sensor Blocked",
+    [0x03] = "Reject Exit Sensor Blocked",
+    [0x04] = "Reject Pocket Sensor Blocked",
+    [0x05] = "Reject Pocket Full",
+    [0x06] = "Stacker Pocket Sensor Blocked",
+    [0x07] = "Stacker Pocket Full",
+    [0x08] = "Stacker & Reject Pockets Full",
+    [0x09] = "Upper & Lower Channels Open",
+    [0x0A] = "Genuine Exit Sensor Blocked",
+    [0x0B] = "Dust Cover / Baffle Not Closed",
+    [0x0C] = "Flipper Position Fault",
+    [0x0D] = "Encoder Fault",
+};
+
+//(0x0a 0x01 0x02)  无钞票
+static const char8 g_counting_no_cash[0x10]={}
+    [0x02] = "Please Place Banknotes in the Hopper",
+;
+const char* get_counting_error_desc(uint8_t code)
+{
+    if (g_counting_error_desc[code] != NULL) {
+        return g_counting_error_desc[code];
+    }
+    return "Unknown Counting Fault";
+}
+
+static lv_obj_t* g_count_err_mask = NULL;
+static lv_obj_t* g_count_err_popup = NULL;
+static lv_obj_t* g_count_err_info_label = NULL;
+static uint8_t g_count_err_last_code = 0x00;
+
+void hide_counting_error_popup(void)
+{
+    if (g_count_err_popup && lv_obj_is_valid(g_count_err_popup)) {
+        lv_obj_del(g_count_err_popup);
+    }
+    g_count_err_popup = NULL;
+    g_count_err_info_label = NULL;
+
+    if (g_count_err_mask && lv_obj_is_valid(g_count_err_mask)) {
+        lv_obj_del(g_count_err_mask);
+    }
+    g_count_err_mask = NULL;
+}
+
+void counting_error_confirm_cb(lv_event_t* e)
+{
+    if ((lv_event_code_t)lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+
+    /* 与系统报错确认一致：发送清除命令 */
+    uint8_t clear_cmd = 0x01;
+    send_command(fd4, 0x3D, &clear_cmd, 1); /* FD DF 06 3D 01 0A */
+    hide_counting_error_popup();
+    g_count_err_last_code = 0x00;
+}
+
+void show_counting_error_popup(uint8_t code)
+{
+    if (code == 0x00) return;
+    if (g_count_err_popup && lv_obj_is_valid(g_count_err_popup)) {
+        if (g_count_err_last_code == code) {
+            return;
+        }
+        if (g_count_err_info_label && lv_obj_is_valid(g_count_err_info_label)) {
+            lv_label_set_text_fmt(g_count_err_info_label, "%s", get_counting_error_desc(code));
+        }
+        g_count_err_last_code = code;
+        return;
+    }
+
+    lv_obj_t* scr = lv_scr_act();
+    g_count_err_mask = lv_obj_create(scr);
+    lv_obj_remove_style_all(g_count_err_mask);
+    lv_obj_set_size(g_count_err_mask, 1280, 400);
+    lv_obj_set_style_bg_opa(g_count_err_mask, LV_OPA_40, 0);
+    lv_obj_set_style_bg_color(g_count_err_mask, lv_color_hex(0x000000), 0);
+
+    g_count_err_popup = lv_obj_create(scr);
+    lv_obj_set_size(g_count_err_popup, 620, 250);
+    lv_obj_center(g_count_err_popup);
+    lv_obj_clear_flag(g_count_err_popup, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_radius(g_count_err_popup, 26, 0);
+    lv_obj_set_style_bg_color(g_count_err_popup, lv_color_hex(0xF4F7FB), 0);
+    lv_obj_set_style_border_width(g_count_err_popup, 2, 0);
+    lv_obj_set_style_border_color(g_count_err_popup, lv_color_hex(0xD7DEE8), 0);
+    lv_obj_set_style_shadow_width(g_count_err_popup, 18, 0);
+    lv_obj_set_style_shadow_opa(g_count_err_popup, LV_OPA_40, 0);
+
+    lv_obj_t* title = lv_label_create(g_count_err_popup);
+    lv_label_set_text(title, "COUNTING ERROR");
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_color(title, lv_color_hex(0x2D3A4A), 0);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 22);
+
+    g_count_err_info_label = lv_label_create(g_count_err_popup);
+    lv_label_set_text_fmt(g_count_err_info_label, "%s", get_counting_error_desc(code));
+    lv_obj_set_width(g_count_err_info_label, 560);
+    lv_label_set_long_mode(g_count_err_info_label, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_align(g_count_err_info_label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_font(g_count_err_info_label, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_color(g_count_err_info_label, lv_color_hex(0x3C4D61), 0);
+    lv_obj_align(g_count_err_info_label, LV_ALIGN_TOP_MID, 0, 88);
+
+    lv_obj_t* ok_btn = lv_btn_create(g_count_err_popup);
+    lv_obj_set_size(ok_btn, 180, 58);
+    lv_obj_align(ok_btn, LV_ALIGN_BOTTOM_MID, 0, -20);
+    lv_obj_set_style_radius(ok_btn, 16, 0);
+    lv_obj_set_style_bg_color(ok_btn, lv_color_hex(0x1B86FF), 0);
+    lv_obj_set_style_bg_opa(ok_btn, LV_OPA_COVER, 0);
+    lv_obj_add_event_cb(ok_btn, counting_error_confirm_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t* ok_label = lv_label_create(ok_btn);
+    lv_label_set_text(ok_label, "CONFIRM");
+    lv_obj_set_style_text_font(ok_label, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_color(ok_label, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_center(ok_label);
+
+    g_count_err_last_code = code;
+}
