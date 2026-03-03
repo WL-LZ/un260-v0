@@ -294,10 +294,13 @@ void show_system_error_popup(uint8_t code)
     g_sys_err_last_code = code;
 }
 
-/* 启动点钞(0x0A)异常原因表：
- * 按协议“8.启动点钞 -> 2.异常原因表”维护。
- */
-static const char* g_counting_error_desc[0x100] = {
+/* 启动点钞(0x0A) type=0x01: 异常原因表 */
+static const char* g_counting_start_error_desc[0x100] = {
+    [0x02] = "Please Place Banknotes in the Hopper",
+};
+
+/* 启动点钞(0x0A) type=0x02: 设备故障码 */
+static const char* g_counting_fault_error_desc[0x100] = {
     [0x01] = "Upper Channel Sensor Blocked",
     [0x02] = "Lower Channel Sensor Blocked",
     [0x03] = "Reject Exit Sensor Blocked",
@@ -313,15 +316,22 @@ static const char* g_counting_error_desc[0x100] = {
     [0x0D] = "Encoder Fault",
 };
 
-//(0x0a 0x01 0x02)  无钞票
-static const char8 g_counting_no_cash[0x10]={}
-    [0x02] = "Please Place Banknotes in the Hopper",
-;
-const char* get_counting_error_desc(uint8_t code)
+const char* get_counting_error_desc(uint8_t type, uint8_t code)
 {
-    if (g_counting_error_desc[code] != NULL) {
-        return g_counting_error_desc[code];
+    if (type == 0x01) {
+        if (g_counting_start_error_desc[code] != NULL) {
+            return g_counting_start_error_desc[code];
+        }
+        return "Start Counting Failed";
     }
+
+    if (type == 0x02) {
+        if (g_counting_fault_error_desc[code] != NULL) {
+            return g_counting_fault_error_desc[code];
+        }
+        return "Counting Fault";
+    }
+
     return "Unknown Counting Fault";
 }
 
@@ -329,6 +339,7 @@ static lv_obj_t* g_count_err_mask = NULL;
 static lv_obj_t* g_count_err_popup = NULL;
 static lv_obj_t* g_count_err_info_label = NULL;
 static uint8_t g_count_err_last_code = 0x00;
+static uint8_t g_count_err_last_type = 0x00;
 
 void hide_counting_error_popup(void)
 {
@@ -353,18 +364,20 @@ void counting_error_confirm_cb(lv_event_t* e)
     send_command(fd4, 0x3D, &clear_cmd, 1); /* FD DF 06 3D 01 0A */
     hide_counting_error_popup();
     g_count_err_last_code = 0x00;
+    g_count_err_last_type = 0x00;
 }
 
-void show_counting_error_popup(uint8_t code)
+void show_counting_error_popup(uint8_t type, uint8_t code)
 {
     if (code == 0x00) return;
     if (g_count_err_popup && lv_obj_is_valid(g_count_err_popup)) {
-        if (g_count_err_last_code == code) {
+        if (g_count_err_last_type == type && g_count_err_last_code == code) {
             return;
         }
         if (g_count_err_info_label && lv_obj_is_valid(g_count_err_info_label)) {
-            lv_label_set_text_fmt(g_count_err_info_label, "%s", get_counting_error_desc(code));
+            lv_label_set_text_fmt(g_count_err_info_label, "%s", get_counting_error_desc(type, code));
         }
+        g_count_err_last_type = type;
         g_count_err_last_code = code;
         return;
     }
@@ -394,7 +407,7 @@ void show_counting_error_popup(uint8_t code)
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 22);
 
     g_count_err_info_label = lv_label_create(g_count_err_popup);
-    lv_label_set_text_fmt(g_count_err_info_label, "%s", get_counting_error_desc(code));
+    lv_label_set_text_fmt(g_count_err_info_label, "%s", get_counting_error_desc(type, code));
     lv_obj_set_width(g_count_err_info_label, 560);
     lv_label_set_long_mode(g_count_err_info_label, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_align(g_count_err_info_label, LV_TEXT_ALIGN_CENTER, 0);
@@ -416,5 +429,6 @@ void show_counting_error_popup(uint8_t code)
     lv_obj_set_style_text_color(ok_label, lv_color_hex(0xFFFFFF), 0);
     lv_obj_center(ok_label);
 
+    g_count_err_last_type = type;
     g_count_err_last_code = code;
 }

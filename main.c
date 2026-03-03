@@ -427,16 +427,16 @@ void PCCmdHandle(void)
                     hide_counting_error_popup();
                     ui_manager_switch(UI_PAGE_MAIN);
                 } else {
-                    show_counting_error_popup(val);
+                    show_counting_error_popup(type, val);
                     uart_printf(fd6, "0x0A start fail (normal): val=%02X desc=%s\n",
-                                val, get_counting_error_desc(val));
+                                val, get_counting_error_desc(type, val));
                 }
             } else if (type == 0x02) {
-                show_counting_error_popup(val);
+                show_counting_error_popup(type, val);
                 uart_printf(fd6, "0x0A start fail (fault): code=%02X desc=%s\n",
-                            val, get_counting_error_desc(val));
+                            val, get_counting_error_desc(type, val));
             } else {
-                show_counting_error_popup(type);
+                show_counting_error_popup(type, type);
                 uart_printf(fd6, "0x0A start fail (unknown type): type=%02X val=%02X\n",
                             type, val);
             }
@@ -1017,7 +1017,7 @@ int main(void) {
 
     lv_port_disp_init();
     lv_port_indev_init();
-    ui_manager_switch(UI_PAGE_BOOT);
+    ui_manager_switch(UI_PAGE_DEBUG);
 
     printf("=== 初始化UART4、UART5和UART6 ===\n");
 
