@@ -18,6 +18,7 @@ lv_obj_t* boot_page = NULL;
 lv_obj_t* cis_calib_page = NULL;
 lv_obj_t* page_debug = NULL;
 lv_obj_t* page_sensor = NULL;
+lv_obj_t* page_upgrade = NULL;
 
 ui_element_group_t all_ui_groups[] = {
     { page_01_main_obj, 0 },
@@ -51,6 +52,7 @@ static void destroy_current_page(void)
     case UI_PAGE_TIMESET: ui_page_11_timeset_destroy(); break;
     case UI_PAGE_DEBUG: ui_page_10_debug_destroy(); break;
     case UI_PAGE_SENSOR: ui_page_12_sensor_destroy(); break;
+    case UI_PAGE_UPGRADE: ui_page_13_upgrade_destroy(); break;
 
     }
 }
@@ -85,6 +87,7 @@ static void create_new_page(ui_page_t page)
     case UI_PAGE_DEBUG: ui_page_10_debug_create(); break;
     case UI_PAGE_TIMESET: ui_page_11_timeset_create(lv_scr_act()); break;
     case UI_PAGE_SENSOR: ui_page_12_sensor_create(lv_scr_act()); break;
+    case UI_PAGE_UPGRADE: ui_page_13_upgrade_create(lv_scr_act()); break;
     }
 }
 

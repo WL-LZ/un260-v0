@@ -10,4 +10,5 @@
 #include"page_08_boot.h"
 #include"page_11_timeset.h"
 #include"page_12_sensor.h"
+#include"page_13_upgrade.h"
 #endif // !LV_PAGE_DECLEAR_H

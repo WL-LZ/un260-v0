@@ -144,6 +144,44 @@ static void sensor_enter_btn_cb(lv_event_t* e)
     ui_manager_push_page(UI_PAGE_SENSOR);
 }
 
+static void upgrade_enter_btn_cb(lv_event_t* e)
+{
+    (void)e;
+    ui_manager_push_page(UI_PAGE_UPGRADE);
+}
+
+static void create_system_page_content(lv_obj_t* parent)
+{
+    lv_obj_t* btn_upgrade = lv_btn_create(parent);
+    lv_obj_set_size(btn_upgrade, 360, 90);
+    lv_obj_set_pos(btn_upgrade, 54, 70);
+    lv_obj_set_style_radius(btn_upgrade, 16, 0);
+    lv_obj_set_style_bg_color(btn_upgrade, lv_color_hex(0x1B86FF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_grad_color(btn_upgrade, lv_color_hex(0x36A2FF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_grad_dir(btn_upgrade, LV_GRAD_DIR_VER, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(btn_upgrade, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_color(btn_upgrade, lv_color_hex(0x0F5FB8), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_width(btn_upgrade, 16, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_opa(btn_upgrade, LV_OPA_40, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_color(btn_upgrade, lv_color_hex(0x7EADE2), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(btn_upgrade, lv_color_hex(0x0F6ED5), LV_PART_MAIN | LV_STATE_PRESSED);
+    lv_obj_set_style_bg_grad_color(btn_upgrade, lv_color_hex(0x278BE4), LV_PART_MAIN | LV_STATE_PRESSED);
+    lv_obj_set_style_translate_y(btn_upgrade, 2, LV_PART_MAIN | LV_STATE_PRESSED);
+    lv_obj_add_event_cb(btn_upgrade, upgrade_enter_btn_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t* lbl_upgrade = lv_label_create(btn_upgrade);
+    lv_label_set_text(lbl_upgrade, "U DISK UPGRADE");
+    lv_obj_set_style_text_font(lbl_upgrade, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(lbl_upgrade, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_center(lbl_upgrade);
+
+    lv_obj_t* hint = lv_label_create(parent);
+    lv_label_set_text(hint, "Insert U disk and tap button to open upgrade page");
+    lv_obj_set_style_text_font(hint, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_color(hint, lv_color_hex(0x6E7B88), 0);
+    lv_obj_set_pos(hint, 56, 175);
+}
+
 static void create_maintenance_page_content(lv_obj_t* parent)
 {
     btn_cis_calib = lv_btn_create(parent);
@@ -348,6 +386,7 @@ void ui_page_06_settings_create(lv_obj_t* parent)
 
     // 创建右侧子页面
     system_page = create_sub_page(settings_page, "System Settings");
+    create_system_page_content(system_page);
     maintenance_page = create_sub_page(settings_page, " ");
     create_maintenance_page_content(maintenance_page);
     user_page = create_sub_page(settings_page, "User Settings");

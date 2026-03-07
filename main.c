@@ -1017,7 +1017,7 @@ int main(void) {
 
     lv_port_disp_init();
     lv_port_indev_init();
-    ui_manager_switch(UI_PAGE_DEBUG);
+    ui_manager_switch(UI_PAGE_BOOT);
 
     printf("=== 初始化UART4、UART5和UART6 ===\n");
 
