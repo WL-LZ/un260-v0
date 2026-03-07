@@ -943,6 +943,26 @@ void PCCmdHandle(void)
             }
                 break;
             }
+
+        /* ================== 0xA1 主控升级状态 ================== */
+        case 0xA1:
+        {
+            if (len < 6) break;
+            uint8_t res = buf[4];
+            ui_page_14_main_upgrade_on_reply(0xA1, res);
+            uart_printf(fd6, "0xA1 res=0x%02X\n", res);
+            break;
+        }
+
+        /* ================== 0xB0 图像升级状态 ================== */
+        case 0xB0:
+        {
+            if (len < 6) break;
+            uint8_t res = buf[4];
+            ui_page_15_image_upgrade_on_reply(0xB0, res);
+            uart_printf(fd6, "0xB0 res=0x%02X\n", res);
+            break;
+        }
         
         default:
             uart_printf(fd6, "Unknown command 0x%02X\n", cmd);
@@ -1017,7 +1037,7 @@ int main(void) {
 
     lv_port_disp_init();
     lv_port_indev_init();
-    ui_manager_switch(UI_PAGE_BOOT);
+    ui_manager_switch(UI_PAGE_LIST);
 
     printf("=== 初始化UART4、UART5和UART6 ===\n");
 

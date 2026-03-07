@@ -11,4 +11,7 @@
 #include"page_11_timeset.h"
 #include"page_12_sensor.h"
 #include"page_13_upgrade.h"
+#include"page_14_main_upgrade.h"
+#include"page_15_image_upgrade.h"
+#include"page_16_ui_upgrade.h"
 #endif // !LV_PAGE_DECLEAR_H

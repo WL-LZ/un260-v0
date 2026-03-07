@@ -53,6 +53,9 @@ static void destroy_current_page(void)
     case UI_PAGE_DEBUG: ui_page_10_debug_destroy(); break;
     case UI_PAGE_SENSOR: ui_page_12_sensor_destroy(); break;
     case UI_PAGE_UPGRADE: ui_page_13_upgrade_destroy(); break;
+    case UI_PAGE_MAIN_UPGRADE: ui_page_14_main_upgrade_destroy(); break;
+    case UI_PAGE_IMAGE_UPGRADE: ui_page_15_image_upgrade_destroy(); break;
+    case UI_PAGE_UI_UPGRADE: ui_page_16_ui_upgrade_destroy(); break;
 
     }
 }
@@ -88,6 +91,9 @@ static void create_new_page(ui_page_t page)
     case UI_PAGE_TIMESET: ui_page_11_timeset_create(lv_scr_act()); break;
     case UI_PAGE_SENSOR: ui_page_12_sensor_create(lv_scr_act()); break;
     case UI_PAGE_UPGRADE: ui_page_13_upgrade_create(lv_scr_act()); break;
+    case UI_PAGE_MAIN_UPGRADE: ui_page_14_main_upgrade_create(lv_scr_act()); break;
+    case UI_PAGE_IMAGE_UPGRADE: ui_page_15_image_upgrade_create(lv_scr_act()); break;
+    case UI_PAGE_UI_UPGRADE: ui_page_16_ui_upgrade_create(lv_scr_act()); break;
     }
 }
 
