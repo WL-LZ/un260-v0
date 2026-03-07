@@ -220,8 +220,7 @@ static void upgrade_ui_enter_waiting(void) //进入升级等待界面（圆环�
     if (g_upgrade_btn) lv_obj_add_state(g_upgrade_btn, LV_STATE_DISABLED);
     if (g_esc_btn)     lv_obj_add_state(g_esc_btn, LV_STATE_DISABLED);
 
-    if (upgrade_hint_label && lv_obj_is_valid(upgrade_hint_label)) {
-        lv_label_set_text(upgrade_hint_label, "Upgrading... please wait.");
+    if (upgrade_hint_label && lv_obj_is_valid(upgrade_hint_labe_text(upgrade_hint_label, "Upgrading... please wait.");
         lv_obj_set_style_text_color(upgrade_hint_label, lv_color_hex(0x1F9D55), 0);
     }
 
