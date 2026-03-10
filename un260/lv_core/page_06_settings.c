@@ -47,6 +47,19 @@ static lv_obj_t* maintenance_page = NULL;
 static lv_obj_t* user_page = NULL;
 static lv_obj_t* version_page = NULL;
 static lv_obj_t* data_collection_page = NULL;
+//数据采集
+static lv_obj_t* dc_btn_all = NULL;
+static lv_obj_t* dc_btn_false = NULL;
+static lv_obj_t* dc_btn_start = NULL;
+
+static lv_obj_t* dc_label_all = NULL;
+static lv_obj_t* dc_label_false = NULL;
+static lv_obj_t* dc_check_all = NULL;
+static lv_obj_t* dc_check_false = NULL;
+
+static lv_obj_t* dc_mode_value_label = NULL;
+static lv_obj_t* dc_pcs_label = NULL;
+static lv_obj_t* dc_status_label = NULL;
 
 /* 当前菜单索引 */
 static int current_menu_index = -1;
@@ -57,7 +70,12 @@ static int current_menu_index = -1;
 static void menu_btn_event_cb(lv_event_t* e);
 static void page_06_update_menu_state(int index);
 static void page_06_switch_sub_page(int index);
-
+//数据采集
+static void create_data_collection_page_content(lv_obj_t* parent);
+static void data_collect_mode_btn_event_cb(lv_event_t* e);
+static void data_collect_start_btn_event_cb(lv_event_t* e);
+static void update_data_collect_btn_style(lv_obj_t* btn, lv_obj_t* label, lv_obj_t* check, bool selected);
+static const char* get_data_collect_mode_name(data_collect_mode_t mode);
 /* =========================
  * UI元素定义（使用ui_element_t结构）
  * ========================= */
@@ -207,9 +225,190 @@ static void create_maintenance_page_content(lv_obj_t* parent)
     lv_label_set_text(label_3, "SENSOR PARAMETERS");
     lv_obj_center(label_3);
 }
+//数据采集
+static const char* get_data_collect_mode_name(data_collect_mode_t mode)
+{
+    switch (mode) {
+    case DATA_COLLECT_MODE_ALL:
+        return "ALL DATA";
+    case DATA_COLLECT_MODE_FALSE:
+        return "ERROR DATA";
+    default:
+        return " ";
+    }
+}
+
+static void update_data_collect_btn_style(lv_obj_t* btn, lv_obj_t* label, lv_obj_t* check, bool selected)
+{
+    if (!btn || !label || !check) return;
+
+    lv_obj_set_style_bg_color(btn,
+        selected ? lv_color_make(60, 120, 240) : lv_color_make(20, 190, 170), 0);
+    lv_obj_set_style_border_width(btn, 0, 0);
+    lv_obj_set_style_radius(btn, 12, 0);
+
+    lv_obj_set_style_text_color(label, lv_color_white(), 0);
+    lv_obj_set_style_text_color(check, lv_color_white(), 0);
+
+    lv_label_set_text(check, selected ? LV_SYMBOL_OK : "");
+    lv_obj_align(check, LV_ALIGN_RIGHT_MID, -16, 0);
+}
+
+void page_06_data_collection_refresh(void)
+{
+    if (!data_collection_page) return;
+
+    update_data_collect_btn_style(
+        dc_btn_all, dc_label_all, dc_check_all,
+        g_data_collect_mode == DATA_COLLECT_MODE_ALL);
+
+    update_data_collect_btn_style(
+        dc_btn_false, dc_label_false, dc_check_false,
+        g_data_collect_mode == DATA_COLLECT_MODE_FALSE);
+
+    if (dc_mode_value_label) {
+        lv_label_set_text_fmt(dc_mode_value_label, "%s", get_data_collect_mode_name(g_data_collect_mode));
+    }
+
+    if (dc_pcs_label) {
+        lv_label_set_text_fmt(dc_pcs_label, "PCS:%d", g_data_collect_pcs);
+    }
+
+    if (dc_status_label) {
+        lv_label_set_text(dc_status_label, g_data_collect_status);
+    }
+}
+
+static void data_collect_mode_btn_event_cb(lv_event_t* e)
+{
+    uint8_t sub = (uint8_t)(uintptr_t)lv_event_get_user_data(e);
+
+    if (sub == 0x01) {
+        g_data_collect_mode = DATA_COLLECT_MODE_ALL;
+        snprintf(g_data_collect_status, sizeof(g_data_collect_status),
+                 "Requesting ALL DATA collection mode...");
+    } else if (sub == 0x02) {
+        g_data_collect_mode = DATA_COLLECT_MODE_FALSE;
+        snprintf(g_data_collect_status, sizeof(g_data_collect_status),
+                 "Requesting FALSE REPORT collection mode...");
+    } else {
+        return;
+    }
+
+    g_data_collect_pcs = 0;
+    page_06_data_collection_refresh();
+    send_command(fd4, 0xC0, &sub, 1);
+}
+
+static void data_collect_start_btn_event_cb(lv_event_t* e)
+{
+    (void)e;
+
+    if (g_data_collect_mode == DATA_COLLECT_MODE_NONE) {
+        snprintf(g_data_collect_status, sizeof(g_data_collect_status),
+                 "Please select a collection mode first.");
+        page_06_data_collection_refresh();
+        return;
+    }
+
+    uint8_t start_cmd = 0x01;
+    g_data_collect_pcs = 0;
+    snprintf(g_data_collect_status, sizeof(g_data_collect_status),
+             "Counting command sent. Waiting for controller reply...");
+    page_06_data_collection_refresh();
+    send_command(fd4, 0x0A, &start_cmd, 1);
+}
+
+static lv_obj_t* create_dc_mode_button(lv_obj_t* parent,
+                                       lv_coord_t x, lv_coord_t y,
+                                       const char* text,
+                                       lv_event_cb_t cb,
+                                       uint8_t sub,
+                                       lv_obj_t** out_label,
+                                       lv_obj_t** out_check)
+{
+    lv_obj_t* btn = lv_btn_create(parent);
+    lv_obj_set_size(btn, 360, 54);
+    lv_obj_set_pos(btn, x, y);
+    lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_event_cb(btn, cb, LV_EVENT_CLICKED, (void*)(uintptr_t)sub);
+
+    lv_obj_t* label = lv_label_create(btn);
+    lv_label_set_text(label, text);
+    lv_obj_align(label, LV_ALIGN_LEFT_MID, 18, 0);
+
+    lv_obj_t* check = lv_label_create(btn);
+    lv_label_set_text(check, "");
+    lv_obj_align(check, LV_ALIGN_RIGHT_MID, -16, 0);
+
+    if (out_label) *out_label = label;
+    if (out_check) *out_check = check;
+
+    return btn;
+}
+
+static void create_data_collection_page_content(lv_obj_t* parent)
+{
+    /* 左上两个模式按钮 */
+    dc_btn_all = create_dc_mode_button(parent, 40, 28,"ALL DATA",data_collect_mode_btn_event_cb, 0x01,&dc_label_all, &dc_check_all);
+    dc_btn_false = create_dc_mode_button(parent, 40, 100,"ERROR REPORT",data_collect_mode_btn_event_cb, 0x02,&dc_label_false, &dc_check_false);
+
+    /* 右上开始按钮 */
+    dc_btn_start = lv_btn_create(parent);
+    lv_obj_set_size(dc_btn_start, 210, 86);
+    lv_obj_set_pos(dc_btn_start, 520, 42);
+    lv_obj_clear_flag(dc_btn_start, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_color(dc_btn_start, lv_color_make(0, 180, 220), 0);
+    lv_obj_set_style_border_width(dc_btn_start, 0, 0);
+    lv_obj_set_style_radius(dc_btn_start, 16, 0);
+    lv_obj_add_event_cb(dc_btn_start, data_collect_start_btn_event_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t* start_label = lv_label_create(dc_btn_start);
+    lv_label_set_text(start_label, "START");
+    lv_obj_set_style_text_font(start_label, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_color(start_label, lv_color_white(), 0);
+    lv_obj_center(start_label);
+
+    /* 下方状态卡片 */
+    lv_obj_t* card = lv_obj_create(parent);
+    lv_obj_set_size(card, 900, 165);
+    lv_obj_set_pos(card, 40, 185);
+    lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_radius(card, 10, 0);
+    lv_obj_set_style_border_width(card, 0, 0);
+    lv_obj_set_style_bg_color(card, lv_color_make(248, 248, 248), 0);
+
+    lv_obj_t* mode_title = lv_label_create(card);
+    lv_label_set_text(mode_title, "COLLECTION MODE");
+    lv_obj_set_style_text_color(mode_title, lv_color_make(0, 180, 220), 0);
+    lv_obj_set_style_text_font(mode_title, &lv_font_montserrat_14, 0);
+    lv_obj_set_pos(mode_title, 22, 18);
+
+    dc_mode_value_label = lv_label_create(card);
+    lv_label_set_text(dc_mode_value_label, "--");
+    lv_obj_set_style_text_font(dc_mode_value_label, &lv_font_montserrat_18, 0);
+    lv_obj_set_pos(dc_mode_value_label, 22, 48);
+
+    dc_pcs_label = lv_label_create(card);
+    lv_label_set_text(dc_pcs_label, "PCS:0");
+    lv_obj_set_style_text_font(dc_pcs_label, &lv_font_montserrat_32, 0);
+    lv_obj_set_style_text_color(dc_pcs_label, lv_color_make(0, 150, 190), 0);
+    lv_obj_align(dc_pcs_label, LV_ALIGN_TOP_MID, 0, 12);
+
+    dc_status_label = lv_label_create(card);
+    lv_label_set_text(dc_status_label, "Please select a collection mode.");
+    lv_obj_set_width(dc_status_label, 820);
+    lv_label_set_long_mode(dc_status_label, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_align(dc_status_label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_font(dc_status_label, &lv_font_montserrat_22, 0);
+    lv_obj_align(dc_status_label, LV_ALIGN_CENTER, 0, 22);
+
+    page_06_data_collection_refresh();
+}
 /* =========================
  * 菜单状态刷新
  * ========================= */
+
 static void page_06_update_menu_state(int index)
 {
     lv_obj_t* btns[] = {
@@ -343,9 +542,11 @@ static lv_obj_t* create_sub_page(lv_obj_t* parent, const char* text)
     lv_obj_t* esc_label = lv_label_create(esc_btn);
     lv_label_set_text(esc_label, "ESC");
     lv_obj_center(esc_label);
-    lv_obj_t* label = lv_label_create(page);
-    lv_label_set_text(label, text);
-    lv_obj_center(label);
+    if (text && text[0] != '\0') {
+        lv_obj_t* label = lv_label_create(page);
+        lv_label_set_text(label, text);
+        lv_obj_center(label);
+    }
 
 
     return page;
@@ -379,7 +580,8 @@ void ui_page_06_settings_create(lv_obj_t* parent)
     create_maintenance_page_content(maintenance_page);
     user_page = create_sub_page(settings_page, "User Settings");
     version_page = create_sub_page(settings_page, " ");
-    data_collection_page = create_sub_page(settings_page, "Data Collection Settings");
+    data_collection_page = create_sub_page(settings_page, "");
+    create_data_collection_page_content(data_collection_page);
     create_version_page(version_page);
 
     // 默认显示 Maintenance 页面（索引1）
@@ -413,4 +615,16 @@ void ui_page_06_settings_destroy(void)
     current_menu_index = -1;
 
     btn_upgrade_menu = NULL;
+    dc_btn_all = NULL;
+    dc_btn_false = NULL;
+    dc_btn_start = NULL;
+
+    dc_label_all = NULL;
+    dc_label_false = NULL;
+    dc_check_all = NULL;
+    dc_check_false = NULL;
+
+    dc_mode_value_label = NULL;
+    dc_pcs_label = NULL;
+    dc_status_label = NULL;
 }

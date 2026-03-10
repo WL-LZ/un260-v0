@@ -11,11 +11,15 @@
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_core/lv_page_manager.h"
 
+
 Machine_work_code_t Machine_work_code={0};
 cis_calib_state_t cis_state = CIS_CALIB_IDLE;
 cb_calib_state_t cb_state = CB_CALIB_IDLE;
 calib_target_t g_calib_target = CALIB_TARGET_CIS;
 uint32_t g_handshake_tick = 0;
+data_collect_mode_t g_data_collect_mode = DATA_COLLECT_MODE_NONE;
+uint16_t g_data_collect_pcs = 0;
+char g_data_collect_status[128] = "Please select a collection mode.";
 curr_query_state_t curr_query_state = CURR_QUERY_IDLE;
 boot_stage_t g_boot_stage = BOOT_STAGE_HANDSHAKE;
 

@@ -470,13 +470,23 @@ void PCCmdHandle(void)
             if (type == 0x01) {
                 if (val == 0x01) {
                     hide_counting_error_popup();
-                    if (!g_cb_running) {
+
+                    if (g_data_collect_mode != DATA_COLLECT_MODE_NONE) {
+                        snprintf(g_data_collect_status,
+                                sizeof(g_data_collect_status),
+                                "Counting started...");
+                        page_06_data_collection_refresh();
+                    }
+                    else if (!g_cb_running) {
                         ui_manager_switch(UI_PAGE_MAIN);
-                    }                  
-                } else {
+                    }
+                }else {
                     show_counting_error_popup(type, val);
-                    uart_printf(fd6, "0x0A start fail (normal): val=%02X desc=%s\n",
-                                val, get_counting_error_desc(type, val));
+                    uart_printf(fd6, "0x0A start fail (normal): val=%02X desc=%s\n",val, get_counting_error_desc(type, val));
+                    if (g_data_collect_mode != DATA_COLLECT_MODE_NONE) {
+                        snprintf(g_data_collect_status,sizeof(g_data_collect_status),"Start failed: %s",get_counting_error_desc(type, val));
+                        page_06_data_collection_refresh();
+                    }
                 }
             } else if (type == 0x02) {
                 show_counting_error_popup(type, val);
@@ -1058,7 +1068,52 @@ void PCCmdHandle(void)
             uart_printf(fd6, "0xB0 res=0x%02X\n", res);
             break;
         }
-        
+        case 0xC0:
+        {
+            if (len < 5) break;
+
+            switch (buf[4]) {
+            case 0x01:
+                snprintf(g_data_collect_status, sizeof(g_data_collect_status),
+                        "ALL DATA collection mode ready.");
+                break;
+
+            case 0x02:
+                snprintf(g_data_collect_status, sizeof(g_data_collect_status),
+                        "Collection completed. Data can be copied from USB.");
+                break;
+
+            case 0x03:
+                snprintf(g_data_collect_status, sizeof(g_data_collect_status),
+                        "FALSE REPORT collection mode ready.");
+                break;
+
+            case 0x05:
+                snprintf(g_data_collect_status, sizeof(g_data_collect_status),
+                        "USB ready. You can start counting.");
+                break;
+
+            case 0x06:
+                snprintf(g_data_collect_status, sizeof(g_data_collect_status),
+                        "USB not ready. Collection mode error.");
+                break;
+
+            case 0xFF:
+                g_data_collect_mode = DATA_COLLECT_MODE_NONE;
+                g_data_collect_pcs = 0;
+                snprintf(g_data_collect_status, sizeof(g_data_collect_status),
+                        "Collection mode exited.");
+                break;
+
+            default:
+                snprintf(g_data_collect_status, sizeof(g_data_collect_status),
+                        "Collection reply: 0x%02X", buf[4]);
+                break;
+            }
+
+            page_06_data_collection_refresh();
+            break;
+        }
         default:
             uart_printf(fd6, "Unknown command 0x%02X\n", cmd);
             break;
