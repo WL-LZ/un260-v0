@@ -8,15 +8,14 @@ typedef struct {
     const char* title;
     uint8_t cmd_g;
     uint8_t forward_cmd[2];
-    uint8_t reverse_cmd[2];
     uint8_t stop_cmd[2];
     lv_obj_t* status_label;
 } motor_item_t;
 
 static motor_item_t motors[] = {
-    { "LEVEL 1 MOTOR", 0x52, {0x01, 0x01}, {0x02, 0x01}, {0x00, 0x00}, NULL },
-    { "LEVEL 2 MOTOR", 0x53, {0x01, 0x01}, {0x02, 0x01}, {0x00, 0x00}, NULL },
-    { "IMPELLER MOTOR", 0x54, {0x01, 0x01}, {0x01, 0x01}, {0x01, 0x02}, NULL },
+    { "LEVEL 1 MOTOR", 0x52, {0x01, 0x01}, {0x00, 0x00}, NULL },
+    { "LEVEL 2 MOTOR", 0x53, {0x01, 0x01}, {0x00, 0x00}, NULL },
+    { "IMPELLER MOTOR", 0x54, {0x01, 0x01}, {0x01, 0x02}, NULL },
 };
 
 static void motor_status_set(motor_item_t* item, const char* status)
@@ -55,16 +54,7 @@ static void motor_forward_cb(lv_event_t* e)
     motor_status_set(item, "FORWARD");
 }
 
-static void motor_reverse_cb(lv_event_t* e)
-{
-    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
 
-    motor_item_t* item = (motor_item_t*)lv_event_get_user_data(e);
-    if (!item) return;
-
-    send_command(fd4, item->cmd_g, item->reverse_cmd, 2);
-    motor_status_set(item, "REVERSE");
-}
 
 static void motor_stop_cb(lv_event_t* e)
 {
@@ -76,7 +66,6 @@ static void motor_stop_cb(lv_event_t* e)
     send_command(fd4, item->cmd_g, item->stop_cmd, 2);
     motor_status_set(item, "STOP");
 }
-
 
 
 static lv_obj_t* create_motor_card(lv_obj_t* parent, motor_item_t* item, lv_coord_t x, lv_coord_t y)
@@ -104,8 +93,8 @@ static lv_obj_t* create_motor_card(lv_obj_t* parent, motor_item_t* item, lv_coor
     lv_obj_align(item->status_label, LV_ALIGN_TOP_MID, 0, 32);
 
     lv_obj_t* btn_forward = lv_btn_create(card);
-    lv_obj_set_size(btn_forward, 150, 40);
-    lv_obj_align(btn_forward, LV_ALIGN_CENTER, 0, -20);
+    lv_obj_set_size(btn_forward, 150, 44);
+    lv_obj_align(btn_forward, LV_ALIGN_CENTER, 0, 10);
     lv_obj_set_style_radius(btn_forward, 10, 0);
     lv_obj_set_style_bg_color(btn_forward, lv_color_hex(0x3EC1F7), 0);
     lv_obj_add_event_cb(btn_forward, motor_forward_cb, LV_EVENT_CLICKED, item);
@@ -115,21 +104,9 @@ static lv_obj_t* create_motor_card(lv_obj_t* parent, motor_item_t* item, lv_coor
     lv_obj_set_style_text_font(forward_label, &lv_font_montserrat_16, 0);
     lv_obj_center(forward_label);
 
-    lv_obj_t* btn_reverse = lv_btn_create(card);
-    lv_obj_set_size(btn_reverse, 150, 40);
-    lv_obj_align(btn_reverse, LV_ALIGN_CENTER, 0, 28);
-    lv_obj_set_style_radius(btn_reverse, 10, 0);
-    lv_obj_set_style_bg_color(btn_reverse, lv_color_hex(0x6CC070), 0);
-    lv_obj_add_event_cb(btn_reverse, motor_reverse_cb, LV_EVENT_CLICKED, item);
-
-    lv_obj_t* reverse_label = lv_label_create(btn_reverse);
-    lv_label_set_text(reverse_label, "REVERSE");
-    lv_obj_set_style_text_font(reverse_label, &lv_font_montserrat_16, 0);
-    lv_obj_center(reverse_label);
-
     lv_obj_t* btn_stop = lv_btn_create(card);
-    lv_obj_set_size(btn_stop, 150, 40);
-    lv_obj_align(btn_stop, LV_ALIGN_CENTER, 0, 76);
+    lv_obj_set_size(btn_stop, 150, 44);
+    lv_obj_align(btn_stop, LV_ALIGN_CENTER, 0, 64);
     lv_obj_set_style_radius(btn_stop, 10, 0);
     lv_obj_set_style_bg_color(btn_stop, lv_color_hex(0xE95F5F), 0);
     lv_obj_add_event_cb(btn_stop, motor_stop_cb, LV_EVENT_CLICKED, item);
