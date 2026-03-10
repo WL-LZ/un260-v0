@@ -121,7 +121,7 @@ void boot_send_next_selftest(void);
 // CIS校准命令
 void boot_handshake_waiting_log_reset(void);
 
-#define BOOT_HANDSHAKE_MAX_WAIT_MS   40000
+#define BOOT_HANDSHAKE_MAX_WAIT_MS   100000
 #define BOOT_SELFTEST_TIMEOUT_MS      3000
 #define BOOT_FAULT_QUERY_WAIT_MS      1000
 
