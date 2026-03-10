@@ -84,6 +84,20 @@ typedef enum {
 } cis_calib_state_t;
 extern cis_calib_state_t cis_state;
 
+typedef enum {
+    CB_CALIB_IDLE = 0,
+    CB_CALIB_RUNNING,
+    CB_CALIB_SUCCESS,
+    CB_CALIB_FAIL_IR
+} cb_calib_state_t;
+extern cb_calib_state_t cb_state;
+extern uint8_t g_cb_running; //判断是否需要回到主界面
+typedef enum {
+    CALIB_TARGET_CIS = 0,
+    CALIB_TARGET_CB
+} calib_target_t;
+extern calib_target_t g_calib_target;
+extern uint8_t g_cb_running;
 /* 获取币种状态 */
 typedef enum {
     CURR_QUERY_IDLE = 0,

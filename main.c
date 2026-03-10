@@ -470,7 +470,9 @@ void PCCmdHandle(void)
             if (type == 0x01) {
                 if (val == 0x01) {
                     hide_counting_error_popup();
-                    ui_manager_switch(UI_PAGE_MAIN);
+                    if (!g_cb_running) {
+                        ui_manager_switch(UI_PAGE_MAIN);
+                    }                  
                 } else {
                     show_counting_error_popup(type, val);
                     uart_printf(fd6, "0x0A start fail (normal): val=%02X desc=%s\n",
@@ -727,13 +729,22 @@ void PCCmdHandle(void)
         {
             if (len < 5) break;
 
-            switch (buf[4]) {
-            case 0x01: cis_state = CIS_CALIB_RUNNING; break;
-            case 0x02: cis_state = CIS_CALIB_SUCCESS; break;
-            case 0x03: cis_state = CIS_CALIB_FAIL_UPPER; break;
-            case 0x04: cis_state = CIS_CALIB_FAIL_LOWER; break;
-            case 0x05: cis_state = CIS_CALIB_FAIL_IR; break;
-            default:   break;
+            if (g_calib_target == CALIB_TARGET_CB) {
+                switch (buf[4]) {
+                case 0x01: cb_state = CB_CALIB_RUNNING; break;
+                case 0x02: cb_state = CB_CALIB_SUCCESS; break;
+                case 0x05: cb_state = CB_CALIB_FAIL_IR; break;
+                default:   break;
+                }
+            } else {
+                switch (buf[4]) {
+                case 0x01: cis_state = CIS_CALIB_RUNNING; break;
+                case 0x02: cis_state = CIS_CALIB_SUCCESS; break;
+                case 0x03: cis_state = CIS_CALIB_FAIL_UPPER; break;
+                case 0x04: cis_state = CIS_CALIB_FAIL_LOWER; break;
+                case 0x05: cis_state = CIS_CALIB_FAIL_IR; break;
+                default:   break;
+                }
             }
 
             cis_calib_ui_refresh();

@@ -13,6 +13,7 @@ static lv_obj_t* btn_cis_calib = NULL;
 static lv_obj_t* cis_page = NULL;
 static lv_obj_t* cis_status_label = NULL;
 static lv_obj_t* cis_start_btn = NULL;
+static lv_obj_t* cb_start_btn = NULL;
 /*CIS校准页面*/
 void cis_enter_btn_cb(lv_event_t* e)
 {
@@ -21,8 +22,24 @@ void cis_enter_btn_cb(lv_event_t* e)
 static void cis_start_btn_cb(lv_event_t* e)
 {
     uint8_t sub = 0x01;
+
+    g_calib_target = CALIB_TARGET_CIS;
+    cis_state = CIS_CALIB_RUNNING;
+    cis_calib_ui_refresh();
+
     send_command(fd4, 0x5B, &sub, 1);
 }
+static void cb_start_btn_cb(lv_event_t* e)
+{
+    uint8_t sub = 0x01;
+
+    g_calib_target = CALIB_TARGET_CB;
+    cb_state = CB_CALIB_RUNNING;
+    cis_calib_ui_refresh();
+    g_cb_running = 1;
+    send_command(fd4, 0x5F, &sub, 1);
+}
+
 void ui_page_cis_calib_create(lv_obj_t* parent)
 {
     if (cis_page) return;
@@ -50,13 +67,22 @@ void ui_page_cis_calib_create(lv_obj_t* parent)
     /* 开始校验按钮 */
     cis_start_btn = lv_btn_create(cis_page);
     lv_obj_set_size(cis_start_btn, 300, 100);
-    lv_obj_center(cis_start_btn);
+    lv_obj_set_pos(cis_start_btn, 320, 150);
     lv_obj_add_event_cb(cis_start_btn, cis_start_btn_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t* start_label = lv_label_create(cis_start_btn);
-    lv_label_set_text(start_label, "Start Calibration");
+    lv_label_set_text(start_label, "CIS Calibration");
     lv_obj_center(start_label);
 
+
+    cb_start_btn = lv_btn_create(cis_page);
+    lv_obj_set_size(cb_start_btn, 300, 100);
+    lv_obj_set_pos(cb_start_btn, 660, 150);
+    lv_obj_add_event_cb(cb_start_btn, cb_start_btn_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t* cb_label = lv_label_create(cb_start_btn);
+    lv_label_set_text(cb_label, "Color Balance");
+    lv_obj_center(cb_label);
     /* 状态显示 */
     cis_status_label = lv_label_create(cis_page);
     lv_label_set_text(cis_status_label, "Idle");
@@ -69,7 +95,8 @@ void ui_page_cis_calib_destroy(void)
     cis_page = NULL;
     cis_status_label = NULL;
     cis_start_btn = NULL;
-    
+    cb_start_btn = NULL;
+    g_cb_running = 0;
    // /* 恢复主页面的金额详情容器显示（如果主页面存在） */
    // if (page_01_main_scroll_container && lv_obj_is_valid(page_01_main_scroll_container)) {
    //     lv_obj_clear_flag(page_01_main_scroll_container, LV_OBJ_FLAG_HIDDEN);
@@ -84,14 +111,36 @@ void cis_calib_ui_refresh(void)
     const char* text = "Idle";
 
     switch (cis_state) {
+if (g_calib_target == CALIB_TARGET_CB) {
+    switch (cb_state) {
+    case CB_CALIB_RUNNING:
+        text = "Color Balance Started";
+        color = lv_color_make(0, 120, 255);
+        break;
+
+    case CB_CALIB_SUCCESS:
+        text = "Color Balance Success";
+        color = lv_color_make(0, 180, 0);
+        break;
+
+    case CB_CALIB_FAIL_IR:
+        text = "Color Balance Fail (IR)";
+        color = lv_color_make(255, 0, 0);
+        break;
+
+    default:
+        break;
+    }
+} else {
+    switch (cis_state) {
     case CIS_CALIB_RUNNING:
         text = "Calibration Started";
-        color = lv_color_make(0, 120, 255);   // 蓝色
+        color = lv_color_make(0, 120, 255);
         break;
 
     case CIS_CALIB_SUCCESS:
         text = "Calibration Success";
-        color = lv_color_make(0, 180, 0);     // 绿色
+        color = lv_color_make(0, 180, 0);
         break;
 
     case CIS_CALIB_FAIL_UPPER:
@@ -111,6 +160,8 @@ void cis_calib_ui_refresh(void)
 
     default:
         break;
+    }
+}
     }
 
     lv_label_set_text(cis_status_label, text);

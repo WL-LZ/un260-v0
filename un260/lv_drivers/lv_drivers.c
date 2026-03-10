@@ -13,13 +13,15 @@
 
 Machine_work_code_t Machine_work_code={0};
 cis_calib_state_t cis_state = CIS_CALIB_IDLE;
+cb_calib_state_t cb_state = CB_CALIB_IDLE;
+calib_target_t g_calib_target = CALIB_TARGET_CIS;
 uint32_t g_handshake_tick = 0;
 curr_query_state_t curr_query_state = CURR_QUERY_IDLE;
 boot_stage_t g_boot_stage = BOOT_STAGE_HANDSHAKE;
 
 uint32_t g_boot_stage_tick = 0;
 uint32_t g_handshake_start_tick = 0;
-
+uint8_t g_cb_running = 0;
 static bool g_boot_waiting_log_shown = false;
 
 
