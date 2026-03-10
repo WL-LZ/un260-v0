@@ -5,7 +5,6 @@
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_refre/lvgl_refre.h"
 
-
 typedef struct {
     lv_obj_t* switch_container;
     lv_obj_t* switch_knob;
@@ -21,6 +20,85 @@ static batch_switch_t batch_switch = {
 };
 
 void set_batch_switch_state(bool enable);
+
+static lv_obj_t* g_boot_err_mask = NULL;
+static lv_obj_t* g_boot_err_popup = NULL;
+static lv_obj_t* g_boot_err_info_label = NULL;
+
+void hide_boot_selftest_error_popup(void)
+{
+    if (g_boot_err_popup && lv_obj_is_valid(g_boot_err_popup)) {
+        lv_obj_del(g_boot_err_popup);
+    }
+    g_boot_err_popup = NULL;
+    g_boot_err_info_label = NULL;
+
+    if (g_boot_err_mask && lv_obj_is_valid(g_boot_err_mask)) {
+        lv_obj_del(g_boot_err_mask);
+    }
+    g_boot_err_mask = NULL;
+}
+
+static void boot_selftest_error_confirm_cb(lv_event_t* e)
+{
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+
+    hide_boot_selftest_error_popup();
+    ui_manager_switch(UI_PAGE_SENSOR);
+}
+
+void show_boot_selftest_error_popup(const char* msg)
+{
+    if (g_boot_err_popup && lv_obj_is_valid(g_boot_err_popup)) {
+        if (g_boot_err_info_label && lv_obj_is_valid(g_boot_err_info_label)) {
+            lv_label_set_text(g_boot_err_info_label, msg);
+        }
+        return;
+    }
+
+    lv_obj_t* scr = lv_scr_act();
+
+    g_boot_err_mask = lv_obj_create(scr);
+    lv_obj_remove_style_all(g_boot_err_mask);
+    lv_obj_set_size(g_boot_err_mask, 1280, 400);
+    lv_obj_set_style_bg_opa(g_boot_err_mask, LV_OPA_40, 0);
+    lv_obj_set_style_bg_color(g_boot_err_mask, lv_color_hex(0x000000), 0);
+
+    g_boot_err_popup = lv_obj_create(scr);
+    lv_obj_set_size(g_boot_err_popup, 700, 260);
+    lv_obj_center(g_boot_err_popup);
+    lv_obj_clear_flag(g_boot_err_popup, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_radius(g_boot_err_popup, 24, 0);
+    lv_obj_set_style_bg_color(g_boot_err_popup, lv_color_hex(0xF4F7FB), 0);
+    lv_obj_set_style_border_width(g_boot_err_popup, 2, 0);
+    lv_obj_set_style_border_color(g_boot_err_popup, lv_color_hex(0xD7DEE8), 0);
+
+    lv_obj_t* title = lv_label_create(g_boot_err_popup);
+    lv_label_set_text(title, "SELF-TEST ERROR");
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_color(title, lv_color_hex(0x2D3A4A), 0);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 22);
+
+    g_boot_err_info_label = lv_label_create(g_boot_err_popup);
+    lv_label_set_text(g_boot_err_info_label, msg);
+    lv_obj_set_width(g_boot_err_info_label, 620);
+    lv_label_set_long_mode(g_boot_err_info_label, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_align(g_boot_err_info_label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_font(g_boot_err_info_label, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(g_boot_err_info_label, lv_color_hex(0x3C4D61), 0);
+    lv_obj_align(g_boot_err_info_label, LV_ALIGN_TOP_MID, 0, 84);
+
+    lv_obj_t* ok_btn = lv_btn_create(g_boot_err_popup);
+    lv_obj_set_size(ok_btn, 180, 58);
+    lv_obj_align(ok_btn, LV_ALIGN_BOTTOM_MID, 0, -20);
+    lv_obj_set_style_radius(ok_btn, 16, 0);
+    lv_obj_add_event_cb(ok_btn, boot_selftest_error_confirm_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t* ok_label = lv_label_create(ok_btn);
+    lv_label_set_text(ok_label, "CONFIRM");
+    lv_obj_set_style_text_font(ok_label, &lv_font_montserrat_22, 0);
+    lv_obj_center(ok_label);
+}
 
 static void update_switch_visual(bool enable, bool animate) {
     lv_coord_t cont_w = lv_obj_get_width(batch_switch.switch_container);

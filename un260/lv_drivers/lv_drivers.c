@@ -17,9 +17,15 @@ uint32_t g_handshake_tick = 0;
 curr_query_state_t curr_query_state = CURR_QUERY_IDLE;
 boot_stage_t g_boot_stage = BOOT_STAGE_HANDSHAKE;
 
+uint32_t g_boot_stage_tick = 0;
+uint32_t g_handshake_start_tick = 0;
+
+static bool g_boot_waiting_log_shown = false;
+
 
 static int selftest_step = 0;   // 当前自检步骤索引
 static int selftest_total = 5;  // 总自检步骤数
+
 
  const char* g_currency_error_desc[0x32] = {
     [0x00] = "No Error",
@@ -225,42 +231,59 @@ void uart_printf(int fd, const char *fmt, ...) {
 void machine_handshake_send(void)
 {
     uint8_t sub = 0x01;
+    uint32_t now = custom_tick_get();
 
-    uart_printf(fd6, "[HS] Send handshake ATB\n");
+    if (Machine_Statue.g_handshake_state == HANDSHAKE_IDLE) {
+        g_handshake_start_tick = now;
+        bootlog_append("Machine starting...");
+        boot_waiting_anim_start();
+    }
+
     send_command(fd4, 0x01, &sub, 1);
 
     Machine_Statue.g_handshake_state = HANDSHAKE_SENT;
-    g_handshake_tick = custom_tick_get();
+    g_handshake_tick = now;
 }
-
 
 void boot_send_next_selftest(void)
 {
-    switch(selftest_step) {
+    g_boot_stage_tick = custom_tick_get();
+
+    switch (selftest_step) {
         case 0:
             bootlog_append("Sensor self-test running...");
-            send_command(fd4, 0x37, (uint8_t[]){0x01}, 1); // 传感器自检
+            send_command(fd4, 0x37, (uint8_t[]){0x01}, 1);
             break;
+
         case 1:
             bootlog_append("Motor self-test running...");
-            send_command(fd4, 0x37, (uint8_t[]){0x02}, 1); // 电机自检
+            send_command(fd4, 0x37, (uint8_t[]){0x02}, 1);
             break;
+
         case 2:
             bootlog_append("Electromagnet self-test running...");
-            send_command(fd4, 0x37, (uint8_t[]){0x03}, 1); // 电磁铁自检
+            send_command(fd4, 0x37, (uint8_t[]){0x03}, 1);
             break;
+
         case 3:
-            bootlog_append("Read Config Parameters...");
-            send_command(fd4, 0x37, (uint8_t[]){0x04}, 1); // 配置参数
+            bootlog_append("Read config parameters...");
+            send_command(fd4, 0x37, (uint8_t[]){0x04}, 1);
             break;
+
         case 4:
-            bootlog_append("Image Board self-test running...");
-            send_command(fd4, 0x37, (uint8_t[]){0x05}, 1); // 图像板自检
+            bootlog_append("Image board self-test running...");
+            send_command(fd4, 0x37, (uint8_t[]){0x05}, 1);
             break;
+
         default:
-   
             return;
     }
 
     selftest_step++;
+}
+
+
+void boot_handshake_waiting_log_reset(void)
+{
+    g_boot_waiting_log_shown = false;
 }

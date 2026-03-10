@@ -8,6 +8,9 @@
 #include "un260/lv_refre/lvgl_refre.h"
 #include "../aic_ui/aic_ui.h"
 #include "page_08_boot.h"
+static lv_timer_t* boot_waiting_timer = NULL;
+static lv_obj_t* boot_waiting_label = NULL;
+static uint8_t boot_waiting_dot_state = 0;
 ui_element_t page_08_curr_obj[] = {
     // 背景图
 
@@ -34,6 +37,73 @@ static lv_obj_t* boot_label = NULL;
 static lv_timer_t* boot_timer = NULL;
 static char boot_buf[BOOTLOG_BUFFER_SIZE];
 static int boot_line_index = 0;
+
+static void boot_waiting_timer_cb(lv_timer_t* timer)
+{
+    (void)timer;
+
+    if (boot_waiting_label == NULL) return;
+
+    switch (boot_waiting_dot_state)
+    {
+        case 0:
+            lv_label_set_text(boot_waiting_label, "Waiting for controller response.");
+            break;
+
+        case 1:
+            lv_label_set_text(boot_waiting_label, "Waiting for controller response..");
+            break;
+
+        default:
+            lv_label_set_text(boot_waiting_label, "Waiting for controller response...");
+            break;
+    }
+
+    boot_waiting_dot_state++;
+    if (boot_waiting_dot_state >= 3)
+        boot_waiting_dot_state = 0;
+}
+
+void boot_waiting_anim_start(void)
+{
+    if (boot_cont == NULL || boot_label == NULL) return;
+
+    if (boot_waiting_label == NULL) {
+        boot_waiting_label = lv_label_create(boot_cont);
+
+        lv_label_set_long_mode(boot_waiting_label, LV_LABEL_LONG_WRAP);
+        lv_obj_set_width(boot_waiting_label, BOOTLOG_CONT_W - 16);
+
+        lv_obj_set_style_text_color(boot_waiting_label, lv_color_make(85, 164, 85), 0);
+        lv_obj_set_style_text_font(boot_waiting_label, LV_FONT_DEFAULT, 0);
+        lv_coord_t line_h = lv_font_get_line_height(LV_FONT_DEFAULT);
+        lv_obj_align(boot_waiting_label, LV_ALIGN_TOP_LEFT, 8, 8 + line_h + 2);
+    }
+
+    boot_waiting_dot_state = 0;
+    lv_label_set_text(boot_waiting_label, "Waiting for controller response...");
+
+    if (boot_waiting_timer == NULL) {
+        boot_waiting_timer = lv_timer_create(boot_waiting_timer_cb, 500, NULL);
+    } else {
+        lv_timer_resume(boot_waiting_timer);
+    }
+}
+
+void boot_waiting_anim_stop(void)
+{
+    if (boot_waiting_timer) {
+        lv_timer_del(boot_waiting_timer);
+        boot_waiting_timer = NULL;
+    }
+
+    if (boot_waiting_label && lv_obj_is_valid(boot_waiting_label)) {
+        lv_obj_del(boot_waiting_label);
+    }
+    boot_waiting_label = NULL;
+
+    boot_waiting_dot_state = 0;
+}
 
 void bootlog_append(const char* text)
 {
@@ -158,7 +228,7 @@ void bootlog_start(lv_obj_t* parent)
 
     // 🔹 设置字体为绿色 (85,164,85)
     lv_obj_set_style_text_color(boot_label, lv_color_make(85, 164, 85), 0);
-
+    lv_obj_set_style_text_font(boot_label, LV_FONT_DEFAULT, 0);
     //boot_timer = lv_timer_create(boot_timer_cb, BOOTLOG_LINE_MS, NULL);
 }
 void bootlog_stop(void)
@@ -196,5 +266,5 @@ void ui_page_08_curr_destroy(void)
         lv_obj_del(boot_page);
         boot_page = NULL;
     }
-
+    boot_waiting_anim_stop();
 }

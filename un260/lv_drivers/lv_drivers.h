@@ -119,6 +119,15 @@ typedef enum {
 
 void boot_send_next_selftest(void);
 // CIS校准命令
+void boot_handshake_waiting_log_reset(void);
+
+#define BOOT_HANDSHAKE_MAX_WAIT_MS   40000
+#define BOOT_SELFTEST_TIMEOUT_MS      3000
+#define BOOT_FAULT_QUERY_WAIT_MS      1000
+
+extern uint32_t g_boot_stage_tick;
+extern uint32_t g_handshake_start_tick;
+
 #define CIS_Calib_cmd  0x01
 #ifdef __cplusplus
 }

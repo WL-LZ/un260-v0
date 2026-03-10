@@ -15,4 +15,6 @@ void hide_counting_error_popup(void);
 void counting_error_confirm_cb(lv_event_t* e);
 void show_counting_error_popup(uint8_t type, uint8_t code);
 const char* get_counting_error_desc(uint8_t type, uint8_t code);
+void show_boot_selftest_error_popup(const char* msg);
+void hide_boot_selftest_error_popup(void);
 #endif // !LV_COMPONENTS_H

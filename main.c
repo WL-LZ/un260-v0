@@ -21,7 +21,6 @@
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_system/platform_app.h"
 #include <stdlib.h>
-
 //-------------------- UART 打印函数 --------------------
 
 //-------------------- 全局变量 --------------------
@@ -47,9 +46,53 @@ static int gPCRecvLen = 0;
 static int gPCRecvSig = 0;        // 是否正在接收一帧
 static int gPCRecvComplete = 0;   // 一帧接收完成标志
 
+
 // 添加互斥锁保护共享变量
 static pthread_mutex_t recv_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static uint8_t g_boot_selftest_result[5] = {0};
+static void boot_selftest_result_reset(void)
+{
+    memset(g_boot_selftest_result, 0, sizeof(g_boot_selftest_result));
+}
+
+static void build_boot_selftest_message(char* msg, size_t msg_size)
+{
+    if (msg == NULL || msg_size == 0) return;
+
+    msg[0] = '\0';
+
+    strncat(msg, "Self-test abnormal items:\n", msg_size - strlen(msg) - 1);
+
+    if (g_boot_selftest_result[0] == 2)
+        strncat(msg, "Sensor self-test failed\n", msg_size - strlen(msg) - 1);
+    else if (g_boot_selftest_result[0] == 3)
+        strncat(msg, "Sensor self-test timeout\n", msg_size - strlen(msg) - 1);
+
+    if (g_boot_selftest_result[1] == 2)
+        strncat(msg, "Motor self-test failed\n", msg_size - strlen(msg) - 1);
+    else if (g_boot_selftest_result[1] == 3)
+        strncat(msg, "Motor self-test timeout\n", msg_size - strlen(msg) - 1);
+
+    if (g_boot_selftest_result[2] == 2)
+        strncat(msg, "Electromagnet self-test failed\n", msg_size - strlen(msg) - 1);
+    else if (g_boot_selftest_result[2] == 3)
+        strncat(msg, "Electromagnet self-test timeout\n", msg_size - strlen(msg) - 1);
+
+    if (g_boot_selftest_result[3] == 2)
+        strncat(msg, "Read config parameters failed\n", msg_size - strlen(msg) - 1);
+    else if (g_boot_selftest_result[3] == 3)
+        strncat(msg, "Read config parameters timeout\n", msg_size - strlen(msg) - 1);
+
+    if (g_boot_selftest_result[4] == 2)
+        strncat(msg, "Image board self-test failed\n", msg_size - strlen(msg) - 1);
+    else if (g_boot_selftest_result[4] == 3)
+        strncat(msg, "Image board self-test timeout\n", msg_size - strlen(msg) - 1);
+
+    if (strcmp(msg, "Self-test abnormal items:\n") == 0)
+        strncat(msg, "Unknown self-test error", msg_size - strlen(msg) - 1);
+}
 
 //-------------------- 工具函数 --------------------
 bool check_aa_header(const char* data, int len) {
@@ -319,10 +362,12 @@ void PCCmdHandle(void)
         case 0x01: 
         {
             if (buf[4] == 0x01) {
-                Machine_Statue.g_handshake_state = HANDSHAKE_OK;
-                g_boot_stage = BOOT_STAGE_SENSOR;
-
+                boot_waiting_anim_stop();
                 bootlog_append("Handshake OK");
+                Machine_Statue.g_handshake_state = HANDSHAKE_OK;
+                g_handshake_start_tick = 0;
+                boot_selftest_result_reset();
+                g_boot_stage = BOOT_STAGE_SENSOR;
                 boot_send_next_selftest();
             }
             break;
@@ -695,51 +740,90 @@ void PCCmdHandle(void)
             break;
         }
         /* ================== 0x37 自检 ================== */
-        case 0x37:   // 自检响应
+        case 0x37:
         {
-            uint8_t type   = buf[4];   // 0x01~0x05
-            uint8_t result = buf[5];   // 0x01 成功 / 0x02 失败
+            if (len < 6) break;
 
-            const char *name = NULL;
+            uint8_t test_type = buf[4];
+            uint8_t result = buf[5];
 
-            switch (type) {
-            case 0x01: name = "Sensor"; break;
-            case 0x02: name = "Motor";  break;
-            case 0x03: name = "Magnet"; break;
-            case 0x04: name = "Config"; break;
-            case 0x05: name = "Image";  break;
-            default: break;
+            const char* name = "Unknown";
+            int index = -1;
+
+            switch (test_type)
+            {
+                case 0x01:
+                    name = "Sensor";
+                    index = 0;
+                    break;
+
+                case 0x02:
+                    name = "Motor";
+                    index = 1;
+                    break;
+
+                case 0x03:
+                    name = "Magnet";
+                    index = 2;
+                    break;
+
+                case 0x04:
+                    name = "Config";
+                    index = 3;
+                    break;
+
+                case 0x05:
+                    name = "Image";
+                    index = 4;
+                    break;
+
+                default:
+                    break;
             }
 
-            if (result == 0x01) {
-                char buf_log[64];
-                snprintf(buf_log, sizeof(buf_log),
-                        "%s self-test SUCCESS", name);
-                bootlog_append(buf_log);
-            } else {
-                char buf_log[64];
-                snprintf(buf_log, sizeof(buf_log),
-                        "%s self-test FAIL", name);
-                bootlog_append(buf_log);
+            if (result == 0x01)
+            {
+                char logbuf[64];
+
+                if (index >= 0)
+                    g_boot_selftest_result[index] = 1;
+
+                snprintf(logbuf, sizeof(logbuf), "%s self-test SUCCESS", name);
+                bootlog_append(logbuf);
+
+                g_boot_stage++;
+
+                if (g_boot_stage <= BOOT_STAGE_IMAGE)
+                {
+                    boot_send_next_selftest();
+                }
+                else
+                {
+                    bootlog_append("Boot completed");
+                    send_command(fd4, 0x56, (uint8_t[]){0x01}, 1);
+                    lv_timer_create(boot_selftest_finish_cb, 2000, NULL);
+
+                }
+            }
+            else
+            {
+                char logbuf[64];
+                char msg[512];
+
+                if (index >= 0)
+                    g_boot_selftest_result[index] = 2;
+
+                snprintf(logbuf, sizeof(logbuf), "%s self-test FAIL", name);
+                bootlog_append(logbuf);
+
+                build_boot_selftest_message(msg, sizeof(msg));
+
                 g_boot_stage = BOOT_STAGE_FAIL;
-                break;
+
+                show_boot_selftest_error_popup(msg);
             }
-
-            // 进入下一阶段
-            g_boot_stage++;
-
-            if (g_boot_stage <= BOOT_STAGE_IMAGE) {
-                boot_send_next_selftest();
-            } else {
-                bootlog_append("All self-tests finished");
-                g_boot_stage = BOOT_STAGE_DONE;
-                send_command(fd4, 0x56, (uint8_t[]){0x01}, 1);
-            // 创建一个 2 秒后触发的定时器
-                lv_timer_create(boot_selftest_finish_cb, 2000, NULL);     
-            }
-
-            break;
         }
+        break;
         /* ================== 0x58 用户偏好参数 ================== */
         case 0x58:
         {
@@ -1070,21 +1154,40 @@ int main(void) {
         sleep(1);
     }
 
-    while(1) {
-        lv_timer_handler();
-        PCCmdHandle();        // 现在PCCmdHandle是队列出队+解析
-        
-    if (g_boot_stage == BOOT_STAGE_HANDSHAKE) {
-        if (Machine_Statue.g_handshake_state == HANDSHAKE_IDLE ||
-            (Machine_Statue.g_handshake_state == HANDSHAKE_SENT &&
-             custom_tick_get() - g_handshake_tick > HANDSHAKE_TIMEOUT_MS)) {
+    while (1) {
+        uint32_t now = custom_tick_get();
 
-            machine_handshake_send();
+        lv_timer_handler();
+        PCCmdHandle();
+
+        if (g_boot_stage == BOOT_STAGE_HANDSHAKE)
+        {
+            if (Machine_Statue.g_handshake_state == HANDSHAKE_IDLE)
+            {
+                machine_handshake_send();
+            }
+            else if (Machine_Statue.g_handshake_state == HANDSHAKE_SENT)
+            {
+                if (g_handshake_start_tick != 0 &&
+                    (now - g_handshake_start_tick) >= BOOT_HANDSHAKE_MAX_WAIT_MS)
+                {
+                    g_boot_stage = BOOT_STAGE_FAIL;
+
+                    boot_waiting_anim_stop();
+                    bootlog_append("Handshake timeout");
+
+                    show_boot_selftest_error_popup(
+                        "Controller handshake timeout.\nPress CONFIRM to enter sensor page.");
+                }
+                else if ((now - g_handshake_tick) >= HANDSHAKE_TIMEOUT_MS)
+                {
+                    machine_handshake_send();
+                }
+            }
         }
-    }
+
         usleep(1000);
     }
-
     uart_running = false;
     if (fd4 >= 0) uart_close(fd4);
     if (fd5 >= 0) uart_close(fd5);
