@@ -17,7 +17,7 @@ extern "C" {
     extern lv_obj_t* page_debug;
     extern lv_obj_t* page_sensor;
     extern lv_obj_t* page_upgrade;
-
+    extern lv_obj_t* page_motor_test;
 
     typedef enum {
         UI_PAGE_MAIN = 0,
@@ -37,6 +37,7 @@ extern "C" {
         UI_PAGE_MAIN_UPGRADE,
         UI_PAGE_IMAGE_UPGRADE,
         UI_PAGE_UI_UPGRADE,
+        UI_PAGE_MOTOR_TEST,
         UI_PAGE_COUNT
     } ui_page_t;
 

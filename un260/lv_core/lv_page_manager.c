@@ -19,6 +19,7 @@ lv_obj_t* cis_calib_page = NULL;
 lv_obj_t* page_debug = NULL;
 lv_obj_t* page_sensor = NULL;
 lv_obj_t* page_upgrade = NULL;
+lv_obj_t* page_motor_test = NULL;
 
 ui_element_group_t all_ui_groups[] = {
     { page_01_main_obj, 0 },
@@ -56,7 +57,7 @@ static void destroy_current_page(void)
     case UI_PAGE_MAIN_UPGRADE: ui_page_14_main_upgrade_destroy(); break;
     case UI_PAGE_IMAGE_UPGRADE: ui_page_15_image_upgrade_destroy(); break;
     case UI_PAGE_UI_UPGRADE: ui_page_16_ui_upgrade_destroy(); break;
-
+    case UI_PAGE_MOTOR_TEST: ui_page_17_motor_test_destroy(); break;
     }
 }
 
@@ -94,6 +95,7 @@ static void create_new_page(ui_page_t page)
     case UI_PAGE_MAIN_UPGRADE: ui_page_14_main_upgrade_create(lv_scr_act()); break;
     case UI_PAGE_IMAGE_UPGRADE: ui_page_15_image_upgrade_create(lv_scr_act()); break;
     case UI_PAGE_UI_UPGRADE: ui_page_16_ui_upgrade_create(lv_scr_act()); break;
+    case UI_PAGE_MOTOR_TEST: ui_page_17_motor_test_create(lv_scr_act()); break;
     }
 }
 

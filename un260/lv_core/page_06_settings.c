@@ -164,38 +164,43 @@ static void create_system_page_content(lv_obj_t* parent)
     lv_label_set_text(lbl_upgrade_menu, "UPGRADE");
     lv_obj_center(lbl_upgrade_menu);
 }
-
+static void motor_test_enter_btn_cb(lv_event_t* e)
+{
+    (void)e;
+    ui_manager_push_page(UI_PAGE_MOTOR_TEST);
+}
 static void create_maintenance_page_content(lv_obj_t* parent)
 {
     btn_cis_calib = lv_btn_create(parent);
     lv_obj_set_size(btn_cis_calib, 300, 80);
-    lv_obj_set_pos(btn_cis_calib,54,7);
+    lv_obj_set_pos(btn_cis_calib, 54, 7);
     lv_obj_add_event_cb(btn_cis_calib, cis_enter_btn_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t* label = lv_label_create(btn_cis_calib);
     lv_label_set_text(label, "CIS Calibration");
     lv_obj_center(label);
 
+    lv_obj_t* btn_motor = lv_btn_create(parent);
+    lv_obj_set_size(btn_motor, 300, 80);
+    lv_obj_set_pos(btn_motor, 380, 7);
+    lv_obj_add_event_cb(btn_motor, motor_test_enter_btn_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t* label_2 = lv_label_create(btn_motor);
+    lv_label_set_text(label_2, "MOTOR TEST");
+    lv_obj_center(label_2);
+
     lv_obj_t* btn_debug = lv_btn_create(parent);
     lv_obj_set_size(btn_debug, 300, 80);
-    lv_obj_set_pos(btn_debug,54,104);
+    lv_obj_set_pos(btn_debug, 54, 104);
     lv_obj_add_event_cb(btn_debug, debug_enter_btn_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t* label_1 = lv_label_create(btn_debug);
     lv_label_set_text(label_1, "DEBUG");
     lv_obj_center(label_1);
 
-    lv_obj_t* btn_motor = lv_btn_create(parent);
-    lv_obj_set_size(btn_motor, 300, 80);
-    lv_obj_set_pos(btn_motor,54,196);
-
-    lv_obj_t* label_2 = lv_label_create(btn_motor);
-    lv_label_set_text(label_2, "MOTOR TEST");
-    lv_obj_center(label_2);
-
     lv_obj_t* btn_sensor = lv_btn_create(parent);
     lv_obj_set_size(btn_sensor, 300, 80);
-    lv_obj_set_pos(btn_sensor,54,293);
+    lv_obj_set_pos(btn_sensor, 54, 201);
     lv_obj_add_event_cb(btn_sensor, sensor_enter_btn_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t* label_3 = lv_label_create(btn_sensor);

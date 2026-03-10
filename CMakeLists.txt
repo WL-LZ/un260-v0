@@ -41,7 +41,8 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_core/page_14_main_upgrade.c
     un260/lv_core/page_15_image_upgrade.c
     un260/lv_core/page_16_ui_upgrade.c
-
+    un260/lv_core/page_17_motor_test.c
+    
     un260/lv_refre/lvgl_refre.c
     un260/lv_resources/lv_img_init.c
     un260/lv_system/platform_app.c
