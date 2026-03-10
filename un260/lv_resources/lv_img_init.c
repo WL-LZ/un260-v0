@@ -352,7 +352,7 @@ const char* get_currency_img(const char* code)
         snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_AUD.png");
         return img_path;
     }
-    else if (strcmp(code, "RUN") == 0) {
+    else if (strcmp(code, "RUB") == 0) {
         snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_RUB.png");
         return img_path;
     }
