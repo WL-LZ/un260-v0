@@ -110,58 +110,66 @@ void cis_calib_ui_refresh(void)
     lv_color_t color = lv_color_black();
     const char* text = "Idle";
 
-    switch (cis_state) {
-if (g_calib_target == CALIB_TARGET_CB) {
-    switch (cb_state) {
-    case CB_CALIB_RUNNING:
-        text = "Color Balance Started";
-        color = lv_color_make(0, 120, 255);
-        break;
+    if (g_calib_target == CALIB_TARGET_CB) {
+        switch (cb_state) {
+        case CB_CALIB_IDLE:
+            text = "Idle";
+            color = lv_color_black();
+            break;
 
-    case CB_CALIB_SUCCESS:
-        text = "Color Balance Success";
-        color = lv_color_make(0, 180, 0);
-        break;
+        case CB_CALIB_RUNNING:
+            text = "Color Balance Started";
+            color = lv_color_make(0, 120, 255);
+            break;
 
-    case CB_CALIB_FAIL_IR:
-        text = "Color Balance Fail (IR)";
-        color = lv_color_make(255, 0, 0);
-        break;
+        case CB_CALIB_SUCCESS:
+            text = "Color Balance Success";
+            color = lv_color_make(0, 180, 0);
+            break;
 
-    default:
-        break;
-    }
-} else {
-    switch (cis_state) {
-    case CIS_CALIB_RUNNING:
-        text = "Calibration Started";
-        color = lv_color_make(0, 120, 255);
-        break;
+        case CB_CALIB_FAIL_IR:
+            text = "Color Balance Fail (IR)";
+            color = lv_color_make(255, 0, 0);
+            break;
 
-    case CIS_CALIB_SUCCESS:
-        text = "Calibration Success";
-        color = lv_color_make(0, 180, 0);
-        break;
+        default:
+            break;
+        }
+    } else {
+        switch (cis_state) {
+        case CIS_CALIB_IDLE:
+            text = "Idle";
+            color = lv_color_black();
+            break;
 
-    case CIS_CALIB_FAIL_UPPER:
-        text = "Calibration Fail (Upper CIS)";
-        color = lv_color_make(255, 0, 0);
-        break;
+        case CIS_CALIB_RUNNING:
+            text = "Calibration Started";
+            color = lv_color_make(0, 120, 255);
+            break;
 
-    case CIS_CALIB_FAIL_LOWER:
-        text = "Calibration Fail (Lower CIS)";
-        color = lv_color_make(255, 0, 0);
-        break;
+        case CIS_CALIB_SUCCESS:
+            text = "Calibration Success";
+            color = lv_color_make(0, 180, 0);
+            break;
 
-    case CIS_CALIB_FAIL_IR:
-        text = "Calibration Fail (IR)";
-        color = lv_color_make(255, 0, 0);
-        break;
+        case CIS_CALIB_FAIL_UPPER:
+            text = "Calibration Fail (Upper CIS)";
+            color = lv_color_make(255, 0, 0);
+            break;
 
-    default:
-        break;
-    }
-}
+        case CIS_CALIB_FAIL_LOWER:
+            text = "Calibration Fail (Lower CIS)";
+            color = lv_color_make(255, 0, 0);
+            break;
+
+        case CIS_CALIB_FAIL_IR:
+            text = "Calibration Fail (IR)";
+            color = lv_color_make(255, 0, 0);
+            break;
+
+        default:
+            break;
+        }
     }
 
     lv_label_set_text(cis_status_label, text);
