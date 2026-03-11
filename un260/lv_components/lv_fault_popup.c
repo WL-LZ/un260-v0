@@ -6,8 +6,8 @@
 #include <time.h>
 
 #define FAULT_POPUP_BG_PATH   "L:/usr/local/share/lvgl_data/fault_popup_bg.png"
-#define FAULT_MACHINE_IMG_FMT "L:/usr/local/share/lvgl_data/fault/%02Xmachine.png"
-#define FAULT_ERR_IMG_FMT     "L:/usr/local/share/lvgl_data/fault/%02X_err.png"
+#define FAULT_MACHINE_IMG_FMT "L:/usr/local/share/lvgl_data/%02Xmachine.png"
+#define FAULT_ERR_IMG_FMT     "L:/usr/local/share/lvgl_data/%02X_err.png"
 
 static lv_obj_t* g_fault_popup = NULL;
 static lv_obj_t* g_fault_machine_img = NULL;
