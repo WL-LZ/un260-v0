@@ -2,6 +2,7 @@
 #define LV_COMPONENTS_H
 #include "lvgl/lvgl.h"
 #include"un260/lv_resources/lv_img_init.h"
+#include "un260/lv_components/lv_fault_popup.h"
 extern uint8_t g_sys_err_last_code;
 void create_batch_num_switch(lv_obj_t* parent);
 lv_obj_t* get_batch_switch_container(void);

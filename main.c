@@ -20,6 +20,7 @@
 #include "un260/lv_components/lv_components.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_system/platform_app.h"
+#include "un260/lv_components/lv_fault_popup.h"
 #include <stdlib.h>
 //-------------------- UART 打印函数 --------------------
 
@@ -447,15 +448,16 @@ void PCCmdHandle(void)
         case 0x0F:
         {
             if (len < 6) break;
+
             uint8_t fault = buf[4];
+
             if (fault == 0x00) {
-                hide_system_error_popup();
+                hide_fault_popup();
                 g_sys_err_last_code = 0x00;
                 break;
             }
-            if (ui_manager_get_current_page() == UI_PAGE_MAIN) {
-                show_system_error_popup(fault);
-            }
+
+            show_fault_popup(fault);
             uart_printf(fd6, "0x0F fault=0x%02X %s\n", fault, get_system_error_desc(fault));
             break;
         }
