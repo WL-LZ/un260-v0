@@ -51,6 +51,7 @@ static lv_obj_t* data_collection_page = NULL;
 static lv_obj_t* dc_btn_all = NULL;
 static lv_obj_t* dc_btn_false = NULL;
 static lv_obj_t* dc_btn_start = NULL;
+static lv_obj_t* dc_btn_disable = NULL;
 
 static lv_obj_t* dc_label_all = NULL;
 static lv_obj_t* dc_label_false = NULL;
@@ -74,6 +75,7 @@ static void page_06_switch_sub_page(int index);
 static void create_data_collection_page_content(lv_obj_t* parent);
 static void data_collect_mode_btn_event_cb(lv_event_t* e);
 static void data_collect_start_btn_event_cb(lv_event_t* e);
+static void data_collect_disable_btn_event_cb(lv_event_t* e);
 static void update_data_collect_btn_style(lv_obj_t* btn, lv_obj_t* label, lv_obj_t* check, bool selected);
 static const char* get_data_collect_mode_name(data_collect_mode_t mode);
 /* =========================
@@ -306,7 +308,7 @@ static void data_collect_start_btn_event_cb(lv_event_t* e)
 
     if (g_data_collect_mode == DATA_COLLECT_MODE_NONE) {
         snprintf(g_data_collect_status, sizeof(g_data_collect_status),
-                 "Please select a collection mode first.");
+                 "Please select a collection mode first");
         page_06_data_collection_refresh();
         return;
     }
@@ -317,6 +319,21 @@ static void data_collect_start_btn_event_cb(lv_event_t* e)
              "Counting command sent. Waiting for controller reply...");
     page_06_data_collection_refresh();
     send_command(fd4, 0x0A, &start_cmd, 1);
+}
+
+static void data_collect_disable_btn_event_cb(lv_event_t* e)
+{
+    (void)e;
+
+    uint8_t sub = 0xFF;
+
+    g_data_collect_mode = DATA_COLLECT_MODE_NONE;
+    g_data_collect_pcs = 0;
+    snprintf(g_data_collect_status, sizeof(g_data_collect_status),
+             "Exiting collection mode");
+    page_06_data_collection_refresh();
+
+    send_command(fd4, 0xC0, &sub, 1);
 }
 
 static lv_obj_t* create_dc_mode_button(lv_obj_t* parent,
@@ -354,20 +371,37 @@ static void create_data_collection_page_content(lv_obj_t* parent)
     dc_btn_false = create_dc_mode_button(parent, 40, 100,"ERROR REPORT",data_collect_mode_btn_event_cb, 0x02,&dc_label_false, &dc_check_false);
 
     /* 右上开始按钮 */
+    /* START 按钮 */
     dc_btn_start = lv_btn_create(parent);
-    lv_obj_set_size(dc_btn_start, 210, 86);
-    lv_obj_set_pos(dc_btn_start, 520, 42);
+    lv_obj_set_size(dc_btn_start, 220, 68);
+    lv_obj_set_pos(dc_btn_start, 560, 14);
     lv_obj_clear_flag(dc_btn_start, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_color(dc_btn_start, lv_color_make(0, 180, 220), 0);
     lv_obj_set_style_border_width(dc_btn_start, 0, 0);
-    lv_obj_set_style_radius(dc_btn_start, 16, 0);
+    lv_obj_set_style_radius(dc_btn_start, 14, 0);
     lv_obj_add_event_cb(dc_btn_start, data_collect_start_btn_event_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t* start_label = lv_label_create(dc_btn_start);
     lv_label_set_text(start_label, "START");
-    lv_obj_set_style_text_font(start_label, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_font(start_label, &lv_font_montserrat_22, 0);
     lv_obj_set_style_text_color(start_label, lv_color_white(), 0);
     lv_obj_center(start_label);
+
+    /* DISABLE 按钮 */
+    dc_btn_disable = lv_btn_create(parent);
+    lv_obj_set_size(dc_btn_disable, 220, 68);
+    lv_obj_set_pos(dc_btn_disable, 560, 98);
+    lv_obj_clear_flag(dc_btn_disable, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_color(dc_btn_disable, lv_color_make(150, 150, 150), 0);
+    lv_obj_set_style_border_width(dc_btn_disable, 0, 0);
+    lv_obj_set_style_radius(dc_btn_disable, 14, 0);
+    lv_obj_add_event_cb(dc_btn_disable, data_collect_disable_btn_event_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t* disable_label = lv_label_create(dc_btn_disable);
+    lv_label_set_text(disable_label, "DISABLE");
+    lv_obj_set_style_text_font(disable_label, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(disable_label, lv_color_white(), 0);
+    lv_obj_center(disable_label);
 
     /* 下方状态卡片 */
     lv_obj_t* card = lv_obj_create(parent);
@@ -382,12 +416,13 @@ static void create_data_collection_page_content(lv_obj_t* parent)
     lv_label_set_text(mode_title, "COLLECTION MODE");
     lv_obj_set_style_text_color(mode_title, lv_color_make(0, 180, 220), 0);
     lv_obj_set_style_text_font(mode_title, &lv_font_montserrat_14, 0);
-    lv_obj_set_pos(mode_title, 22, 18);
+    lv_obj_set_pos(mode_title, 22, 8);
 
     dc_mode_value_label = lv_label_create(card);
-    lv_label_set_text(dc_mode_value_label, "--");
+    lv_label_set_text(dc_mode_value_label, " ");
     lv_obj_set_style_text_font(dc_mode_value_label, &lv_font_montserrat_18, 0);
-    lv_obj_set_pos(dc_mode_value_label, 22, 48);
+    lv_obj_set_style_text_color(dc_mode_value_label, lv_color_make(0, 150, 190), 0);
+    lv_obj_set_pos(dc_mode_value_label, 22, 38);
 
     dc_pcs_label = lv_label_create(card);
     lv_label_set_text(dc_pcs_label, "PCS:0");
@@ -396,7 +431,7 @@ static void create_data_collection_page_content(lv_obj_t* parent)
     lv_obj_align(dc_pcs_label, LV_ALIGN_TOP_MID, 0, 12);
 
     dc_status_label = lv_label_create(card);
-    lv_label_set_text(dc_status_label, "Please select a collection mode.");
+    lv_label_set_text(dc_status_label, "Please select a collection mode");
     lv_obj_set_width(dc_status_label, 820);
     lv_label_set_long_mode(dc_status_label, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_align(dc_status_label, LV_TEXT_ALIGN_CENTER, 0);
@@ -455,12 +490,33 @@ static void page_06_switch_sub_page(int index)
     lv_obj_add_flag(data_collection_page, LV_OBJ_FLAG_HIDDEN);
 
     switch (index) {
-    case 0: lv_obj_clear_flag(system_page, LV_OBJ_FLAG_HIDDEN); break;
-    case 1: lv_obj_clear_flag(maintenance_page, LV_OBJ_FLAG_HIDDEN); break;
-    case 2: lv_obj_clear_flag(user_page, LV_OBJ_FLAG_HIDDEN); break;
-    case 3: lv_obj_clear_flag(version_page, LV_OBJ_FLAG_HIDDEN); break;
-    case 4: lv_obj_clear_flag(data_collection_page, LV_OBJ_FLAG_HIDDEN); break;
-    default: break;
+    case 0:
+        lv_obj_clear_flag(system_page, LV_OBJ_FLAG_HIDDEN);
+        break;
+
+    case 1:
+        lv_obj_clear_flag(maintenance_page, LV_OBJ_FLAG_HIDDEN);
+        break;
+
+    case 2:
+        lv_obj_clear_flag(user_page, LV_OBJ_FLAG_HIDDEN);
+        break;
+
+    case 3:
+        lv_obj_clear_flag(version_page, LV_OBJ_FLAG_HIDDEN);
+        break;
+
+    case 4:
+        g_data_collect_mode = DATA_COLLECT_MODE_NONE;
+        g_data_collect_pcs = 0;
+        snprintf(g_data_collect_status, sizeof(g_data_collect_status),
+                 "Please select a collection mode.");
+        lv_obj_clear_flag(data_collection_page, LV_OBJ_FLAG_HIDDEN);
+        page_06_data_collection_refresh();
+        break;
+
+    default:
+        break;
     }
 }
 
@@ -618,6 +674,7 @@ void ui_page_06_settings_destroy(void)
     dc_btn_all = NULL;
     dc_btn_false = NULL;
     dc_btn_start = NULL;
+    dc_btn_disable = NULL;
 
     dc_label_all = NULL;
     dc_label_false = NULL;
