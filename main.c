@@ -482,25 +482,49 @@ void PCCmdHandle(void)
                     else if (!g_cb_running) {
                         ui_manager_switch(UI_PAGE_MAIN);
                     }
-                }else {
-                        show_start_fault_popup(type, val);
-                        uart_printf(fd6, "0x0A start fail (normal): val=%02X desc=%s\n",val, get_counting_error_desc(type, val));
+                } else if (val == 0x02) {
+                    show_start_no_note_popup();
+                    uart_printf(fd6, "0x0A start fail (no note)\n");
+
                     if (g_data_collect_mode != DATA_COLLECT_MODE_NONE) {
-                        snprintf(g_data_collect_status,sizeof(g_data_collect_status),"Start failed: %s",get_counting_error_desc(type, val));
+                        snprintf(g_data_collect_status,
+                                sizeof(g_data_collect_status),
+                                "Start failed: No banknotes detected");
+                        page_06_data_collection_refresh();
+                    }
+                } else {
+                    show_start_fault_popup(type, val);
+                    uart_printf(fd6, "0x0A start fail (normal): val=%02X desc=%s\n",
+                                val, get_counting_error_desc(type, val));
+
+                    if (g_data_collect_mode != DATA_COLLECT_MODE_NONE) {
+                        snprintf(g_data_collect_status,
+                                sizeof(g_data_collect_status),
+                                "Start failed: %s",
+                                get_counting_error_desc(type, val));
                         page_06_data_collection_refresh();
                     }
                 }
             } else if (type == 0x02) {
                 show_start_fault_popup(type, val);
-                uart_printf(fd6, "0x0A start fail (fault): code=%02X desc=%s\n",val, get_counting_error_desc(type, val));
+                uart_printf(fd6, "0x0A start fail (fault): code=%02X desc=%s\n",
+                            val, get_counting_error_desc(type, val));
+
+                if (g_data_collect_mode != DATA_COLLECT_MODE_NONE) {
+                    snprintf(g_data_collect_status,
+                            sizeof(g_data_collect_status),
+                            "Start failed: %s",
+                            get_counting_error_desc(type, val));
+                    page_06_data_collection_refresh();
+                }
             } else {
                 show_start_fault_popup(type, val);
-                uart_printf(fd6, "0x0A start fail (unknown type): type=%02X val=%02X\n",type, val);
+                uart_printf(fd6, "0x0A start fail (unknown type): type=%02X val=%02X\n",
+                            type, val);
             }
 
             break;
         }
-
                 /* ================== 0x0B 面额明细 ================== */
         case 0x0B:
         {

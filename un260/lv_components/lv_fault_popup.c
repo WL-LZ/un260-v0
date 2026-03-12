@@ -300,7 +300,7 @@ static void fault_anim_timer_cb(lv_timer_t* timer)
         uint16_t p = phases[i];
 
         if (p < 60) {
-            lv_coord_t size = 18 + (p * 78) / 60;
+            lv_coord_t size = 4 + (p * 78) / 60;
             lv_opa_t opa = 220 - (p * 200) / 60;
 
             lv_obj_clear_flag(ripples[i], LV_OBJ_FLAG_HIDDEN);
@@ -418,22 +418,36 @@ void show_fault_popup_ex(const fault_popup_data_t* data)
 
     /* 雷达 */
     g_fault_radar_1 = lv_obj_create(g_fault_popup);
+    lv_obj_remove_style_all(g_fault_radar_1);
     lv_obj_clear_flag(g_fault_radar_1, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_size(g_fault_radar_1, 4, 4);
+    lv_obj_set_pos(g_fault_radar_1,
+                data->radar_x - 2,
+                data->radar_y - 2);
     lv_obj_set_style_radius(g_fault_radar_1, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_bg_opa(g_fault_radar_1, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(g_fault_radar_1, 2, 0);
     lv_obj_set_style_border_color(g_fault_radar_1, lv_color_hex(0xFF3B30), 0);
+    lv_obj_set_style_border_opa(g_fault_radar_1, LV_OPA_TRANSP, 0);
     lv_obj_set_style_shadow_width(g_fault_radar_1, 0, 0);
     lv_obj_set_style_outline_width(g_fault_radar_1, 0, 0);
+    lv_obj_add_flag(g_fault_radar_1, LV_OBJ_FLAG_HIDDEN);
 
     g_fault_radar_2 = lv_obj_create(g_fault_popup);
+    lv_obj_remove_style_all(g_fault_radar_2);
     lv_obj_clear_flag(g_fault_radar_2, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_size(g_fault_radar_2, 4, 4);
+    lv_obj_set_pos(g_fault_radar_2,
+                data->radar_x - 2,
+                data->radar_y - 2);
     lv_obj_set_style_radius(g_fault_radar_2, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_bg_opa(g_fault_radar_2, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(g_fault_radar_2, 2, 0);
     lv_obj_set_style_border_color(g_fault_radar_2, lv_color_hex(0xFF3B30), 0);
+    lv_obj_set_style_border_opa(g_fault_radar_2, LV_OPA_TRANSP, 0);
     lv_obj_set_style_shadow_width(g_fault_radar_2, 0, 0);
     lv_obj_set_style_outline_width(g_fault_radar_2, 0, 0);
+    lv_obj_add_flag(g_fault_radar_2, LV_OBJ_FLAG_HIDDEN);
 
     g_fault_anim_tick = 0;
     g_fault_anim_timer = lv_timer_create(fault_anim_timer_cb, 30, NULL);
@@ -496,9 +510,10 @@ void show_fault_popup_ex(const fault_popup_data_t* data)
     lv_obj_set_pos(g_solution_title, 629, 219);
 
     g_fault_solution_label = lv_label_create(g_fault_popup);
-    lv_label_set_text_fmt(g_fault_solution_label, " %s", data->solution_text);
-    lv_obj_set_width(g_fault_solution_label, 680);
+    lv_label_set_text_fmt(g_fault_solution_label, "%s", data->solution_text);
+    lv_obj_set_size(g_fault_solution_label, 563, 56);
     lv_label_set_long_mode(g_fault_solution_label, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_align(g_fault_solution_label, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_set_style_text_color(g_fault_solution_label, lv_color_hex(0x555555), 0);
     lv_obj_set_style_text_font(g_fault_solution_label, &lv_font_montserrat_16, 0);
     lv_obj_set_pos(g_fault_solution_label, 629, 243);
@@ -588,6 +603,26 @@ void show_runtime_fault_popup(uint8_t code)
     data.machine_img_path = get_fault_machine_img(code);
     data.err_img_path = get_fault_err_img(code);
     get_fault_radar_pos(FAULT_SRC_RUNTIME, code, &data.radar_x, &data.radar_y);
+    data.confirm_action = get_confirm_action_by_page();
+
+    show_fault_popup_ex(&data);
+}
+
+void show_start_no_note_popup(void)
+{
+    fault_popup_data_t data;
+    memset(&data, 0, sizeof(data));
+
+    data.source = FAULT_SRC_START_COUNT;
+    data.code = 0x00;
+    data.diagnostics_title = "MACHINE DIAGNOSTICS";
+    data.fault_type_title = "START COUNT FAILED";
+    data.fault_main_desc = "No Banknotes Detected";
+    data.reason_text = "The machine is normal, but no banknotes were detected.";
+    data.solution_text = "Please place banknotes in the hopper and try again.";
+    data.machine_img_path = get_fault_machine_img(0x01);
+    data.err_img_path = get_fault_err_img(0x01);
+    get_fault_radar_pos(FAULT_SRC_START_COUNT, 0x01, &data.radar_x, &data.radar_y);
     data.confirm_action = get_confirm_action_by_page();
 
     show_fault_popup_ex(&data);
