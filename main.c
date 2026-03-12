@@ -457,7 +457,7 @@ void PCCmdHandle(void)
                 break;
             }
 
-            show_fault_popup(fault);
+            show_runtime_fault_popup(fault);
             uart_printf(fd6, "0x0F fault=0x%02X %s\n", fault, get_system_error_desc(fault));
             break;
         }
@@ -483,21 +483,19 @@ void PCCmdHandle(void)
                         ui_manager_switch(UI_PAGE_MAIN);
                     }
                 }else {
-                    show_counting_error_popup(type, val);
-                    uart_printf(fd6, "0x0A start fail (normal): val=%02X desc=%s\n",val, get_counting_error_desc(type, val));
+                        show_start_fault_popup(type, val);
+                        uart_printf(fd6, "0x0A start fail (normal): val=%02X desc=%s\n",val, get_counting_error_desc(type, val));
                     if (g_data_collect_mode != DATA_COLLECT_MODE_NONE) {
                         snprintf(g_data_collect_status,sizeof(g_data_collect_status),"Start failed: %s",get_counting_error_desc(type, val));
                         page_06_data_collection_refresh();
                     }
                 }
             } else if (type == 0x02) {
-                show_counting_error_popup(type, val);
-                uart_printf(fd6, "0x0A start fail (fault): code=%02X desc=%s\n",
-                            val, get_counting_error_desc(type, val));
+                show_start_fault_popup(type, val);
+                uart_printf(fd6, "0x0A start fail (fault): code=%02X desc=%s\n",val, get_counting_error_desc(type, val));
             } else {
-                show_counting_error_popup(type, type);
-                uart_printf(fd6, "0x0A start fail (unknown type): type=%02X val=%02X\n",
-                            type, val);
+                show_start_fault_popup(type, val);
+                uart_printf(fd6, "0x0A start fail (unknown type): type=%02X val=%02X\n",type, val);
             }
 
             break;
@@ -838,12 +836,9 @@ void PCCmdHandle(void)
 
                 snprintf(logbuf, sizeof(logbuf), "%s self-test FAIL", name);
                 bootlog_append(logbuf);
-
                 build_boot_selftest_message(msg, sizeof(msg));
-
                 g_boot_stage = BOOT_STAGE_FAIL;
-
-                show_boot_selftest_error_popup(msg);
+                show_boot_fault_popup(test_type, result);
             }
         }
         break;

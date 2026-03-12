@@ -1,9 +1,14 @@
 #include "lv_fault_popup.h"
 #include "un260/lv_drivers/lv_drivers.h"
+#include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_system/user_cfg.h"
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+
+#ifndef MACHINE_MODEL_NAME
+#define MACHINE_MODEL_NAME "UN260"
+#endif
 
 #define FAULT_POPUP_BG_PATH   "L:/usr/local/share/lvgl_data/fault_popup_bg.png"
 #define FAULT_MACHINE_IMG_FMT "L:/usr/local/share/lvgl_data/%02Xmachine.png"
@@ -12,74 +17,73 @@
 static lv_obj_t* g_fault_popup = NULL;
 static lv_obj_t* g_fault_machine_img = NULL;
 static lv_obj_t* g_fault_err_img = NULL;
+static lv_obj_t* g_fault_radar_1 = NULL;
+static lv_obj_t* g_fault_radar_2 = NULL;
+static lv_timer_t* g_fault_anim_timer = NULL;
+static uint16_t g_fault_anim_tick = 0;
+
+static lv_obj_t* g_fault_title_1 = NULL;
+static lv_obj_t* g_fault_title_2 = NULL;
 static lv_obj_t* g_fault_time_label = NULL;
 static lv_obj_t* g_fault_model_label = NULL;
-static lv_obj_t* g_fault_desc_label = NULL;
-static lv_obj_t* g_fault_cause_label = NULL;
+static lv_obj_t* g_fault_main_desc_label = NULL;
+static lv_obj_t* g_fault_reason_label = NULL;
 static lv_obj_t* g_fault_solution_label = NULL;
 static lv_obj_t* g_fault_version_label = NULL;
 
-static lv_obj_t* g_fault_anim_parent = NULL;
-static lv_obj_t* g_fault_ripple_1 = NULL;
-static lv_obj_t* g_fault_ripple_2 = NULL;
-static lv_timer_t* g_fault_anim_timer = NULL;
-static uint16_t g_fault_anim_tick = 0;
-#ifndef MACHINE_MODEL_NAME
-#define MACHINE_MODEL_NAME "UN260"
-#endif
-static const char* g_fault_reason_desc[0x100] = {
-    [0x01] = "Sensor signal abnormal.",
-    [0x02] = "Transport channel blocked.",
-    [0x03] = "Motor feedback abnormal.",
-    [0x04] = "Image board communication abnormal.",
+static fault_popup_data_t g_fault_popup_data;
+
+/* =========================
+ * 原因 / 方案映射
+ * ========================= */
+static const char* g_boot_reason_desc[0x100] = {
+    [0x01] = "Sensor self-test returned abnormal result.",
+    [0x02] = "Motor self-test returned abnormal result.",
+    [0x03] = "Electromagnet self-test returned abnormal result.",
+    [0x04] = "Configuration readback abnormal.",
+    [0x05] = "Image board self-test abnormal.",
 };
 
-static const char* g_fault_solution_desc[0x100] = {
-    [0x01] = "Check sensor wiring and clean the sensor area.",
-    [0x02] = "Open the channel and remove the jammed note.",
-    [0x03] = "Check motor wiring and retry after power cycle.",
-    [0x04] = "Check image board cable and restart the machine.",
+static const char* g_boot_solution_desc[0x100] = {
+    [0x01] = "Press CONFIRM and check sensor voltage page.",
+    [0x02] = "Press CONFIRM and check motor related hardware.",
+    [0x03] = "Press CONFIRM and check electromagnet wiring.",
+    [0x04] = "Press CONFIRM and verify machine parameters.",
+    [0x05] = "Press CONFIRM and check image board connection.",
 };
 
-static const char* get_fault_desc(uint8_t code)
-{
-    if (code < 0x32 && g_currency_error_desc[code] != NULL) {
-        return g_currency_error_desc[code];
-    }
-    return "Unknown fault";
-}
+static const char* g_start_reason_desc[0x100] = {
+    [0x01] = "Machine state does not allow start counting.",
+    [0x02] = "Detected abnormal machine status before counting.",
+    [0x03] = "Sensor state is abnormal before start.",
+    [0x04] = "Transport path may be blocked before counting.",
+};
 
-static const char* get_fault_reason(uint8_t code)
-{
-    if (g_fault_reason_desc[code] != NULL) {
-        return g_fault_reason_desc[code];
-    }
-    return "Please check machine status and related hardware.";
-}
+static const char* g_start_solution_desc[0x100] = {
+    [0x01] = "Check machine status and retry.",
+    [0x02] = "Remove abnormal notes or foreign objects and retry.",
+    [0x03] = "Check sensor area and clean if needed.",
+    [0x04] = "Open cover and remove jammed note before retry.",
+};
 
-static const char* get_fault_solution(uint8_t code)
-{
-    if (g_fault_solution_desc[code] != NULL) {
-        return g_fault_solution_desc[code];
-    }
-    return "Press CONFIRM after checking the machine.";
-}
+static const char* g_runtime_reason_desc[0x100] = {
+    [0x01] = "Upper channel sensor detected blockage.",
+    [0x02] = "Lower channel sensor detected abnormal status.",
+    [0x03] = "Transport path may contain foreign object.",
+    [0x04] = "Machine path feedback is abnormal during counting.",
+};
 
-static const char* get_fault_machine_img(uint8_t code)
-{
-    static char path[128];
-    snprintf(path, sizeof(path), FAULT_MACHINE_IMG_FMT, code);
-    return path;
-}
+static const char* g_runtime_solution_desc[0x100] = {
+    [0x01] = "Stop counting, open the cover, remove the blocked note, then close the cover.",
+    [0x02] = "Check the lower path and clean the sensor area.",
+    [0x03] = "Remove the foreign object and restart counting.",
+    [0x04] = "Check the transmission path and restart the machine.",
+};
 
-static const char* get_fault_err_img(uint8_t code)
-{
-    static char path[128];
-    snprintf(path, sizeof(path), FAULT_ERR_IMG_FMT, code);
-    return path;
-}
-
-static void get_fault_time_str(char* buf, size_t size)
+/* =========================
+ * 工具函数
+ * ========================= */
+static void get_time_str(char* buf, size_t size)
 {
     time_t now = time(NULL);
     struct tm* tm_now = localtime(&now);
@@ -97,45 +101,172 @@ static void get_fault_time_str(char* buf, size_t size)
              tm_now->tm_min,
              tm_now->tm_sec);
 }
+
+static const char* get_fault_machine_img(uint8_t code)
+{
+    static char path[128];
+    snprintf(path, sizeof(path), FAULT_MACHINE_IMG_FMT, code);
+    return path;
+}
+
+static const char* get_fault_err_img(uint8_t code)
+{
+    static char path[128];
+    snprintf(path, sizeof(path), FAULT_ERR_IMG_FMT, code);
+    return path;
+}
+
+static void get_fault_radar_pos(fault_source_t source, uint8_t code, lv_coord_t* x, lv_coord_t* y)
+{
+    (void)source;
+
+    /* 先统一默认位置，后面你可以按 code 单独扩 */
+    *x = 110;
+    *y = 118;
+
+    if (code == 0x01) {
+        *x = 110;
+        *y = 118;
+    }
+}
+
+static const char* get_boot_title(uint8_t code)
+{
+    switch (code) {
+    case 0x01: return "SENSOR SELF-TEST ERROR";
+    case 0x02: return "MOTOR SELF-TEST ERROR";
+    case 0x03: return "ELECTROMAGNET SELF-TEST ERROR";
+    case 0x04: return "CONFIG SELF-TEST ERROR";
+    case 0x05: return "IMAGE BOARD SELF-TEST ERROR";
+    default:   return "BOOT SELF-TEST ERROR";
+    }
+}
+
+static const char* get_boot_main_desc(uint8_t code)
+{
+    switch (code) {
+    case 0x01: return "Sensor Self-Test Failed";
+    case 0x02: return "Motor Self-Test Failed";
+    case 0x03: return "Electromagnet Self-Test Failed";
+    case 0x04: return "Read Config Parameters Failed";
+    case 0x05: return "Image Board Self-Test Failed";
+    default:   return "Boot Self-Test Failed";
+    }
+}
+
+static const char* get_start_title(uint8_t code)
+{
+    if (code < 0x32 && g_currency_error_desc[code] != NULL) {
+        return "START COUNT ERROR";
+    }
+    return "START COUNT ERROR";
+}
+
+static const char* get_start_main_desc(uint8_t code)
+{
+    if (code < 0x32 && g_currency_error_desc[code] != NULL) {
+        return g_currency_error_desc[code];
+    }
+    return "Unknown Start Fault";
+}
+
+static const char* get_runtime_title(uint8_t code)
+{
+    (void)code;
+    return "ERROR SENSOR";
+}
+
+static const char* get_runtime_main_desc(uint8_t code)
+{
+    const char* desc = get_system_error_desc(code);
+    return desc ? desc : "Unknown Runtime Fault";
+}
+
+static const char* get_fault_reason_text(fault_source_t source, uint8_t code)
+{
+    switch (source) {
+    case FAULT_SRC_BOOT:
+        if (g_boot_reason_desc[code]) return g_boot_reason_desc[code];
+        break;
+    case FAULT_SRC_START_COUNT:
+        if (g_start_reason_desc[code]) return g_start_reason_desc[code];
+        break;
+    case FAULT_SRC_RUNTIME:
+        if (g_runtime_reason_desc[code]) return g_runtime_reason_desc[code];
+        break;
+    default:
+        break;
+    }
+
+    return "Please check machine status and related hardware.";
+}
+
+static const char* get_fault_solution_text(fault_source_t source, uint8_t code)
+{
+    switch (source) {
+    case FAULT_SRC_BOOT:
+        if (g_boot_solution_desc[code]) return g_boot_solution_desc[code];
+        break;
+    case FAULT_SRC_START_COUNT:
+        if (g_start_solution_desc[code]) return g_start_solution_desc[code];
+        break;
+    case FAULT_SRC_RUNTIME:
+        if (g_runtime_solution_desc[code]) return g_runtime_solution_desc[code];
+        break;
+    default:
+        break;
+    }
+
+    return "Press CONFIRM after checking the machine.";
+}
+
+static fault_confirm_action_t get_confirm_action_by_page(void)
+{
+    if (ui_manager_get_current_page() == UI_PAGE_BOOT) {
+        return FAULT_CONFIRM_GOTO_SENSOR;
+    }
+    return FAULT_CONFIRM_CLOSE;
+}
+
+/* =========================
+ * 雷达动画
+ * ========================= */
 static void fault_anim_timer_cb(lv_timer_t* timer)
 {
     (void)timer;
 
-    if (g_fault_anim_parent == NULL) return;
-    if (g_fault_ripple_1 == NULL || g_fault_ripple_2 == NULL) return;
+    if (g_fault_radar_1 == NULL || g_fault_radar_2 == NULL) return;
 
     g_fault_anim_tick++;
 
-    /* 一个完整周期 0~79 */
     uint16_t phase1 = g_fault_anim_tick % 80;
     uint16_t phase2 = (g_fault_anim_tick + 40) % 80;
 
-    lv_obj_t* ripples[2] = { g_fault_ripple_1, g_fault_ripple_2 };
+    lv_obj_t* ripples[2] = { g_fault_radar_1, g_fault_radar_2 };
     uint16_t phases[2] = { phase1, phase2 };
 
     for (int i = 0; i < 2; i++) {
         uint16_t p = phases[i];
 
-        /* 前 60 帧扩散，后 20 帧隐藏等待 */
         if (p < 60) {
-            lv_coord_t size = 18 + (p * 78) / 60;   // 18 -> 96
-            lv_opa_t opa = 220 - (p * 200) / 60;    // 220 -> 20
+            lv_coord_t size = 18 + (p * 78) / 60;
+            lv_opa_t opa = 220 - (p * 200) / 60;
 
             lv_obj_clear_flag(ripples[i], LV_OBJ_FLAG_HIDDEN);
             lv_obj_set_size(ripples[i], size, size);
-            lv_obj_set_pos(ripples[i], 110 - size / 2, 118 - size / 2);
+            lv_obj_set_pos(ripples[i],
+                           g_fault_popup_data.radar_x - size / 2,
+                           g_fault_popup_data.radar_y - size / 2);
             lv_obj_set_style_border_opa(ripples[i], opa, 0);
         } else {
             lv_obj_add_flag(ripples[i], LV_OBJ_FLAG_HIDDEN);
         }
     }
 }
-static void fault_popup_confirm_cb(lv_event_t* e)
-{
-    (void)e;
-    hide_fault_popup();
-}
 
+/* =========================
+ * UI
+ * ========================= */
 static lv_obj_t* create_info_box(lv_obj_t* parent,
                                  lv_coord_t x, lv_coord_t y,
                                  lv_coord_t w, lv_coord_t h,
@@ -153,6 +284,18 @@ static lv_obj_t* create_info_box(lv_obj_t* parent,
     lv_obj_set_style_border_color(box, border, 0);
     lv_obj_set_style_shadow_width(box, 0, 0);
     return box;
+}
+
+static void fault_popup_confirm_cb(lv_event_t* e)
+{
+    (void)e;
+
+    if (g_fault_popup_data.confirm_action == FAULT_CONFIRM_GOTO_SENSOR) {
+        hide_fault_popup();
+        ui_manager_push_page(UI_PAGE_SENSOR);
+    } else {
+        hide_fault_popup();
+    }
 }
 
 bool fault_popup_is_showing(void)
@@ -174,27 +317,29 @@ void hide_fault_popup(void)
 
     g_fault_machine_img = NULL;
     g_fault_err_img = NULL;
+    g_fault_radar_1 = NULL;
+    g_fault_radar_2 = NULL;
+    g_fault_title_1 = NULL;
+    g_fault_title_2 = NULL;
     g_fault_time_label = NULL;
     g_fault_model_label = NULL;
-    g_fault_desc_label = NULL;
-    g_fault_cause_label = NULL;
+    g_fault_main_desc_label = NULL;
+    g_fault_reason_label = NULL;
     g_fault_solution_label = NULL;
     g_fault_version_label = NULL;
-    g_fault_anim_parent = NULL;
-    g_fault_ripple_1 = NULL;
-    g_fault_ripple_2 = NULL;
+
+    memset(&g_fault_popup_data, 0, sizeof(g_fault_popup_data));
 }
 
-void show_fault_popup(uint8_t fault_code)
+void show_fault_popup_ex(const fault_popup_data_t* data)
 {
     char time_buf[64];
-    const char* desc = get_fault_desc(fault_code);
-    const char* reason = get_fault_reason(fault_code);
-    const char* solution = get_fault_solution(fault_code);
+
+    if (data == NULL) return;
 
     hide_fault_popup();
-
-    get_fault_time_str(time_buf, sizeof(time_buf));
+    g_fault_popup_data = *data;
+    get_time_str(time_buf, sizeof(time_buf));
 
     g_fault_popup = lv_obj_create(lv_scr_act());
     lv_obj_remove_style_all(g_fault_popup);
@@ -208,109 +353,117 @@ void show_fault_popup(uint8_t fault_code)
     lv_obj_center(bg);
 
     /* 左侧图片区 */
-    g_fault_anim_parent = lv_obj_create(g_fault_popup);
-    lv_obj_set_size(g_fault_anim_parent, 540, 320);
-    lv_obj_set_pos(g_fault_anim_parent, 8, 24);
-    lv_obj_clear_flag(g_fault_anim_parent, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_bg_opa(g_fault_anim_parent, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(g_fault_anim_parent, 0, 0);
-    lv_obj_set_style_shadow_width(g_fault_anim_parent, 0, 0);
+    g_fault_machine_img = lv_img_create(g_fault_popup);
+    lv_img_set_src(g_fault_machine_img, data->machine_img_path);
+    lv_obj_set_pos(g_fault_machine_img, 24, 52);
 
-    g_fault_machine_img = lv_img_create(g_fault_anim_parent);
-    lv_img_set_src(g_fault_machine_img, get_fault_machine_img(fault_code));
-    lv_obj_set_pos(g_fault_machine_img, 6, 16);
+    g_fault_err_img = lv_img_create(g_fault_popup);
+    lv_img_set_src(g_fault_err_img, data->err_img_path);
+    lv_obj_set_pos(g_fault_err_img, 292, 52);
 
-    g_fault_err_img = lv_img_create(g_fault_anim_parent);
-    lv_img_set_src(g_fault_err_img, get_fault_err_img(fault_code));
-    lv_obj_set_pos(g_fault_err_img, 280, 16);
+    /* 雷达 */
+    g_fault_radar_1 = lv_obj_create(g_fault_popup);
+    lv_obj_clear_flag(g_fault_radar_1, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_radius(g_fault_radar_1, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_opa(g_fault_radar_1, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(g_fault_radar_1, 2, 0);
+    lv_obj_set_style_border_color(g_fault_radar_1, lv_color_hex(0xFF3B30), 0);
+    lv_obj_set_style_shadow_width(g_fault_radar_1, 0, 0);
+    lv_obj_set_style_outline_width(g_fault_radar_1, 0, 0);
 
-    g_fault_ripple_1 = lv_obj_create(g_fault_anim_parent);
-    lv_obj_set_size(g_fault_ripple_1, 18, 18);
-    lv_obj_set_pos(g_fault_ripple_1, 110 - 9, 118 - 9);
-    lv_obj_clear_flag(g_fault_ripple_1, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_radius(g_fault_ripple_1, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_opa(g_fault_ripple_1, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(g_fault_ripple_1, 2, 0);
-    lv_obj_set_style_border_color(g_fault_ripple_1, lv_color_hex(0xFF3B30), 0);
-    lv_obj_set_style_border_opa(g_fault_ripple_1, LV_OPA_90, 0);
-    lv_obj_set_style_shadow_width(g_fault_ripple_1, 0, 0);
-    lv_obj_set_style_outline_width(g_fault_ripple_1, 0, 0);
-
-    g_fault_ripple_2 = lv_obj_create(g_fault_anim_parent);
-    lv_obj_set_size(g_fault_ripple_2, 18, 18);
-    lv_obj_set_pos(g_fault_ripple_2, 110 - 9, 118 - 9);
-    lv_obj_clear_flag(g_fault_ripple_2, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_radius(g_fault_ripple_2, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_opa(g_fault_ripple_2, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(g_fault_ripple_2, 2, 0);
-    lv_obj_set_style_border_color(g_fault_ripple_2, lv_color_hex(0xFF3B30), 0);
-    lv_obj_set_style_border_opa(g_fault_ripple_2, LV_OPA_90, 0);
-    lv_obj_set_style_shadow_width(g_fault_ripple_2, 0, 0);
-    lv_obj_set_style_outline_width(g_fault_ripple_2, 0, 0);
+    g_fault_radar_2 = lv_obj_create(g_fault_popup);
+    lv_obj_clear_flag(g_fault_radar_2, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_radius(g_fault_radar_2, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_opa(g_fault_radar_2, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(g_fault_radar_2, 2, 0);
+    lv_obj_set_style_border_color(g_fault_radar_2, lv_color_hex(0xFF3B30), 0);
+    lv_obj_set_style_shadow_width(g_fault_radar_2, 0, 0);
+    lv_obj_set_style_outline_width(g_fault_radar_2, 0, 0);
 
     g_fault_anim_tick = 0;
-    g_fault_anim_timer = lv_timer_create(fault_anim_timer_cb, 40, NULL);
+    g_fault_anim_timer = lv_timer_create(fault_anim_timer_cb, 30, NULL);
 
+    /* 红框1 */
+    g_fault_title_1 = lv_label_create(g_fault_popup);
+    lv_label_set_text(g_fault_title_1, data->diagnostics_title);
+    lv_obj_set_style_text_color(g_fault_title_1, lv_color_hex(0xB0B3BB), 0);
+    lv_obj_set_style_text_font(g_fault_title_1, &lv_font_montserrat_16, 0);
+    lv_obj_set_pos(g_fault_title_1, 52, 20);
 
+    /* 红框2 */
+    g_fault_title_2 = lv_label_create(g_fault_popup);
+    lv_label_set_text(g_fault_title_2, data->fault_type_title);
+    lv_obj_set_style_text_color(g_fault_title_2, lv_color_hex(0xFF3B30), 0);
+    lv_obj_set_style_text_font(g_fault_title_2, &lv_font_montserrat_16, 0);
+    lv_obj_set_pos(g_fault_title_2, 650, 20);
 
+    /* 时间/机型 */
     g_fault_time_label = lv_label_create(g_fault_popup);
     lv_label_set_text_fmt(g_fault_time_label, "TIME: %s", time_buf);
-    lv_obj_set_style_text_color(g_fault_time_label, lv_color_hex(0x666666), 0);
-    lv_obj_set_style_text_font(g_fault_time_label, &lv_font_montserrat_16, 0);
-    lv_obj_set_pos(g_fault_time_label, 630, 20);
+    lv_obj_set_style_text_color(g_fault_time_label, lv_color_hex(0xB0B0B0), 0);
+    lv_obj_set_style_text_font(g_fault_time_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_pos(g_fault_time_label, 650, 46);
 
     g_fault_model_label = lv_label_create(g_fault_popup);
     lv_label_set_text_fmt(g_fault_model_label, "MODEL: %s", MACHINE_MODEL_NAME);
-    lv_obj_set_style_text_color(g_fault_model_label, lv_color_hex(0x666666), 0);
-    lv_obj_set_style_text_font(g_fault_model_label, &lv_font_montserrat_16, 0);
-    lv_obj_set_pos(g_fault_model_label, 900, 20);
+    lv_obj_set_style_text_color(g_fault_model_label, lv_color_hex(0xB0B0B0), 0);
+    lv_obj_set_style_text_font(g_fault_model_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_pos(g_fault_model_label, 880, 46);
 
-    /* 故障描述框 */
-    lv_obj_t* desc_box = create_info_box(
-        g_fault_popup, 600, 101, 604, 60,
-        lv_color_hex(0xFEEFEE), lv_color_hex(0xFEC7C4));
-    lv_obj_set_style_bg_opa(desc_box, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_opa(desc_box, LV_OPA_TRANSP, 0);
+    /* 红框3 */
+    g_fault_main_desc_label = lv_label_create(g_fault_popup);
+    lv_label_set_text(g_fault_main_desc_label, data->fault_main_desc);
+    lv_obj_set_style_text_color(g_fault_main_desc_label, lv_color_black(), 0);
+    lv_obj_set_style_text_font(g_fault_main_desc_label, &lv_font_montserrat_24, 0);
+    lv_obj_set_pos(g_fault_main_desc_label, 595, 78);
 
-    g_fault_cause_label = lv_label_create(desc_box);
-    lv_label_set_text_fmt(g_fault_cause_label, "CAUSE: %s", reason);
-    lv_obj_set_width(g_fault_cause_label, 560);
-    lv_label_set_long_mode(g_fault_cause_label, LV_LABEL_LONG_WRAP);
-    lv_obj_set_style_text_color(g_fault_cause_label, lv_color_hex(0x555555), 0);
-    lv_obj_set_style_text_font(g_fault_cause_label, &lv_font_montserrat_16, 0);
-    lv_obj_set_pos(g_fault_cause_label, 29, 10);
-    /* 分隔线 */
+    /* 原因框 */
+    lv_obj_t* reason_box = create_info_box(
+        g_fault_popup, 595, 130, 720, 74,
+        lv_color_hex(0xFDEEEE), lv_color_hex(0xF3B7B7));
 
+    g_fault_reason_label = lv_label_create(reason_box);
+    lv_label_set_text_fmt(g_fault_reason_label, "CAUSE: %s", data->reason_text);
+    lv_obj_set_width(g_fault_reason_label, 680);
+    lv_label_set_long_mode(g_fault_reason_label, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_color(g_fault_reason_label, lv_color_hex(0x555555), 0);
+    lv_obj_set_style_text_font(g_fault_reason_label, &lv_font_montserrat_16, 0);
+    lv_obj_set_pos(g_fault_reason_label, 16, 20);
 
-    /* 原因+方案框 */
-    lv_obj_t* info_box = create_info_box(
-        g_fault_popup, 600, 214, 604, 85,
-        lv_color_hex(0xF8F8F8), lv_color_hex(0xF3F4F6));
-    lv_obj_set_style_bg_opa(info_box, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_opa(info_box, LV_OPA_TRANSP, 0);
+    /* 分割线 */
+    lv_obj_t* line = lv_obj_create(g_fault_popup);
+    lv_obj_set_size(line, 720, 1);
+    lv_obj_set_pos(line, 595, 224);
+    lv_obj_set_style_bg_color(line, lv_color_hex(0xE5E5E5), 0);
+    lv_obj_set_style_bg_opa(line, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(line, 0, 0);
+    lv_obj_set_style_shadow_width(line, 0, 0);
 
+    /* 方案框 */
+    lv_obj_t* solution_box = create_info_box(
+        g_fault_popup, 595, 242, 720, 86,
+        lv_color_hex(0xF5F5F5), lv_color_hex(0xECECEC));
 
-
-
-    g_fault_solution_label = lv_label_create(info_box);
-    lv_label_set_text_fmt(g_fault_solution_label, "SOLUTION: %s", solution);
-    lv_obj_set_width(g_fault_solution_label, 560);
+    g_fault_solution_label = lv_label_create(solution_box);
+    lv_label_set_text_fmt(g_fault_solution_label, "SOLUTION: %s", data->solution_text);
+    lv_obj_set_width(g_fault_solution_label, 680);
     lv_label_set_long_mode(g_fault_solution_label, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_color(g_fault_solution_label, lv_color_hex(0x555555), 0);
     lv_obj_set_style_text_font(g_fault_solution_label, &lv_font_montserrat_16, 0);
-    lv_obj_set_pos(g_fault_solution_label, 10, 28);
+    lv_obj_set_pos(g_fault_solution_label, 16, 24);
 
+    /* 版本 */
     g_fault_version_label = lv_label_create(g_fault_popup);
     lv_label_set_text_fmt(g_fault_version_label, "MAIN-APP: %s", Machine_Statue.main_app);
-    lv_obj_set_style_text_color(g_fault_version_label, lv_color_hex(0x666666), 0);
-    lv_obj_set_style_text_font(g_fault_version_label, &lv_font_montserrat_16, 0);
-    lv_obj_set_pos(g_fault_version_label, 590, 320);
+    lv_obj_set_style_text_color(g_fault_version_label, lv_color_hex(0x999999), 0);
+    lv_obj_set_style_text_font(g_fault_version_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_pos(g_fault_version_label, 595, 342);
 
-    /* CONFIRM 按钮 */
+    /* confirm */
     lv_obj_t* confirm_btn = lv_btn_create(g_fault_popup);
-    lv_obj_set_size(confirm_btn, 120, 52);
-    lv_obj_set_pos(confirm_btn, 1060, 306);
-    lv_obj_set_style_radius(confirm_btn, 12, 0);
+    lv_obj_set_size(confirm_btn, 180, 58);
+    lv_obj_set_pos(confirm_btn, 1140, 304);
+    lv_obj_set_style_radius(confirm_btn, 14, 0);
     lv_obj_set_style_bg_color(confirm_btn, lv_color_hex(0x1677FF), 0);
     lv_obj_set_style_border_width(confirm_btn, 0, 0);
     lv_obj_add_event_cb(confirm_btn, fault_popup_confirm_cb, LV_EVENT_CLICKED, NULL);
@@ -318,6 +471,73 @@ void show_fault_popup(uint8_t fault_code)
     lv_obj_t* confirm_label = lv_label_create(confirm_btn);
     lv_label_set_text(confirm_label, "CONFIRM");
     lv_obj_set_style_text_color(confirm_label, lv_color_white(), 0);
-    lv_obj_set_style_text_font(confirm_label, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_font(confirm_label, &lv_font_montserrat_20, 0);
     lv_obj_center(confirm_label);
+}
+
+/* =========================
+ * 协议适配函数
+ * ========================= */
+void show_boot_fault_popup(uint8_t selftest_type, uint8_t result)
+{
+    fault_popup_data_t data;
+    memset(&data, 0, sizeof(data));
+
+    (void)result;
+
+    data.source = FAULT_SRC_BOOT;
+    data.code = selftest_type;
+    data.diagnostics_title = "MACHINE DIAGNOSTICS";
+    data.fault_type_title = get_boot_title(selftest_type);
+    data.fault_main_desc = get_boot_main_desc(selftest_type);
+    data.reason_text = get_fault_reason_text(FAULT_SRC_BOOT, selftest_type);
+    data.solution_text = get_fault_solution_text(FAULT_SRC_BOOT, selftest_type);
+    data.machine_img_path = get_fault_machine_img(selftest_type);
+    data.err_img_path = get_fault_err_img(selftest_type);
+    get_fault_radar_pos(FAULT_SRC_BOOT, selftest_type, &data.radar_x, &data.radar_y);
+    data.confirm_action = get_confirm_action_by_page();
+
+    show_fault_popup_ex(&data);
+}
+
+void show_start_fault_popup(uint8_t type, uint8_t code)
+{
+    fault_popup_data_t data;
+    memset(&data, 0, sizeof(data));
+
+    (void)type;
+
+    data.source = FAULT_SRC_START_COUNT;
+    data.code = code;
+    data.diagnostics_title = "MACHINE DIAGNOSTICS";
+    data.fault_type_title = get_start_title(code);
+    data.fault_main_desc = get_start_main_desc(code);
+    data.reason_text = get_fault_reason_text(FAULT_SRC_START_COUNT, code);
+    data.solution_text = get_fault_solution_text(FAULT_SRC_START_COUNT, code);
+    data.machine_img_path = get_fault_machine_img(code);
+    data.err_img_path = get_fault_err_img(code);
+    get_fault_radar_pos(FAULT_SRC_START_COUNT, code, &data.radar_x, &data.radar_y);
+    data.confirm_action = get_confirm_action_by_page();
+
+    show_fault_popup_ex(&data);
+}
+
+void show_runtime_fault_popup(uint8_t code)
+{
+    fault_popup_data_t data;
+    memset(&data, 0, sizeof(data));
+
+    data.source = FAULT_SRC_RUNTIME;
+    data.code = code;
+    data.diagnostics_title = "MACHINE DIAGNOSTICS";
+    data.fault_type_title = get_runtime_title(code);
+    data.fault_main_desc = get_runtime_main_desc(code);
+    data.reason_text = get_fault_reason_text(FAULT_SRC_RUNTIME, code);
+    data.solution_text = get_fault_solution_text(FAULT_SRC_RUNTIME, code);
+    data.machine_img_path = get_fault_machine_img(code);
+    data.err_img_path = get_fault_err_img(code);
+    get_fault_radar_pos(FAULT_SRC_RUNTIME, code, &data.radar_x, &data.radar_y);
+    data.confirm_action = get_confirm_action_by_page();
+
+    show_fault_popup_ex(&data);
 }
