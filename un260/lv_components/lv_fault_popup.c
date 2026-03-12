@@ -184,12 +184,12 @@ static void get_fault_radar_pos(fault_source_t source, uint8_t code, lv_coord_t*
 static const char* get_boot_title(uint8_t code)
 {
     switch (code) {
-    case 0x01: return "SENSOR SELF-TEST ERROR";
-    case 0x02: return "MOTOR SELF-TEST ERROR";
-    case 0x03: return "ELECTROMAGNET SELF-TEST ERROR";
-    case 0x04: return "CONFIG SELF-TEST ERROR";
-    case 0x05: return "IMAGE BOARD SELF-TEST ERROR";
-    default:   return "BOOT SELF-TEST ERROR";
+    case 0x01: return "SELF-TEST ERROR";
+    case 0x02: return "SELF-TEST ERROR";
+    case 0x03: return "SELF-TEST ERROR";
+    case 0x04: return "SELF-TEST ERROR";
+    case 0x05: return "SELF-TEST ERROR";
+    default:   return "SELF-TEST ERROR";
     }
 }
 
