@@ -9,6 +9,9 @@
 #ifndef MACHINE_MODEL_NAME
 #define MACHINE_MODEL_NAME "UN260"
 #endif
+#define FAULT_PROTO_BOOT    0x37
+#define FAULT_PROTO_START   0x0A
+#define FAULT_PROTO_RUNTIME 0x13
 
 #define FAULT_POPUP_BG_PATH   "L:/usr/local/share/lvgl_data/fault_popup_bg.png"
 #define FAULT_MACHINE_IMG_FMT "L:/usr/local/share/lvgl_data/%02Xmachine.png"
@@ -153,17 +156,39 @@ static void get_time_str(char* buf, size_t size)
              tm_now.tm_sec);
 }
 
-static const char* get_fault_machine_img(uint8_t code)
+static uint8_t get_fault_proto_code(fault_source_t source)
+{
+    switch (source) {
+    case FAULT_SRC_BOOT:
+        return FAULT_PROTO_BOOT;
+    case FAULT_SRC_START_COUNT:
+        return FAULT_PROTO_START;
+    case FAULT_SRC_RUNTIME:
+        return FAULT_PROTO_RUNTIME;
+    default:
+        return 0x00;
+    }
+}
+
+static const char* get_fault_machine_img(fault_source_t source, uint8_t code)
 {
     static char path[128];
-    snprintf(path, sizeof(path), FAULT_MACHINE_IMG_FMT, code);
+    uint8_t proto = get_fault_proto_code(source);
+
+    snprintf(path, sizeof(path),
+             "L:/usr/local/share/lvgl_data/%02x%02xmachine.png",
+             proto, code);
     return path;
 }
 
-static const char* get_fault_err_img(uint8_t code)
+static const char* get_fault_err_img(fault_source_t source, uint8_t code)
 {
     static char path[128];
-    snprintf(path, sizeof(path), FAULT_ERR_IMG_FMT, code);
+    uint8_t proto = get_fault_proto_code(source);
+
+    snprintf(path, sizeof(path),
+             "L:/usr/local/share/lvgl_data/%02x%02x_err.png",
+             proto, code);
     return path;
 }
 
@@ -558,8 +583,8 @@ void show_boot_fault_popup(uint8_t selftest_type, uint8_t result)
     data.fault_main_desc = get_boot_main_desc(selftest_type);
     data.reason_text = get_fault_reason_text(FAULT_SRC_BOOT, selftest_type);
     data.solution_text = get_fault_solution_text(FAULT_SRC_BOOT, selftest_type);
-    data.machine_img_path = get_fault_machine_img(selftest_type);
-    data.err_img_path = get_fault_err_img(selftest_type);
+    data.machine_img_path = get_fault_machine_img(FAULT_SRC_BOOT, selftest_type);
+    data.err_img_path = get_fault_err_img(FAULT_SRC_BOOT, selftest_type);
     get_fault_radar_pos(FAULT_SRC_BOOT, selftest_type, &data.radar_x, &data.radar_y);
     data.confirm_action = get_confirm_action_by_page();
 
@@ -580,8 +605,8 @@ void show_start_fault_popup(uint8_t type, uint8_t code)
     data.fault_main_desc = get_start_main_desc(code);
     data.reason_text = get_fault_reason_text(FAULT_SRC_START_COUNT, code);
     data.solution_text = get_fault_solution_text(FAULT_SRC_START_COUNT, code);
-    data.machine_img_path = get_fault_machine_img(code);
-    data.err_img_path = get_fault_err_img(code);
+    data.machine_img_path = get_fault_machine_img(FAULT_SRC_START_COUNT, code);
+    data.err_img_path = get_fault_err_img(FAULT_SRC_START_COUNT, code);
     get_fault_radar_pos(FAULT_SRC_START_COUNT, code, &data.radar_x, &data.radar_y);
     data.confirm_action = get_confirm_action_by_page();
 
@@ -600,8 +625,8 @@ void show_runtime_fault_popup(uint8_t code)
     data.fault_main_desc = get_runtime_main_desc(code);
     data.reason_text = get_fault_reason_text(FAULT_SRC_RUNTIME, code);
     data.solution_text = get_fault_solution_text(FAULT_SRC_RUNTIME, code);
-    data.machine_img_path = get_fault_machine_img(code);
-    data.err_img_path = get_fault_err_img(code);
+    data.machine_img_path = get_fault_machine_img(FAULT_SRC_RUNTIME, code);
+    data.err_img_path = get_fault_err_img(FAULT_SRC_RUNTIME, code);
     get_fault_radar_pos(FAULT_SRC_RUNTIME, code, &data.radar_x, &data.radar_y);
     data.confirm_action = get_confirm_action_by_page();
 
@@ -620,8 +645,8 @@ void show_start_no_note_popup(void)
     data.fault_main_desc = "No Banknotes Detected";
     data.reason_text = "The machine is normal, but no banknotes were detected.";
     data.solution_text = "Please place banknotes in the hopper and try again.";
-    data.machine_img_path = get_fault_machine_img(0x01);
-    data.err_img_path = get_fault_err_img(0x01);
+    data.machine_img_path = get_fault_machine_img(FAULT_SRC_START_COUNT, 0x00);
+    data.err_img_path = get_fault_err_img(FAULT_SRC_START_COUNT, 0x00);
     get_fault_radar_pos(FAULT_SRC_START_COUNT, 0x01, &data.radar_x, &data.radar_y);
     data.confirm_action = get_confirm_action_by_page();
 
