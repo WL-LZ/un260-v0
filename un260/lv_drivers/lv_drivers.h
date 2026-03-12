@@ -10,7 +10,7 @@ extern "C" {
 #include <stdbool.h>
 
 extern const char* g_currency_error_desc[0x32];
-
+extern const char* g_start_error_desc[0x12];
 
 /* 打开串口设备 */
 int uart_open(const char *device);

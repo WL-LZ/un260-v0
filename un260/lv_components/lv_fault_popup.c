@@ -48,39 +48,64 @@ static const char* g_boot_reason_desc[0x100] = {
 };
 
 static const char* g_boot_solution_desc[0x100] = {
-    [0x01] = "Press CONFIRM and check sensor voltage page.",
-    [0x02] = "Press CONFIRM and check motor related hardware.",
-    [0x03] = "Press CONFIRM and check electromagnet wiring.",
-    [0x04] = "Press CONFIRM and verify machine parameters.",
-    [0x05] = "Press CONFIRM and check image board connection.",
+    [0x01] = "Press CONFIRM and enter the voltage page to check sensor voltage.",
+    [0x02] = "Press CONFIRM and enter the voltage page to check motor voltage.",
+    [0x03] = "Press CONFIRM and enter the voltage page to check electromagnet voltage.",
+    [0x04] = "Press CONFIRM and enter the voltage page to check for sensor abnormalities.",
+    [0x05] = "Press CONFIRM and enter the voltage page to detect sensor abnormalities.",
 };
 
 static const char* g_start_reason_desc[0x100] = {
-    [0x01] = "Machine state does not allow start counting.",
-    [0x02] = "Detected abnormal machine status before counting.",
-    [0x03] = "Sensor state is abnormal before start.",
-    [0x04] = "Transport path may be blocked before counting.",
+    [0x01] = "Upper channel sensors are blocked or abnormal.",
+    [0x02] = "Lower channel sensor is blocked or abnormal.",
+    [0x03] = "Reject exit path is blocked, sensor detection abnormal.",
+    [0x04] = "Reject pocket sensor is blocked and reject count is zero.",
+    [0x05] = "Reject pocket is full and sensors are blocked.",
+    [0x06] = "Stacker pocket sensor is blocked and stacker count is zero.",
+    [0x07] = "Stacker pocket is full and sensors are blocked.",
+    [0x08] = "Stacker and reject pockets are both full, sensors are blocked.",
+    [0x09] = "Upper and lower channels are not properly closed.",
+    [0x0A] = "Banknote exit sensor is blocked or abnormal.",
+    [0x0B] = "Dust cover or baffle is not properly closed.",
+    [0x0C] = "Flap position abnormal, switch detection abnormal.",
+    [0x0D] = "Encoder disk detection abnormal, sensor signal abnormal.",
 };
 
 static const char* g_start_solution_desc[0x100] = {
-    [0x01] = "Check machine status and retry.",
-    [0x02] = "Remove abnormal notes or foreign objects and retry.",
-    [0x03] = "Check sensor area and clean if needed.",
-    [0x04] = "Open cover and remove jammed note before retry.",
+    [0x01] = "Open the upper channel and check for foreign objects or banknotes blocking the sensors.",
+    [0x02] = "Open the lower channel and check for foreign objects or banknotes blocking the sensors.",
+    [0x03] = "Check the reject exit for foreign objects or banknotes blocking the sensors.",
+    [0x04] = "Check the reject pocket for foreign objects or banknotes blocking the sensors.",
+    [0x05] = "Reject pocket is full. Remove the banknotes from the reject pocket.",
+    [0x06] = "Check the stacker pocket for foreign objects or banknotes blocking the sensors.",
+    [0x07] = "Stacker pocket is full. Remove the banknotes from the stacker pocket.",
+    [0x08] = "Stacker and reject pockets are full. Remove the banknotes.",
+    [0x09] = "Close the upper and lower channels properly.",
+    [0x0A] = "Remove the banknotes from the stacker pocket.",
+    [0x0B] = "Check the sensors of the dust cover and baffle.",
+    [0x0C] = "Remove the machine cover and check the flap sensor wiring and flap condition.",
+    [0x0D] = "Remove the machine cover and check the encoder wiring and encoder condition.",
 };
 
 static const char* g_runtime_reason_desc[0x100] = {
-    [0x01] = "Upper channel sensor detected blockage.",
-    [0x02] = "Lower channel sensor detected abnormal status.",
-    [0x03] = "Transport path may contain foreign object.",
-    [0x04] = "Machine path feedback is abnormal during counting.",
+    [0x00] = "No machine fault.",
+    [0x01] = "Banknote jam detected at the feeder.",
+    [0x02] = "Banknote jam detected in the upper channel.",
+    [0x03] = "Banknote jam detected in the lower channel.",
+    [0x04] = "Banknote jam detected at the reject exit.",
+    [0x05] = "Banknote jam detected at the genuine note exit.",
+    [0x06] = "Diverter electromagnet flap error detected.",
+    [0x07] = "Residual banknotes detected in the stacker area.",
 };
 
 static const char* g_runtime_solution_desc[0x100] = {
-    [0x01] = "Stop counting, open the cover, remove the blocked note, then close the cover.",
-    [0x02] = "Check the lower path and clean the sensor area.",
-    [0x03] = "Remove the foreign object and restart counting.",
-    [0x04] = "Check the transmission path and restart the machine.",
+    [0x01] = "Stop counting and check the feeder for jammed banknotes or foreign objects.",
+    [0x02] = "Stop counting, remove the banknotes, open the upper channel and check for jams or foreign objects.",
+    [0x03] = "Stop counting, remove the banknotes, open the lower channel and check for jams or foreign objects.",
+    [0x04] = "Stop counting, remove the banknotes from the reject pocket and check for jams or foreign objects.",
+    [0x05] = "Stop counting, remove the banknotes from the banknote exit and check for jams or foreign objects.",
+    [0x06] = "Stop counting, remove the banknotes, open the machine cover and check the electromagnet wiring and condition.",
+    [0x07] = "Stop counting and remove the banknotes from the stacker pocket.",
 };
 
 /* =========================
@@ -190,8 +215,8 @@ static const char* get_start_title(uint8_t code)
 
 static const char* get_start_main_desc(uint8_t code)
 {
-    if (code < 0x32 && g_currency_error_desc[code] != NULL) {
-        return g_currency_error_desc[code];
+    if (code < 0x0E && g_start_error_desc[code] != NULL) {
+        return g_start_error_desc[code];
     }
     return "Unknown Start Fault";
 }
@@ -480,7 +505,7 @@ void show_fault_popup_ex(const fault_popup_data_t* data)
 
     /* 版本 */
     g_fault_version_label = lv_label_create(g_fault_popup);
-    lv_label_set_text_fmt(g_fault_version_label, "MAIN-APP: %s", Machine_Statue.main_app);
+    lv_label_set_text_fmt(g_fault_version_label, " %s", Machine_Statue.main_app);
     lv_obj_set_style_text_color(g_fault_version_label, lv_color_hex(0x999999), 0);
     lv_obj_set_style_text_font(g_fault_version_label, &lv_font_montserrat_14, 0);
     lv_obj_set_pos(g_fault_version_label, 595, 342);

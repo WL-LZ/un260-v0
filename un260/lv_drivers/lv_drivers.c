@@ -33,6 +33,24 @@ static int selftest_step = 0;   // 当前自检步骤索引
 static int selftest_total = 5;  // 总自检步骤数
 
 
+const char* g_start_error_desc[0x12] = {
+    [0x00] = "No Error",
+    [0x01] = "Upper Channel Error",
+    [0x02] = "Lower Channel Error",
+    [0x03] = "Reject Exit Error",
+    [0x04] = "Reject Pocket Error",
+    [0x05] = "Reject Pocket Full Only",
+    [0x06] = "Stacker Pocket Error",
+    [0x07] = "Stacker Pocket Full Only",
+    [0x08] = "Stacker and Reject Pockets Full",
+    [0x09] = "Upper and Lower Channels Not Closed",
+    [0x0A] = "Genuine Note Exit Error",
+    [0x0B] = "Dust Cover / Baffle Closure Error",
+    [0x0C] = "Flap Error",
+    [0x0D] = "Encoder Disk Error",
+};
+
+
  const char* g_currency_error_desc[0x32] = {
     [0x00] = "No Error",
     [0x01] = "IMG F1",
