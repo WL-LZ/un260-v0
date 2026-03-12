@@ -10,8 +10,8 @@
 #define MACHINE_MODEL_NAME "UN260"
 #endif
 #define FAULT_PROTO_BOOT    0x37
-#define FAULT_PROTO_START   0x0A
-#define FAULT_PROTO_RUNTIME 0x13
+#define FAULT_PROTO_START   0x0a
+#define FAULT_PROTO_RUNTIME 0x0f
 
 #define FAULT_POPUP_BG_PATH   "L:/usr/local/share/lvgl_data/fault_popup_bg.png"
 #define FAULT_MACHINE_IMG_FMT "L:/usr/local/share/lvgl_data/%02Xmachine.png"
@@ -54,8 +54,8 @@ static const char* g_boot_solution_desc[0x100] = {
     [0x01] = "Press CONFIRM and enter the voltage page to check sensor voltage.",
     [0x02] = "Press CONFIRM and enter the voltage page to check motor voltage.",
     [0x03] = "Press CONFIRM and enter the voltage page to check electromagnet voltage.",
-    [0x04] = "Press CONFIRM and enter the voltage page to check for sensor abnormalities.",
-    [0x05] = "Press CONFIRM and enter the voltage page to detect sensor abnormalities.",
+    [0x04] = "Check whether the mainboard cable is loose and whether the LED is on.",
+    [0x05] = "Check whether the image board cable is loose and whether the LED is on.",
 };
 
 static const char* g_start_reason_desc[0x100] = {
@@ -194,15 +194,59 @@ static const char* get_fault_err_img(fault_source_t source, uint8_t code)
 
 static void get_fault_radar_pos(fault_source_t source, uint8_t code, lv_coord_t* x, lv_coord_t* y)
 {
-    (void)source;
+    uint8_t cmd = get_fault_proto_code(source);
 
-    /* 先统一默认位置，后面你可以按 code 单独扩 */
     *x = 110;
     *y = 118;
 
-    if (code == 0x01) {
-        *x = 110;
-        *y = 118;
+    switch (cmd) {
+    case 0x37:  /* boot self-test */
+        switch (code) {
+        case 0x01: *x = 48; *y = 216; break;
+        case 0x02: *x = 180; *y = 174; break;
+        case 0x03: *x = 143; *y = 174; break;
+        case 0x04: *x = 150; *y = 233; break;
+        case 0x05: *x = 74; *y = 241; break;
+        default: break;
+        }
+        break;
+
+    case 0x0A:  /* start count */
+        switch (code) {
+        case 0x00: *x = 128; *y = 124; break; /* no note */
+        case 0x01: *x = 137; *y = 164; break;
+        case 0x02: *x = 134; *y = 234; break;
+        case 0x03: *x = 128; *y = 205; break;
+        case 0x04: *x = 128; *y = 205; break;
+        case 0x05: *x = 128; *y = 205; break;
+        case 0x06: *x = 128; *y = 249; break;
+        case 0x07: *x = 128; *y = 249; break;
+        case 0x08: *x = 128; *y = 223; break;
+        case 0x09: *x = 134; *y = 201; break;
+        case 0x0A: *x = 128; *y = 250; break;
+        case 0x0B: *x = 128; *y = 250; break;
+        case 0x0C: *x = 142; *y = 174; break;
+        case 0x0D: *x = 100; *y = 177; break;
+        default: break;
+        }
+        break;
+
+    case 0x0f:  /* runtime */
+        switch (code) {
+        case 0x00: *x = 128; *y = 127; break;
+        case 0x01: *x = 128; *y = 127; break;
+        case 0x02: *x = 133; *y = 160; break;
+        case 0x03: *x = 133; *y = 228; break;
+        case 0x04: *x = 129; *y = 202; break;
+        case 0x05: *x = 129; *y = 249; break;
+        case 0x06: *x = 142; *y = 170; break;
+        case 0x07: *x = 129; *y = 249; break;
+        default: break;
+        }
+        break;
+
+    default:
+        break;
     }
 }
 
@@ -435,11 +479,11 @@ void show_fault_popup_ex(const fault_popup_data_t* data)
     /* 左侧图片区 */
     g_fault_machine_img = lv_img_create(g_fault_popup);
     lv_img_set_src(g_fault_machine_img, data->machine_img_path);
-    lv_obj_set_pos(g_fault_machine_img, 24, 52);
+    lv_obj_set_pos(g_fault_machine_img, 26, 84);
 
     g_fault_err_img = lv_img_create(g_fault_popup);
     lv_img_set_src(g_fault_err_img, data->err_img_path);
-    lv_obj_set_pos(g_fault_err_img, 292, 52);
+    lv_obj_set_pos(g_fault_err_img, 304, 84);
 
     /* 雷达 */
     g_fault_radar_1 = lv_obj_create(g_fault_popup);
