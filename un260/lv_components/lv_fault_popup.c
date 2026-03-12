@@ -318,7 +318,11 @@ static void fault_popup_confirm_cb(lv_event_t* e)
 
     if (g_fault_popup_data.confirm_action == FAULT_CONFIRM_GOTO_SENSOR) {
         hide_fault_popup();
-        ui_manager_push_page(UI_PAGE_SENSOR);
+        /*
+         * Boot fault flow should not keep BOOT in back stack.
+         * Enter sensor page directly, ESC will then fallback to MAIN when stack is empty.
+         */
+        ui_manager_switch(UI_PAGE_SENSOR);
     } else {
         hide_fault_popup();
     }
