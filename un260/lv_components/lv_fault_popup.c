@@ -30,6 +30,9 @@ static lv_obj_t* g_fault_main_desc_label = NULL;
 static lv_obj_t* g_fault_reason_label = NULL;
 static lv_obj_t* g_fault_solution_label = NULL;
 static lv_obj_t* g_fault_version_label = NULL;
+static lv_obj_t* g_solution_title = NULL;
+static lv_obj_t* g_reason_title = NULL;
+
 
 static fault_popup_data_t g_fault_popup_data;
 
@@ -86,20 +89,43 @@ static const char* g_runtime_solution_desc[0x100] = {
 static void get_time_str(char* buf, size_t size)
 {
     time_t now = time(NULL);
-    struct tm* tm_now = localtime(&now);
-
-    if (tm_now == NULL) {
+    struct tm tm_now;
+    struct tm* p = localtime_r(&now, &tm_now);
+    if (p == NULL) {
         snprintf(buf, size, "--:--:--");
         return;
     }
 
+    /*
+     * Prefer device time from Machine_para when available.
+     * Keep current localtime defaults if fields are out of range.
+     */
+    if (Machine_para.year > 0) {
+        tm_now.tm_year = (Machine_para.year >= 1900) ? (Machine_para.year - 1900) : Machine_para.year;
+    }
+    if (Machine_para.month >= 0 && Machine_para.month <= 11) {
+        tm_now.tm_mon = Machine_para.month;
+    }
+    if (Machine_para.day >= 1 && Machine_para.day <= 31) {
+        tm_now.tm_mday = Machine_para.day;
+    }
+    if (Machine_para.hour >= 0 && Machine_para.hour <= 23) {
+        tm_now.tm_hour = Machine_para.hour;
+    }
+    if (Machine_para.minute >= 0 && Machine_para.minute <= 59) {
+        tm_now.tm_min = Machine_para.minute;
+    }
+    if (Machine_para.second >= 0 && Machine_para.second <= 59) {
+        tm_now.tm_sec = Machine_para.second;
+    }
+
     snprintf(buf, size, "%04d-%02d-%02d %02d:%02d:%02d",
-             tm_now->tm_year + 1900,
-             tm_now->tm_mon + 1,
-             tm_now->tm_mday,
-             tm_now->tm_hour,
-             tm_now->tm_min,
-             tm_now->tm_sec);
+             tm_now.tm_year + 1900,
+             tm_now.tm_mon + 1,
+             tm_now.tm_mday,
+             tm_now.tm_hour,
+             tm_now.tm_min,
+             tm_now.tm_sec);
 }
 
 static const char* get_fault_machine_img(uint8_t code)
@@ -386,9 +412,9 @@ void show_fault_popup_ex(const fault_popup_data_t* data)
     /* 红框1 */
     g_fault_title_1 = lv_label_create(g_fault_popup);
     lv_label_set_text(g_fault_title_1, data->diagnostics_title);
-    lv_obj_set_style_text_color(g_fault_title_1, lv_color_hex(0xB0B3BB), 0);
-    lv_obj_set_style_text_font(g_fault_title_1, &lv_font_montserrat_16, 0);
-    lv_obj_set_pos(g_fault_title_1, 52, 20);
+    lv_obj_set_style_text_color(g_fault_title_1, lv_color_hex(0x7A7A7A), 0);
+    lv_obj_set_style_text_font(g_fault_title_1, &lv_font_montserrat_14, 0);
+    lv_obj_set_pos(g_fault_title_1, 25, 12);
 
     /* 红框2 */
     g_fault_title_2 = lv_label_create(g_fault_popup);
@@ -415,42 +441,38 @@ void show_fault_popup_ex(const fault_popup_data_t* data)
     lv_label_set_text(g_fault_main_desc_label, data->fault_main_desc);
     lv_obj_set_style_text_color(g_fault_main_desc_label, lv_color_black(), 0);
     lv_obj_set_style_text_font(g_fault_main_desc_label, &lv_font_montserrat_24, 0);
-    lv_obj_set_pos(g_fault_main_desc_label, 595, 78);
+    lv_obj_set_pos(g_fault_main_desc_label, 607, 66);
 
     /* 原因框 */
-    lv_obj_t* reason_box = create_info_box(
-        g_fault_popup, 595, 130, 720, 74,
-        lv_color_hex(0xFDEEEE), lv_color_hex(0xF3B7B7));
+    g_reason_title = lv_label_create(g_fault_popup);
+    lv_label_set_text(g_reason_title, "Reason");
+    lv_obj_set_width(g_reason_title, 100);
+    lv_obj_set_style_text_color(g_reason_title, lv_color_hex(0xff3b30), 0);
+    lv_obj_set_style_text_font(g_reason_title, &lv_font_montserrat_16, 0);
+    lv_obj_set_pos(g_reason_title, 629, 105);
 
-    g_fault_reason_label = lv_label_create(reason_box);
-    lv_label_set_text_fmt(g_fault_reason_label, "CAUSE: %s", data->reason_text);
+    g_fault_reason_label = lv_label_create(g_fault_popup);
+    lv_label_set_text_fmt(g_fault_reason_label, "%s", data->reason_text);
     lv_obj_set_width(g_fault_reason_label, 680);
     lv_label_set_long_mode(g_fault_reason_label, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_color(g_fault_reason_label, lv_color_hex(0x555555), 0);
     lv_obj_set_style_text_font(g_fault_reason_label, &lv_font_montserrat_16, 0);
-    lv_obj_set_pos(g_fault_reason_label, 16, 20);
+    lv_obj_set_pos(g_fault_reason_label, 629, 128   );
 
-    /* 分割线 */
-    lv_obj_t* line = lv_obj_create(g_fault_popup);
-    lv_obj_set_size(line, 720, 1);
-    lv_obj_set_pos(line, 595, 224);
-    lv_obj_set_style_bg_color(line, lv_color_hex(0xE5E5E5), 0);
-    lv_obj_set_style_bg_opa(line, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_width(line, 0, 0);
-    lv_obj_set_style_shadow_width(line, 0, 0);
+    g_solution_title = lv_label_create(g_fault_popup);
+    lv_label_set_text(g_solution_title, "Solution");
+    lv_obj_set_width(g_solution_title, 100);
+    lv_obj_set_style_text_color(g_solution_title, lv_color_hex(0x007aff), 0);
+    lv_obj_set_style_text_font(g_solution_title, &lv_font_montserrat_16, 0);
+    lv_obj_set_pos(g_solution_title, 629, 219);
 
-    /* 方案框 */
-    lv_obj_t* solution_box = create_info_box(
-        g_fault_popup, 595, 242, 720, 86,
-        lv_color_hex(0xF5F5F5), lv_color_hex(0xECECEC));
-
-    g_fault_solution_label = lv_label_create(solution_box);
-    lv_label_set_text_fmt(g_fault_solution_label, "SOLUTION: %s", data->solution_text);
+    g_fault_solution_label = lv_label_create(g_fault_popup);
+    lv_label_set_text_fmt(g_fault_solution_label, " %s", data->solution_text);
     lv_obj_set_width(g_fault_solution_label, 680);
     lv_label_set_long_mode(g_fault_solution_label, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_color(g_fault_solution_label, lv_color_hex(0x555555), 0);
     lv_obj_set_style_text_font(g_fault_solution_label, &lv_font_montserrat_16, 0);
-    lv_obj_set_pos(g_fault_solution_label, 16, 24);
+    lv_obj_set_pos(g_fault_solution_label, 629, 243);
 
     /* 版本 */
     g_fault_version_label = lv_label_create(g_fault_popup);
@@ -461,8 +483,8 @@ void show_fault_popup_ex(const fault_popup_data_t* data)
 
     /* confirm */
     lv_obj_t* confirm_btn = lv_btn_create(g_fault_popup);
-    lv_obj_set_size(confirm_btn, 180, 58);
-    lv_obj_set_pos(confirm_btn, 1140, 304);
+    lv_obj_set_size(confirm_btn, 180, 45);
+    lv_obj_set_pos(confirm_btn, 1023, 311);
     lv_obj_set_style_radius(confirm_btn, 14, 0);
     lv_obj_set_style_bg_color(confirm_btn, lv_color_hex(0x1677FF), 0);
     lv_obj_set_style_border_width(confirm_btn, 0, 0);
