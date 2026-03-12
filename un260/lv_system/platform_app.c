@@ -131,20 +131,23 @@ void update_label_by_name(ui_element_t* page_cfg_obj, int len,const char* name, 
 //设置国家curr
 void set_curr(curr_item_t curr)
 {
-    if (curr > CURR_COUNT)
-    {
+    if (curr > CURR_COUNT) {
 #if LV_DEBUG
         printf("set_curr is error");
 #endif
         return;
     }
+
     if (curr == Machine_para.current_currency) return;
 
     Machine_para.current_currency = curr;
-    //sim_data_init();
     sim_clear_all_sn(&sim);
-    ui_refresh_main_page();
 
+    if (page_01_main_scroll_container && lv_obj_is_valid(page_01_main_scroll_container)) {
+        lv_obj_scroll_to_y(page_01_main_scroll_container, 0, LV_ANIM_OFF);
+    }
+
+    ui_refresh_main_page();
 }
 
 void sim_data_init(void)
