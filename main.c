@@ -579,7 +579,7 @@ void PCCmdHandle(void)
 
             /* NEW: append if not found */
             if (!found) {
-                if (sim.denom_number < 16 /* 你sim里数组上限 */) {
+                if (sim.denom_number < (int)(sizeof(sim.denom) / sizeof(sim.denom[0]))) {
                     int i = sim.denom_number;
                     sim.denom[i].value = denom;
                     sim.denom[i].pcs = pcs;

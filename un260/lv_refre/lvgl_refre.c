@@ -518,6 +518,10 @@ void page_02_a_page_refre(void)
     lv_obj_t* a_pcs;
     lv_obj_t* a_amount;
     char a_denom_buf[32], a_pcs_buf[32], a_amount_buf[32];
+
+    update_label_by_name(page_02_list_obj, page_02_list_len, "02_a_pcs_amount", "%d", sim.total_pcs);
+    update_label_by_name(page_02_list_obj, page_02_list_len, "02_a_amount_total", "%.0f", sim.total_amount);
+
     for (int i = 0; i < PAGE_02_A_ITEM; i++)
     {
         int row;
@@ -531,25 +535,24 @@ void page_02_a_page_refre(void)
         int temp_current;
         temp_current = i + (page_02_a_report_status.curent_page - 1) * PAGE_02_A_ITEM;
 
-            update_label_by_name(page_02_list_obj, page_02_list_len, a_denom_buf, "%d", sim.denom[temp_current].value);
-            update_label_by_name(page_02_list_obj, page_02_list_len, a_pcs_buf, "%d", sim.denom[temp_current].pcs);
-            update_label_by_name(page_02_list_obj, page_02_list_len, a_amount_buf, "%.0f", sim.denom[temp_current].amount);
-            update_label_by_name(page_02_list_obj, page_02_list_len, "02_a_pcs_amount", "%d", sim.total_pcs);
-            update_label_by_name(page_02_list_obj, page_02_list_len, "02_a_amount_total", "%.0f", sim.total_amount);
+        if (!a_denom || !a_pcs || !a_amount) {
+            continue;
+        }
 
-            if (temp_current > sim.denom_number)
-            {
+        if (temp_current >= sim.denom_number || sim.denom[temp_current].value <= 0) {
             lv_obj_add_flag(a_denom, LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(a_pcs, LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(a_amount, LV_OBJ_FLAG_HIDDEN);
+            continue;
+        }
 
-            }
-            else
-            {
-            lv_obj_clear_flag(a_denom, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_clear_flag(a_pcs, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_clear_flag(a_amount, LV_OBJ_FLAG_HIDDEN);
-            }
+        update_label_by_name(page_02_list_obj, page_02_list_len, a_denom_buf, "%d", sim.denom[temp_current].value);
+        update_label_by_name(page_02_list_obj, page_02_list_len, a_pcs_buf, "%d", sim.denom[temp_current].pcs);
+        update_label_by_name(page_02_list_obj, page_02_list_len, a_amount_buf, "%.0f", sim.denom[temp_current].amount);
+
+        lv_obj_clear_flag(a_denom, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(a_pcs, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(a_amount, LV_OBJ_FLAG_HIDDEN);
 
     }
 }
