@@ -25,6 +25,8 @@ typedef enum {
     CURR_IQD_ITEM,
     CURR_COUNT
 }curr_item_t;
+#define UI_VERSION  "V1.0.0"
+
 #define PCS_BATCH_MODE 0
 #define AMOUNT_BATCH_MODE 1
 //Function

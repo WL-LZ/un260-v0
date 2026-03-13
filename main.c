@@ -392,7 +392,8 @@ void PCCmdHandle(void)
             }
 
             uint8_t *p = &buf[4];
-
+            strncpy(Machine_Statue.display_app, UI_VERSION, sizeof(Machine_Statue.display_app) - 1);
+            Machine_Statue.display_app[sizeof(Machine_Statue.display_app) - 1] = '\0';
             snprintf(Machine_Statue.main_app,  sizeof(Machine_Statue.main_app),
                      "%d.%d.%d", p[0], p[1], p[2]);
 
@@ -407,8 +408,6 @@ void PCCmdHandle(void)
 
             snprintf(Machine_Statue.ecb, sizeof(Machine_Statue.ecb),
                      "%d.%d.%d", p[11], p[12], p[13]);
-
-            strcpy(Machine_Statue.display_app, "N/A");
             Machine_Statue.version_valid = true;
 
             uart_printf(fd6, "Version Info Received\n");
