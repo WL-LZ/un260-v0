@@ -1026,6 +1026,28 @@ void PCCmdHandle(void)
 
             break;
         }
+        /* ================== 0x15 BEEP setting ================== */
+        case 0x15:
+        {
+            if (len < 6) break;
+            uint8_t sub = buf[4];
+
+            if (sub == 0x01) {
+                uart_printf(fd6, "BEEP set success\n");
+            } else if (sub == 0x02) {
+                uart_printf(fd6, "BEEP set failed\n");
+                Machine_para.buzzer_enable = !Machine_para.buzzer_enable;
+                page_03_update_menu_button_states_refresh();
+            } else if (sub == 0x03) {
+                if (len < 7) break;
+                uint8_t v = buf[5];
+                Machine_para.buzzer_enable = (v == 0x01);
+                uart_printf(fd6, "BEEP boot status: %s\n", Machine_para.buzzer_enable ? "ON" : "OFF");
+                page_03_update_menu_button_states_refresh();
+            }
+
+            break;
+        }
 
         /* ================== 0x3A F/O 面向模式 ================== */
         case 0x3A:
