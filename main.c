@@ -636,9 +636,9 @@ void PCCmdHandle(void)
 
             if (err_code == 0xFF && pcs == 0xFF) {
                 page_02_c_report_status.curent_page = 1;
-                page_02_c_report_status.total_page = (sim.err_expected == 0)
+                page_02_c_report_status.total_page = (sim.err_num == 0)
                     ? 1
-                    : ((sim.err_expected + PAGE_02_C_ITEM - 1) / PAGE_02_C_ITEM);
+                    : ((sim.err_num + PAGE_02_C_ITEM - 1) / PAGE_02_C_ITEM);
                 page_02_c_page_refre();
                 page_02_c_page_num_refre();
                 uart_printf(fd6, "0x0C reject detail receive end, parsed=%u expected=%u\n",
@@ -669,7 +669,11 @@ void PCCmdHandle(void)
             sim.err_pcs[idx] = pcs;
             sim.err_num++;
             /* 不等 end 帧：收到一条就刷新 LIST 的报错区 */
+            page_02_c_report_status.total_page = (sim.err_num == 0)
+                ? 1
+                : ((sim.err_num + PAGE_02_C_ITEM - 1) / PAGE_02_C_ITEM);
             page_02_c_page_refre();
+            page_02_c_page_num_refre();
             break;
         }
 

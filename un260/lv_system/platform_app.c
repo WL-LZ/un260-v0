@@ -629,7 +629,7 @@ void page_02_report_init(void)
     page_02_b_report_status.curent_page = 1;
     page_02_b_report_status.total_page = (sim.total_pcs == 0) ? 1 : ((sim.total_pcs + PAGE_02_B_ITEM - 1) / PAGE_02_B_ITEM);
     page_02_c_report_status.curent_page = 1;
-    page_02_c_report_status.total_page = (sim.err_expected == 0) ? 1 : ((sim.err_expected + PAGE_02_C_ITEM - 1) / PAGE_02_C_ITEM);
+    page_02_c_report_status.total_page = (sim.err_num == 0) ? 1 : ((sim.err_num + PAGE_02_C_ITEM - 1) / PAGE_02_C_ITEM);
 }
 
 // 清空所有冠字号的函数
