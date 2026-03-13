@@ -16,6 +16,7 @@ static lv_obj_t* boot_progress_fill = NULL;
 static lv_obj_t* boot_progress_percent_label = NULL;
 static lv_obj_t* boot_progress_loading_label = NULL;
 static uint8_t boot_progress_percent = 0;
+static lv_timer_t* boot_progress_handshake_timer = NULL;
 ui_element_t page_08_curr_obj[] = {
     // 背景图
 
@@ -63,9 +64,39 @@ static void boot_progress_apply(uint8_t percent)
     }
 }
 
+static void boot_progress_handshake_timer_cb(lv_timer_t* t)
+{
+    LV_UNUSED(t);
+    if (boot_progress_percent >= 18) return;
+
+    uint8_t next = (uint8_t)(boot_progress_percent + 3);
+    if (next > 18) next = 18;
+    boot_progress_apply(next);
+}
+
+static void boot_progress_handshake_tick_start(void)
+{
+    if (boot_progress_handshake_timer == NULL) {
+        boot_progress_handshake_timer = lv_timer_create(boot_progress_handshake_timer_cb, 1000, NULL);
+    } else {
+        lv_timer_resume(boot_progress_handshake_timer);
+    }
+}
+
+static void boot_progress_handshake_tick_stop(void)
+{
+    if (boot_progress_handshake_timer) {
+        lv_timer_del(boot_progress_handshake_timer);
+        boot_progress_handshake_timer = NULL;
+    }
+}
+
 void boot_progress_set(uint8_t percent)
 {
     boot_progress_apply(percent);
+    if (percent >= 20) {
+        boot_progress_handshake_tick_stop();
+    }
 }
 
 void boot_progress_reset(void)
@@ -171,6 +202,7 @@ void boot_waiting_anim_stop(void)
     boot_waiting_label = NULL;
 
     boot_waiting_dot_state = 0;
+    boot_progress_handshake_tick_stop();
 }
 
 void bootlog_append(const char* text)
@@ -330,7 +362,8 @@ void ui_page_08_curr_create(lv_obj_t* parent)
     if (g_boot_stage == BOOT_STAGE_HANDSHAKE &&
         Machine_Statue.g_handshake_state != HANDSHAKE_OK) {
         boot_waiting_anim_start();
-        boot_progress_set(10);
+        boot_progress_set(0);
+        boot_progress_handshake_tick_start();
     } else if (g_boot_stage >= BOOT_STAGE_SENSOR && g_boot_stage <= BOOT_STAGE_IMAGE) {
         uint8_t selftest_ok_cnt = (uint8_t)(g_boot_stage - BOOT_STAGE_SENSOR);
         boot_progress_set((uint8_t)(20 + selftest_ok_cnt * 10));
@@ -353,5 +386,6 @@ void ui_page_08_curr_destroy(void)
     boot_progress_fill = NULL;
     boot_progress_percent_label = NULL;
     boot_progress_loading_label = NULL;
+    boot_progress_handshake_tick_stop();
     boot_waiting_anim_stop();
 }

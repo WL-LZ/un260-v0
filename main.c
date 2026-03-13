@@ -1315,7 +1315,6 @@ int main(void) {
         {
             if (Machine_Statue.g_handshake_state == HANDSHAKE_IDLE)
             {
-                boot_progress_set(10);
                 machine_handshake_send();
             }
             else if (Machine_Statue.g_handshake_state == HANDSHAKE_SENT)

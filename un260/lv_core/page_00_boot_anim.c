@@ -99,9 +99,8 @@ static void boot_anim_timer_cb(lv_timer_t* timer)
     int line_w = x2 - x1;
 
     boot_anim_set_bar(line_base, x1, cy - 1, line_w, 2, (lv_opa_t)(255.0f * 0.30f * line_alpha));
-    boot_anim_set_bar(line_mid, x1, cy - 1, line_w, 2, (lv_opa_t)(255.0f * 0.58f * line_alpha));
-    boot_anim_set_bar(line_core, cx - 12, cy - 1, 24, 2, (lv_opa_t)(255.0f * 0.55f * line_alpha));
-
+    boot_anim_set_bar(line_mid, x1, cy - 1, line_w, 2,(lv_opa_t)(255.0f * 0.70f * line_alpha));    
+    boot_anim_set_bar(line_core, 0, 0, 0, 0, 0);
     {
         float travel_start = 1.55f;
         float travel_dur = 1.95f;
@@ -125,7 +124,7 @@ static void boot_anim_timer_cb(lv_timer_t* timer)
             int tx1 = px - trail_len;
             if (tx1 < x1) tx1 = x1;
 
-            boot_anim_set_bar(line_glow, px - glow_w / 2, cy - 1, glow_w, 2, (lv_opa_t)(255.0f * 0.92f * end_fade));
+            boot_anim_set_bar(line_glow, px - glow_w / 2, cy - 1, glow_w, 2,(lv_opa_t)(255.0f * 1.0f * end_fade));
             boot_anim_set_bar(line_trail, tx1, cy, px - tx1, 1, (lv_opa_t)(255.0f * 0.12f * end_fade));
         } else {
             boot_anim_set_bar(line_glow, 0, 0, 0, 0, 0);
