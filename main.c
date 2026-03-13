@@ -444,12 +444,27 @@ void PCCmdHandle(void)
         {
             if (len < 6) break;
 
-            uint8_t status = buf[5];
+            uint8_t status = buf[4];
 
-            uart_printf(fd6,
-                "Set %s curr %s\n",
-                Machine_para.curr_code,
-                (status == 0x01) ? "success" : "fail");
+            if (status == 0x01)
+            {
+                uart_printf(fd6, "Set %s curr success\n", Machine_para.curr_code);
+            }
+            else if (status == 0x02)
+            {
+                uart_printf(fd6, "Set %s curr fail\n", Machine_para.curr_code);
+            }
+            else if (status == 0x03)
+            {
+                if (len < 9) break;
+
+                Machine_para.curr_code[0] = (char)buf[5];
+                Machine_para.curr_code[1] = (char)buf[6];
+                Machine_para.curr_code[2] = (char)buf[7];
+                Machine_para.curr_code[3] = '\0';
+
+                uart_printf(fd6, "Boot curr: %s\n", Machine_para.curr_code);
+            }
 
             break;
         }
