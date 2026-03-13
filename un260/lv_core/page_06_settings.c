@@ -630,7 +630,7 @@ void ui_page_06_settings_create(lv_obj_t* parent)
     create_left_menu(settings_page);
 
     // 创建右侧子页面
-    system_page = create_sub_page(settings_page, "System Settings");
+    system_page = create_sub_page(settings_page, " ");
     create_system_page_content(system_page);
     maintenance_page = create_sub_page(settings_page, " ");
     create_maintenance_page_content(maintenance_page);
