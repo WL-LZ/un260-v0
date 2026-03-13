@@ -375,6 +375,7 @@ void PCCmdHandle(void)
             if (buf[4] == 0x01) {
                 boot_waiting_anim_stop();
                 bootlog_append("Handshake OK");
+                boot_progress_set(20);
                 Machine_Statue.g_handshake_state = HANDSHAKE_OK;
                 g_handshake_start_tick = 0;
                 boot_selftest_result_reset();
@@ -874,6 +875,9 @@ void PCCmdHandle(void)
 
                 snprintf(logbuf, sizeof(logbuf), "%s self-test SUCCESS", name);
                 bootlog_append(logbuf);
+                if (index >= 0) {
+                    boot_progress_set((uint8_t)(30 + index * 10));
+                }
 
                 g_boot_stage++;
 
@@ -884,6 +888,7 @@ void PCCmdHandle(void)
                 else
                 {
                     bootlog_append("self-test SUCCESS");
+                    boot_progress_set(100);
                     send_command(fd4, 0x56, (uint8_t[]){0x01}, 1);
                     lv_timer_create(boot_selftest_finish_cb, 2000, NULL);
 
@@ -1310,6 +1315,7 @@ int main(void) {
         {
             if (Machine_Statue.g_handshake_state == HANDSHAKE_IDLE)
             {
+                boot_progress_set(10);
                 machine_handshake_send();
             }
             else if (Machine_Statue.g_handshake_state == HANDSHAKE_SENT)

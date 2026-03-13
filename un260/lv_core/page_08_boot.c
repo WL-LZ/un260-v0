@@ -11,6 +11,11 @@
 static lv_timer_t* boot_waiting_timer = NULL;
 static lv_obj_t* boot_waiting_label = NULL;
 static uint8_t boot_waiting_dot_state = 0;
+static lv_obj_t* boot_progress_bg = NULL;
+static lv_obj_t* boot_progress_fill = NULL;
+static lv_obj_t* boot_progress_percent_label = NULL;
+static lv_obj_t* boot_progress_loading_label = NULL;
+static uint8_t boot_progress_percent = 0;
 ui_element_t page_08_curr_obj[] = {
     // 背景图
 
@@ -37,6 +42,69 @@ static lv_obj_t* boot_label = NULL;
 static lv_timer_t* boot_timer = NULL;
 static char boot_buf[BOOTLOG_BUFFER_SIZE];
 static int boot_line_index = 0;
+
+#define BOOT_PROGRESS_X 39
+#define BOOT_PROGRESS_Y 380
+#define BOOT_PROGRESS_W 1203
+#define BOOT_PROGRESS_H 3
+
+static void boot_progress_apply(uint8_t percent)
+{
+    if (percent > 100) percent = 100;
+    boot_progress_percent = percent;
+
+    if (boot_progress_fill && lv_obj_is_valid(boot_progress_fill)) {
+        lv_coord_t w = (lv_coord_t)((BOOT_PROGRESS_W * boot_progress_percent) / 100);
+        lv_obj_set_width(boot_progress_fill, w);
+    }
+
+    if (boot_progress_percent_label && lv_obj_is_valid(boot_progress_percent_label)) {
+        lv_label_set_text_fmt(boot_progress_percent_label, "%u%%", boot_progress_percent);
+    }
+}
+
+void boot_progress_set(uint8_t percent)
+{
+    boot_progress_apply(percent);
+}
+
+void boot_progress_reset(void)
+{
+    boot_progress_apply(0);
+}
+
+static void boot_progress_create(lv_obj_t* parent)
+{
+    boot_progress_bg = lv_obj_create(parent);
+    lv_obj_remove_style_all(boot_progress_bg);
+    lv_obj_set_pos(boot_progress_bg, BOOT_PROGRESS_X, BOOT_PROGRESS_Y);
+    lv_obj_set_size(boot_progress_bg, BOOT_PROGRESS_W, BOOT_PROGRESS_H);
+    lv_obj_set_style_bg_color(boot_progress_bg, lv_color_hex(0xDDEFF9), 0);
+    lv_obj_set_style_bg_opa(boot_progress_bg, LV_OPA_COVER, 0);
+    lv_obj_clear_flag(boot_progress_bg, LV_OBJ_FLAG_SCROLLABLE);
+
+    boot_progress_fill = lv_obj_create(parent);
+    lv_obj_remove_style_all(boot_progress_fill);
+    lv_obj_set_pos(boot_progress_fill, BOOT_PROGRESS_X, BOOT_PROGRESS_Y);
+    lv_obj_set_size(boot_progress_fill, 0, BOOT_PROGRESS_H);
+    lv_obj_set_style_bg_color(boot_progress_fill, lv_color_hex(0x10A5E9), 0);
+    lv_obj_set_style_bg_opa(boot_progress_fill, LV_OPA_COVER, 0);
+    lv_obj_clear_flag(boot_progress_fill, LV_OBJ_FLAG_SCROLLABLE);
+
+    boot_progress_loading_label = lv_label_create(parent);
+    lv_label_set_text(boot_progress_loading_label, "LOADING");
+    lv_obj_set_pos(boot_progress_loading_label, 44, 361);
+    lv_obj_set_style_text_color(boot_progress_loading_label, lv_color_hex(0x6D92AA), 0);
+    lv_obj_set_style_text_font(boot_progress_loading_label, LV_FONT_DEFAULT, 0);
+
+    boot_progress_percent_label = lv_label_create(parent);
+    lv_label_set_text(boot_progress_percent_label, "0%");
+    lv_obj_set_pos(boot_progress_percent_label, 1220, 361);
+    lv_obj_set_style_text_color(boot_progress_percent_label, lv_color_hex(0x6D92AA), 0);
+    lv_obj_set_style_text_font(boot_progress_percent_label, LV_FONT_DEFAULT, 0);
+
+    boot_progress_apply(boot_progress_percent);
+}
 
 static void boot_waiting_timer_cb(lv_timer_t* timer)
 {
@@ -74,7 +142,7 @@ void boot_waiting_anim_start(void)
         lv_label_set_long_mode(boot_waiting_label, LV_LABEL_LONG_WRAP);
         lv_obj_set_width(boot_waiting_label, BOOTLOG_CONT_W - 16);
 
-        lv_obj_set_style_text_color(boot_waiting_label, lv_color_make(85, 164, 85), 0);
+        lv_obj_set_style_text_color(boot_waiting_label, lv_color_hex(0x0084FF), 0);
         lv_obj_set_style_text_font(boot_waiting_label, LV_FONT_DEFAULT, 0);
         lv_coord_t line_h = lv_font_get_line_height(LV_FONT_DEFAULT);
         lv_obj_align(boot_waiting_label, LV_ALIGN_TOP_LEFT, 8, 8 + line_h + 2);
@@ -227,8 +295,8 @@ void bootlog_start(lv_obj_t* parent)
     lv_obj_align(boot_label, LV_ALIGN_TOP_LEFT, 8, 8);
     lv_label_set_text(boot_label, "");
 
-    // 🔹 设置字体为绿色 (85,164,85)
-    lv_obj_set_style_text_color(boot_label, lv_color_make(85, 164, 85), 0);
+    // boot 自检日志字体统一使用 #0084FF
+    lv_obj_set_style_text_color(boot_label, lv_color_hex(0x0084FF), 0);
     lv_obj_set_style_text_font(boot_label, LV_FONT_DEFAULT, 0);
     //boot_timer = lv_timer_create(boot_timer_cb, BOOTLOG_LINE_MS, NULL);
 }
@@ -256,11 +324,18 @@ void ui_page_08_curr_create(lv_obj_t* parent)
     lv_obj_set_scrollbar_mode(boot_page, LV_SCROLLBAR_MODE_OFF);
     lv_ui_obj_init(boot_page, page_08_curr_obj, page_08_curr_len);
     bootlog_start(boot_page);
+    boot_progress_create(boot_page);
 
     /* Restore legacy behavior: show waiting hint on boot page during handshake stage. */
     if (g_boot_stage == BOOT_STAGE_HANDSHAKE &&
         Machine_Statue.g_handshake_state != HANDSHAKE_OK) {
         boot_waiting_anim_start();
+        boot_progress_set(10);
+    } else if (g_boot_stage >= BOOT_STAGE_SENSOR && g_boot_stage <= BOOT_STAGE_IMAGE) {
+        uint8_t selftest_ok_cnt = (uint8_t)(g_boot_stage - BOOT_STAGE_SENSOR);
+        boot_progress_set((uint8_t)(20 + selftest_ok_cnt * 10));
+    } else if (g_boot_stage == BOOT_STAGE_DONE) {
+        boot_progress_set(100);
     } else {
         boot_waiting_anim_stop();
     }
@@ -274,5 +349,9 @@ void ui_page_08_curr_destroy(void)
         lv_obj_del(boot_page);
         boot_page = NULL;
     }
+    boot_progress_bg = NULL;
+    boot_progress_fill = NULL;
+    boot_progress_percent_label = NULL;
+    boot_progress_loading_label = NULL;
     boot_waiting_anim_stop();
 }
