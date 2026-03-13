@@ -491,6 +491,13 @@ void page_03_batch_num_keypad_enter_event_cb(lv_event_t* e)
 }
 void page_03_update_menu_button_states_refresh(void)
 {
+    /* boot 阶段会收到参数同步帧(0x38/0x39/0x3A/0x15等)，
+       但菜单页对象可能尚未创建。这里必须做到“无对象就直接跳过”，
+       否则会对 NULL 调用 lv_obj_set_style_* 导致卡死/崩溃。 */
+    if (page_03_menu_obj == NULL || page_03_menu_len <= 0) {
+        return;
+    }
+
     const char* page_03_beep_mode_obj[] = {"03_beep_on_btn","03_beep_off_btn"};
     const char* page_03_speed_mode_obj[] = { "03_speed_800_btn","03_speed_1000_btn","03_speed_1200_btn" };
     const char* page_03_add_mode_obj[] = {"03_add_on_btn","03_add_off_btn"};
@@ -530,9 +537,10 @@ void page_03_update_menu_button_states_refresh(void)
     {
         lv_obj_t* tmp_speed_obj = find_obj_by_name(page_03_speed_mode_obj[i], page_03_menu_obj, page_03_menu_len);
         bool sel = (i == Machine_para.speed);
-        lv_obj_set_style_bg_color(tmp_speed_obj,
-            sel ? selected_color : unselected_color, 0);
+        if (!tmp_speed_obj) continue;
+        lv_obj_set_style_bg_color(tmp_speed_obj, sel ? selected_color : unselected_color, 0);
         lv_obj_t* label_speed = lv_obj_get_child(tmp_speed_obj, 0);
+        if (!label_speed) continue;
         lv_obj_set_style_text_color(
             label_speed,
             sel ? selected_text_color : unselected_text_color,
@@ -544,6 +552,7 @@ void page_03_update_menu_button_states_refresh(void)
     {
         lv_obj_t* tmp_fo_obj = find_obj_by_name(page_03_fo_mode_obj[i], page_03_menu_obj, page_03_menu_len);
         bool sel = (i == Machine_para.fo_mode);
+        if (!tmp_fo_obj) continue;
         if (i == 0)
         {
             lv_obj_set_style_bg_color(tmp_fo_obj,
@@ -555,6 +564,7 @@ void page_03_update_menu_button_states_refresh(void)
                 sel ? selected_color : unselected_color, 0);
         }
         lv_obj_t* label_fo = lv_obj_get_child(tmp_fo_obj, 0);
+        if (!label_fo) continue;
         lv_obj_set_style_text_color(
             label_fo,
             sel ? selected_text_color : unselected_text_color,
@@ -566,9 +576,10 @@ void page_03_update_menu_button_states_refresh(void)
     {
         lv_obj_t* tmp_work_obj = find_obj_by_name(page_03_work_mode_obj[i], page_03_menu_obj, page_03_menu_len);
         bool sel = (i == Machine_para.work_mode);
-        lv_obj_set_style_bg_color(tmp_work_obj,
-            sel ? selected_color : unselected_color, 0);
+        if (!tmp_work_obj) continue;
+        lv_obj_set_style_bg_color(tmp_work_obj, sel ? selected_color : unselected_color, 0);
         lv_obj_t* label_work = lv_obj_get_child(tmp_work_obj, 0);
+        if (!label_work) continue;
         lv_obj_set_style_text_color(
             label_work,
             sel ? selected_text_color : unselected_text_color,
@@ -579,6 +590,7 @@ void page_03_update_menu_button_states_refresh(void)
         lv_obj_t* tmp_add_on_obj = find_obj_by_name(page_03_add_mode_obj[0], page_03_menu_obj, page_03_menu_len);
         lv_obj_t* tmp_add_off_obj = find_obj_by_name(page_03_add_mode_obj[1], page_03_menu_obj, page_03_menu_len);
         bool sel =  Machine_para.add_enable;
+        if (!tmp_add_on_obj || !tmp_add_off_obj) return;
         if (sel)
         {
             lv_obj_set_style_bg_color(tmp_add_on_obj,selected_color , 0);
@@ -592,17 +604,21 @@ void page_03_update_menu_button_states_refresh(void)
 
         }
         lv_obj_t* label_add_on = lv_obj_get_child(tmp_add_on_obj, 0);
+        if (label_add_on) {
         lv_obj_set_style_text_color(
             label_add_on,
             sel ? selected_text_color : unselected_text_color,
             0 
         );
+        }
         lv_obj_t* label_add_off = lv_obj_get_child(tmp_add_off_obj, 0);
+        if (label_add_off) {
         lv_obj_set_style_text_color(
             label_add_off,
             !sel ? selected_text_color : unselected_text_color,
             0  
         );
+        }
 
 }
 
