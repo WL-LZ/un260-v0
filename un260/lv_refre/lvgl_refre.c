@@ -763,7 +763,7 @@ void page_01_speed_refre(void)
 void page_01_err_num_refre(void)
 {
     char buf[4];
-    snprintf(buf, sizeof(buf), "%d",sim.err_num);
+    snprintf(buf, sizeof(buf), "%d", sim.err_expected);
     update_label_by_name(page_01_main_obj, page_01_main_len, "reject_num_label", "%s", buf);
 }
 

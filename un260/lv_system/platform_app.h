@@ -22,7 +22,8 @@ typedef struct {
     uint8_t* err_pcs;
     int err_capacity;
     bool is_paused;
-    uint16_t err_num;
+    uint16_t err_num;//已解析到的退钞明细条数
+    uint16_t err_expected;//退钞总条数
     int denom_mix[10000];
 }counting_sim_t;
 //page_02

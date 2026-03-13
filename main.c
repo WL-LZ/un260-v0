@@ -51,6 +51,7 @@ static int gPCRecvComplete = 0;   // 一帧接收完成标志
 // 添加互斥锁保护共享变量
 static pthread_mutex_t recv_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
+static bool g_wait_sn_after_reject_end = false;
 
 static uint8_t g_boot_selftest_result[5] = {0};
 static void boot_selftest_result_reset(void)
@@ -429,7 +430,7 @@ void PCCmdHandle(void)
             if (status <= 0x01) {
                 sim.total_amount = amount;
                 sim.total_pcs    = qty;
-                sim.err_num      = ret;
+                sim.err_expected = ret;
                 ui_refresh_main_page_throttled();
             } else if (status == 0x02) {
                 uart_printf(fd6, "Count finished\n");
@@ -573,8 +574,10 @@ void PCCmdHandle(void)
             }
             if (all_ff) {
                 uart_printf(fd6, "0x0B denom detail receive end\n");
-                uint8_t req[2] = {0x01, 0x01};
-                send_command(fd4, 0x0D, req, 2);
+                /* 串行时序：先请求 0x0C，等 0x0C 结束后再请求 0x0D */
+                uint8_t reject_cmd = 0x01;
+                send_command(fd4, 0x0C, &reject_cmd, 1);
+                g_wait_sn_after_reject_end = true;
                 ui_refresh_main_page();
                 break;
             }
@@ -626,18 +629,25 @@ void PCCmdHandle(void)
 
             if (err_code == 0x00 && pcs == 0x00) {
                 sim_clear_err_only(&sim);
+                /* 保留期望数量（来自 0x0E），用于 LIST 立即看到“应有多少条” */
                 //uart_printf(fd6, "0x0C reject detail receive start\n");
                 break;
             }
 
             if (err_code == 0xFF && pcs == 0xFF) {
                 page_02_c_report_status.curent_page = 1;
-                page_02_c_report_status.total_page = (sim.err_num == 0)
+                page_02_c_report_status.total_page = (sim.err_expected == 0)
                     ? 1
-                    : ((sim.err_num + PAGE_02_C_ITEM - 1) / PAGE_02_C_ITEM);
+                    : ((sim.err_expected + PAGE_02_C_ITEM - 1) / PAGE_02_C_ITEM);
                 page_02_c_page_refre();
                 page_02_c_page_num_refre();
-                uart_printf(fd6, "0x0C reject detail receive end, total=%u\n", sim.err_num);
+                uart_printf(fd6, "0x0C reject detail receive end, parsed=%u expected=%u\n",
+                            sim.err_num, sim.err_expected);
+                if (g_wait_sn_after_reject_end) {
+                    uint8_t sn_req[2] = { 0x01, 0x01 };
+                    send_command(fd4, 0x0D, sn_req, 2);
+                    g_wait_sn_after_reject_end = false;
+                }
                 break;
             }
 
@@ -658,6 +668,8 @@ void PCCmdHandle(void)
             memcpy(sim.err_str[idx], desc, desc_len + 1);
             sim.err_pcs[idx] = pcs;
             sim.err_num++;
+            /* 不等 end 帧：收到一条就刷新 LIST 的报错区 */
+            page_02_c_page_refre();
             break;
         }
 
