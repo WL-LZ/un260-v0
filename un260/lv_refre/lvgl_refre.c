@@ -90,30 +90,35 @@ void lvgl_ui_init(void)
 
 //主界面右侧详情数据写入容器
 
-
 void page_01_mode_switch_refre()
 {
+    const char* mode_str = "NONE";
+
     switch (Machine_para.mode)
     {
-
     case MODE_MDC:
-        update_label_by_name(page_01_main_obj, page_01_main_len, "mix_label", "MDC");
-            break;
-    case MODE_CNT:
-        update_label_by_name(page_01_main_obj, page_01_main_len, "mix_label", "CNT");
+        mode_str = "MDC";
         break;
-    case MODE_VER:
-        update_label_by_name(page_01_main_obj, page_01_main_len, "mix_label", "VER");
-        break;
-    case MODE_SDC:
-        update_label_by_name(page_01_main_obj, page_01_main_len, "mix_label", "SDC");
-        break;
-    default:
-        update_label_by_name(page_01_main_obj, page_01_main_len, "mix_label", "NONE");
 
+    case MODE_CNT:
+        mode_str = "CNT";
+        break;
+
+    case MODE_VER:
+        mode_str = "VER";
+        break;
+
+    case MODE_SDC:
+        mode_str = "SDC";
+        break;
+
+    default:
+        mode_str = "NONE";
         break;
     }
 
+    update_label_by_name(page_01_main_obj, page_01_main_len, "mix_label", "%s", mode_str);
+    update_label_by_name(page_01_main_obj, page_01_main_len, "mode_label", "%s", mode_str);
 }
 
 void page_01_create_mian_scrollable_container(void)
