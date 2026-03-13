@@ -1290,7 +1290,8 @@ int main(void) {
         lv_timer_handler();
         PCCmdHandle();
 
-        if (g_boot_stage == BOOT_STAGE_HANDSHAKE)
+        if (g_boot_stage == BOOT_STAGE_HANDSHAKE &&
+            ui_manager_get_current_page() == UI_PAGE_BOOT)
         {
             if (Machine_Statue.g_handshake_state == HANDSHAKE_IDLE)
             {

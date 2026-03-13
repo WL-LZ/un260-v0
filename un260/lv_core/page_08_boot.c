@@ -260,10 +260,6 @@ void ui_page_08_curr_create(lv_obj_t* parent)
     /* Restore legacy behavior: show waiting hint on boot page during handshake stage. */
     if (g_boot_stage == BOOT_STAGE_HANDSHAKE &&
         Machine_Statue.g_handshake_state != HANDSHAKE_OK) {
-        const char* cur = lv_label_get_text(boot_label);
-        if (cur == NULL || cur[0] == '\0') {
-            bootlog_append("Machine starting...");
-        }
         boot_waiting_anim_start();
     } else {
         boot_waiting_anim_stop();
