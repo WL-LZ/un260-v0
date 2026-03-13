@@ -18,16 +18,17 @@ extern "C" {
     extern lv_obj_t* page_sensor;
     extern lv_obj_t* page_upgrade;
     extern lv_obj_t* page_motor_test;
+    extern lv_obj_t* boot_anim_page;
 
     typedef enum {
-        UI_PAGE_MAIN = 0,
+        UI_PAGE_BOOT_ANIM = 0,
+        UI_PAGE_MAIN,
         UI_PAGE_LIST,
         UI_PAGE_MENU,
         UI_PAGE_SETTING,
         UI_PAGE_DETAIL,
         UI_PAGE_SET_PASSAGE,
         UI_PAGE_CURR,
-        // 更多页面...
         UI_PAGE_BOOT,
         UI_PAGE_CIS_CALIB,
         UI_PAGE_DEBUG,

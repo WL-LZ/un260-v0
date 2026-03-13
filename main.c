@@ -1232,7 +1232,7 @@ int main(void) {
 
     lv_port_disp_init();
     lv_port_indev_init();
-    ui_manager_switch(UI_PAGE_BOOT);
+    ui_manager_switch(UI_PAGE_BOOT_ANIM);
 
     printf("=== 初始化UART4、UART5和UART6 ===\n");
 
@@ -1259,11 +1259,8 @@ int main(void) {
     pthread_detach(thread5);
    // machine_handshake_send(); 只发一次握手
 
-    // 测试UART6输出
-    for(int i=0;i<5;i++){
-        uart_printf(fd6, "UART6测试输出 %d\n", i);
-        sleep(1);
-    }
+    // 启动阶段避免阻塞，防止 LVGL 动画计时器错过播放窗口
+    uart_printf(fd6, "UART6 ready\n");
 
     while (1) {
         uint32_t now = custom_tick_get();

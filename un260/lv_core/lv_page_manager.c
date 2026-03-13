@@ -20,6 +20,7 @@ lv_obj_t* page_debug = NULL;
 lv_obj_t* page_sensor = NULL;
 lv_obj_t* page_upgrade = NULL;
 lv_obj_t* page_motor_test = NULL;
+lv_obj_t* boot_anim_page = NULL;
 
 ui_element_group_t all_ui_groups[] = {
     { page_01_main_obj, 0 },
@@ -40,6 +41,7 @@ static void destroy_current_page(void)
         }
     }
     switch (current_page) {
+    case UI_PAGE_BOOT_ANIM: ui_page_00_boot_anim_destroy(); break;     
     case UI_PAGE_MAIN:    ui_main_destroy();    break;
     case UI_PAGE_LIST:    ui_page_02_list_destroy();    break;
     case UI_PAGE_MENU:    ui_page_03_menu_destroy(); break;
@@ -80,6 +82,7 @@ static void create_new_page(ui_page_t page)
         return; // 直接返回，不执行创建
     }
     switch (page) {
+    case UI_PAGE_BOOT_ANIM: ui_page_00_boot_anim_create(lv_scr_act()); break;
     case UI_PAGE_MAIN:    ui_main_create(lv_scr_act()); resume_counting_sim();   break;
     case UI_PAGE_LIST:    ui_page_02_list_create(lv_scr_act());    break;
     case UI_PAGE_MENU:    ui_page_03_menu_create(lv_scr_act()); break;
