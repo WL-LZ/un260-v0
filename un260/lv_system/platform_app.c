@@ -707,7 +707,7 @@ void sim_clear_err_only(counting_sim_t* sim_data)
     }
     sim_data->err_num = 0;
     sim_data->err_capacity = 0;
-    sim_data->err_expected = 0;
+    /* Keep expected reject count from 0x0E for main-page reject display. */
 }
 
 bool sim_ensure_err_capacity(counting_sim_t* sim_data, int new_total)
