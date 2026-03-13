@@ -222,7 +222,7 @@ static bool dequeue_cmd(cmd_frame_t* frame) {
 
 void* uart4_thread(void* arg) {
     uint8_t byte;
-    uart_printf(fd6, "UART4 start (queue version)\n");
+    //uart_printf(fd6, "UART4 start (queue version)\n");
     pthread_mutex_lock(&recv_mutex);
     gPCRecvIndex = 0;
     gPCRecvLen = 0;
@@ -249,7 +249,7 @@ void* uart4_thread(void* arg) {
                     } else if (gPCRecvIndex == 3) {
                         gPCRecvLen = byte - 3;
                         if (byte < 3 || byte > RECV_BUF_SIZE) {
-                            uart_printf(fd6, "UART4: invalid len=%d, reset\n", byte);
+                            //uart_printf(fd6, "UART4: invalid len=%d, reset\n", byte);
                             gPCRecvSig = 0;
                             gPCRecvIndex = 0;
                             gPCRecvLen = 0;
@@ -257,6 +257,15 @@ void* uart4_thread(void* arg) {
                     } else if (gPCRecvIndex > 3) {
                         gPCRecvLen--;
                         if (gPCRecvLen == 0) {
+
+                            /* ===== DEBUG: 打印完整帧 ===== */
+                            uart_printf(fd6, "RX: ");
+                            for (int i = 0; i < gPCRecvIndex; i++) {
+                                uart_printf(fd6, "%02X ", gPCRecvBuff[i]);
+                            }
+                            uart_printf(fd6, "\n");
+                            /* ============================ */
+
                             // 一帧接收完成，立即入队
                             if (!enqueue_cmd(gPCRecvBuff, gPCRecvIndex)) {
                                 uart_printf(fd6, "UART4: queue full, drop frame\n");
@@ -267,7 +276,7 @@ void* uart4_thread(void* arg) {
                         }
                     }
                     if (gPCRecvIndex >= RECV_BUF_SIZE) {
-                        uart_printf(fd6, "UART4: buffer overflow, reset\n");
+                        //uart_printf(fd6, "UART4: buffer overflow, reset\n");
                         gPCRecvSig = 0;
                         gPCRecvIndex = 0;
                         gPCRecvLen = 0;
@@ -276,14 +285,14 @@ void* uart4_thread(void* arg) {
                     gPCRecvIndex = 0;
                     gPCRecvSig = 1;
                     gPCRecvBuff[gPCRecvIndex++] = byte;
-                    uart_printf(fd6, "UART4: new frame started\n");
+                    //uart_printf(fd6, "UART4: new frame started\n");
                 }
             }
             pthread_mutex_unlock(&recv_mutex);
         }
         usleep(100);
     }
-    uart_printf(fd6, "UART4 end\n");
+    //uart_printf(fd6, "UART4 end\n");
     return NULL;
 }
 
@@ -355,7 +364,7 @@ void PCCmdHandle(void)
     debug_append_rx_log(hex_log);
     /* ========================================== */
 
-        uart_printf(fd6, "Processing command 0x%02X, len=%d\n", cmd, len);
+        //uart_printf(fd6, "Processing command 0x%02X, len=%d\n", cmd, len);
 
         switch (cmd) {
 
@@ -603,7 +612,7 @@ void PCCmdHandle(void)
 
             if (err_code == 0x00 && pcs == 0x00) {
                 sim_clear_err_only(&sim);
-                uart_printf(fd6, "0x0C reject detail receive start\n");
+                //uart_printf(fd6, "0x0C reject detail receive start\n");
                 break;
             }
 
