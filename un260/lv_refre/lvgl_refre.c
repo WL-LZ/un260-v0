@@ -584,10 +584,13 @@ void page_02_b_page_refre(void)
         {
             update_label_by_name(page_02_list_obj, page_02_list_len, b_no_buf, "%d", (page_02_b_report_status.curent_page - 1) * PAGE_02_B_ITEM + i + 1);
             update_label_by_name(page_02_list_obj, page_02_list_len, b_denom_buf, "%d", sim.denom_mix[temp_current]);
-            if (sim.sn_str)
+            if (sim.sn_str != NULL && sim.sn_str[temp_current] != NULL)
             {
                 update_label_by_name(page_02_list_obj, page_02_list_len, b_sn_buf, "%s", sim.sn_str[temp_current]);
-
+            }
+            else
+            {
+                update_label_by_name(page_02_list_obj, page_02_list_len, b_sn_buf, "%s", "-");
             }
             lv_obj_clear_flag(b_no, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(b_denom, LV_OBJ_FLAG_HIDDEN);

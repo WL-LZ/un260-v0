@@ -352,8 +352,8 @@ void PCCmdHandle(void)
 {
     cmd_frame_t frame;
     int processed = 0;
-    while (dequeue_cmd(&frame)) {
-    if (processed++ >= MAX_CMD_PER_TICK) break; //每轮处理8帧协议
+    while (processed < MAX_CMD_PER_TICK && dequeue_cmd(&frame)) {
+        processed++; // 每轮最多处理 MAX_CMD_PER_TICK 帧，避免丢帧
         uint8_t *buf = frame.data;
         uint8_t len  = frame.len;
         uint8_t cmd  = buf[3];
@@ -673,9 +673,9 @@ void PCCmdHandle(void)
             }
             if (all_ff) {
                 uart_printf(fd6, "0x0D serial detail receive end, total=%d\n", sim.total_pcs);
-               // page_02_report_init();
-                //page_02_b_page_refre();
-               // page_02_b_page_num_refre();
+                page_02_report_init();
+                page_02_b_page_refre();
+                page_02_b_page_num_refre();
                 break;
             }
 
@@ -853,7 +853,7 @@ void PCCmdHandle(void)
                 }
                 else
                 {
-                    bootlog_append("Boot completed");
+                    bootlog_append("self-test SUCCESS");
                     send_command(fd4, 0x56, (uint8_t[]){0x01}, 1);
                     lv_timer_create(boot_selftest_finish_cb, 2000, NULL);
 
