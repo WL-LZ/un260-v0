@@ -331,6 +331,9 @@ ui_element_t page_03_menu_obj[] = {
 // 切换到AMOUNT BATCH激活状态
 void switch_to_amount_batch(void)
 {
+    /* Amount batch 暂未启用：先停用切换与动画逻辑，后续直接取消注释恢复 */
+    return;
+#if 0
     if (is_amount_active) return;
 
     is_amount_active = true;  
@@ -360,6 +363,7 @@ void switch_to_amount_batch(void)
     lv_obj_set_style_text_color(pcs_obj, lv_color_hex(0x888888), 0);
     lv_obj_set_style_text_opa(pcs_obj, 40, 0);  // 半透明
     lv_obj_set_style_text_opa(amount_obj, 255, 0);  
+#endif
 
 }
 
@@ -410,17 +414,14 @@ void switch_to_pcs_batch(void)
 
 void toggle_batch_mode(void)
 {
-    if (is_amount_active) {
-        switch_to_pcs_batch();
+    /* Amount batch 暂未启用：菜单页固定 PCS 模式 */
+    if (Machine_para.batch_mode != PCS_BATCH_MODE) {
         Machine_para.batch_mode = PCS_BATCH_MODE;
+        switch_to_pcs_batch();
     }
-    else {
-        switch_to_amount_batch();
-        Machine_para.batch_mode = AMOUNT_BATCH_MODE;
-
-
-    }
-    printf("Machine_para.batch_mode: %s\n", Machine_para.batch_mode ? "AMOUNT MODE" : "PCS MODE");
+#if LV_DEBUG
+    printf("Machine_para.batch_mode: PCS MODE\n");
+#endif
 }
 
 //BATCH SWITCH
@@ -431,6 +432,8 @@ void toggle_batch_mode(void)
 void ui_page_03_menu_create(lv_obj_t* parent)
 {
     if (menu_page) return;
+    Machine_para.batch_mode = PCS_BATCH_MODE;
+    is_amount_active = false;
     memset(input_batch_num, 0, sizeof(input_batch_num));
     batch_num_index = 0;
     menu_page = lv_obj_create(lv_scr_act());

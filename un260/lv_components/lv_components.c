@@ -170,6 +170,20 @@ static void switch_event_cb(lv_event_t* e) {
     LV_UNUSED(e);
     Machine_para.batch_switch_enable = !Machine_para.batch_switch_enable;
     update_switch_visual(Machine_para.batch_switch_enable, true);
+
+    /* batch 开关行为：
+     * ON  -> 发送用户预设的 pcs batch
+     * OFF -> 固定发送 200
+     */
+    uint8_t batch_cmd = 200;
+    if (Machine_para.batch_switch_enable) {
+        int preset = Machine_para.batch_num;
+        if (preset <= 0) preset = 200;
+        if (preset < 5) preset = 5;
+        if (preset > 200) preset = 200;
+        batch_cmd = (uint8_t)preset;
+    }
+    send_command(fd4, 0x06, &batch_cmd, 1);
 }
 
 // 创建批次开关组件

@@ -295,6 +295,10 @@ void page_05_set_password_keypad_enter_event_cb(lv_event_t* e)
 
 void page_03_batch_label_input_event_cb(lv_event_t* e)
 {
+    /* Amount batch 暂未启用：先屏蔽该区域手势切换逻辑，后续可恢复 */
+    LV_UNUSED(e);
+    return;
+#if 0
     if (!Machine_para.batch_switch_enable) return;
 
     static struct {
@@ -348,12 +352,17 @@ void page_03_batch_label_input_event_cb(lv_event_t* e)
         break;
     }
     page_03_batch_mode_status_refre();
+#endif
 }
 
 
 // 手势事件回调函数
 void page_03_void_batch_label_gesture_event_cb(lv_event_t* e)
 {
+    /* Amount batch 暂未启用：先屏蔽手势切换逻辑，后续可恢复 */
+    LV_UNUSED(e);
+    return;
+#if 0
     lv_event_code_t code = lv_event_get_code(e);
 
     if (code == LV_EVENT_GESTURE) {
@@ -366,6 +375,7 @@ void page_03_void_batch_label_gesture_event_cb(lv_event_t* e)
             switch_to_amount_batch();
         }
     }
+#endif
 }
 
 
@@ -423,21 +433,7 @@ void page_03_batch_num_keypad_event_cb(lv_event_t* e)
 
     }
     lv_label_set_text(batch_num_display,input_batch_num);
-        /* ================== 0x06 设置清分机预置数量 ================== */
-    int num = atoi(input_batch_num);
-    if (Machine_para.batch_mode == PCS_BATCH_MODE) {
-        if (num > 200) {
-            num = 200;
-            pcs_batch_num_lock_200 = true;
-            strcpy(input_batch_num, "200");
-            batch_num_index = 3;
-            lv_label_set_text(batch_num_display, "200");
-        }
-        if (!pcs_batch_num_lock_200 && num < 5) num = 5;
-        if (!pcs_batch_num_lock_200 && num > 200) num = 200;
-        uint8_t batch_cmd = (uint8_t)num;
-        send_command(fd4, 0x06, &batch_cmd, 1);
-    }
+    /* 数字键仅负责输入，协议发送统一在确认键处理 */
     lv_obj_set_align(batch_num_display, LV_ALIGN_RIGHT_MID);
 }
 
@@ -465,8 +461,24 @@ void page_03_batch_num_keypad_enter_event_cb(lv_event_t* e)
         printf("del\n");
 
     }
-    int num = atoi(input_batch_num);
+    int num = 0;
+    if (batch_num_index > 0) {
+        num = atoi(input_batch_num);
+    } else {
+        num = Machine_para.batch_num;
+    }
+    if (num <= 0) num = 200;
+    if (num < 5) num = 5;
+    if (num > 200) num = 200;
+
     Machine_para.batch_num = num;
+
+    /* ================== 0x06 设置清分机预置数量 ==================
+     * 开关 ON：发送用户预设值
+     * 开关 OFF：固定发送 200
+     */
+    uint8_t batch_cmd = Machine_para.batch_switch_enable ? (uint8_t)Machine_para.batch_num : (uint8_t)200;
+    send_command(fd4, 0x06, &batch_cmd, 1);
     pcs_batch_num_lock_200 = false;
     // 清空输入缓存
     memset(input_batch_num, 0, sizeof(input_batch_num));
