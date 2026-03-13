@@ -225,6 +225,7 @@ void bootlog_start(lv_obj_t* parent)
     lv_obj_set_width(boot_label, BOOTLOG_CONT_W - 16);
     lv_label_set_long_mode(boot_label, LV_LABEL_LONG_WRAP);
     lv_obj_align(boot_label, LV_ALIGN_TOP_LEFT, 8, 8);
+    lv_label_set_text(boot_label, "");
 
     // 🔹 设置字体为绿色 (85,164,85)
     lv_obj_set_style_text_color(boot_label, lv_color_make(85, 164, 85), 0);
@@ -256,6 +257,17 @@ void ui_page_08_curr_create(lv_obj_t* parent)
     lv_ui_obj_init(boot_page, page_08_curr_obj, page_08_curr_len);
     bootlog_start(boot_page);
 
+    /* Restore legacy behavior: show waiting hint on boot page during handshake stage. */
+    if (g_boot_stage == BOOT_STAGE_HANDSHAKE &&
+        Machine_Statue.g_handshake_state != HANDSHAKE_OK) {
+        const char* cur = lv_label_get_text(boot_label);
+        if (cur == NULL || cur[0] == '\0') {
+            bootlog_append("Machine starting...");
+        }
+        boot_waiting_anim_start();
+    } else {
+        boot_waiting_anim_stop();
+    }
 
 };
 
