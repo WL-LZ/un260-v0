@@ -67,23 +67,17 @@ ui_element_t page_03_menu_obj[] = {
         page_01_back_btn_event_cb, LV_EVENT_CLICKED, NULL, NULL,
         UI_BTN_STYLE_APPLE },
 
-    { "03_cfd_l_btn", LV_OBJ_TYPE_BUTTON, NULL,
-        { 710, 97, 72, 38, 100, 100, 100 },
-        { "L", 255, 255, 255, &lv_font_montserrat_24, LV_TEXT_ALIGN_CENTER },
-        { 255, 10, 0, false },
-        page_03_cfd_mode_event_cb, LV_EVENT_CLICKED, "0", NULL, UI_BTN_STYLE_ANDROID },
-
-    { "03_cfd_m_btn", LV_OBJ_TYPE_BUTTON, NULL,
-        { 802, 97, 72, 38, 100, 100, 100 },
-        { "M", 255, 255, 255, &lv_font_montserrat_24, LV_TEXT_ALIGN_CENTER },
+    { "03_beep_on_btn", LV_OBJ_TYPE_BUTTON, NULL,
+        { 710, 97, 84, 38, 100, 100, 100 },
+        { "ON", 255, 255, 255, &lv_font_montserrat_24, LV_TEXT_ALIGN_CENTER },
         { 255, 10, 0, false },
         page_03_cfd_mode_event_cb, LV_EVENT_CLICKED, "1", NULL, UI_BTN_STYLE_ANDROID },
 
-    { "03_cfd_h_btn", LV_OBJ_TYPE_BUTTON, NULL,
-        { 894, 97, 72, 38, 100, 100, 100 },
-        { "H", 255, 255, 255, &lv_font_montserrat_24, LV_TEXT_ALIGN_CENTER },
+    { "03_beep_off_btn", LV_OBJ_TYPE_BUTTON, NULL,
+        { 814, 97, 84, 38, 100, 100, 100 },
+        { "OFF", 255, 255, 255, &lv_font_montserrat_24, LV_TEXT_ALIGN_CENTER },
         { 255, 10, 0, false },
-        page_03_cfd_mode_event_cb, LV_EVENT_CLICKED, "2", NULL, UI_BTN_STYLE_ANDROID },
+        page_03_cfd_mode_event_cb, LV_EVENT_CLICKED, "0", NULL, UI_BTN_STYLE_ANDROID },
 
     { "03_speed_800_btn", LV_OBJ_TYPE_BUTTON, NULL,
         { 710, 155, 90, 38, 100, 100, 100 },
@@ -211,9 +205,9 @@ ui_element_t page_03_menu_obj[] = {
         UI_BTN_STYLE_NONE },
 
 //function_mode
-    { "03_cfd_label", LV_OBJ_TYPE_LABEL, NULL,
+    { "03_beep_label", LV_OBJ_TYPE_LABEL, NULL,
         { 616, 105, 100, 40, 255, 255, 255 },
-        { "CFD", 0, 115, 255, &lv_font_montserrat_24, LV_TEXT_ALIGN_LEFT },
+        { "BEEP", 0, 115, 255, &lv_font_montserrat_24, LV_TEXT_ALIGN_LEFT },
         { 255, 18, 0, false },
         NULL, 0, NULL, NULL,
         UI_BTN_STYLE_NONE },

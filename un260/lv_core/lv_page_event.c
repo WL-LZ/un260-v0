@@ -491,7 +491,7 @@ void page_03_batch_num_keypad_enter_event_cb(lv_event_t* e)
 }
 void page_03_update_menu_button_states_refresh(void)
 {
-    const char* page_03_cfd_mode_obj[] = { "03_cfd_l_btn","03_cfd_m_btn","03_cfd_h_btn" };
+    const char* page_03_beep_mode_obj[] = {"03_beep_on_btn","03_beep_off_btn"};
     const char* page_03_speed_mode_obj[] = { "03_speed_800_btn","03_speed_1000_btn","03_speed_1200_btn" };
     const char* page_03_add_mode_obj[] = {"03_add_on_btn","03_add_off_btn"};
     const char* page_03_fo_mode_obj[] = {"03_fo_OFF_btn","03_fo_F_btn","03_fo_O_btn","03_fo_FO_btn"};
@@ -502,19 +502,28 @@ void page_03_update_menu_button_states_refresh(void)
     lv_color_t unselected_text_color = lv_color_make(96, 100, 96);
     lv_color_t enable_color = lv_color_make(214, 45, 45);
 
-    //CFD处理
-    for (int i = 0; i < CFD_MODE; i++)
-    {
-        lv_obj_t* tmp_cfd_obj = find_obj_by_name(page_03_cfd_mode_obj[i], page_03_menu_obj, page_03_menu_len);
-        bool sel = (i == Machine_para.cfd_mode);
-        lv_obj_set_style_bg_color(tmp_cfd_obj,
-            sel ? selected_color : unselected_color, 0);
-        lv_obj_t* label_cfd = lv_obj_get_child(tmp_cfd_obj, 0);
-        lv_obj_set_style_text_color(
-            label_cfd,
-            sel ? selected_text_color : unselected_text_color,
-            0 
-        );
+    // BEEP 处理（配色与 ADD 一致）
+    lv_obj_t* tmp_beep_on_obj = find_obj_by_name(page_03_beep_mode_obj[0], page_03_menu_obj, page_03_menu_len);
+    lv_obj_t* tmp_beep_off_obj = find_obj_by_name(page_03_beep_mode_obj[1], page_03_menu_obj, page_03_menu_len);
+    bool beep_on = Machine_para.buzzer_enable;
+    if (tmp_beep_on_obj && tmp_beep_off_obj) {
+        if (beep_on) {
+            lv_obj_set_style_bg_color(tmp_beep_on_obj, selected_color, 0);
+            lv_obj_set_style_bg_color(tmp_beep_off_obj, unselected_color, 0);
+        } else {
+            lv_obj_set_style_bg_color(tmp_beep_off_obj, enable_color, 0);
+            lv_obj_set_style_bg_color(tmp_beep_on_obj, unselected_color, 0);
+        }
+        lv_obj_t* label_beep_on = lv_obj_get_child(tmp_beep_on_obj, 0);
+        if (label_beep_on) {
+            lv_obj_set_style_text_color(label_beep_on,
+                beep_on ? selected_text_color : unselected_text_color, 0);
+        }
+        lv_obj_t* label_beep_off = lv_obj_get_child(tmp_beep_off_obj, 0);
+        if (label_beep_off) {
+            lv_obj_set_style_text_color(label_beep_off,
+                !beep_on ? selected_text_color : unselected_text_color, 0);
+        }
     }
     //speed 处理
     for (int i = 0; i < SPEED_MODE; i++)
@@ -597,20 +606,19 @@ void page_03_update_menu_button_states_refresh(void)
 
 }
 
-//cfd 模式
+// BEEP 模式（复用原 CFD 回调）
 void page_03_cfd_mode_event_cb(lv_event_t* e)
 {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
-    const char* cfd_str = lv_event_get_user_data(e);
-    uint8_t cfd_code = atoi(cfd_str);
-    Machine_para.cfd_mode = cfd_code;
+    const char* beep_str = lv_event_get_user_data(e);
+    uint8_t beep_code = atoi(beep_str);
+    Machine_para.buzzer_enable = (beep_code > 0) ? true : false;
+    uint8_t beep_cmd = Machine_para.buzzer_enable ? 0x01 : 0x02;
+    send_command(fd4, 0x15, &beep_cmd, 1);
     page_03_update_menu_button_states_refresh();
-    char cfd[3] = { 'L','M','H'};
 #if LV_DEBUG
-    printf("CFD模式切换到: %c\n", cfd[Machine_para.cfd_mode]);
+    printf("BEEP mode -> %s\n", Machine_para.buzzer_enable ? "ON" : "OFF");
 #endif
-
-
 }
 
 //speed模式
