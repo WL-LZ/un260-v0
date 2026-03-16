@@ -27,7 +27,22 @@ static float ease_in_cubic(float t)
 {
     return t * t * t;
 }
+static float ease_out_quint(float t)
+{
+    float inv = 1.0f - t;
+    return 1.0f - inv * inv * inv * inv * inv;
+}
 
+static float open_damped(float t)
+{
+    if (t < 0.38f) {
+        float p = t / 0.38f;
+        return 0.04f * p * p;
+    } else {
+        float p = (t - 0.38f) / 0.62f;
+        return 0.04f + 0.96f * ease_out_quint(p);
+    }
+}
 static void boot_anim_set_bar(lv_obj_t* obj, int x, int y, int w, int h, lv_opa_t opa)
 {
     if (obj == NULL) return;
@@ -77,8 +92,8 @@ static void boot_anim_timer_cb(lv_timer_t* timer)
     }
 
     float t1 = t - 0.9f;
-    float grow_t = clampf(t1 / 1.15f, 0.0f, 1.0f);
-    float half_len = (scr_w * 0.34f) * ease_out_cubic(grow_t);
+    float grow_t = clampf(t1 / 0.98f, 0.0f, 1.0f);
+    float half_len = (scr_w * 0.34f) * open_damped(grow_t);
     float appear_alpha = ease_out_cubic(clampf(t1 / 0.9f, 0.0f, 1.0f));
 
     float breathe_start = 1.0f;
