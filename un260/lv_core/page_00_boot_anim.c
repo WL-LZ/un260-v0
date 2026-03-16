@@ -132,14 +132,6 @@ static void boot_anim_timer_cb(lv_timer_t* timer)
         }
     }
 
-    {
-        float pulse_t = clampf((t - 2.8f) / 0.9f, 0.0f, 1.0f);
-        if (pulse_t > 0.0f && pulse_t < 1.0f) {
-            float pulse = sinf(pulse_t * 3.1415926f);
-            lv_obj_set_style_bg_opa(line_mid, (lv_opa_t)(255.0f * (0.58f * line_alpha + 0.18f * pulse * end_fade)), 0);
-        }
-    }
-
     if (t >= 4.8f) {
         boot_anim_finish();
     }
