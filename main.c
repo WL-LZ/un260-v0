@@ -540,6 +540,30 @@ void PCCmdHandle(void)
 
             break;
         }
+        /* ================== 0x06 设置预置数 ================== */
+        case 0x06:
+        {
+            if (len < 6) break;
+
+            uint8_t status = buf[4];
+
+            if (status == 0x01)
+            {
+                uart_printf(fd6, "Set batch num success\n");
+            }
+            else if (status == 0x02)
+            {
+                uart_printf(fd6, "Set batch num fail\n");
+            }
+            else if (status == 0x03)
+            {
+                if (len < 7) break;
+                Machine_para.batch_num = buf[5];
+                uart_printf(fd6, "Boot batch num: %d\n", Machine_para.batch_num);
+            }
+
+            break;
+        }
         /* ================== 0x08 设置退钞口张数 ================== */
         case 0x08:
         {
