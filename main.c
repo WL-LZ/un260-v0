@@ -503,6 +503,43 @@ void PCCmdHandle(void)
 
             break;
         }
+        /* ================== 0x04 设置工作模式 ================== */
+        case 0x04:
+        {
+            if (len < 6) break;
+
+            uint8_t status = buf[4];
+
+            if (status == 0x01)
+            {
+                uart_printf(fd6, "Set work mode success\n");
+            }
+            else if (status == 0x02)
+            {
+                uart_printf(fd6, "Set work mode fail\n");
+            }
+            else if (status == 0x03)
+            {
+                if (len < 7) break;
+                uint8_t mode = buf[5];
+
+                if (mode == 0x03) {
+                    Machine_para.mode = MODE_MDC;
+                } else if (mode == 0x04) {
+                    Machine_para.mode = MODE_SDC;
+                } else if (mode == 0x05) {
+                    Machine_para.mode = MODE_CNT;
+                } else {
+                    uart_printf(fd6, "Boot work mode invalid: 0x%02X\n", mode);
+                    break;
+                }
+
+                page_01_mode_switch_refre();
+                uart_printf(fd6, "Boot work mode: 0x%02X\n", mode);
+            }
+
+            break;
+        }
         /* ================== 0x0F 点钞过程中清分机状态 ================== */
         case 0x0F:
         {
