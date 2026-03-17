@@ -1120,6 +1120,43 @@ void PCCmdHandle(void)
 
             break;
         }
+        /* ================== 0x16 SPEED setting ================== */
+        case 0x16:
+        {
+            if (len < 6) break;
+            uint8_t type = buf[4];
+            uint8_t res  = buf[5];
+
+            if (type >= 0x01 && type <= 0x03) {
+                if (res == 0x01) {
+                    /* 协议: 0x01=1000,0x02=800,0x03=600 -> UI: 2,1,0 */
+                    Machine_para.speed = (uint8_t)(0x03 - type);
+                    page_03_update_menu_button_states_refresh();
+                    uart_printf(fd6, "SPEED set SUCCESS: type=0x%02X -> ui=%u\n",
+                                type, Machine_para.speed);
+                } else if (res == 0x02) {
+                    page_03_update_menu_button_states_refresh();
+                    uart_printf(fd6, "SPEED set FAIL: type=0x%02X\n", type);
+                } else {
+                    uart_printf(fd6, "SPEED set UNKNOWN result: type=0x%02X, res=0x%02X\n",
+                                type, res);
+                }
+            } else if (type == 0x04) {
+                /* 开机同步: 0x00=1000,0x01=800,0x02=600 -> UI: 2,1,0 */
+                if (res <= 0x02) {
+                    Machine_para.speed = (uint8_t)(0x02 - res);
+                    page_03_update_menu_button_states_refresh();
+                    uart_printf(fd6, "SPEED boot sync: mode=0x%02X -> ui=%u\n",
+                                res, Machine_para.speed);
+                } else {
+                    uart_printf(fd6, "SPEED boot sync: invalid mode=0x%02X\n", res);
+                }
+            } else {
+                uart_printf(fd6, "0x16: unknown type=0x%02X, res=0x%02X\n", type, res);
+            }
+
+            break;
+        }
 
         /* ================== 0x3A F/O 面向模式 ================== */
         case 0x3A:
