@@ -577,7 +577,10 @@ void ui_main_create(lv_obj_t* parent)
 
     if (frist_creat)
     {
-        sim_data_init();
+        /* If denom list already came from protocol during boot, keep it. */
+        if (sim.denom_number <= 0) {
+            sim_data_init();
+        }
         page_01_mode_switch_refre();
 
         frist_creat = false;

@@ -131,16 +131,14 @@ void update_label_by_name(ui_element_t* page_cfg_obj, int len,const char* name, 
 //设置国家curr
 void set_curr(curr_item_t curr)
 {
-    if (curr > CURR_COUNT) {
+    if (curr >= CURR_COUNT) {
 #if LV_DEBUG
-        printf("set_curr is error");
+        printf("set_curr unknown enum, keep curr_code=%s\n", Machine_para.curr_code);
 #endif
-        return;
+    } else {
+        if (curr == Machine_para.current_currency) return;
+        Machine_para.current_currency = curr;
     }
-
-    if (curr == Machine_para.current_currency) return;
-
-    Machine_para.current_currency = curr;
     sim_clear_all_sn(&sim);
 
     if (page_01_main_scroll_container && lv_obj_is_valid(page_01_main_scroll_container)) {
@@ -259,7 +257,6 @@ void sim_data_init(void)
     default:
         arr = USD_value;
         count = USD_value_num;
-        strcpy(Machine_para.curr_code, "USD");
         break;
     }
     for (int i = 0; i < count; i++)

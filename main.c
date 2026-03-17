@@ -52,6 +52,11 @@ static int gPCRecvComplete = 0;   // 一帧接收完成标志
 static pthread_mutex_t recv_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 static bool g_wait_sn_after_reject_end = false;
+static bool g_denom_query_pending = false;
+static bool g_denom_query_deferred = false;
+static bool g_denom_query_got_frame = false;
+static uint32_t g_denom_query_tick = 0;
+#define DENOM_QUERY_TIMEOUT_MS 1500
 
 static uint8_t g_boot_selftest_result[5] = {0};
 static void boot_selftest_result_reset(void)
@@ -180,6 +185,33 @@ static void ui_refresh_main_page_throttled(void)
     }
     last_ms = now;
     ui_refresh_main_page();
+}
+
+static bool is_main_page_active(void)
+{
+    return ui_manager_get_current_page() == UI_PAGE_MAIN &&
+           main_page && lv_obj_is_valid(main_page);
+}
+
+static void request_denom_list(void)
+{
+    uint8_t sub = 0x01;
+    send_command(fd4, 0x0B, &sub, 1);
+    g_denom_query_pending = true;
+    g_denom_query_got_frame = false;
+    g_denom_query_tick = custom_tick_get();
+    uart_printf(fd6, "request denom list: 0x0B 0x01\n");
+}
+
+static void trigger_denom_query(void)
+{
+    /* Avoid injecting extra command during boot self-test/param-read flow. */
+    if (g_boot_stage != BOOT_STAGE_DONE) {
+        g_denom_query_deferred = true;
+        uart_printf(fd6, "defer denom query until boot done\n");
+        return;
+    }
+    request_denom_list();
 }
 
 // ===== RX HEX 转字符串 =====
@@ -450,6 +482,7 @@ void PCCmdHandle(void)
             if (status == 0x01)
             {
                 uart_printf(fd6, "Set %s curr success\n", Machine_para.curr_code);
+                trigger_denom_query();
             }
             else if (status == 0x02)
             {
@@ -465,6 +498,7 @@ void PCCmdHandle(void)
                 Machine_para.curr_code[3] = '\0';
 
                 uart_printf(fd6, "Boot curr: %s\n", Machine_para.curr_code);
+                trigger_denom_query();
             }
 
             break;
@@ -563,8 +597,11 @@ void PCCmdHandle(void)
             if (all_zero) {
                 memset(sim.denom, 0, sizeof(sim.denom));
                 sim.denom_number = 0;
+                g_denom_query_got_frame = true;
                 uart_printf(fd6, "0x0B denom detail receive start\n");
-                ui_refresh_main_page_throttled();
+                if (is_main_page_active()) {
+                    ui_refresh_main_page_throttled();
+                }
                 break;
             }
 
@@ -575,11 +612,23 @@ void PCCmdHandle(void)
             }
             if (all_ff) {
                 uart_printf(fd6, "0x0B denom detail receive end\n");
+                g_denom_query_got_frame = true;
+
+                if (g_denom_query_pending) {
+                    g_denom_query_pending = false;
+                    if (is_main_page_active()) {
+                        ui_refresh_main_page();
+                    }
+                    break;
+                }
+
                 /* 串行时序：先请求 0x0C，等 0x0C 结束后再请求 0x0D */
                 uint8_t reject_cmd = 0x01;
                 send_command(fd4, 0x0C, &reject_cmd, 1);
                 g_wait_sn_after_reject_end = true;
-                ui_refresh_main_page();
+                if (is_main_page_active()) {
+                    ui_refresh_main_page();
+                }
                 break;
             }
 
@@ -593,6 +642,7 @@ void PCCmdHandle(void)
             int pcs = atoi(pcs_str);
 
             if (denom <= 0) break;
+            g_denom_query_got_frame = true;
 
             int found = 0;
             for (int i = 0; i < sim.denom_number; i++) {
@@ -615,7 +665,9 @@ void PCCmdHandle(void)
                 }
             }
 
-            ui_refresh_main_page_throttled();
+            if (is_main_page_active()) {
+                ui_refresh_main_page_throttled();
+            }
 
             break;
         }
@@ -1309,6 +1361,25 @@ int main(void) {
 
         lv_timer_handler();
         PCCmdHandle();
+
+        if (g_denom_query_pending &&
+            (now - g_denom_query_tick) >= DENOM_QUERY_TIMEOUT_MS) {
+            g_denom_query_pending = false;
+            if (!g_denom_query_got_frame) {
+                uart_printf(fd6, "0x0B query timeout, fallback to local mapping\n");
+                sim_data_init();
+                if (is_main_page_active()) {
+                    ui_refresh_main_page();
+                }
+            }
+        }
+
+        if (g_denom_query_deferred &&
+            !g_denom_query_pending &&
+            g_boot_stage == BOOT_STAGE_DONE) {
+            g_denom_query_deferred = false;
+            request_denom_list();
+        }
 
         if (g_boot_stage == BOOT_STAGE_HANDSHAKE &&
             ui_manager_get_current_page() == UI_PAGE_BOOT)
