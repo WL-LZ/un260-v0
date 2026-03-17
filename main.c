@@ -1256,8 +1256,8 @@ void PCCmdHandle(void)
             uint8_t type = buf[4];   
             uint8_t val  = buf[5];   
             if (type == 0x05) {
-                if (val >= 0x01 && val <= 0x04) {
-                    Machine_para.fo_mode = (uint8_t)(val - 1); // 存回 UI 值 0~3
+                if (val <= 0x03) {
+                    Machine_para.fo_mode = val; 
                     uart_printf(fd6, "FO boot sync: mode=0x%02X -> ui=%u\n",
                                 val, Machine_para.fo_mode);
                 } else {
