@@ -540,6 +540,33 @@ void PCCmdHandle(void)
 
             break;
         }
+        /* ================== 0x08 设置退钞口张数 ================== */
+        case 0x08:
+        {
+            if (len < 7) break;
+
+            uint8_t type = buf[4];
+            uint8_t res  = buf[5];
+
+            if (type != 0x01) {
+                uart_printf(fd6, "0x08 unknown type=0x%02X, res=0x%02X\n", type, res);
+                break;
+            }
+
+            if (res == 0x01) {
+                uart_printf(fd6, "Reject pocket pcs set success\n");
+            } else if (res == 0x02) {
+                uart_printf(fd6, "Reject pocket pcs set fail\n");
+            } else if (res == 0x03) {
+                if (len < 8) break;
+                Machine_para.reject_pocket_max = buf[6];
+                uart_printf(fd6, "Boot reject pocket pcs: %u\n", Machine_para.reject_pocket_max);
+            } else {
+                uart_printf(fd6, "0x08 unknown res=0x%02X\n", res);
+            }
+
+            break;
+        }
         /* ================== 0x0F 点钞过程中清分机状态 ================== */
         case 0x0F:
         {
