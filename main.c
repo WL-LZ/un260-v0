@@ -56,7 +56,9 @@ static bool g_denom_query_pending = false;
 static bool g_denom_query_deferred = false;
 static bool g_denom_query_got_frame = false;
 static uint32_t g_denom_query_tick = 0;
+static uint8_t g_denom_query_retry = 0;
 #define DENOM_QUERY_TIMEOUT_MS 1500
+#define DENOM_QUERY_MAX_RETRY 2
 
 static uint8_t g_boot_selftest_result[5] = {0};
 static void boot_selftest_result_reset(void)
@@ -205,6 +207,7 @@ static void request_denom_list(void)
 
 static void trigger_denom_query(void)
 {
+    g_denom_query_retry = 0;
     /* Avoid injecting extra command during boot self-test/param-read flow. */
     if (g_boot_stage != BOOT_STAGE_DONE) {
         g_denom_query_deferred = true;
@@ -701,6 +704,7 @@ void PCCmdHandle(void)
             if (all_ff) {
                 uart_printf(fd6, "0x0B denom detail receive end\n");
                 g_denom_query_got_frame = true;
+                g_denom_query_retry = 0;
 
                 if (g_denom_query_pending) {
                     g_denom_query_pending = false;
@@ -1495,10 +1499,17 @@ int main(void) {
             (now - g_denom_query_tick) >= DENOM_QUERY_TIMEOUT_MS) {
             g_denom_query_pending = false;
             if (!g_denom_query_got_frame) {
-                uart_printf(fd6, "0x0B query timeout, fallback to local mapping\n");
-                sim_data_init();
-                if (is_main_page_active()) {
-                    ui_refresh_main_page();
+                if (g_denom_query_retry < DENOM_QUERY_MAX_RETRY) {
+                    g_denom_query_retry++;
+                    uart_printf(fd6, "0x0B query timeout, retry %u/%u\n",
+                                g_denom_query_retry, DENOM_QUERY_MAX_RETRY);
+                    request_denom_list();
+                } else {
+                    uart_printf(fd6, "0x0B query timeout, fallback to local mapping\n");
+                    sim_data_init();
+                    if (is_main_page_active()) {
+                        ui_refresh_main_page();
+                    }
                 }
             }
         }
