@@ -99,8 +99,8 @@ static void boot_anim_timer_cb(lv_timer_t* timer)
     float breathe_start = 1.0f;
     float breath_t = t1 - breathe_start;
     if (breath_t < 0.0f) breath_t = 0.0f;
-    float breathe = 0.5f + 0.5f * sinf(breath_t * 3.1415926f * 1.05f);
-    float breathe_alpha = 0.78f + breathe * 0.14f;
+    float breathe = 0.5f + 0.5f * sinf(breath_t * 3.1415926f * 0.75f);
+    float breathe_alpha = 0.82f + breathe * 0.10f;
 
     float end_fade = 1.0f;
     if (t > 4.0f) {
@@ -113,38 +113,73 @@ static void boot_anim_timer_cb(lv_timer_t* timer)
     int x2 = (int)(cx + half_len);
     int line_w = x2 - x1;
 
-    boot_anim_set_bar(line_base, x1, cy - 1, line_w, 2, (lv_opa_t)(255.0f * 0.30f * line_alpha));
-    boot_anim_set_bar(line_mid, x1, cy - 1, line_w, 2,(lv_opa_t)(255.0f * 0.70f * line_alpha));    
+    boot_anim_set_bar(line_base, x1, cy - 1, line_w, 2, (lv_opa_t)(255.0f * 0.18f * line_alpha));
+    boot_anim_set_bar(line_mid,  x1, cy - 1, line_w, 2, (lv_opa_t)(255.0f * 0.52f * line_alpha));
     boot_anim_set_bar(line_core, 0, 0, 0, 0, 0);
     {
         float travel_start = 1.55f;
         float travel_dur = 1.95f;
         float tt = clampf((t1 - travel_start) / travel_dur, 0.0f, 1.0f);
+if (tt > 0.0f && tt < 1.0f && line_w > 0) {
+    float move_p = 0.0f;
 
-        if (tt > 0.0f && line_w > 0) {
-            float move_p = 0.0f;
+    if (tt < 0.42f) {
+        move_p = ease_out_cubic(tt / 0.42f) * 0.48f;
+    } else if (tt < 0.58f) {
+        float mid = (tt - 0.42f) / 0.16f;
+        move_p = 0.48f + mid * 0.04f;
+    } else {
+        move_p = 0.52f + ease_in_cubic((tt - 0.58f) / 0.42f) * 0.48f;
+    }
 
-            if (tt < 0.42f) {
-                move_p = ease_out_cubic(tt / 0.42f) * 0.48f;
-            } else if (tt < 0.58f) {
-                float mid = (tt - 0.42f) / 0.16f;
-                move_p = 0.48f + mid * 0.04f;
-            } else {
-                move_p = 0.52f + ease_in_cubic((tt - 0.58f) / 0.42f) * 0.48f;
-            }
+    int px = x1 + (int)((x2 - x1) * move_p);
 
-            int px = x1 + (int)((x2 - x1) * move_p);
-            int glow_w = 60;
-            int trail_len = 58;
-            int tx1 = px - trail_len;
-            if (tx1 < x1) tx1 = x1;
+    int max_w = 52;
+    int tail_len = 72;
+    float grow_ratio = 0.14f;
+    float shrink_ratio = 0.16f;
 
-            boot_anim_set_bar(line_glow, px - glow_w / 2, cy - 1, glow_w, 2,(lv_opa_t)(255.0f * 1.0f * end_fade));
-            boot_anim_set_bar(line_trail, tx1, cy, px - tx1, 1, (lv_opa_t)(255.0f * 0.12f * end_fade));
-        } else {
-            boot_anim_set_bar(line_glow, 0, 0, 0, 0, 0);
-            boot_anim_set_bar(line_trail, 0, 0, 0, 0, 0);
-        }
+    int glow_w = max_w;
+
+    if (move_p < grow_ratio) {
+        float k = move_p / grow_ratio;
+        glow_w = (int)(max_w * ease_out_cubic(k));
+    } else if (move_p > (1.0f - shrink_ratio)) {
+        float k = (move_p - (1.0f - shrink_ratio)) / shrink_ratio;
+        glow_w = (int)(max_w * (1.0f - ease_in_cubic(k)));
+    }
+
+    if (glow_w < 1) glow_w = 1;
+
+    /* 从左端开始生长，到右端逐渐收束 */
+    int gx = px;
+
+    /* 尾巴更长、更淡 */
+    int tx1 = gx - tail_len;
+    if (tx1 < x1) tx1 = x1;
+
+    /* 高光透明度也跟长度一起变化，避免像死块 */
+    float glow_alpha_k = (float)glow_w / (float)max_w;
+    lv_opa_t glow_opa = (lv_opa_t)(255.0f * 0.92f * glow_alpha_k * end_fade);
+    lv_opa_t tail_opa = (lv_opa_t)(255.0f * 0.08f * glow_alpha_k * end_fade);
+
+    boot_anim_set_bar(line_glow,
+        gx,
+        cy - 1,
+        glow_w,
+        2,
+        glow_opa);
+
+    boot_anim_set_bar(line_trail,
+        tx1,
+        cy,
+        gx - tx1,
+        1,
+        tail_opa);
+} else {
+    boot_anim_set_bar(line_glow, 0, 0, 0, 0, 0);
+    boot_anim_set_bar(line_trail, 0, 0, 0, 0, 0);
+}
     }
 
     if (t >= 4.8f) {
