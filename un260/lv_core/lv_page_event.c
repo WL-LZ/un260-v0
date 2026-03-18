@@ -136,35 +136,30 @@ void page_01_start_btn_event_cb(lv_event_t* e) // 开始仿真
      if (lv_event_get_code(e) == LV_EVENT_CLICKED)
      {
          icon_feedback_comp("page_01_mode_icon.png", page_01_main_obj, page_01_main_len);
-
-         if (Machine_para.mode == MODE_MDC)
-             Machine_para.mode = MODE_SDC;
-         else if (Machine_para.mode == MODE_SDC)
-             Machine_para.mode = MODE_CNT;
-         else if (Machine_para.mode == MODE_CNT)
-             Machine_para.mode = MODE_MDC;
-         else
-             Machine_para.mode = MODE_MDC;
-         page_01_mode_switch_refre();
-         
-         uint8_t mode_cmd = 0;
-         if(Machine_para.mode == MODE_MDC)
-              mode_cmd = 0x03;
-         else if (Machine_para.mode == MODE_SDC)
-              mode_cmd = 0x04;
-         else if (Machine_para.mode == MODE_CNT)
-              mode_cmd = 0x05;
-         else       
-         {
-            Machine_para.mode = MODE_MDC;
-            mode_cmd = 0x03;
+         if (Machine_work_code.mode_code != 0) {
+             return;
          }
-         
-         send_command(fd4, 0x04, &mode_cmd, 1);
-         
-        //sim_data_init(); //
-        sim_clear_all_sn(&sim);
 
+         uint8_t next_mode = MODE_MDC;
+         if (Machine_para.mode == MODE_MDC)
+             next_mode = MODE_SDC;
+         else if (Machine_para.mode == MODE_SDC)
+             next_mode = MODE_CNT;
+         else if (Machine_para.mode == MODE_CNT)
+             next_mode = MODE_MDC;
+         else
+             next_mode = MODE_MDC;
+
+         uint8_t mode_cmd = 0x03;
+         if (next_mode == MODE_MDC)
+             mode_cmd = 0x03;
+         else if (next_mode == MODE_SDC)
+             mode_cmd = 0x04;
+         else if (next_mode == MODE_CNT)
+             mode_cmd = 0x05;
+
+         Machine_work_code.mode_code = mode_cmd; //等待 0x04 回包后再切 UI 
+         send_command(fd4, 0x04, &mode_cmd, 1);
 
      }
 

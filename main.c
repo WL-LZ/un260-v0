@@ -515,11 +515,24 @@ void PCCmdHandle(void)
 
             if (status == 0x01)
             {
+                uint8_t mode = Machine_work_code.mode_code;
+                if (mode == 0x03) {
+                    Machine_para.mode = MODE_MDC;
+                } else if (mode == 0x04) {
+                    Machine_para.mode = MODE_SDC;
+                } else if (mode == 0x05) {
+                    Machine_para.mode = MODE_CNT;
+                }
+                Machine_work_code.mode_code = 0;
+                page_01_mode_switch_refre();
+                sim_clear_all_sn(&sim);
                 uart_printf(fd6, "Set work mode success\n");
             }
             else if (status == 0x02)
             {
+                Machine_work_code.mode_code = 0;
                 uart_printf(fd6, "Set work mode fail\n");
+                show_start_fault_popup(0x02, 0x06);
             }
             else if (status == 0x03)
             {
@@ -537,6 +550,7 @@ void PCCmdHandle(void)
                     break;
                 }
 
+                Machine_work_code.mode_code = 0;
                 page_01_mode_switch_refre();
                 uart_printf(fd6, "Boot work mode: 0x%02X\n", mode);
             }
