@@ -409,6 +409,8 @@ static lv_obj_t* create_info_box(lv_obj_t* parent,
 static void fault_popup_confirm_cb(lv_event_t* e)
 {
     (void)e;
+    uint8_t clear_cmd = 0x01;
+    send_command(fd4, 0x3D, &clear_cmd, 1);
 
     if (g_fault_popup_data.confirm_action == FAULT_CONFIRM_GOTO_SENSOR) {
         hide_fault_popup();
