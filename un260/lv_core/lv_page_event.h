@@ -54,6 +54,7 @@ void page_03_void_batch_label_gesture_event_cb(lv_event_t* e);
 void page_03_batch_num_keypad_event_cb(lv_event_t* e);
 void page_03_batch_num_keypad_clear_event_cb(lv_event_t* e);
 void page_03_batch_num_keypad_enter_event_cb(lv_event_t* e);
+void page_03_batch_set_result(uint8_t status);
 
 //page 03 功能页面
 void page_03_cfd_mode_event_cb(lv_event_t* e);
@@ -73,4 +74,3 @@ void page_03_c_down_event_cb(lv_event_t* e);
 
 
 #endif // !LV_PAGE_EVENT_H
-

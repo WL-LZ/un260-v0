@@ -309,12 +309,16 @@ void page_03_batch_num_container(void)
 
 
 void page_03_batch_num_refre(void)
-{   if(Machine_para.batch_num)
-    update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label", "%d", Machine_para.batch_num);
-else
 {
-    return;
-}
+    if (Machine_para.batch_switch_enable) {
+        if (Machine_para.batch_num > 0) {
+            update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label", "%d", Machine_para.batch_num);
+        } else {
+            update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label", "%d", 200);
+        }
+    } else {
+        update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label", "%s", "OFF");
+    }
 
 }
 

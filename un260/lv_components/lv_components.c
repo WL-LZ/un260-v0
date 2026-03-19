@@ -18,12 +18,19 @@ static batch_switch_t batch_switch = {
     .label_on = NULL,
     .label_off = NULL,
 };
+static bool g_batch_switch_wait_ack = false;
+static bool g_batch_switch_prev_state = false;
+static bool g_batch_switch_target_state = false;
+static uint8_t g_batch_switch_sent_num = 200;
+static uint8_t g_batch_last_on_num = 100;
 
 void set_batch_switch_state(bool enable);
 
 static lv_obj_t* g_boot_err_mask = NULL;
 static lv_obj_t* g_boot_err_popup = NULL;
 static lv_obj_t* g_boot_err_info_label = NULL;
+static lv_obj_t* g_batch_set_fail_mask = NULL;
+static lv_obj_t* g_batch_set_fail_popup = NULL;
 
 void hide_boot_selftest_error_popup(void)
 {
@@ -100,6 +107,77 @@ void show_boot_selftest_error_popup(const char* msg)
     lv_obj_center(ok_label);
 }
 
+void hide_batch_set_fail_popup(void)
+{
+    if (g_batch_set_fail_popup && lv_obj_is_valid(g_batch_set_fail_popup)) {
+        lv_obj_del(g_batch_set_fail_popup);
+    }
+    g_batch_set_fail_popup = NULL;
+
+    if (g_batch_set_fail_mask && lv_obj_is_valid(g_batch_set_fail_mask)) {
+        lv_obj_del(g_batch_set_fail_mask);
+    }
+    g_batch_set_fail_mask = NULL;
+}
+
+static void batch_set_fail_confirm_cb(lv_event_t* e)
+{
+    if ((lv_event_code_t)lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+    hide_batch_set_fail_popup();
+}
+
+void show_batch_set_fail_popup(void)
+{
+    if (g_batch_set_fail_popup && lv_obj_is_valid(g_batch_set_fail_popup)) {
+        return;
+    }
+
+    lv_obj_t* scr = lv_scr_act();
+    g_batch_set_fail_mask = lv_obj_create(scr);
+    lv_obj_remove_style_all(g_batch_set_fail_mask);
+    lv_obj_set_size(g_batch_set_fail_mask, 1280, 400);
+    lv_obj_set_style_bg_opa(g_batch_set_fail_mask, LV_OPA_40, 0);
+    lv_obj_set_style_bg_color(g_batch_set_fail_mask, lv_color_hex(0x000000), 0);
+
+    g_batch_set_fail_popup = lv_obj_create(scr);
+    lv_obj_set_size(g_batch_set_fail_popup, 700, 260);
+    lv_obj_center(g_batch_set_fail_popup);
+    lv_obj_clear_flag(g_batch_set_fail_popup, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_radius(g_batch_set_fail_popup, 24, 0);
+    lv_obj_set_style_bg_color(g_batch_set_fail_popup, lv_color_hex(0xF4F7FB), 0);
+    lv_obj_set_style_border_width(g_batch_set_fail_popup, 2, 0);
+    lv_obj_set_style_border_color(g_batch_set_fail_popup, lv_color_hex(0xD7DEE8), 0);
+
+    lv_obj_t* title = lv_label_create(g_batch_set_fail_popup);
+    lv_label_set_text(title, "BATCH SET FAILED");
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_color(title, lv_color_hex(0x2D3A4A), 0);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 22);
+
+    lv_obj_t* info = lv_label_create(g_batch_set_fail_popup);
+    lv_label_set_text(info, "Please remove banknotes from the feeder or reject pocket first.");
+    lv_obj_set_width(info, 620);
+    lv_label_set_long_mode(info, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_align(info, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_font(info, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(info, lv_color_hex(0x3C4D61), 0);
+    lv_obj_align(info, LV_ALIGN_TOP_MID, 0, 84);
+
+    lv_obj_t* ok_btn = lv_btn_create(g_batch_set_fail_popup);
+    lv_obj_set_size(ok_btn, 180, 58);
+    lv_obj_align(ok_btn, LV_ALIGN_BOTTOM_MID, 0, -20);
+    lv_obj_set_style_radius(ok_btn, 16, 0);
+    lv_obj_set_style_bg_color(ok_btn, lv_color_hex(0x1B86FF), 0);
+    lv_obj_set_style_bg_opa(ok_btn, LV_OPA_COVER, 0);
+    lv_obj_add_event_cb(ok_btn, batch_set_fail_confirm_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t* ok_label = lv_label_create(ok_btn);
+    lv_label_set_text(ok_label, "CONFIRM");
+    lv_obj_set_style_text_font(ok_label, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_color(ok_label, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_center(ok_label);
+}
+
 static void update_switch_visual(bool enable, bool animate) {
     lv_coord_t cont_w = lv_obj_get_width(batch_switch.switch_container);
     lv_coord_t knob_w = lv_obj_get_width(batch_switch.switch_knob);
@@ -168,22 +246,59 @@ static void update_switch_visual(bool enable, bool animate) {
 // 点击切换状态
 static void switch_event_cb(lv_event_t* e) {
     LV_UNUSED(e);
-    Machine_para.batch_switch_enable = !Machine_para.batch_switch_enable;
-    update_switch_visual(Machine_para.batch_switch_enable, true);
+    if (g_batch_switch_wait_ack) return;
+
+    g_batch_switch_prev_state = Machine_para.batch_switch_enable;
+    g_batch_switch_target_state = !g_batch_switch_prev_state;
+    g_batch_switch_wait_ack = true;
 
     /* batch 开关行为：
      * ON  -> 发送用户预设的 pcs batch
      * OFF -> 固定发送 200
      */
     uint8_t batch_cmd = 200;
-    if (Machine_para.batch_switch_enable) {
+    if (g_batch_switch_target_state) {
         int preset = Machine_para.batch_num;
-        if (preset <= 0) preset = 200;
+        if (preset <= 0 || preset >= 200) {
+            preset = g_batch_last_on_num;
+        }
         if (preset < 5) preset = 5;
-        if (preset > 200) preset = 200;
+        if (preset > 199) preset = 199;
         batch_cmd = (uint8_t)preset;
     }
+    g_batch_switch_sent_num = batch_cmd;
     send_command(fd4, 0x06, &batch_cmd, 1);
+}
+
+void batch_switch_on_0x06_result(uint8_t status)
+{
+    if (!g_batch_switch_wait_ack) return;
+
+    if (status == 0x01) {
+        Machine_para.batch_switch_enable = g_batch_switch_target_state;
+        if (Machine_para.batch_switch_enable) {
+            Machine_para.batch_num = g_batch_switch_sent_num;
+            if (Machine_para.batch_num >= 5 && Machine_para.batch_num <= 199) {
+                g_batch_last_on_num = (uint8_t)Machine_para.batch_num;
+            }
+        } else {
+            Machine_para.batch_num = 200;
+        }
+        update_switch_visual(Machine_para.batch_switch_enable, true);
+        if (Machine_para.batch_switch_enable) {
+            update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label", "%d", Machine_para.batch_num);
+        } else {
+            update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label", "%s", "OFF");
+        }
+        page_01_batch_refre();
+        g_batch_switch_wait_ack = false;
+        return;
+    }
+
+    if (status == 0x02) {
+        Machine_para.batch_switch_enable = g_batch_switch_prev_state;
+        g_batch_switch_wait_ack = false;
+    }
 }
 
 // 创建批次开关组件
@@ -252,6 +367,25 @@ lv_obj_t* get_batch_switch_container(void) {
 
 //设置开关状态（自动更新UI，无动画）
 void set_batch_switch_state(bool enable) {
+    Machine_para.batch_switch_enable = enable;
+    if (Machine_para.batch_num >= 5 && Machine_para.batch_num <= 199) {
+        g_batch_last_on_num = (uint8_t)Machine_para.batch_num;
+    }
+
+    if (batch_switch.switch_container == NULL ||
+        batch_switch.switch_knob == NULL ||
+        batch_switch.label_on == NULL ||
+        batch_switch.label_off == NULL) {
+        return;
+    }
+
+    if (!lv_obj_is_valid(batch_switch.switch_container) ||
+        !lv_obj_is_valid(batch_switch.switch_knob) ||
+        !lv_obj_is_valid(batch_switch.label_on) ||
+        !lv_obj_is_valid(batch_switch.label_off)) {
+        return;
+    }
+
     // 外部调用时不执行动画
     update_switch_visual(enable, false);
 }

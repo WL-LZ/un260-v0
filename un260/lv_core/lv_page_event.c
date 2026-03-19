@@ -12,6 +12,8 @@
 
 lv_timer_t* page_03_batch_num_del_timer = NULL;
 lv_timer_t* page_05_password_del_timer = NULL;
+static int32_t g_batch_num_pending = -1;
+static lv_obj_t* g_batch_tip_label = NULL;
 
 // 声明外部变量
 
@@ -245,6 +247,9 @@ void page_03_delete_tip_label_cb(lv_timer_t* t) {
     if (lbl && lv_obj_is_valid(lbl)) {
         lv_obj_del(lbl);
     }
+    if (g_batch_tip_label == lbl) {
+        g_batch_tip_label = NULL;
+    }
     lv_timer_del(t);
     page_03_batch_num_del_timer = NULL;
     printf("dress:%p\n", &page_03_batch_num_del_timer);
@@ -451,10 +456,16 @@ void page_03_batch_num_keypad_enter_event_cb(lv_event_t* e)
     icon_feedback_comp("page_03_del_icon.png", page_03_menu_obj, page_03_menu_len);
 
     if (page_03_batch_num_del_timer) {
+        lv_obj_t* old_lbl = (lv_obj_t*)page_03_batch_num_del_timer->user_data;
+        if (old_lbl && lv_obj_is_valid(old_lbl)) {
+            lv_obj_del(old_lbl);
+        }
+        if (g_batch_tip_label == old_lbl) {
+            g_batch_tip_label = NULL;
+        }
         lv_timer_del(page_03_batch_num_del_timer);
         page_03_batch_num_del_timer = NULL;
         printf("del\n");
-
     }
     int num = 0;
     if (batch_num_index > 0) {
@@ -466,33 +477,62 @@ void page_03_batch_num_keypad_enter_event_cb(lv_event_t* e)
     if (num < 5) num = 5;
     if (num > 200) num = 200;
 
-    Machine_para.batch_num = num;
+    g_batch_num_pending = num;
 
     /* ================== 0x06 设置清分机预置数量 ==================
      * 开关 ON：发送用户预设值
      * 开关 OFF：固定发送 200
      */
-    uint8_t batch_cmd = Machine_para.batch_switch_enable ? (uint8_t)Machine_para.batch_num : (uint8_t)200;
+    uint8_t batch_cmd = (uint8_t)g_batch_num_pending;
     send_command(fd4, 0x06, &batch_cmd, 1);
     pcs_batch_num_lock_200 = false;
     // 清空输入缓存
     memset(input_batch_num, 0, sizeof(input_batch_num));
     batch_num_index = 0;
 
-    // 更新显示标签
-    lv_obj_t* set_succ;
     lv_label_set_text(batch_num_display, "0");
-    set_succ = lv_label_create(menu_page);
-    lv_obj_set_style_text_color(set_succ, lv_color_make(150,150, 150), 0);
-    lv_label_set_text(set_succ, "Batch num saved successfully!");
-    lv_obj_set_pos(set_succ, 160, 207);
-    page_03_batch_num_del_timer = lv_timer_create(page_03_delete_tip_label_cb, 2000, set_succ);
-
-    update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label", "%d", Machine_para.batch_num);
-
-    printf("%d\n", Machine_para.batch_num);
+    printf("batch pending:%d\n", g_batch_num_pending);
 
 
+}
+void page_03_batch_set_result(uint8_t status)
+{
+    if (menu_page == NULL) return;
+
+    if (page_03_batch_num_del_timer) {
+        lv_obj_t* old_lbl = (lv_obj_t*)page_03_batch_num_del_timer->user_data;
+        if (old_lbl && lv_obj_is_valid(old_lbl)) {
+            lv_obj_del(old_lbl);
+        }
+        if (g_batch_tip_label == old_lbl) {
+            g_batch_tip_label = NULL;
+        }
+        lv_timer_del(page_03_batch_num_del_timer);
+        page_03_batch_num_del_timer = NULL;
+    }
+
+    if (status == 0x01) {
+        if (g_batch_num_pending > 0) {
+            Machine_para.batch_num = g_batch_num_pending;
+            Machine_para.batch_switch_enable = (Machine_para.batch_num != 200);
+            set_batch_switch_state(Machine_para.batch_switch_enable);
+            if (Machine_para.batch_switch_enable) {
+                update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label",
+                                     "%d", Machine_para.batch_num);
+            } else {
+                update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label",
+                                     "%s", "OFF");
+            }
+            page_01_batch_refre();
+            g_batch_tip_label = lv_label_create(menu_page);
+            lv_obj_set_pos(g_batch_tip_label, 160, 207);
+            lv_obj_set_style_text_color(g_batch_tip_label, lv_color_make(150,150,150), 0);
+            lv_label_set_text(g_batch_tip_label, "Batch num saved successfully!");
+            page_03_batch_num_del_timer = lv_timer_create(page_03_delete_tip_label_cb, 2000, g_batch_tip_label);
+        }
+    }
+
+    g_batch_num_pending = -1;
 }
 void page_03_update_menu_button_states_refresh(void)
 {

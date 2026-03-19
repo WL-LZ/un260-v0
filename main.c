@@ -17,6 +17,7 @@
 #include "un260/lv_refre/lvgl_refre.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/lv_page_declear.h"
+#include "un260/lv_core/lv_page_event.h"
 #include "un260/lv_components/lv_components.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_system/platform_app.h"
@@ -566,16 +567,31 @@ void PCCmdHandle(void)
 
             if (status == 0x01)
             {
+                batch_switch_on_0x06_result(0x01);
+                page_03_batch_set_result(0x01);
                 uart_printf(fd6, "Set batch num success\n");
             }
             else if (status == 0x02)
             {
+                batch_switch_on_0x06_result(0x02);
+                page_03_batch_set_result(0x02);
+                show_batch_set_fail_popup();
                 uart_printf(fd6, "Set batch num fail\n");
             }
             else if (status == 0x03)
             {
                 if (len < 7) break;
                 Machine_para.batch_num = buf[5];
+                Machine_para.batch_switch_enable = (Machine_para.batch_num != 200);
+                set_batch_switch_state(Machine_para.batch_switch_enable);
+                if (Machine_para.batch_switch_enable) {
+                    update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label",
+                                         "%d", Machine_para.batch_num);
+                } else {
+                    update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label",
+                                         "%s", "OFF");
+                }
+                page_01_batch_refre();
                 uart_printf(fd6, "Boot batch num: %d\n", Machine_para.batch_num);
             }
 
