@@ -17,13 +17,6 @@ ui_element_t page_07_curr_obj[] = {
         { 255, 0, 0, false },
         NULL, 0, NULL, NULL },
 
-    { "07_curr_title_label", LV_OBJ_TYPE_LABEL, NULL ,
-        { 550, 13, 200, 36, 112, 112, 112 },
-        { "CURRENCY", 112, 112, 112, &lv_font_montserrat_24, LV_TEXT_ALIGN_CENTER },
-        { 255, 18, 0, false },
-         NULL, 0, NULL, NULL ,
-         UI_BTN_STYLE_NONE},
-
     { "02_home_btn", LV_OBJ_TYPE_BUTTON,NULL,
         { 1177, 163, 95, 94, 255, 255, 255 },
         { NULL, 0, 0, 0, NULL },
@@ -110,6 +103,7 @@ void ui_page_07_curr_destroy(void)
 {
     if (curr_page)
     {
+        page_07_curr_img_reset();
         lv_obj_del(curr_page);
         curr_page = NULL;
     }

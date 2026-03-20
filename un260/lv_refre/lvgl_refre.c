@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <string.h>
 #include "lvgl/lvgl.h"
 #include "un260/lv_refre/lvgl_refre.h"
 #include "un260/lv_core/lv_page_manager.h"
@@ -779,165 +780,524 @@ void page_01_curr_img_refre(void)
 }
 
 
-static void page_indicator_create(lv_obj_t* parent, int total_pages, int current_page)
+#define CURR_MAX_ITEMS         MAX_CURRENCIES
+#define CURR_SEL_W             288
+#define CURR_SEL_H             400
+#define CURR_VIEW_X            288
+#define CURR_VIEW_Y            0
+#define CURR_VIEW_W            992
+#define CURR_VIEW_H            400
+#define CURR_LIST_H            365
+#define CURR_CARD_W            200
+#define CURR_CARD_H            265
+#define CURR_CARD_GAP          24
+#define CURR_CARD_STRIDE       (CURR_CARD_W + CURR_CARD_GAP)
+#define CURR_CARD_SECOND_X     36
+#define CURR_CARD_PAD_RIGHT    580
+#define CURR_TRACK_Y           365
+#define CURR_TRACK_H           6
+#define CURR_LEFT_BG_COLOR     0xEDF0F4
+#define CURR_RIGHT_BG_COLOR    0xF4F5F7
+#define CURR_CARD_BG_UNSEL     0xF1F1F1
+#define CURR_TEXT_UNSEL        0xBEBFC0
+#define CURR_IMG_UNSEL         0xCDCED0
+#define CURR_TRACK_BG          0xEBECED
+#define CURR_TRACK_FG          0x75A2DF
+#define CURR_DRAG_THRESHOLD    14
+#define CURR_CARD_SEL_W        ((CURR_CARD_W * 11) / 10)
+#define CURR_CARD_SEL_H        ((CURR_CARD_H * 11) / 10)
+#define CURR_SEL_NEXT_EXTRA_GAP 10
+
+// 当前工程里用这两个函数来实现 local_image_recolor 的效果
+static void curr_set_local_image_recolor(lv_obj_t* obj, lv_color_t color)
 {
-    /* 创建容器 */
-    lv_obj_t* cont = lv_obj_create(parent);
-    lv_obj_set_size(cont, 200, 100);
-    lv_obj_set_style_bg_color(cont, lv_color_hex(0x000000), 0);  // 背景色可自行调整
-    lv_obj_set_style_radius(cont, 5, 0);
-    lv_obj_set_style_border_width(cont, 2, 0);
-    lv_obj_set_style_border_color(cont, lv_color_hex(0x555555), 0);
-    lv_obj_center(cont);
+    lv_obj_set_style_img_recolor(obj, color, 0);
+}
 
-    const lv_coord_t ball_d = 12;
-    const lv_coord_t spacing = 8;
-    lv_coord_t total_width = total_pages * ball_d + (total_pages - 1) * spacing;
-    lv_coord_t start_x = (200 - total_width) / 2;
+static void curr_set_local_image_recolor_opa(lv_obj_t* obj, lv_opa_t opa)
+{
+    lv_obj_set_style_img_recolor_opa(obj, opa, 0);
+}
 
-    for (int i = 0; i < total_pages; i++) {
-        lv_obj_t* ball = lv_obj_create(cont);
-        lv_obj_set_size(ball, ball_d, ball_d);
-        lv_obj_set_style_radius(ball, LV_RADIUS_CIRCLE, 0);
-        if (i == current_page) {
-            lv_obj_set_style_bg_color(ball, lv_color_hex(0xFFFFFF), 0);
+typedef struct {
+    lv_obj_t* card;
+    lv_obj_t* img;
+    lv_obj_t* name;
+    lv_obj_t* no;
+    int base_x;
+    int base_y;
+    uint8_t idx;
+} curr_card_t;
+
+static curr_card_t g_curr_cards[CURR_MAX_ITEMS];
+static int g_curr_card_cnt = 0;
+static int g_curr_sel_idx = 0;
+static bool g_curr_touch_active = false;
+static bool g_curr_touch_dragging = false;
+static int g_curr_touch_start_scroll = 0;
+static lv_point_t g_curr_touch_start_pt;
+static lv_point_t g_curr_touch_last_pt;
+static int g_curr_touch_last_dx = 0;
+static lv_timer_t* g_curr_snap_timer = NULL;
+
+static lv_obj_t* g_curr_root = NULL;
+static lv_obj_t* g_curr_right_area = NULL;
+static lv_obj_t* g_curr_list = NULL;
+static lv_obj_t* g_curr_track = NULL;
+static lv_obj_t* g_curr_thumb = NULL;
+static lv_obj_t* g_curr_drag_zone = NULL;
+static lv_obj_t* g_curr_left_img = NULL;
+static lv_obj_t* g_curr_left_code = NULL;
+static lv_obj_t* g_curr_left_no = NULL;
+
+static void curr_snap_timer_cb(lv_timer_t* t);
+static void curr_apply_selected_style(void);
+
+static int curr_abs_i32(int v)
+{
+    return v >= 0 ? v : -v;
+}
+
+static int curr_scroll_x_abs(void)
+{
+    int sx = lv_obj_get_scroll_x(g_curr_list);
+    return curr_abs_i32(sx);
+}
+
+static int curr_get_max_scroll(void)
+{
+    int content_w = CURR_CARD_SECOND_X
+                  + (g_curr_card_cnt - 1) * CURR_CARD_STRIDE
+                  + CURR_CARD_W
+                  + CURR_CARD_PAD_RIGHT
+                  + CURR_SEL_NEXT_EXTRA_GAP; // 跟选中后右侧卡片偏移保持一致
+    int max_scroll = content_w - CURR_VIEW_W;
+    if (max_scroll < 0) max_scroll = 0;
+    return max_scroll;
+}
+
+static int curr_idx_from_scroll(int sx)
+{
+    if (g_curr_card_cnt <= 0) return 0;
+    int max_scroll = curr_get_max_scroll();
+    if (sx >= max_scroll - 2) return g_curr_card_cnt - 1; // 到最右边时强制命中最后一张
+    int idx = (sx + CURR_CARD_STRIDE / 2) / CURR_CARD_STRIDE;
+    if (idx < 0) idx = 0;
+    if (idx >= g_curr_card_cnt) idx = g_curr_card_cnt - 1;
+    return idx;
+}
+
+static void curr_update_track(void)
+{
+    if (g_curr_thumb == NULL || g_curr_list == NULL || g_curr_card_cnt <= 0) return;
+
+    int thumb_w = CURR_VIEW_W / (g_curr_card_cnt + 2);
+    if (thumb_w < 36) thumb_w = 36;
+    if (thumb_w > CURR_VIEW_W) thumb_w = CURR_VIEW_W;
+
+    int max_scroll = curr_get_max_scroll();
+    if (max_scroll < 1) max_scroll = 1;
+
+    int sx = curr_scroll_x_abs();
+    if (sx > max_scroll) sx = max_scroll;
+
+    int x = CURR_VIEW_X + (sx * (CURR_VIEW_W - thumb_w)) / max_scroll;
+    lv_obj_set_size(g_curr_thumb, thumb_w, CURR_TRACK_H);
+    lv_obj_set_pos(g_curr_thumb, x, CURR_TRACK_Y);
+}
+
+static void curr_update_track_by_scroll(int sx)
+{
+    if (g_curr_thumb == NULL || g_curr_list == NULL || g_curr_card_cnt <= 0) return;
+
+    int thumb_w = CURR_VIEW_W / (g_curr_card_cnt + 2);
+    if (thumb_w < 36) thumb_w = 36;
+    if (thumb_w > CURR_VIEW_W) thumb_w = CURR_VIEW_W;
+
+    int max_scroll = curr_get_max_scroll();
+    if (max_scroll < 1) max_scroll = 1;
+    if (sx < 0) sx = 0;
+    if (sx > max_scroll) sx = max_scroll;
+
+    int x = CURR_VIEW_X + (sx * (CURR_VIEW_W - thumb_w)) / max_scroll;
+    // 边界贴边，避免吸附回首卡时滑块还有偏移
+    if (sx <= 1) x = CURR_VIEW_X;
+    if (sx >= max_scroll - 1) x = CURR_VIEW_X + (CURR_VIEW_W - thumb_w);
+    lv_obj_set_size(g_curr_thumb, thumb_w, CURR_TRACK_H);
+    lv_obj_set_pos(g_curr_thumb, x, CURR_TRACK_Y);
+}
+
+static void curr_scroll_to_raw(int x, bool anim)
+{
+    int max_scroll = curr_get_max_scroll();
+    if (x < 0) x = 0;
+    if (x > max_scroll) x = max_scroll;
+    curr_update_track_by_scroll(x); // 先按目标值更新滑块，避免动画读旧值不同步
+    lv_obj_scroll_to_x(g_curr_list, x, anim ? LV_ANIM_ON : LV_ANIM_OFF);
+    // 滑动时实时高亮当前到达左侧基准线的卡片
+    if (g_curr_card_cnt > 0) {
+        int idx = curr_idx_from_scroll(x);
+        if (idx != g_curr_sel_idx) {
+            g_curr_sel_idx = idx;
+            curr_apply_selected_style();
         }
-        else {
-            lv_obj_set_style_bg_color(ball, lv_color_hex(0x888888), 0);
+    }
+    curr_update_track_by_scroll(x);
+}
+
+static int curr_find_sel_idx(void)
+{
+    for (int i = 0; i < g_curr_card_cnt; i++) {
+        if (strncmp(Machine_para.curr_code, Machine_para.currencies[i], 3) == 0) {
+            return i;
         }
-        lv_obj_set_pos(ball,
-            start_x + i * (ball_d + spacing),
-            (100 - ball_d) / 2);
+    }
+    return 0;
+}
+
+static void curr_update_left_panel_from_curr_code(void)
+{
+    int idx = 0;
+    for (int i = 0; i < g_curr_card_cnt; i++) {
+        if (strncmp(Machine_para.curr_code, Machine_para.currencies[i], 3) == 0) {
+            idx = i;
+            break;
+        }
+    }
+    lv_img_set_src(g_curr_left_img, get_currency_img(Machine_para.currencies[idx]));
+    lv_label_set_text_fmt(g_curr_left_code, "%s", Machine_para.currencies[idx]);
+    lv_label_set_text_fmt(g_curr_left_no, "NO.%02d", idx + 1);
+}
+
+static void curr_apply_selected_style(void)
+{
+    if (g_curr_sel_idx < 0 || g_curr_sel_idx >= g_curr_card_cnt) return;
+
+    for (int i = 0; i < g_curr_card_cnt; i++) {
+        bool sel = (i == g_curr_sel_idx);
+        int pos_x = g_curr_cards[i].base_x;
+        int pos_y = g_curr_cards[i].base_y;
+        if (i > g_curr_sel_idx) {
+            pos_x += CURR_SEL_NEXT_EXTRA_GAP;
+        }
+        lv_obj_clear_flag(g_curr_cards[i].card, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(g_curr_cards[i].img, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(g_curr_cards[i].name, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(g_curr_cards[i].no, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_style_opa(g_curr_cards[i].card, LV_OPA_COVER, 0);
+        lv_obj_set_style_opa(g_curr_cards[i].img, LV_OPA_COVER, 0);
+        lv_obj_set_style_opa(g_curr_cards[i].name, LV_OPA_COVER, 0);
+        lv_obj_set_style_opa(g_curr_cards[i].no, LV_OPA_COVER, 0);
+
+        lv_obj_set_style_bg_color(g_curr_cards[i].card, sel ? lv_color_hex(0xFFFFFF) : lv_color_hex(CURR_CARD_BG_UNSEL), 0);
+        lv_obj_set_style_border_width(g_curr_cards[i].card, sel ? 2 : 0, 0);
+        lv_obj_set_style_border_color(g_curr_cards[i].card, lv_color_hex(0xDDE3EA), 0);
+        lv_obj_set_style_radius(g_curr_cards[i].card, 30, 0);
+        lv_obj_set_style_shadow_width(g_curr_cards[i].card, sel ? 18 : 0, 0);
+        lv_obj_set_style_shadow_opa(g_curr_cards[i].card, sel ? LV_OPA_10 : LV_OPA_0, 0);
+        if (sel) {
+            lv_obj_set_size(g_curr_cards[i].card, CURR_CARD_SEL_W, CURR_CARD_SEL_H);
+            lv_obj_set_pos(g_curr_cards[i].card,
+                           pos_x - (CURR_CARD_SEL_W - CURR_CARD_W) / 2,
+                           pos_y - (CURR_CARD_SEL_H - CURR_CARD_H) / 2);
+        } else {
+            lv_obj_set_size(g_curr_cards[i].card, CURR_CARD_W, CURR_CARD_H);
+            lv_obj_set_pos(g_curr_cards[i].card, pos_x, pos_y);
+        }
+        lv_obj_set_style_text_color(g_curr_cards[i].name, sel ? lv_color_hex(0x202020) : lv_color_hex(CURR_TEXT_UNSEL), 0);
+        lv_obj_set_style_text_color(g_curr_cards[i].no, sel ? lv_color_hex(0x202020) : lv_color_hex(CURR_TEXT_UNSEL), 0);
+        curr_set_local_image_recolor(g_curr_cards[i].img, lv_color_hex(0xCDCED0));
+        curr_set_local_image_recolor_opa(g_curr_cards[i].img, sel ? LV_OPA_0 : LV_OPA_0);
+        lv_obj_set_style_img_opa(g_curr_cards[i].img, LV_OPA_COVER, 0);
     }
 }
 
-static lv_obj_t* curr_imgs[100];
-
-static void scroll_snap_event_cb(lv_event_t* e) //页面吸附
+static void curr_scroll_to_idx(int idx, bool anim)
 {
-    lv_obj_t* cont = lv_event_get_target(e);
-    lv_coord_t x = lv_obj_get_scroll_x(cont);
-    const int PAGE_W = 1072;
-    const int X_OFF = 76;
-    static int last_page = 0;
-    int diff = x - (last_page * PAGE_W + X_OFF);
-    int next = last_page;
-    if (diff > 100)      next++;
-    else if (diff < -100) next--;
-    int max_page = (Machine_para.currency_count + 7) / 8 - 1;
-    if (next < 0)         next = 0;
-    if (next > max_page)  next = max_page;
-    last_page = next;
-    page_indicator_create(curr_page, max_page + 1, last_page);
-    lv_obj_scroll_to_x(cont, next * PAGE_W + X_OFF, LV_ANIM_ON);
+    curr_scroll_to_raw(idx * CURR_CARD_STRIDE, anim);
 }
 
-static void page_07_cont_click_cb(lv_event_t* e)
+static int curr_pick_nearest_idx(void)
 {
-    int idx = (int)(uintptr_t)lv_event_get_user_data(e);
-    if (idx >= 0 && idx < Machine_para.currency_count) {
-        memcpy(Machine_para.curr_code, Machine_para.currencies[idx], 4);
-        set_curr(get_curr_item(Machine_para.currencies[idx]));
-        send_command(fd4, 0x03, (const uint8_t *)Machine_para.currencies[idx], 3);
-        sim_clear_all_sn(&sim);
-        int clear_cmd;
-        ui_manager_switch(UI_PAGE_MAIN);
+    if (g_curr_card_cnt <= 0) return 0;
+    int sx = curr_scroll_x_abs();
+    return curr_idx_from_scroll(sx);
+}
+
+static void curr_start_snap_timer(uint32_t ms)
+{
+    if (g_curr_snap_timer) {
+        lv_timer_del(g_curr_snap_timer);
+        g_curr_snap_timer = NULL;
+    }
+    g_curr_snap_timer = lv_timer_create(curr_snap_timer_cb, ms, NULL);
+    if (g_curr_snap_timer) {
+        lv_timer_set_repeat_count(g_curr_snap_timer, 1);
     }
 }
 
-#define MAX_PAGES 10
-static lv_obj_t* page_dots[MAX_PAGES];  // 存储小球对象
-static int g_total_pages = 0;  //需要全局声明
-
-//小球指示器函数 需要换文件位置
-void tabview_event_cb(lv_event_t* e)
+static void curr_snap_timer_cb(lv_timer_t* t)
 {
-    lv_obj_t* tabview = lv_event_get_target(e);
-    int cur = lv_tabview_get_tab_act(tabview);  // 当前页索引
-
-    for (int i = 0; i < g_total_pages; i++) {
-        lv_obj_set_style_bg_color(page_dots[i],
-            (i == cur) ? lv_color_hex(0x0295FF) : lv_color_hex(0xFFFFFF), 0);
-    }
+    (void)t;
+    g_curr_snap_timer = NULL;
+    if (g_curr_card_cnt <= 0) return;
+    int idx = curr_pick_nearest_idx();
+    g_curr_sel_idx = idx;
+    curr_apply_selected_style();
+    curr_scroll_to_idx(g_curr_sel_idx, true);
 }
 
-void page_07_curr_img_refre(void)//图片刷新
+static void curr_select_and_exit(int idx)
 {
-    if (Machine_para.currency_count == 0) return;
-    g_total_pages = (Machine_para.currency_count + 7) / 8;
+    memcpy(Machine_para.curr_code, Machine_para.currencies[idx], 4);
+    g_curr_sel_idx = idx;
+    curr_apply_selected_style();
+    curr_update_left_panel_from_curr_code(); // 只有确认选择时才更新左侧
+    curr_scroll_to_idx(g_curr_sel_idx, true);
 
-    lv_obj_t* tabview = lv_tabview_create(curr_page, LV_DIR_TOP, 0);
-    lv_obj_set_size(tabview, 1051, 301);
-    lv_obj_set_pos(tabview, 113, 84);
-    lv_obj_set_style_bg_opa(tabview, LV_OPA_0, 0);
-    lv_obj_t* tab_btns = lv_tabview_get_tab_btns(tabview);
-    lv_obj_add_flag(tab_btns, LV_OBJ_FLAG_HIDDEN);
-    // 注册事件回调
-    lv_obj_add_event_cb(tabview, tabview_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    set_curr(get_curr_item(Machine_para.currencies[idx]));
+    send_command(fd4, 0x03, (const uint8_t*)Machine_para.currencies[idx], 3);
+    sim_clear_all_sn(&sim);
+    ui_manager_switch(UI_PAGE_MAIN);
+}
 
-    for (int page = 0; page < g_total_pages; page++) {
-        char tab_name[16];
-        snprintf(tab_name, sizeof(tab_name), "page_%d", page);
-        lv_obj_t* tab = lv_tabview_add_tab(tabview, tab_name);
+static void page_07_drag_common_cb(lv_event_t* e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    int card_idx = (int)(uintptr_t)lv_event_get_user_data(e);
 
-        // 设置tab属性
-        lv_obj_set_style_bg_opa(tab, LV_OPA_0, 0);
-        lv_obj_clear_flag(tab, LV_OBJ_FLAG_SCROLLABLE);
-
-        for (int i = 0; i < 8; i++) {
-            int idx = page * 8 + i;
-            if (idx >= Machine_para.currency_count) break;
-
-            int row = i / 4;
-            int col = i % 4;
-            int x = 61 + col * 254;
-            int y = 16 + row * 138;
-
-            curr_imgs[idx] = lv_img_create(tab);
-            lv_img_set_src(curr_imgs[idx], get_currency_img(Machine_para.currencies[idx]));
-            lv_obj_set_pos(curr_imgs[idx], x, y);
-            lv_obj_set_size(curr_imgs[idx], 182, 103);
-
-            lv_obj_add_flag(curr_imgs[idx], LV_OBJ_FLAG_CLICKABLE);
-            lv_obj_add_event_cb(curr_imgs[idx], page_07_cont_click_cb, LV_EVENT_CLICKED, (void*)(uintptr_t)idx);
-
-            lv_obj_t* lbl = lv_label_create(tab);
-            lv_label_set_text(lbl, Machine_para.currencies[idx]);
-            lv_obj_set_style_text_font(lbl, &lv_font_montserrat_20, 0);
-            lv_obj_set_style_text_color(lbl, lv_color_hex(0x000000), 0);
-            lv_obj_set_pos(lbl, x + 70, y + 102);
+    if (code == LV_EVENT_PRESSED) {
+        lv_indev_t* indev = lv_indev_get_act();
+        if (indev == NULL) return;
+        lv_indev_get_point(indev, &g_curr_touch_start_pt);
+        g_curr_touch_last_pt = g_curr_touch_start_pt;
+        g_curr_touch_last_dx = 0;
+        g_curr_touch_active = true;
+        g_curr_touch_dragging = false;
+        g_curr_touch_start_scroll = curr_scroll_x_abs();
+        if (g_curr_snap_timer) {
+            lv_timer_del(g_curr_snap_timer);
+            g_curr_snap_timer = NULL;
         }
+        return;
     }
 
-    //小球指示器
-    if (g_total_pages > 1) {
-        lv_obj_t* indicator_cont = lv_obj_create(curr_page);
-        lv_obj_set_style_border_width(indicator_cont, 0, LV_PART_MAIN);
-        lv_obj_set_size(indicator_cont, 1051, 60);
-        lv_obj_set_pos(indicator_cont, 113, 33);
-        lv_obj_set_style_bg_opa(indicator_cont, LV_OPA_TRANSP, 0);
-        lv_obj_clear_flag(indicator_cont, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_move_foreground(indicator_cont);
+    if (code == LV_EVENT_PRESSING) {
+        if (!g_curr_touch_active) return;
+        lv_indev_t* indev = lv_indev_get_act();
+        if (indev == NULL) return;
+        lv_point_t p;
+        lv_indev_get_point(indev, &p);
+        int dx = p.x - g_curr_touch_start_pt.x;
+        int dy = p.y - g_curr_touch_start_pt.y;
+        g_curr_touch_last_dx = p.x - g_curr_touch_last_pt.x;
+        g_curr_touch_last_pt = p;
 
-        int spacing = 20;
-        int radius = 10;
-        int total_w = g_total_pages * (radius * 2 + spacing) - spacing;
-        int start_x = (1051 - total_w) / 2;
-
-        for (int i = 0; i < g_total_pages; i++) {
-            page_dots[i] = lv_obj_create(indicator_cont);
-            lv_obj_set_size(page_dots[i], radius * 2, radius * 2);
-            lv_obj_set_style_radius(page_dots[i], LV_RADIUS_CIRCLE, 0);
-            lv_obj_set_style_bg_color(page_dots[i],(i == 0) ? lv_color_hex(0x0295FF) : lv_color_hex(0xFFFFFF), 0);
-            lv_obj_set_style_bg_opa(page_dots[i], LV_OPA_COVER, 0);
-            lv_obj_set_style_border_width(page_dots[i], 0, LV_PART_MAIN);
-            lv_obj_set_style_outline_width(page_dots[i], 0, LV_PART_MAIN);
-            lv_obj_set_style_shadow_width(page_dots[i], 0, LV_PART_MAIN);
-            lv_obj_clear_flag(page_dots[i], LV_OBJ_FLAG_SCROLLABLE);
-            lv_obj_set_pos(page_dots[i], start_x + i * (radius * 2 + spacing), 5);
-
-
-
+        if (!g_curr_touch_dragging) {
+            if (curr_abs_i32(dx) > CURR_DRAG_THRESHOLD && curr_abs_i32(dx) >= curr_abs_i32(dy)) {
+                g_curr_touch_dragging = true;
+            }
         }
+        if (g_curr_touch_dragging) {
+            curr_scroll_to_raw(g_curr_touch_start_scroll - dx, false);
+        }
+        return;
     }
+
+    if (code == LV_EVENT_RELEASED) {
+        if (!g_curr_touch_active) return;
+        g_curr_touch_active = false;
+
+        if (g_curr_touch_dragging) {
+            g_curr_touch_dragging = false;
+            int fling = g_curr_touch_last_dx * 4;
+            int max_fling = CURR_CARD_STRIDE;
+            if (fling > max_fling) fling = max_fling;
+            if (fling < -max_fling) fling = -max_fling;
+            curr_scroll_to_raw(curr_scroll_x_abs() - fling, true);
+            curr_start_snap_timer(220); // 等滑动快停下时再轻吸附
+            return;
+        }
+
+        if (card_idx >= 0 && card_idx < g_curr_card_cnt) {
+            curr_select_and_exit(card_idx);
+            return;
+        }
+
+        int idx = curr_pick_nearest_idx();
+        g_curr_sel_idx = idx;
+        curr_apply_selected_style();
+        curr_scroll_to_idx(g_curr_sel_idx, true);
+    }
+}
+
+void page_07_curr_img_reset(void)
+{
+    if (g_curr_root && lv_obj_is_valid(g_curr_root)) {
+        lv_obj_del(g_curr_root);
+    }
+    g_curr_root = NULL;
+    g_curr_right_area = NULL;
+    g_curr_list = NULL;
+    g_curr_track = NULL;
+    g_curr_thumb = NULL;
+    g_curr_drag_zone = NULL;
+    g_curr_left_img = NULL;
+    g_curr_left_code = NULL;
+    g_curr_left_no = NULL;
+    g_curr_card_cnt = 0;
+    g_curr_sel_idx = 0;
+    g_curr_touch_active = false;
+    g_curr_touch_dragging = false;
+    g_curr_touch_start_scroll = 0;
+    memset(g_curr_cards, 0, sizeof(g_curr_cards));
+}
+
+void page_07_curr_img_refre(void)
+{
+    if (curr_page == NULL || Machine_para.currency_count <= 0) return;
+
+    page_07_curr_img_reset();
+
+    g_curr_card_cnt = Machine_para.currency_count;
+    if (g_curr_card_cnt > CURR_MAX_ITEMS) g_curr_card_cnt = CURR_MAX_ITEMS;
+    g_curr_sel_idx = curr_find_sel_idx();
+
+    g_curr_root = lv_obj_create(curr_page);
+    lv_obj_remove_style_all(g_curr_root);
+    lv_obj_set_size(g_curr_root, 1280, 400);
+    lv_obj_set_pos(g_curr_root, 0, 0);
+    lv_obj_clear_flag(g_curr_root, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollbar_mode(g_curr_root, LV_SCROLLBAR_MODE_OFF);
+
+    lv_obj_t* left = lv_obj_create(g_curr_root);
+    lv_obj_remove_style_all(left);
+    lv_obj_set_size(left, CURR_SEL_W, CURR_SEL_H);
+    lv_obj_set_pos(left, 0, 0);
+    lv_obj_set_style_bg_color(left, lv_color_hex(CURR_LEFT_BG_COLOR), 0);
+    lv_obj_set_style_bg_opa(left, LV_OPA_COVER, 0);
+    lv_obj_clear_flag(left, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollbar_mode(left, LV_SCROLLBAR_MODE_OFF);
+
+    lv_obj_t* left_title = lv_label_create(left);
+    lv_label_set_text(left_title, "CURRENCY SELECT");
+    lv_obj_set_pos(left_title, 10, 7);
+    lv_obj_set_style_text_font(left_title, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(left_title, lv_color_hex(0x202020), 0);
+
+    g_curr_left_img = lv_img_create(left);
+    lv_obj_set_pos(g_curr_left_img, 125, 44);
+    lv_img_set_zoom(g_curr_left_img, 170); // 左侧图缩小约 1/3
+
+    g_curr_left_code = lv_label_create(left);
+    lv_obj_set_pos(g_curr_left_code, 10, 150);
+    lv_obj_set_style_text_font(g_curr_left_code, &lv_font_montserrat_30, 0);
+    lv_obj_set_style_text_color(g_curr_left_code, lv_color_hex(0x202020), 0);
+
+    g_curr_left_no = lv_label_create(left);
+    lv_obj_set_pos(g_curr_left_no, 205, 365);
+    lv_obj_set_style_text_font(g_curr_left_no, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(g_curr_left_no, lv_color_hex(0x202020), 0);
+
+    g_curr_right_area = lv_obj_create(g_curr_root);
+    lv_obj_remove_style_all(g_curr_right_area);
+    lv_obj_set_size(g_curr_right_area, CURR_VIEW_W, CURR_VIEW_H);
+    lv_obj_set_pos(g_curr_right_area, CURR_VIEW_X, CURR_VIEW_Y);
+    lv_obj_set_style_bg_color(g_curr_right_area, lv_color_hex(CURR_RIGHT_BG_COLOR), 0);
+    lv_obj_set_style_bg_opa(g_curr_right_area, LV_OPA_COVER, 0);
+    lv_obj_clear_flag(g_curr_right_area, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollbar_mode(g_curr_right_area, LV_SCROLLBAR_MODE_OFF);
+
+    g_curr_list = lv_obj_create(g_curr_right_area);
+    lv_obj_remove_style_all(g_curr_list);
+    lv_obj_set_size(g_curr_list, CURR_VIEW_W, CURR_LIST_H);
+    lv_obj_set_pos(g_curr_list, 0, 0);
+    lv_obj_set_style_bg_opa(g_curr_list, LV_OPA_TRANSP, 0);
+    lv_obj_set_scrollbar_mode(g_curr_list, LV_SCROLLBAR_MODE_OFF); // 去掉卡片区域滚动条
+    lv_obj_clear_flag(g_curr_list, LV_OBJ_FLAG_SCROLLABLE);
+
+    for (int i = 0; i < g_curr_card_cnt; i++) {
+        int x = CURR_CARD_SECOND_X + i * CURR_CARD_STRIDE;
+
+        g_curr_cards[i].idx = (uint8_t)i;
+        g_curr_cards[i].base_x = x;
+        g_curr_cards[i].base_y = 46;
+        g_curr_cards[i].card = lv_obj_create(g_curr_list);
+        lv_obj_set_size(g_curr_cards[i].card, CURR_CARD_W, CURR_CARD_H);
+        lv_obj_set_pos(g_curr_cards[i].card, g_curr_cards[i].base_x, g_curr_cards[i].base_y);
+        lv_obj_set_style_radius(g_curr_cards[i].card, 30, 0);
+        lv_obj_set_style_border_width(g_curr_cards[i].card, 0, 0);
+        lv_obj_set_style_bg_opa(g_curr_cards[i].card, LV_OPA_COVER, 0);
+        lv_obj_set_scrollbar_mode(g_curr_cards[i].card, LV_SCROLLBAR_MODE_OFF);
+        lv_obj_clear_flag(g_curr_cards[i].card, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_add_flag(g_curr_cards[i].card, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_event_cb(g_curr_cards[i].card, page_07_drag_common_cb, LV_EVENT_PRESSED, (void*)(uintptr_t)i);
+        lv_obj_add_event_cb(g_curr_cards[i].card, page_07_drag_common_cb, LV_EVENT_PRESSING, (void*)(uintptr_t)i);
+        lv_obj_add_event_cb(g_curr_cards[i].card, page_07_drag_common_cb, LV_EVENT_RELEASED, (void*)(uintptr_t)i);
+
+        g_curr_cards[i].img = lv_img_create(g_curr_cards[i].card);
+        lv_img_set_src(g_curr_cards[i].img, get_currency_img(Machine_para.currencies[i]));
+        lv_img_set_zoom(g_curr_cards[i].img, 74); // 约等于 57x30
+        lv_obj_set_pos(g_curr_cards[i].img, 21, 66);
+        lv_obj_set_scrollbar_mode(g_curr_cards[i].img, LV_SCROLLBAR_MODE_OFF);
+        lv_obj_clear_flag(g_curr_cards[i].img, LV_OBJ_FLAG_SCROLLABLE);
+
+        g_curr_cards[i].name = lv_label_create(g_curr_cards[i].card);
+        lv_label_set_text_fmt(g_curr_cards[i].name, "%s", Machine_para.currencies[i]);
+        lv_obj_set_pos(g_curr_cards[i].name, 21, 144);
+        lv_obj_set_style_text_font(g_curr_cards[i].name, &lv_font_montserrat_30, 0);
+        lv_obj_set_scrollbar_mode(g_curr_cards[i].name, LV_SCROLLBAR_MODE_OFF);
+        lv_obj_clear_flag(g_curr_cards[i].name, LV_OBJ_FLAG_SCROLLABLE);
+
+        g_curr_cards[i].no = lv_label_create(g_curr_cards[i].card);
+        lv_label_set_text_fmt(g_curr_cards[i].no, "NO.%02d", i + 1);
+        lv_obj_set_pos(g_curr_cards[i].no, 21, 206);
+        lv_obj_set_style_text_font(g_curr_cards[i].no, &lv_font_montserrat_14, 0);
+        lv_obj_set_scrollbar_mode(g_curr_cards[i].no, LV_SCROLLBAR_MODE_OFF);
+        lv_obj_clear_flag(g_curr_cards[i].no, LV_OBJ_FLAG_SCROLLABLE);
+
+    }
+
+    lv_obj_t* tail = lv_obj_create(g_curr_list);
+    lv_obj_remove_style_all(tail);
+    lv_obj_set_size(tail, 1, 1);
+    lv_obj_set_pos(tail, CURR_CARD_SECOND_X + g_curr_card_cnt * CURR_CARD_STRIDE + CURR_CARD_PAD_RIGHT, 1);
+
+    g_curr_track = lv_obj_create(g_curr_root);
+    lv_obj_remove_style_all(g_curr_track);
+    lv_obj_set_size(g_curr_track, CURR_VIEW_W, CURR_TRACK_H);
+    lv_obj_set_pos(g_curr_track, CURR_VIEW_X, CURR_TRACK_Y);
+    lv_obj_set_style_bg_color(g_curr_track, lv_color_hex(CURR_TRACK_BG), 0);
+    lv_obj_set_style_bg_opa(g_curr_track, LV_OPA_COVER, 0);
+
+    g_curr_thumb = lv_obj_create(g_curr_root);
+    lv_obj_remove_style_all(g_curr_thumb);
+    lv_obj_set_style_bg_color(g_curr_thumb, lv_color_hex(CURR_TRACK_FG), 0);
+    lv_obj_set_style_bg_opa(g_curr_thumb, LV_OPA_90, 0);
+    lv_obj_set_style_radius(g_curr_thumb, 3, 0);
+
+    // 活动区域任意位置都可以拖动卡片
+    lv_obj_add_flag(g_curr_right_area, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(g_curr_right_area, page_07_drag_common_cb, LV_EVENT_PRESSED, (void*)(intptr_t)-1);
+    lv_obj_add_event_cb(g_curr_right_area, page_07_drag_common_cb, LV_EVENT_PRESSING, (void*)(intptr_t)-1);
+    lv_obj_add_event_cb(g_curr_right_area, page_07_drag_common_cb, LV_EVENT_RELEASED, (void*)(intptr_t)-1);
+
+    g_curr_drag_zone = lv_obj_create(g_curr_root);
+    lv_obj_remove_style_all(g_curr_drag_zone);
+    lv_obj_set_size(g_curr_drag_zone, CURR_VIEW_W, 35);
+    lv_obj_set_pos(g_curr_drag_zone, CURR_VIEW_X, CURR_TRACK_Y - 20);
+    lv_obj_set_style_bg_opa(g_curr_drag_zone, LV_OPA_TRANSP, 0);
+    lv_obj_set_scrollbar_mode(g_curr_drag_zone, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_clear_flag(g_curr_drag_zone, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(g_curr_drag_zone, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(g_curr_drag_zone, page_07_drag_common_cb, LV_EVENT_PRESSED, (void*)(intptr_t)-1);
+    lv_obj_add_event_cb(g_curr_drag_zone, page_07_drag_common_cb, LV_EVENT_PRESSING, (void*)(intptr_t)-1);
+    lv_obj_add_event_cb(g_curr_drag_zone, page_07_drag_common_cb, LV_EVENT_RELEASED, (void*)(intptr_t)-1);
+    lv_obj_add_flag(g_curr_drag_zone, LV_OBJ_FLAG_HIDDEN); // 保留对象，但禁用“仅底部可拖”旧逻辑
+    lv_obj_move_foreground(g_curr_thumb);
+
+    curr_scroll_to_idx(g_curr_sel_idx, false);
+    curr_update_left_panel_from_curr_code();
+    curr_apply_selected_style();
+    curr_update_track();
 }
