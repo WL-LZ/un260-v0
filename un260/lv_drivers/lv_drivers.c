@@ -275,23 +275,23 @@ void boot_send_next_selftest(void)
 
     switch (selftest_step) {
         case 0:
+            bootlog_append("Read config parameters...");
+            send_command(fd4, 0x37, (uint8_t[]){0x04}, 1);
+            break;
+
+        case 1:
             bootlog_append("Sensor self-test running...");
             send_command(fd4, 0x37, (uint8_t[]){0x01}, 1);
             break;
 
-        case 1:
+        case 2:
             bootlog_append("Motor self-test running...");
             send_command(fd4, 0x37, (uint8_t[]){0x02}, 1);
             break;
 
-        case 2:
+        case 3:
             bootlog_append("Electromagnet self-test running...");
             send_command(fd4, 0x37, (uint8_t[]){0x03}, 1);
-            break;
-
-        case 3:
-            bootlog_append("Read config parameters...");
-            send_command(fd4, 0x37, (uint8_t[]){0x04}, 1);
             break;
 
         case 4:
