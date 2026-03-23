@@ -11,8 +11,7 @@
 #include "un260/lv_core/lv_page_event.h"
 #include "un260/lv_core/lv_page_declear.h"
 #include "un260/lv_resources/lv_img_init.h"
-
-
+#include <errno.h>
 
 void ui_switch_to(page_id_t page)
 {
@@ -857,10 +856,11 @@ typedef struct {
     lv_obj_t* fav_icon;
     int abs_idx;
 } curr_grid_item_t;
-
+static int curr_ensure_fav_store_dir(void);
+#define CURR_FAV_STORE_PATH "/etc/page07/page07_currency_favorites.cfg"
+#define LV_DEBUG      1     //添加掉电保存
 static curr_card_t g_curr_cards[CURR_MAX_ITEMS];
 static curr_grid_item_t g_curr_grid_items[CURR_MAX_ITEMS];
-
 static char g_curr_fav_codes[CURR_MAX_ITEMS][4];
 static int g_curr_fav_cnt = 0;
 
@@ -906,6 +906,42 @@ static lv_obj_t* g_curr_empty_label = NULL;
 static void curr_refresh_right_views(void);
 static void curr_apply_selected_style(void);
 
+static bool curr_has_currency_code(const char* code);
+static bool curr_add_favorite_code(const char* code);
+static void curr_load_favorites_from_file(void);
+static void curr_save_favorites_to_file(void);
+static void curr_debug_dump_favorites(const char* tag);
+
+static int curr_ensure_fav_store_dir(void)
+{
+    const char *slash;
+    char dir_path[128];
+    size_t dir_len;
+
+    slash = strrchr(CURR_FAV_STORE_PATH, '/');
+    if (slash == NULL) return -1;
+
+    dir_len = (size_t)(slash - CURR_FAV_STORE_PATH);
+    if (dir_len == 0 || dir_len >= sizeof(dir_path)) return -1;
+
+    memcpy(dir_path, CURR_FAV_STORE_PATH, dir_len);
+    dir_path[dir_len] = '\0';
+
+    if (access(dir_path, F_OK) == 0) {
+        return 0;
+    }
+
+    if (mkdir(dir_path, 0775) == 0) {
+#if LV_DEBUG
+        printf("[curr_fav] mkdir ok: %s\n", dir_path);
+#endif
+        return 0;
+    }
+
+    printf("[curr_fav] mkdir failed: %s err=%s\n", dir_path, strerror(errno));
+    return -1;
+}
+
 static int curr_abs_i32(int v)
 {
     return (v >= 0) ? v : -v;
@@ -923,7 +959,127 @@ static int curr_find_abs_idx_by_code(const char* code)
     }
     return 0;
 }
+static bool curr_has_currency_code(const char* code)
+{
+    if (code == NULL || code[0] == '\0') return false;
 
+    for (int i = 0; i < Machine_para.currency_count && i < CURR_MAX_ITEMS; i++) {
+        if (curr_code_eq3(code, Machine_para.currencies[i])) return true;
+    }
+    return false;
+}
+
+static void curr_debug_dump_favorites(const char* tag)
+{
+#if LV_DEBUG
+    printf("[curr_fav] %s: count=%d\n", tag ? tag : "dump", g_curr_fav_cnt);
+    for (int i = 0; i < g_curr_fav_cnt; i++) {
+        printf("[curr_fav]   [%d] %s\n", i, g_curr_fav_codes[i]);
+    }
+#else
+    (void)tag;
+#endif
+}
+
+static void curr_load_favorites_from_file(void)
+{
+    FILE* fp = fopen(CURR_FAV_STORE_PATH, "r");
+    char line[32];
+
+    g_curr_fav_cnt = 0;
+    memset(g_curr_fav_codes, 0, sizeof(g_curr_fav_codes));
+
+#if LV_DEBUG
+    printf("[curr_fav] load from: %s\n", CURR_FAV_STORE_PATH);
+#endif
+
+    if (fp == NULL) {
+#if LV_DEBUG
+        printf("[curr_fav] load skipped, fopen failed: %s\n", strerror(errno));
+#endif
+        return;
+    }
+
+    while (fgets(line, sizeof(line), fp) != NULL) {
+        char code[4] = {0};
+
+        if (sscanf(line, "%3[A-Z]", code) != 1) continue;
+        if (!curr_has_currency_code(code)) {
+#if LV_DEBUG
+            printf("[curr_fav] ignore unknown code: %s\n", code);
+#endif
+            continue;
+        }
+        curr_add_favorite_code(code);
+    }
+
+    fclose(fp);
+    curr_debug_dump_favorites("after load");
+}
+static void curr_save_favorites_to_file(void)
+{
+    char tmp_path[128];
+    int fd;
+    FILE* fp;
+    int dir_fd;
+    const char* slash;
+    char dir_path[128];
+
+    if (curr_ensure_fav_store_dir() != 0) {
+        printf("[curr_fav] save aborted, store dir not ready\n");
+        return;
+    }
+
+    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", CURR_FAV_STORE_PATH);
+
+#if LV_DEBUG
+    printf("[curr_fav] save to: %s\n", CURR_FAV_STORE_PATH);
+#endif
+
+    fd = open(tmp_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd < 0) {
+        printf("[curr_fav] open tmp file failed: %s\n", strerror(errno));
+        return;
+    }
+
+    fp = fdopen(fd, "w");
+    if (fp == NULL) {
+        printf("[curr_fav] fdopen failed: %s\n", strerror(errno));
+        close(fd);
+        return;
+    }
+
+    for (int i = 0; i < g_curr_fav_cnt; i++) {
+        fprintf(fp, "%s\n", g_curr_fav_codes[i]);
+    }
+
+    fflush(fp);
+    fsync(fd);
+    fclose(fp);
+
+    if (rename(tmp_path, CURR_FAV_STORE_PATH) != 0) {
+        printf("[curr_fav] rename failed: %s\n", strerror(errno));
+        unlink(tmp_path);
+        return;
+    }
+
+    slash = strrchr(CURR_FAV_STORE_PATH, '/');
+    if (slash != NULL) {
+        size_t dir_len = (size_t)(slash - CURR_FAV_STORE_PATH);
+        if (dir_len < sizeof(dir_path)) {
+            memcpy(dir_path, CURR_FAV_STORE_PATH, dir_len);
+            dir_path[dir_len] = '\0';
+
+            dir_fd = open(dir_path, O_RDONLY | O_DIRECTORY);
+            if (dir_fd >= 0) {
+                fsync(dir_fd);
+                close(dir_fd);
+            }
+        }
+    }
+
+    curr_debug_dump_favorites("after save");
+}
 static bool curr_is_favorite_code(const char* code)
 {
     for (int i = 0; i < g_curr_fav_cnt; i++) {
@@ -967,11 +1123,19 @@ static bool curr_is_favorite_abs_idx(int abs_idx)
 static void curr_toggle_favorite_abs_idx(int abs_idx)
 {
     if (abs_idx < 0 || abs_idx >= Machine_para.currency_count) return;
+
+#if LV_DEBUG
+    printf("[curr_fav] toggle abs_idx=%d code=%s\n",
+           abs_idx, Machine_para.currencies[abs_idx]);
+#endif
+
     if (curr_is_favorite_abs_idx(abs_idx)) {
         curr_remove_favorite_code(Machine_para.currencies[abs_idx]);
     } else {
         curr_add_favorite_code(Machine_para.currencies[abs_idx]);
     }
+
+    curr_save_favorites_to_file();
 }
 
 static void curr_set_img_target_width(lv_obj_t* img, const char* code, int target_w)
@@ -1870,6 +2034,7 @@ void page_07_curr_img_refre(void)
 {
     if (curr_page == NULL || Machine_para.currency_count <= 0) return;
 
+    curr_load_favorites_from_file();
     page_07_curr_img_reset();
 
     g_curr_sel_abs_idx = curr_find_abs_idx_by_code(Machine_para.curr_code);
