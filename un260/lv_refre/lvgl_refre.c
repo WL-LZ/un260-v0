@@ -14,7 +14,6 @@
 
 
 
-
 void ui_switch_to(page_id_t page)
 {
     lv_obj_add_flag(main_page, LV_OBJ_FLAG_HIDDEN);
@@ -1077,6 +1076,18 @@ static int curr_scroll_from_highlight_idx(int vis_idx)
     return sx;
 }
 
+static int curr_get_track_base_width(void)
+{
+    int thumb_w;
+
+    if (g_curr_visible_cnt <= 0) return CURR_VIEW_W;
+
+    thumb_w = CURR_VIEW_W / g_curr_visible_cnt;
+    if (thumb_w < 36) thumb_w = 36;
+    if (thumb_w > CURR_VIEW_W) thumb_w = CURR_VIEW_W;
+    return thumb_w;
+}
+
 static void curr_update_track_by_scroll(int sx)
 {
     if (g_curr_thumb == NULL || g_curr_visible_cnt <= 0) return;
@@ -1105,6 +1116,68 @@ static void curr_update_track_by_scroll(int sx)
     lv_obj_set_size(g_curr_thumb, thumb_w, CURR_TRACK_H);
     lv_obj_set_pos(g_curr_thumb, x, CURR_TRACK_Y);
 }
+
+
+static void curr_apply_overscroll_visual(int overscroll_px)
+{
+    int base_w;
+    int shrink;
+    int thumb_w;
+    int thumb_x;
+
+    if (g_curr_list == NULL) return;
+
+    lv_obj_set_x(g_curr_list, overscroll_px);
+
+    if (g_curr_thumb == NULL) return;
+
+    if (overscroll_px == 0) {
+        curr_update_track_by_scroll(curr_scroll_x_abs());
+        return;
+    }
+
+    base_w = curr_get_track_base_width();
+    shrink = curr_abs_i32(overscroll_px) / 2;
+    if (shrink > base_w - 18) shrink = base_w - 18;
+    if (shrink < 0) shrink = 0;
+    thumb_w = base_w - shrink;
+    if (thumb_w < 18) thumb_w = 18;
+
+    thumb_x = (overscroll_px > 0) ? 0 : (CURR_VIEW_W - thumb_w);
+    lv_obj_set_size(g_curr_thumb, thumb_w, CURR_TRACK_H);
+    lv_obj_set_pos(g_curr_thumb, thumb_x, CURR_TRACK_Y);
+}
+
+static void curr_reset_overscroll_visual(void)
+{
+    curr_apply_overscroll_visual(0);
+}
+
+static void curr_overscroll_anim_x_cb(void* var, int32_t v)
+{
+    (void)var;
+    curr_apply_overscroll_visual((int)v);
+}
+
+static void curr_animate_overscroll_back(void)
+{
+    int start = lv_obj_get_x(g_curr_list);
+    lv_anim_t a;
+
+    if (g_curr_list == NULL || start == 0) {
+        curr_reset_overscroll_visual();
+        return;
+    }
+
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, g_curr_list);
+    lv_anim_set_exec_cb(&a, curr_overscroll_anim_x_cb);
+    lv_anim_set_values(&a, start, 0);
+    lv_anim_set_time(&a, 320);
+    lv_anim_set_path_cb(&a, lv_anim_path_linear);
+    lv_anim_start(&a);
+}
+
 
 
 static void curr_set_left_info_by_abs(int abs_idx)
@@ -1160,6 +1233,7 @@ static void curr_scroll_to_raw(int x, bool anim)
     if (x < 0) x = 0;
     if (x > max_scroll) x = max_scroll;
 
+    curr_reset_overscroll_visual();
     lv_obj_scroll_to_x(g_curr_list, x, anim ? LV_ANIM_ON : LV_ANIM_OFF);
 
     if (g_curr_visible_cnt > 0) {
@@ -1330,6 +1404,7 @@ static void curr_right_drag_cb(lv_event_t* e)
         g_curr_touch_active = true;
         g_curr_touch_dragging = false;
         g_curr_touch_start_scroll = curr_scroll_x_abs();
+        curr_reset_overscroll_visual();
 
         if (g_curr_snap_timer) {
             lv_timer_del(g_curr_snap_timer);
@@ -1359,7 +1434,18 @@ static void curr_right_drag_cb(lv_event_t* e)
         }
 
         if (g_curr_touch_dragging) {
-            curr_scroll_to_raw(g_curr_touch_start_scroll - dx, false);
+            int desired_scroll = g_curr_touch_start_scroll - dx;
+            int max_scroll = curr_get_max_scroll();
+
+            if (desired_scroll < 0) {
+                curr_scroll_to_raw(0, false);
+                curr_apply_overscroll_visual((-desired_scroll) / 3);
+            } else if (desired_scroll > max_scroll) {
+                curr_scroll_to_raw(max_scroll, false);
+                curr_apply_overscroll_visual(-(desired_scroll - max_scroll) / 3);
+            } else {
+                curr_scroll_to_raw(desired_scroll, false);
+            }
         }
         return;
     }
@@ -1370,6 +1456,14 @@ static void curr_right_drag_cb(lv_event_t* e)
 
         if (g_curr_touch_dragging) {
             g_curr_touch_dragging = false;
+
+            if (lv_obj_get_x(g_curr_list) != 0) {
+                curr_animate_overscroll_back();
+                curr_start_snap_timer(320);
+                g_curr_last_drag_tick = lv_tick_get();
+                return;
+            }
+
             int fling = g_curr_touch_last_dx * CURR_FLING_FACTOR;
             int max_fling = CURR_CARD_STRIDE;
             if (fling > max_fling) fling = max_fling;
@@ -1380,6 +1474,8 @@ static void curr_right_drag_cb(lv_event_t* e)
             g_curr_last_drag_tick = lv_tick_get();
             return;
         }
+
+        curr_animate_overscroll_back();
 
         int vis_idx = curr_pick_nearest_visible_idx();
         g_curr_sel_vis_idx = vis_idx;
