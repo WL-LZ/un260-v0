@@ -1221,7 +1221,7 @@ static void curr_update_card_fav_ui(int i)
     lv_obj_clear_flag(g_curr_cards[i].fav_btn, LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_style_bg_color(g_curr_cards[i].fav_btn, fav ? lv_color_hex(0xE9DEBD) : lv_color_hex(0xE5E5E6), 0);
     lv_obj_set_style_bg_opa(g_curr_cards[i].fav_btn, LV_OPA_COVER, 0);
-    lv_obj_set_style_text_color(g_curr_cards[i].fav_icon, fav ? lv_color_hex(0xE3B331) : lv_color_hex(0xBFBEBB), 0);
+    lv_img_set_src(g_curr_cards[i].fav_icon, fav ? "L:/usr/local/share/lvgl_data/fav.png" : "L:/usr/local/share/lvgl_data/unfav.png");
 }
 
 static void curr_update_grid_fav_ui(int i)
@@ -1232,7 +1232,25 @@ static void curr_update_grid_fav_ui(int i)
 
     lv_obj_set_style_bg_color(g_curr_grid_items[i].fav_btn, fav ? lv_color_hex(0xE9DEBD) : lv_color_hex(0xE5E5E6), 0);
     lv_obj_set_style_bg_opa(g_curr_grid_items[i].fav_btn, LV_OPA_COVER, 0);
-    lv_obj_set_style_text_color(g_curr_grid_items[i].fav_icon, fav ? lv_color_hex(0xE3B331) : lv_color_hex(0xBFBEBB), 0);
+    lv_img_set_src(g_curr_grid_items[i].fav_icon, fav ? "L:/usr/local/share/lvgl_data/fav.png" : "L:/usr/local/share/lvgl_data/unfav.png");
+}
+
+static void curr_fav_press_feedback_cb(lv_event_t* e)
+{
+    lv_obj_t* btn = lv_event_get_target(e);
+    if (btn == NULL) return;
+
+    lv_obj_t* icon = lv_obj_get_child(btn, 0);
+    if (icon == NULL) return;
+
+    lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_PRESSED) {
+        lv_obj_set_style_opa(btn, 220, 0);
+        lv_img_set_zoom(icon, 235);
+    } else if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
+        lv_obj_set_style_opa(btn, LV_OPA_COVER, 0);
+        lv_img_set_zoom(icon, 256);
+    }
 }
 
 static void curr_apply_selected_style(void)
@@ -1478,11 +1496,13 @@ static void curr_build_card_layer(void)
         lv_obj_clear_flag(g_curr_cards[i].fav_btn, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_add_flag(g_curr_cards[i].fav_btn, LV_OBJ_FLAG_CLICKABLE);
         lv_obj_add_event_cb(g_curr_cards[i].fav_btn, curr_fav_icon_click_cb, LV_EVENT_CLICKED, (void*)(intptr_t)i);
+        lv_obj_add_event_cb(g_curr_cards[i].fav_btn, curr_fav_press_feedback_cb, LV_EVENT_PRESSED, NULL);
+        lv_obj_add_event_cb(g_curr_cards[i].fav_btn, curr_fav_press_feedback_cb, LV_EVENT_RELEASED, NULL);
+        lv_obj_add_event_cb(g_curr_cards[i].fav_btn, curr_fav_press_feedback_cb, LV_EVENT_PRESS_LOST, NULL);
 
-        g_curr_cards[i].fav_icon = lv_label_create(g_curr_cards[i].fav_btn);
-        lv_label_set_text(g_curr_cards[i].fav_icon, "*");
+        g_curr_cards[i].fav_icon = lv_img_create(g_curr_cards[i].fav_btn);
+        lv_img_set_src(g_curr_cards[i].fav_icon, "L:/usr/local/share/lvgl_data/unfav.png");
         lv_obj_center(g_curr_cards[i].fav_icon);
-        lv_obj_set_style_text_font(g_curr_cards[i].fav_icon, &lv_font_montserrat_20, 0);
     }
 
     lv_obj_t* tail = lv_obj_create(g_curr_list);
@@ -1569,11 +1589,13 @@ static void curr_build_grid_layer(void)
         lv_obj_clear_flag(g_curr_grid_items[i].fav_btn, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_EVENT_BUBBLE);
         lv_obj_add_flag(g_curr_grid_items[i].fav_btn, LV_OBJ_FLAG_CLICKABLE);
         lv_obj_add_event_cb(g_curr_grid_items[i].fav_btn, curr_grid_fav_click_cb, LV_EVENT_CLICKED, (void*)(intptr_t)i);
+        lv_obj_add_event_cb(g_curr_grid_items[i].fav_btn, curr_fav_press_feedback_cb, LV_EVENT_PRESSED, NULL);
+        lv_obj_add_event_cb(g_curr_grid_items[i].fav_btn, curr_fav_press_feedback_cb, LV_EVENT_RELEASED, NULL);
+        lv_obj_add_event_cb(g_curr_grid_items[i].fav_btn, curr_fav_press_feedback_cb, LV_EVENT_PRESS_LOST, NULL);
 
-        g_curr_grid_items[i].fav_icon = lv_label_create(g_curr_grid_items[i].fav_btn);
-        lv_label_set_text(g_curr_grid_items[i].fav_icon, "*");
+        g_curr_grid_items[i].fav_icon = lv_img_create(g_curr_grid_items[i].fav_btn);
+        lv_img_set_src(g_curr_grid_items[i].fav_icon, "L:/usr/local/share/lvgl_data/unfav.png");
         lv_obj_center(g_curr_grid_items[i].fav_icon);
-        lv_obj_set_style_text_font(g_curr_grid_items[i].fav_icon, &lv_font_montserrat_20, 0);
 
         g_curr_grid_items[i].name = lv_label_create(g_curr_grid_items[i].item);
         lv_label_set_text_fmt(g_curr_grid_items[i].name, "%s", Machine_para.currencies[abs_idx]);
