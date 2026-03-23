@@ -485,11 +485,13 @@ void PCCmdHandle(void)
 
             if (status == 0x01)
             {
+                page_07_curr_set_pending_result(status);
                 uart_printf(fd6, "Set %s curr success\n", Machine_para.curr_code);
                 trigger_denom_query();
             }
             else if (status == 0x02)
             {
+                page_07_curr_set_pending_result(status);
                 uart_printf(fd6, "Set %s curr fail\n", Machine_para.curr_code);
             }
             else if (status == 0x03)

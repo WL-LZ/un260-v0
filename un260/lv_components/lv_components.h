@@ -21,4 +21,6 @@ void show_boot_selftest_error_popup(const char* msg);
 void hide_boot_selftest_error_popup(void);
 void show_batch_set_fail_popup(void);
 void hide_batch_set_fail_popup(void);
+void show_currency_set_fail_popup(void);
+void hide_currency_set_fail_popup(void);
 #endif // !LV_COMPONENTS_H

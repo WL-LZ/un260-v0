@@ -10,6 +10,7 @@
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_core/lv_page_event.h"
 #include "un260/lv_core/lv_page_declear.h"
+#include "un260/lv_components/lv_components.h"
 #include "un260/lv_resources/lv_img_init.h"
 #include <errno.h>
 
@@ -871,6 +872,8 @@ static int g_curr_sel_abs_idx = 0;
 static int g_curr_sel_vis_idx = 0;
 static int g_curr_view_mode = CURR_VIEW_MODE_CARD;
 static bool g_curr_fav_only = false;
+static int g_curr_pending_abs_idx = -1;
+static char g_curr_pending_code[4] = {0};
 
 static bool g_curr_touch_active = false;
 static bool g_curr_touch_dragging = false;
@@ -905,6 +908,7 @@ static lv_obj_t* g_curr_empty_label = NULL;
 
 static void curr_refresh_right_views(void);
 static void curr_apply_selected_style(void);
+bool page_07_curr_set_pending_result(uint8_t status);
 
 static bool curr_has_currency_code(const char* code);
 static bool curr_add_favorite_code(const char* code);
@@ -1451,21 +1455,50 @@ static void curr_start_snap_timer(uint32_t ms)
 static void curr_select_and_exit_abs(int abs_idx)
 {
     if (abs_idx < 0 || abs_idx >= Machine_para.currency_count) return;
-
-    memcpy(Machine_para.curr_code, Machine_para.currencies[abs_idx], 4);
-    g_curr_sel_abs_idx = abs_idx;
-    g_curr_sel_vis_idx = curr_find_visible_pos_by_abs(abs_idx);
-
-    curr_set_left_info_by_abs(abs_idx);
-    if (g_curr_view_mode == CURR_VIEW_MODE_CARD) {
-        curr_apply_selected_style();
-        curr_scroll_to_visible_idx(g_curr_sel_vis_idx, true);
+    if (g_curr_pending_abs_idx >= 0) return;
+    if (curr_code_eq3(Machine_para.curr_code, Machine_para.currencies[abs_idx])) {
+        ui_manager_switch(UI_PAGE_MAIN);
+        return;
     }
 
-    set_curr(get_curr_item(Machine_para.currencies[abs_idx]));
+    g_curr_pending_abs_idx = abs_idx;
+    memcpy(g_curr_pending_code, Machine_para.currencies[abs_idx], 4);
     send_command(fd4, 0x03, (const uint8_t*)Machine_para.currencies[abs_idx], 3);
-    sim_clear_all_sn(&sim);
-    ui_manager_switch(UI_PAGE_MAIN);
+}
+
+bool page_07_curr_set_pending_result(uint8_t status)
+{
+    if (g_curr_pending_abs_idx < 0) return false;
+
+    if (status == 0x01) {
+        memcpy(Machine_para.curr_code, g_curr_pending_code, 4);
+        set_curr(get_curr_item(g_curr_pending_code));
+        sim_clear_all_sn(&sim);
+        g_curr_sel_abs_idx = g_curr_pending_abs_idx;
+        g_curr_sel_vis_idx = curr_find_visible_pos_by_abs(g_curr_sel_abs_idx);
+        g_curr_pending_abs_idx = -1;
+        memset(g_curr_pending_code, 0, sizeof(g_curr_pending_code));
+        ui_manager_switch(UI_PAGE_MAIN);
+        return true;
+    }
+
+    if (status == 0x02) {
+        g_curr_pending_abs_idx = -1;
+        memset(g_curr_pending_code, 0, sizeof(g_curr_pending_code));
+        g_curr_sel_abs_idx = curr_find_abs_idx_by_code(Machine_para.curr_code);
+        g_curr_sel_vis_idx = curr_find_visible_pos_by_abs(g_curr_sel_abs_idx);
+        curr_set_left_info_by_abs(g_curr_sel_abs_idx);
+        if (g_curr_view_mode == CURR_VIEW_MODE_CARD) {
+            curr_apply_selected_style();
+            curr_scroll_to_visible_idx(g_curr_sel_vis_idx, true);
+        } else {
+            curr_refresh_right_views();
+        }
+        show_currency_set_fail_popup();
+        return true;
+    }
+
+    return false;
 }
 
 static void curr_update_card_fav_ui(int i)
@@ -2028,6 +2061,8 @@ void page_07_curr_img_reset(void)
     memset(g_curr_grid_items, 0, sizeof(g_curr_grid_items));
     memset(g_curr_visible_idx, 0, sizeof(g_curr_visible_idx));
     g_curr_visible_cnt = 0;
+    g_curr_pending_abs_idx = -1;
+    memset(g_curr_pending_code, 0, sizeof(g_curr_pending_code));
 }
 
 void page_07_curr_img_refre(void)

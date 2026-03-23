@@ -46,6 +46,7 @@ extern "C" {
 
 
     void page_07_curr_img_refre(void);
+    bool page_07_curr_set_pending_result(uint8_t status);
 
 
 
