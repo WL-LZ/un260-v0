@@ -989,7 +989,7 @@ static void curr_set_image_unselected_style(lv_obj_t* img)
 {
     lv_obj_set_style_img_recolor(img, lv_color_hex(CURR_IMG_UNSEL), 0);
     lv_obj_set_style_img_recolor_opa(img, LV_OPA_0, 0);
-    lv_obj_set_style_img_opa(img, LV_OPA_COVER, 0);
+    lv_obj_set_style_img_opa(img, LV_OPA_40, 0);
 }
 
 static void curr_set_image_selected_style(lv_obj_t* img)
@@ -1091,22 +1091,43 @@ static void curr_set_left_info_by_abs(int abs_idx)
     lv_label_set_text_fmt(g_curr_left_no, "NO.%02d", abs_idx + 1);
 }
 
-static void curr_style_left_button(lv_obj_t* btn, lv_obj_t* label, bool selected)
+static void curr_style_view_button(void)
 {
-    if (btn == NULL || label == NULL) return;
-    lv_obj_set_style_radius(btn, 10, 0);
-    lv_obj_set_style_bg_opa(btn, selected ? LV_OPA_COVER : LV_OPA_TRANSP, 0);
-    lv_obj_set_style_bg_color(btn, selected ? lv_color_hex(0x3A7BD5) : lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_border_width(btn, 0, 0);
-    lv_obj_set_style_shadow_width(btn, selected ? 12 : 0, 0);
-    lv_obj_set_style_shadow_opa(btn, selected ? LV_OPA_10 : LV_OPA_0, 0);
-    lv_obj_set_style_text_color(label, selected ? lv_color_hex(0xFFFFFF) : lv_color_hex(0x202020), 0);
+    if (g_curr_btn_view == NULL || g_curr_btn_view_label == NULL) return;
+
+    lv_obj_set_style_radius(g_curr_btn_view, 10, 0);
+    lv_obj_set_style_bg_opa(g_curr_btn_view, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_color(g_curr_btn_view, lv_color_hex(0x3A7BD5), 0);
+    lv_obj_set_style_border_width(g_curr_btn_view, 0, 0);
+    lv_obj_set_style_shadow_width(g_curr_btn_view, 12, 0);
+    lv_obj_set_style_shadow_opa(g_curr_btn_view, LV_OPA_10, 0);
+    lv_obj_set_style_text_color(g_curr_btn_view_label, lv_color_hex(0xFFFFFF), 0);
+    lv_label_set_text(g_curr_btn_view_label,
+                      (g_curr_view_mode == CURR_VIEW_MODE_CARD) ? "CARD" : "VIEW");
+    lv_obj_center(g_curr_btn_view_label);
+}
+
+static void curr_style_fav_button(void)
+{
+    if (g_curr_btn_fav == NULL || g_curr_btn_fav_label == NULL) return;
+
+    lv_obj_set_style_radius(g_curr_btn_fav, 10, 0);
+    lv_obj_set_style_bg_opa(g_curr_btn_fav, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_color(g_curr_btn_fav,
+                              g_curr_fav_only ? lv_color_hex(0xE9DEBD) : lv_color_hex(0xD9D9D9), 0);
+    lv_obj_set_style_border_width(g_curr_btn_fav, 0, 0);
+    lv_obj_set_style_shadow_width(g_curr_btn_fav, 0, 0);
+    lv_obj_set_style_shadow_opa(g_curr_btn_fav, LV_OPA_0, 0);
+    lv_obj_set_style_text_color(g_curr_btn_fav_label,
+                                g_curr_fav_only ? lv_color_hex(0x8A6A11) : lv_color_hex(0x5F5F5F), 0);
+    lv_label_set_text(g_curr_btn_fav_label, "FAV");
+    lv_obj_center(g_curr_btn_fav_label);
 }
 
 static void curr_refresh_left_buttons(void)
 {
-    curr_style_left_button(g_curr_btn_view, g_curr_btn_view_label, (g_curr_view_mode == CURR_VIEW_MODE_GRID));
-    curr_style_left_button(g_curr_btn_fav, g_curr_btn_fav_label, g_curr_fav_only);
+    curr_style_view_button();
+    curr_style_fav_button();
 }
 
 static void curr_scroll_to_raw(int x, bool anim)
@@ -1115,7 +1136,6 @@ static void curr_scroll_to_raw(int x, bool anim)
     if (x < 0) x = 0;
     if (x > max_scroll) x = max_scroll;
 
-    curr_update_track_by_scroll(x);
     lv_obj_scroll_to_x(g_curr_list, x, anim ? LV_ANIM_ON : LV_ANIM_OFF);
 
     if (g_curr_visible_cnt > 0) {
@@ -1483,10 +1503,6 @@ static void curr_build_card_layer(void)
     lv_obj_set_style_bg_opa(g_curr_thumb, LV_OPA_90, 0);
     lv_obj_set_style_radius(g_curr_thumb, 3, 0);
 
-    lv_obj_add_flag(g_curr_card_layer, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_add_event_cb(g_curr_card_layer, curr_right_drag_cb, LV_EVENT_PRESSED, NULL);
-    lv_obj_add_event_cb(g_curr_card_layer, curr_right_drag_cb, LV_EVENT_PRESSING, NULL);
-    lv_obj_add_event_cb(g_curr_card_layer, curr_right_drag_cb, LV_EVENT_RELEASED, NULL);
 }
 
 static void curr_build_grid_layer(void)
@@ -1754,7 +1770,7 @@ void page_07_curr_img_refre(void)
     lv_obj_set_pos(g_curr_btn_view, CURR_VIEW_BTN_X, CURR_BTN_Y);
     lv_obj_add_event_cb(g_curr_btn_view, curr_view_btn_click_cb, LV_EVENT_CLICKED, NULL);
     g_curr_btn_view_label = lv_label_create(g_curr_btn_view);
-    lv_label_set_text(g_curr_btn_view_label, "View");
+    lv_label_set_text(g_curr_btn_view_label, "CARD");
     lv_obj_center(g_curr_btn_view_label);
 
     g_curr_btn_fav = lv_btn_create(g_curr_left_panel);
@@ -1762,7 +1778,7 @@ void page_07_curr_img_refre(void)
     lv_obj_set_pos(g_curr_btn_fav, CURR_FAV_BTN_X, CURR_BTN_Y);
     lv_obj_add_event_cb(g_curr_btn_fav, curr_fav_btn_click_cb, LV_EVENT_CLICKED, NULL);
     g_curr_btn_fav_label = lv_label_create(g_curr_btn_fav);
-    lv_label_set_text(g_curr_btn_fav_label, "Fav");
+    lv_label_set_text(g_curr_btn_fav_label, "FAV");
     lv_obj_center(g_curr_btn_fav_label);
 
     g_curr_right_area = lv_obj_create(g_curr_root);
