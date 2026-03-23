@@ -13,6 +13,8 @@
 #include "un260/lv_components/lv_components.h"
 #include "un260/lv_resources/lv_img_init.h"
 #include <errno.h>
+#include <unistd.h>
+#include <sys/stat.h>
 
 void ui_switch_to(page_id_t page)
 {
@@ -857,9 +859,34 @@ typedef struct {
     lv_obj_t* fav_icon;
     int abs_idx;
 } curr_grid_item_t;
-static int curr_ensure_fav_store_dir(void);
-#define CURR_FAV_STORE_PATH "/etc/page07/page07_currency_favorites.cfg"
-#define LV_DEBUG      1     //添加掉电保存
+#define UI_STATE_STORE_PATH "/etc/ui_state/ui_state.cfg"  //添加掉电保存
+#define UI_STATE_MAGIC      0x55495354U   /* 'UIST' */
+#define UI_STATE_VERSION    1
+
+typedef struct {
+    int view_mode;                      /* 0=card 1=grid */
+    int fav_only;                       /* 0=off 1=on */
+    int selected_abs_idx;               
+    int fav_count;
+    char fav_codes[CURR_MAX_ITEMS][4];
+} page07_state_t;
+
+typedef struct {
+    int reserved05_enable;              
+    int reserved06_enable;             
+} common_page_state_t;
+
+typedef struct {
+    unsigned int magic;
+    unsigned int version;
+    page07_state_t page07;
+    common_page_state_t page05;
+    common_page_state_t page06;
+} ui_persist_state_t;
+
+static ui_persist_state_t g_ui_state;
+static bool g_ui_state_loaded = false;
+
 static curr_card_t g_curr_cards[CURR_MAX_ITEMS];
 static curr_grid_item_t g_curr_grid_items[CURR_MAX_ITEMS];
 static char g_curr_fav_codes[CURR_MAX_ITEMS][4];
@@ -907,28 +934,107 @@ static lv_obj_t* g_curr_grid_scroll = NULL;
 static lv_obj_t* g_curr_empty_label = NULL;
 
 static void curr_refresh_right_views(void);
+static int ui_state_ensure_store_dir(void);
+static void ui_state_set_defaults(void);
+static void ui_state_load_from_file(void);
+static void ui_state_save_to_file(void);
+
+static void page07_state_pull_from_runtime(void);
+static void page07_state_apply_to_runtime(void);
+
+static void page05_state_pull_from_runtime(void);
+static void page05_state_apply_to_runtime(void);
+
+static void page06_state_pull_from_runtime(void);
+static void page06_state_apply_to_runtime(void);
+
 static void curr_apply_selected_style(void);
 bool page_07_curr_set_pending_result(uint8_t status);
 
 static bool curr_has_currency_code(const char* code);
 static bool curr_add_favorite_code(const char* code);
-static void curr_load_favorites_from_file(void);
-static void curr_save_favorites_to_file(void);
-static void curr_debug_dump_favorites(const char* tag);
+static int curr_find_abs_idx_by_code(const char* code);
+static void ui_state_set_defaults(void) //默认掉电配置
+{
+    memset(&g_ui_state, 0, sizeof(g_ui_state));
+    g_ui_state.magic = UI_STATE_MAGIC;
+    g_ui_state.version = UI_STATE_VERSION;
 
-static int curr_ensure_fav_store_dir(void)
+    g_ui_state.page07.view_mode = CURR_VIEW_MODE_CARD;
+    g_ui_state.page07.fav_only = 0;
+    g_ui_state.page07.selected_abs_idx = 0;
+    g_ui_state.page07.fav_count = 0;
+}
+static void page07_state_pull_from_runtime(void)
+{
+    int i;
+
+    g_ui_state.page07.view_mode = g_curr_view_mode;
+    g_ui_state.page07.fav_only = g_curr_fav_only ? 1 : 0;
+    g_ui_state.page07.selected_abs_idx = g_curr_sel_abs_idx;
+    g_ui_state.page07.fav_count = g_curr_fav_cnt;
+
+    memset(g_ui_state.page07.fav_codes, 0, sizeof(g_ui_state.page07.fav_codes));
+    for (i = 0; i < g_curr_fav_cnt && i < CURR_MAX_ITEMS; i++) {
+        memcpy(g_ui_state.page07.fav_codes[i], g_curr_fav_codes[i], 4);
+    }
+}
+static void page07_state_apply_to_runtime(void)
+{
+    int i;
+
+    g_curr_view_mode = g_ui_state.page07.view_mode;
+    if (g_curr_view_mode != CURR_VIEW_MODE_CARD && g_curr_view_mode != CURR_VIEW_MODE_GRID) {
+        g_curr_view_mode = CURR_VIEW_MODE_CARD;
+        ui_state_save_to_file();
+    }
+
+    g_curr_fav_only = (g_ui_state.page07.fav_only != 0);
+
+    g_curr_fav_cnt = 0;
+    memset(g_curr_fav_codes, 0, sizeof(g_curr_fav_codes));
+    for (i = 0; i < g_ui_state.page07.fav_count && i < CURR_MAX_ITEMS; i++) {
+        if (!curr_has_currency_code(g_ui_state.page07.fav_codes[i])) continue;
+        memcpy(g_curr_fav_codes[g_curr_fav_cnt], g_ui_state.page07.fav_codes[i], 4);
+        g_curr_fav_cnt++;
+    }
+
+    if (g_ui_state.page07.selected_abs_idx >= 0 &&
+        g_ui_state.page07.selected_abs_idx < Machine_para.currency_count) {
+        g_curr_sel_abs_idx = g_ui_state.page07.selected_abs_idx;
+    } else {
+        g_curr_sel_abs_idx = curr_find_abs_idx_by_code(Machine_para.curr_code);
+    }
+}
+static void page05_state_pull_from_runtime(void)
+{
+    
+}
+
+static void page05_state_apply_to_runtime(void)
+{
+}
+
+static void page06_state_pull_from_runtime(void)
+{
+}
+
+static void page06_state_apply_to_runtime(void)
+{
+}   //留接口
+static int ui_state_ensure_store_dir(void)
 {
     const char *slash;
     char dir_path[128];
     size_t dir_len;
 
-    slash = strrchr(CURR_FAV_STORE_PATH, '/');
+    slash = strrchr(UI_STATE_STORE_PATH, '/');
     if (slash == NULL) return -1;
 
-    dir_len = (size_t)(slash - CURR_FAV_STORE_PATH);
+    dir_len = (size_t)(slash - UI_STATE_STORE_PATH);
     if (dir_len == 0 || dir_len >= sizeof(dir_path)) return -1;
 
-    memcpy(dir_path, CURR_FAV_STORE_PATH, dir_len);
+    memcpy(dir_path, UI_STATE_STORE_PATH, dir_len);
     dir_path[dir_len] = '\0';
 
     if (access(dir_path, F_OK) == 0) {
@@ -937,12 +1043,13 @@ static int curr_ensure_fav_store_dir(void)
 
     if (mkdir(dir_path, 0775) == 0) {
 #if LV_DEBUG
-        printf("[curr_fav] mkdir ok: %s\n", dir_path);
+        printf("[ui_state] mkdir ok: %s\n", dir_path);
 #endif
         return 0;
     }
-
-    printf("[curr_fav] mkdir failed: %s err=%s\n", dir_path, strerror(errno));
+#if LV_DEBUG
+    printf("[ui_state] mkdir failed: %s err=%s\n", dir_path, strerror(errno));
+#endif
     return -1;
 }
 
@@ -973,105 +1080,130 @@ static bool curr_has_currency_code(const char* code)
     return false;
 }
 
-static void curr_debug_dump_favorites(const char* tag)
+static void ui_state_load_from_file(void)
 {
+    FILE *fp;
+    char line[128];
+
+    ui_state_set_defaults();
+
+    fp = fopen(UI_STATE_STORE_PATH, "r");
 #if LV_DEBUG
-    printf("[curr_fav] %s: count=%d\n", tag ? tag : "dump", g_curr_fav_cnt);
-    for (int i = 0; i < g_curr_fav_cnt; i++) {
-        printf("[curr_fav]   [%d] %s\n", i, g_curr_fav_codes[i]);
-    }
-#else
-    (void)tag;
+    printf("[ui_state] load from: %s\n", UI_STATE_STORE_PATH);
 #endif
-}
-
-static void curr_load_favorites_from_file(void)
-{
-    FILE* fp = fopen(CURR_FAV_STORE_PATH, "r");
-    char line[32];
-
-    g_curr_fav_cnt = 0;
-    memset(g_curr_fav_codes, 0, sizeof(g_curr_fav_codes));
-
-#if LV_DEBUG
-    printf("[curr_fav] load from: %s\n", CURR_FAV_STORE_PATH);
-#endif
-
     if (fp == NULL) {
 #if LV_DEBUG
-        printf("[curr_fav] load skipped, fopen failed: %s\n", strerror(errno));
+        printf("[ui_state] load skipped, fopen failed: %s\n", strerror(errno));
 #endif
+        g_ui_state_loaded = true;
         return;
     }
 
     while (fgets(line, sizeof(line), fp) != NULL) {
-        char code[4] = {0};
-
-        if (sscanf(line, "%3[A-Z]", code) != 1) continue;
-        if (!curr_has_currency_code(code)) {
-#if LV_DEBUG
-            printf("[curr_fav] ignore unknown code: %s\n", code);
-#endif
-            continue;
+        if (strncmp(line, "magic=", 6) == 0) {
+            g_ui_state.magic = (unsigned int)strtoul(line + 6, NULL, 0);
+        } else if (strncmp(line, "version=", 8) == 0) {
+            g_ui_state.version = (unsigned int)strtoul(line + 8, NULL, 0);
+        } else if (strncmp(line, "p07_view_mode=", 14) == 0) {
+            g_ui_state.page07.view_mode = atoi(line + 14);
+        } else if (strncmp(line, "p07_fav_only=", 13) == 0) {
+            g_ui_state.page07.fav_only = atoi(line + 13);
+        } else if (strncmp(line, "p07_selected_abs_idx=", 21) == 0) {
+            g_ui_state.page07.selected_abs_idx = atoi(line + 21);
+        } else if (strncmp(line, "p07_fav_count=", 14) == 0) {
+            g_ui_state.page07.fav_count = atoi(line + 14);
+            if (g_ui_state.page07.fav_count < 0) g_ui_state.page07.fav_count = 0;
+            if (g_ui_state.page07.fav_count > CURR_MAX_ITEMS) g_ui_state.page07.fav_count = CURR_MAX_ITEMS;
+        } else if (strncmp(line, "p07_fav", 7) == 0) {
+            int idx = -1;
+            char code[4] = {0};
+            if (sscanf(line, "p07_fav%d=%3[A-Z]", &idx, code) == 2) {
+                if (idx >= 0 && idx < CURR_MAX_ITEMS && curr_has_currency_code(code)) {
+                    memcpy(g_ui_state.page07.fav_codes[idx], code, 4);
+                }
+            }
         }
-        curr_add_favorite_code(code);
     }
 
     fclose(fp);
-    curr_debug_dump_favorites("after load");
+
+    if (g_ui_state.magic != UI_STATE_MAGIC) {
+#if LV_DEBUG
+        printf("[ui_state] invalid magic, fallback defaults\n");
+#endif
+        ui_state_set_defaults();
+    }
+
+    g_ui_state_loaded = true;
 }
-static void curr_save_favorites_to_file(void)
+static void ui_state_save_to_file(void)
 {
     char tmp_path[128];
     int fd;
-    FILE* fp;
+    FILE *fp;
     int dir_fd;
-    const char* slash;
+    const char *slash;
     char dir_path[128];
+    int i;
 
-    if (curr_ensure_fav_store_dir() != 0) {
-        printf("[curr_fav] save aborted, store dir not ready\n");
+    page07_state_pull_from_runtime();
+    page05_state_pull_from_runtime();
+    page06_state_pull_from_runtime();
+
+    if (ui_state_ensure_store_dir() != 0) {
+        printf("[ui_state] save aborted, store dir not ready\n");
         return;
     }
 
-    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", CURR_FAV_STORE_PATH);
+    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", UI_STATE_STORE_PATH);
 
 #if LV_DEBUG
-    printf("[curr_fav] save to: %s\n", CURR_FAV_STORE_PATH);
+    printf("[ui_state] save to: %s\n", UI_STATE_STORE_PATH);
 #endif
 
     fd = open(tmp_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd < 0) {
-        printf("[curr_fav] open tmp file failed: %s\n", strerror(errno));
+        printf("[ui_state] open tmp file failed: %s\n", strerror(errno));
         return;
     }
 
     fp = fdopen(fd, "w");
     if (fp == NULL) {
-        printf("[curr_fav] fdopen failed: %s\n", strerror(errno));
+        printf("[ui_state] fdopen failed: %s\n", strerror(errno));
         close(fd);
         return;
     }
 
-    for (int i = 0; i < g_curr_fav_cnt; i++) {
-        fprintf(fp, "%s\n", g_curr_fav_codes[i]);
+    fprintf(fp, "magic=%u\n", g_ui_state.magic);
+    fprintf(fp, "version=%u\n", g_ui_state.version);
+
+    fprintf(fp, "p07_view_mode=%d\n", g_ui_state.page07.view_mode);
+    fprintf(fp, "p07_fav_only=%d\n", g_ui_state.page07.fav_only);
+    fprintf(fp, "p07_selected_abs_idx=%d\n", g_ui_state.page07.selected_abs_idx);
+    fprintf(fp, "p07_fav_count=%d\n", g_ui_state.page07.fav_count);
+
+    for (i = 0; i < g_ui_state.page07.fav_count && i < CURR_MAX_ITEMS; i++) {
+        fprintf(fp, "p07_fav%d=%s\n", i, g_ui_state.page07.fav_codes[i]);
     }
+
+    fprintf(fp, "p05_reserved=%d\n", g_ui_state.page05.reserved05_enable);
+    fprintf(fp, "p06_reserved=%d\n", g_ui_state.page06.reserved06_enable);
 
     fflush(fp);
     fsync(fd);
     fclose(fp);
 
-    if (rename(tmp_path, CURR_FAV_STORE_PATH) != 0) {
-        printf("[curr_fav] rename failed: %s\n", strerror(errno));
+    if (rename(tmp_path, UI_STATE_STORE_PATH) != 0) {
+        printf("[ui_state] rename failed: %s\n", strerror(errno));
         unlink(tmp_path);
         return;
     }
 
-    slash = strrchr(CURR_FAV_STORE_PATH, '/');
+    slash = strrchr(UI_STATE_STORE_PATH, '/');
     if (slash != NULL) {
-        size_t dir_len = (size_t)(slash - CURR_FAV_STORE_PATH);
+        size_t dir_len = (size_t)(slash - UI_STATE_STORE_PATH);
         if (dir_len < sizeof(dir_path)) {
-            memcpy(dir_path, CURR_FAV_STORE_PATH, dir_len);
+            memcpy(dir_path, UI_STATE_STORE_PATH, dir_len);
             dir_path[dir_len] = '\0';
 
             dir_fd = open(dir_path, O_RDONLY | O_DIRECTORY);
@@ -1081,8 +1213,6 @@ static void curr_save_favorites_to_file(void)
             }
         }
     }
-
-    curr_debug_dump_favorites("after save");
 }
 static bool curr_is_favorite_code(const char* code)
 {
@@ -1139,7 +1269,7 @@ static void curr_toggle_favorite_abs_idx(int abs_idx)
         curr_add_favorite_code(Machine_para.currencies[abs_idx]);
     }
 
-    curr_save_favorites_to_file();
+    ui_state_save_to_file();
 }
 
 static void curr_set_img_target_width(lv_obj_t* img, const char* code, int target_w)
@@ -1478,6 +1608,7 @@ bool page_07_curr_set_pending_result(uint8_t status)
         g_curr_sel_vis_idx = curr_find_visible_pos_by_abs(g_curr_sel_abs_idx);
         g_curr_pending_abs_idx = -1;
         memset(g_curr_pending_code, 0, sizeof(g_curr_pending_code));
+        ui_state_save_to_file();
         ui_manager_switch(UI_PAGE_MAIN);
         return true;
     }
@@ -2007,6 +2138,8 @@ static void curr_view_btn_click_cb(lv_event_t* e)
     g_curr_view_mode = (g_curr_view_mode == CURR_VIEW_MODE_CARD) ? CURR_VIEW_MODE_GRID : CURR_VIEW_MODE_CARD;
     curr_set_mode_visible();
     curr_refresh_left_buttons();
+    ui_state_save_to_file();
+
 }
 
 static void curr_fav_btn_click_cb(lv_event_t* e)
@@ -2014,6 +2147,7 @@ static void curr_fav_btn_click_cb(lv_event_t* e)
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
 
     g_curr_fav_only = !g_curr_fav_only;
+    ui_state_save_to_file();
     curr_refresh_left_buttons();
     curr_refresh_right_views();
 }
@@ -2069,10 +2203,15 @@ void page_07_curr_img_refre(void)
 {
     if (curr_page == NULL || Machine_para.currency_count <= 0) return;
 
-    curr_load_favorites_from_file();
+    if (!g_ui_state_loaded) {
+        ui_state_load_from_file();
+    }
+
+    page07_state_apply_to_runtime();
+
     page_07_curr_img_reset();
 
-    g_curr_sel_abs_idx = curr_find_abs_idx_by_code(Machine_para.curr_code);
+    g_curr_sel_vis_idx = curr_find_visible_pos_by_abs(g_curr_sel_abs_idx);
 
     g_curr_root = lv_obj_create(curr_page);
     lv_obj_remove_style_all(g_curr_root);
