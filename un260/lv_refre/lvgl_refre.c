@@ -1041,16 +1041,40 @@ static int curr_get_max_scroll(void)
     return max_scroll;
 }
 
-static int curr_idx_from_scroll(int sx)
+static int curr_highlight_idx_from_scroll(int sx)
 {
     if (g_curr_visible_cnt <= 0) return 0;
+    if (g_curr_visible_cnt == 1) return 0;
+
     int max_scroll = curr_get_max_scroll();
+    if (sx <= 2) return 0;
     if (sx >= max_scroll - 2) return g_curr_visible_cnt - 1;
 
-    int idx = (sx + CURR_CARD_STRIDE / 2) / CURR_CARD_STRIDE;
-    if (idx < 0) idx = 0;
+    int idx = 1 + (sx + CURR_CARD_STRIDE / 2) / CURR_CARD_STRIDE;
+    if (idx < 1) idx = 1;
     if (idx >= g_curr_visible_cnt) idx = g_curr_visible_cnt - 1;
     return idx;
+}
+
+static int curr_scroll_from_highlight_idx(int vis_idx)
+{
+    if (g_curr_visible_cnt <= 0) return 0;
+
+    int max_scroll = curr_get_max_scroll();
+    if (vis_idx <= 0) return 0;
+    if (vis_idx >= g_curr_visible_cnt - 1) return max_scroll;
+
+    int sx;
+    if (vis_idx == 1) {
+        /* Keep NO.2 inside the second-card highlight window instead of snapping back to the far-left edge. */
+        sx = CURR_CARD_STRIDE / 4;
+    } else {
+        sx = (vis_idx - 1) * CURR_CARD_STRIDE;
+    }
+
+    if (sx < 0) sx = 0;
+    if (sx > max_scroll) sx = max_scroll;
+    return sx;
 }
 
 static void curr_update_track_by_scroll(int sx)
@@ -1139,7 +1163,7 @@ static void curr_scroll_to_raw(int x, bool anim)
     lv_obj_scroll_to_x(g_curr_list, x, anim ? LV_ANIM_ON : LV_ANIM_OFF);
 
     if (g_curr_visible_cnt > 0) {
-        int vis_idx = curr_idx_from_scroll(x);
+        int vis_idx = curr_highlight_idx_from_scroll(x);
         int abs_idx = g_curr_visible_idx[vis_idx];
         if (abs_idx != g_curr_sel_abs_idx) {
             g_curr_sel_abs_idx = abs_idx;
@@ -1155,12 +1179,12 @@ static void curr_scroll_to_visible_idx(int vis_idx, bool anim)
     if (g_curr_visible_cnt <= 0) return;
     if (vis_idx < 0) vis_idx = 0;
     if (vis_idx >= g_curr_visible_cnt) vis_idx = g_curr_visible_cnt - 1;
-    curr_scroll_to_raw(vis_idx * CURR_CARD_STRIDE, anim);
+    curr_scroll_to_raw(curr_scroll_from_highlight_idx(vis_idx), anim);
 }
 
 static int curr_pick_nearest_visible_idx(void)
 {
-    return curr_idx_from_scroll(curr_scroll_x_abs());
+    return curr_highlight_idx_from_scroll(curr_scroll_x_abs());
 }
 
 static void curr_snap_timer_cb(lv_timer_t* t)
@@ -1627,6 +1651,9 @@ static void curr_set_mode_visible(void)
     } else {
         if (g_curr_card_layer) lv_obj_add_flag(g_curr_card_layer, LV_OBJ_FLAG_HIDDEN);
         if (g_curr_grid_layer) lv_obj_clear_flag(g_curr_grid_layer, LV_OBJ_FLAG_HIDDEN);
+        for (int i = 0; i < g_curr_visible_cnt; i++) {
+            curr_update_grid_fav_ui(i);
+        }
     }
 }
 
