@@ -805,7 +805,7 @@ void page_01_curr_img_refre(void)
 
 #define CURR_LEFT_BG_COLOR       0xEDF0F4
 #define CURR_RIGHT_BG_COLOR      0xF4F5F7
-#define CURR_CARD_BG_UNSEL       0xF1F1F1
+#define CURR_CARD_BG_UNSEL       0xEFEFEF
 #define CURR_TEXT_UNSEL          0xBEBFC0
 #define CURR_IMG_UNSEL           0xCDCED0
 #define CURR_TRACK_BG            0xEBECED
@@ -1690,7 +1690,7 @@ static void curr_apply_selected_style(void)
 
         if (i > g_curr_sel_vis_idx) pos_x += CURR_SEL_NEXT_EXTRA_GAP;
 
-        lv_obj_set_style_bg_color(g_curr_cards[i].card, sel ? lv_color_hex(0xFFFFFF) : lv_color_hex(CURR_CARD_BG_UNSEL), 0);
+        lv_obj_set_style_bg_color(g_curr_cards[i].card, sel ? lv_color_hex(0xFAFBFC) : lv_color_hex(CURR_CARD_BG_UNSEL), 0);
         lv_obj_set_style_border_width(g_curr_cards[i].card, sel ? 2 : 0, 0);
         lv_obj_set_style_border_color(g_curr_cards[i].card, lv_color_hex(0xDDE3EA), 0);
         lv_obj_set_style_radius(g_curr_cards[i].card, 30, 0);
@@ -1708,7 +1708,7 @@ static void curr_apply_selected_style(void)
         } else {
             lv_obj_set_size(g_curr_cards[i].card, CURR_CARD_W, CURR_CARD_H);
             lv_obj_set_pos(g_curr_cards[i].card, pos_x, pos_y);
-            lv_obj_set_style_text_color(g_curr_cards[i].name, lv_color_hex(CURR_TEXT_UNSEL), 0);
+            lv_obj_set_style_text_color(g_curr_cards[i].name, lv_color_hex(0x8E9093), 0);
             lv_obj_set_style_text_color(g_curr_cards[i].no, lv_color_hex(CURR_TEXT_UNSEL), 0);
             curr_set_image_unselected_style(g_curr_cards[i].img);
         }
@@ -1923,7 +1923,7 @@ static void curr_build_card_layer(void)
         g_curr_cards[i].img = lv_img_create(g_curr_cards[i].card);
         lv_img_set_src(g_curr_cards[i].img, get_currency_img(Machine_para.currencies[abs_idx]));
         curr_set_img_target_width(g_curr_cards[i].img, Machine_para.currencies[abs_idx], CURR_FLAG_TARGET_W);
-        lv_obj_set_pos(g_curr_cards[i].img, -64, CURR_FLAG_Y_IN_CARD);
+        lv_obj_set_pos(g_curr_cards[i].img, -44, CURR_FLAG_Y_IN_CARD);
 
         g_curr_cards[i].name = lv_label_create(g_curr_cards[i].card);
         lv_label_set_text_fmt(g_curr_cards[i].name, "%s", Machine_para.currencies[abs_idx]);
@@ -1963,7 +1963,7 @@ static void curr_build_card_layer(void)
     lv_obj_set_size(g_curr_track, CURR_VIEW_W, CURR_TRACK_H);
     lv_obj_set_pos(g_curr_track, 0, CURR_TRACK_Y);
     lv_obj_set_style_bg_color(g_curr_track, lv_color_hex(CURR_TRACK_BG), 0);
-    lv_obj_set_style_bg_opa(g_curr_track, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_opa(g_curr_track, LV_OPA_TRANSP, 0);
 
     g_curr_thumb = lv_obj_create(g_curr_card_layer);
     lv_obj_remove_style_all(g_curr_thumb);
@@ -2051,7 +2051,7 @@ static void curr_build_grid_layer(void)
         lv_obj_set_style_text_align(g_curr_grid_items[i].name, LV_TEXT_ALIGN_CENTER, 0);
         lv_obj_set_style_text_font(g_curr_grid_items[i].name, &lv_font_montserrat_20, 0);
         lv_obj_set_style_text_color(g_curr_grid_items[i].name,
-                                    (abs_idx == g_curr_sel_abs_idx) ? lv_color_hex(0x000000) : lv_color_hex(0xD5D5D5), 0);
+                                    (abs_idx == g_curr_sel_abs_idx) ? lv_color_hex(0x000000) : lv_color_hex(0x8E9093), 0);
         lv_obj_align(g_curr_grid_items[i].name, LV_ALIGN_BOTTOM_MID, 20, -CURR_GRID_TEXT_BOTTOM);
 
         if (abs_idx == g_curr_sel_abs_idx) {
@@ -2225,7 +2225,7 @@ void page_07_curr_img_refre(void)
     lv_obj_set_size(g_curr_left_panel, CURR_SEL_W, CURR_SEL_H);
     lv_obj_set_pos(g_curr_left_panel, 0, 0);
     lv_obj_set_style_bg_color(g_curr_left_panel, lv_color_hex(CURR_LEFT_BG_COLOR), 0);
-    lv_obj_set_style_bg_opa(g_curr_left_panel, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_opa(g_curr_left_panel, LV_OPA_TRANSP, 0);
     lv_obj_clear_flag(g_curr_left_panel, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_scrollbar_mode(g_curr_left_panel, LV_SCROLLBAR_MODE_OFF);
 
@@ -2270,7 +2270,7 @@ void page_07_curr_img_refre(void)
     lv_obj_set_size(g_curr_right_area, CURR_VIEW_W, CURR_VIEW_H);
     lv_obj_set_pos(g_curr_right_area, CURR_VIEW_X, CURR_VIEW_Y);
     lv_obj_set_style_bg_color(g_curr_right_area, lv_color_hex(CURR_RIGHT_BG_COLOR), 0);
-    lv_obj_set_style_bg_opa(g_curr_right_area, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_opa(g_curr_right_area, LV_OPA_TRANSP, 0);
     lv_obj_clear_flag(g_curr_right_area, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_scrollbar_mode(g_curr_right_area, LV_SCROLLBAR_MODE_OFF);
 
