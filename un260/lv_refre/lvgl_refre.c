@@ -815,11 +815,26 @@ void page_01_curr_img_refre(void)
 #define CURR_CARD_SEL_W          ((CURR_CARD_W * 11) / 10)
 #define CURR_CARD_SEL_H          ((CURR_CARD_H * 11) / 10)
 
-#define CURR_BTN_W               98
-#define CURR_BTN_H               40
-#define CURR_BTN_Y               314
-#define CURR_VIEW_BTN_X          29
-#define CURR_FAV_BTN_X           161
+#define CURR_BTN_W               70
+#define CURR_BTN_H               36
+#define CURR_BTN_Y               358
+#define CURR_VIEW_BTN_X          18
+#define CURR_FAV_BTN_X           113
+#define CURR_BACK_BTN_X          207
+
+#define CURR_FOCUS_BOX_X         24
+#define CURR_FOCUS_BOX_Y         54
+#define CURR_FOCUS_BOX_W         245
+#define CURR_FOCUS_BOX_H         279
+
+#define CURR_LEFT_IMG_ALIGN_Y    72
+#define CURR_LEFT_IMG_ALIGN_X    2
+#define CURR_LEFT_CODE_X         54
+#define CURR_LEFT_CODE_Y         214
+#define CURR_LEFT_CODE_DECOR_X   128
+#define CURR_LEFT_CODE_DECOR_Y   228
+#define CURR_LEFT_NO_X           184
+#define CURR_LEFT_NO_Y           300
 
 #define CURR_GRID_COLS           5
 #define CURR_GRID_CELL_W         190
@@ -916,12 +931,15 @@ static lv_obj_t* g_curr_root = NULL;
 static lv_obj_t* g_curr_left_panel = NULL;
 static lv_obj_t* g_curr_left_img = NULL;
 static lv_obj_t* g_curr_left_code = NULL;
+static lv_obj_t* g_curr_left_code_decor = NULL;
 static lv_obj_t* g_curr_left_no = NULL;
 
 static lv_obj_t* g_curr_btn_view = NULL;
 static lv_obj_t* g_curr_btn_view_label = NULL;
 static lv_obj_t* g_curr_btn_fav = NULL;
 static lv_obj_t* g_curr_btn_fav_label = NULL;
+static lv_obj_t* g_curr_btn_back = NULL;
+static lv_obj_t* g_curr_btn_back_label = NULL;
 
 static lv_obj_t* g_curr_right_area = NULL;
 static lv_obj_t* g_curr_card_layer = NULL;
@@ -950,6 +968,7 @@ static void page06_state_pull_from_runtime(void);
 static void page06_state_apply_to_runtime(void);
 
 static void curr_apply_selected_style(void);
+static void curr_style_back_button(void);
 bool page_07_curr_set_pending_result(uint8_t status);
 
 static bool curr_has_currency_code(const char* code);
@@ -1480,7 +1499,11 @@ static void curr_set_left_info_by_abs(int abs_idx)
 {
     if (abs_idx < 0 || abs_idx >= Machine_para.currency_count) return;
     lv_img_set_src(g_curr_left_img, get_currency_img(Machine_para.currencies[abs_idx]));
+    lv_obj_align(g_curr_left_img, LV_ALIGN_TOP_MID, CURR_LEFT_IMG_ALIGN_X, CURR_LEFT_IMG_ALIGN_Y);
     lv_label_set_text_fmt(g_curr_left_code, "%s", Machine_para.currencies[abs_idx]);
+    if (g_curr_left_code_decor) {
+        lv_label_set_text_fmt(g_curr_left_code_decor, "%s", Machine_para.currencies[abs_idx]);
+    }
     lv_label_set_text_fmt(g_curr_left_no, "NO.%02d", abs_idx + 1);
 }
 
@@ -1490,7 +1513,7 @@ static void curr_style_view_button(void)
 
     lv_obj_set_style_radius(g_curr_btn_view, 10, 0);
     lv_obj_set_style_bg_opa(g_curr_btn_view, LV_OPA_COVER, 0);
-    lv_obj_set_style_bg_color(g_curr_btn_view, lv_color_hex(0x3A7BD5), 0);
+    lv_obj_set_style_bg_color(g_curr_btn_view, lv_color_hex(0x0073FF), 0);
     lv_obj_set_style_border_width(g_curr_btn_view, 0, 0);
     lv_obj_set_style_shadow_width(g_curr_btn_view, 12, 0);
     lv_obj_set_style_shadow_opa(g_curr_btn_view, LV_OPA_10, 0);
@@ -1507,7 +1530,7 @@ static void curr_style_fav_button(void)
     lv_obj_set_style_radius(g_curr_btn_fav, 10, 0);
     lv_obj_set_style_bg_opa(g_curr_btn_fav, LV_OPA_COVER, 0);
     lv_obj_set_style_bg_color(g_curr_btn_fav,
-                              g_curr_fav_only ? lv_color_hex(0xE9DEBD) : lv_color_hex(0xD9D9D9), 0);
+                              g_curr_fav_only ? lv_color_hex(0xE9DEBD) : lv_color_hex(0x8F8F8F), 0);
     lv_obj_set_style_border_width(g_curr_btn_fav, 0, 0);
     lv_obj_set_style_shadow_width(g_curr_btn_fav, 0, 0);
     lv_obj_set_style_shadow_opa(g_curr_btn_fav, LV_OPA_0, 0);
@@ -1517,10 +1540,32 @@ static void curr_style_fav_button(void)
     lv_obj_center(g_curr_btn_fav_label);
 }
 
+static void curr_style_back_button(void)
+{
+    if (g_curr_btn_back == NULL || g_curr_btn_back_label == NULL) return;
+
+    lv_obj_set_style_radius(g_curr_btn_back, 10, 0);
+    lv_obj_set_style_bg_opa(g_curr_btn_back, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_color(g_curr_btn_back, lv_color_hex(0xD9D9D9), 0);
+    lv_obj_set_style_border_width(g_curr_btn_back, 0, 0);
+    lv_obj_set_style_shadow_width(g_curr_btn_back, 0, 0);
+    lv_obj_set_style_shadow_opa(g_curr_btn_back, LV_OPA_0, 0);
+    lv_obj_set_style_text_color(g_curr_btn_back_label, lv_color_hex(0x000000), 0);
+    lv_label_set_text(g_curr_btn_back_label, "BACK");
+    lv_obj_center(g_curr_btn_back_label);
+}
+
 static void curr_refresh_left_buttons(void)
 {
     curr_style_view_button();
     curr_style_fav_button();
+    curr_style_back_button();
+}
+
+static void curr_back_btn_click_cb(lv_event_t* e)
+{
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+    ui_manager_switch(UI_PAGE_MAIN);
 }
 
 static void curr_scroll_to_raw(int x, bool anim)
@@ -1921,7 +1966,7 @@ static void curr_build_card_layer(void)
         g_curr_cards[i].img = lv_img_create(g_curr_cards[i].card);
         lv_img_set_src(g_curr_cards[i].img, get_currency_img(Machine_para.currencies[abs_idx]));
         curr_set_img_target_width(g_curr_cards[i].img, Machine_para.currencies[abs_idx], CURR_FLAG_TARGET_W);
-        lv_obj_set_pos(g_curr_cards[i].img, -44, CURR_FLAG_Y_IN_CARD);
+        lv_obj_set_pos(g_curr_cards[i].img, -35, CURR_FLAG_Y_IN_CARD);
 
         g_curr_cards[i].name = lv_label_create(g_curr_cards[i].card);
         lv_label_set_text_fmt(g_curr_cards[i].name, "%s", Machine_para.currencies[abs_idx]);
@@ -2165,12 +2210,15 @@ void page_07_curr_img_reset(void)
     g_curr_left_panel = NULL;
     g_curr_left_img = NULL;
     g_curr_left_code = NULL;
+    g_curr_left_code_decor = NULL;
     g_curr_left_no = NULL;
 
     g_curr_btn_view = NULL;
     g_curr_btn_view_label = NULL;
     g_curr_btn_fav = NULL;
     g_curr_btn_fav_label = NULL;
+    g_curr_btn_back = NULL;
+    g_curr_btn_back_label = NULL;
 
     g_curr_right_area = NULL;
     g_curr_card_layer = NULL;
@@ -2229,21 +2277,26 @@ void page_07_curr_img_refre(void)
 
     lv_obj_t* left_title = lv_label_create(g_curr_left_panel);
     lv_label_set_text(left_title, "CURRENCY");
-    lv_obj_set_pos(left_title, 105, 11);
+    lv_obj_set_pos(left_title, 105, 14);
     lv_obj_set_style_text_font(left_title, &lv_font_montserrat_24, 0);
     lv_obj_set_style_text_color(left_title, lv_color_hex(0x707070), 0);
 
     g_curr_left_img = lv_img_create(g_curr_left_panel);
-    lv_obj_set_pos(g_curr_left_img, 125, 44);
     lv_img_set_zoom(g_curr_left_img, 170);
+    lv_obj_align(g_curr_left_img, LV_ALIGN_TOP_MID, CURR_LEFT_IMG_ALIGN_X, CURR_LEFT_IMG_ALIGN_Y);
+
+    g_curr_left_code_decor = lv_label_create(g_curr_left_panel);
+    lv_obj_set_pos(g_curr_left_code_decor, CURR_LEFT_CODE_DECOR_X, CURR_LEFT_CODE_DECOR_Y);
+    lv_obj_set_style_text_font(g_curr_left_code_decor, &lv_font_montserrat_48, 0);
+    lv_obj_set_style_text_color(g_curr_left_code_decor, lv_color_hex(0xEBEBEB), 0);
 
     g_curr_left_code = lv_label_create(g_curr_left_panel);
-    lv_obj_set_pos(g_curr_left_code, 10, 150);
+    lv_obj_set_pos(g_curr_left_code, CURR_LEFT_CODE_X, CURR_LEFT_CODE_Y);
     lv_obj_set_style_text_font(g_curr_left_code, &lv_font_montserrat_30, 0);
     lv_obj_set_style_text_color(g_curr_left_code, lv_color_hex(0x202020), 0);
 
     g_curr_left_no = lv_label_create(g_curr_left_panel);
-    lv_obj_set_pos(g_curr_left_no, 205, 365);
+    lv_obj_set_pos(g_curr_left_no, CURR_LEFT_NO_X, CURR_LEFT_NO_Y);
     lv_obj_set_style_text_font(g_curr_left_no, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(g_curr_left_no, lv_color_hex(0x202020), 0);
 
@@ -2262,6 +2315,14 @@ void page_07_curr_img_refre(void)
     g_curr_btn_fav_label = lv_label_create(g_curr_btn_fav);
     lv_label_set_text(g_curr_btn_fav_label, "FAV");
     lv_obj_center(g_curr_btn_fav_label);
+
+    g_curr_btn_back = lv_btn_create(g_curr_left_panel);
+    lv_obj_set_size(g_curr_btn_back, CURR_BTN_W, CURR_BTN_H);
+    lv_obj_set_pos(g_curr_btn_back, CURR_BACK_BTN_X, CURR_BTN_Y);
+    lv_obj_add_event_cb(g_curr_btn_back, curr_back_btn_click_cb, LV_EVENT_CLICKED, NULL);
+    g_curr_btn_back_label = lv_label_create(g_curr_btn_back);
+    lv_label_set_text(g_curr_btn_back_label, "BACK");
+    lv_obj_center(g_curr_btn_back_label);
 
     g_curr_right_area = lv_obj_create(g_curr_root);
     lv_obj_remove_style_all(g_curr_right_area);
