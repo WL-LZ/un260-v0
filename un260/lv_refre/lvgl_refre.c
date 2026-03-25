@@ -797,6 +797,7 @@ void page_01_curr_img_refre(void)
 #define CURR_CARD_Y              46
 #define CURR_CARD_PAD_RIGHT      580
 #define CURR_SEL_NEXT_EXTRA_GAP  10
+#define CURR_LEFT_PEEK_W         ((CURR_CARD_W * 2) / 3)
 
 #define CURR_TRACK_Y             365
 #define CURR_TRACK_H             6
@@ -805,7 +806,7 @@ void page_01_curr_img_refre(void)
 
 #define CURR_LEFT_BG_COLOR       0xEDF0F4
 #define CURR_RIGHT_BG_COLOR      0xF4F5F7
-#define CURR_CARD_BG_UNSEL       0xEFEFEF
+#define CURR_CARD_BG_UNSEL       0xF7F7F7
 #define CURR_TEXT_UNSEL          0xBEBFC0
 #define CURR_IMG_UNSEL           0xCDCED0
 #define CURR_TRACK_BG            0xEBECED
@@ -1361,13 +1362,10 @@ static int curr_scroll_from_highlight_idx(int vis_idx)
     if (vis_idx <= 0) return 0;
     if (vis_idx >= g_curr_visible_cnt - 1) return max_scroll;
 
-    int sx;
-    if (vis_idx == 1) {
-        /* Keep NO.2 inside the second-card highlight window instead of snapping back to the far-left edge. */
-        sx = CURR_CARD_STRIDE / 4;
-    } else {
-        sx = (vis_idx - 1) * CURR_CARD_STRIDE;
-    }
+    /* Keep only one left-side card visible, with about 2/3 of that unselected card peeking in. */
+    int sx = CURR_CARD_FIRST_X
+           + (vis_idx - 1) * CURR_CARD_STRIDE
+           + (CURR_CARD_W - CURR_LEFT_PEEK_W);
 
     if (sx < 0) sx = 0;
     if (sx > max_scroll) sx = max_scroll;
@@ -2230,10 +2228,10 @@ void page_07_curr_img_refre(void)
     lv_obj_set_scrollbar_mode(g_curr_left_panel, LV_SCROLLBAR_MODE_OFF);
 
     lv_obj_t* left_title = lv_label_create(g_curr_left_panel);
-    lv_label_set_text(left_title, "CURRENCY SELECT");
-    lv_obj_set_pos(left_title, 10, 7);
-    lv_obj_set_style_text_font(left_title, &lv_font_montserrat_20, 0);
-    lv_obj_set_style_text_color(left_title, lv_color_hex(0x202020), 0);
+    lv_label_set_text(left_title, "CURRENCY");
+    lv_obj_set_pos(left_title, 105, 11);
+    lv_obj_set_style_text_font(left_title, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_color(left_title, lv_color_hex(0x707070), 0);
 
     g_curr_left_img = lv_img_create(g_curr_left_panel);
     lv_obj_set_pos(g_curr_left_img, 125, 44);
