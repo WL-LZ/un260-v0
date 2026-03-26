@@ -22,6 +22,7 @@
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_components/lv_fault_popup.h"
+#include "un260/lv_components/lv_print_toast.h"
 #include <stdlib.h>
 //-------------------- UART 打印函数 --------------------
 
@@ -1416,6 +1417,22 @@ void PCCmdHandle(void)
             }
 
             page_06_data_collection_refresh();
+            break;
+        }
+                /* ================== 0x3C 打印状态 ================== */
+        case 0x3C:
+        {
+            if (len == 0x10) {
+                uart_printf(fd6, "0x3C print detail frame\n");
+            }
+            else if (len == 0x08) {
+                lv_print_toast_hide();
+                uart_printf(fd6, "0x3C print done\n");
+            }
+            else {
+                uart_printf(fd6, "0x3C unknown len=%d\n", len);
+            }
+
             break;
         }
         default:

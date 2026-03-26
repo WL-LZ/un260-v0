@@ -179,6 +179,10 @@ void page_01_set_btn_event_cb(lv_event_t* e){
 
 void page_01_print_btn_event_cb(lv_event_t* e)
 {
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
+        return;
+    }
+
     uint8_t payload[9];
     payload[0] = (uint8_t)Machine_para.curr_code[0];
     payload[1] = (uint8_t)Machine_para.curr_code[1];
@@ -190,6 +194,7 @@ void page_01_print_btn_event_cb(lv_event_t* e)
     payload[7] = Machine_para.minute;
     payload[8] = Machine_para.second;
 
+    lv_print_toast_show("Printing...");
     send_command(fd4, 0x3C, payload, 9);
 }
 

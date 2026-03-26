@@ -12,6 +12,7 @@
 #include "un260/lv_system/lv_str.h" 
 #include "lv_page_declear.h"
 #include "un260/lv_system/user_cfg.h"
+#include "un260/lv_components/lv_print_toast.h"
 // 添加数组元素计数变量
 int page_01_main_len = 0;
 
@@ -603,7 +604,7 @@ void ui_main_create(lv_obj_t* parent)
     s_time_label = time_label;
     main_time_refresh();
     if (!s_time_timer) s_time_timer = lv_timer_create(main_time_timer_cb, 1000, NULL);
-
+    lv_print_toast_create();
 
 
 }
