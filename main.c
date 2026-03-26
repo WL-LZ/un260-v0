@@ -1426,7 +1426,6 @@ void PCCmdHandle(void)
                 uart_printf(fd6, "0x3C print detail frame\n");
             }
             else if (len == 0x08) {
-                lv_print_toast_hide();
                 uart_printf(fd6, "0x3C print done\n");
             }
             else {
