@@ -25,6 +25,7 @@ add_executable(${PROJECT_NAME} main.c
 	lv_port_disp.c
     un260/lv_components/lv_components.c
     un260/lv_components/lv_fault_popup.c
+    un260/lv_components/lv_loading_orbit.c
     un260/lv_components/lv_print_toast.c
     un260/lv_core/lv_page_event.c
     un260/lv_core/lv_page_manager.c
