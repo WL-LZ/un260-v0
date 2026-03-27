@@ -51,6 +51,11 @@ static void print_toast_anim_text_opa_cb(void *var, int32_t v)
     lv_obj_set_style_text_opa((lv_obj_t *)var, (lv_opa_t)v, 0);
 }
 
+static void print_toast_anim_obj_opa_cb(void *var, int32_t v)
+{
+    lv_loading_orbit_set_opa((lv_obj_t *)var, (lv_opa_t)v);
+}
+
 static void print_toast_stop_auto_hide_timer(void)
 {
     if (g_print_toast_auto_hide_timer) {
@@ -76,7 +81,7 @@ static void print_toast_hide_ready_cb(lv_anim_t *a)
     }
 
     if (g_print_toast_loader && lv_obj_is_valid(g_print_toast_loader)) {
-        lv_obj_set_style_opa(g_print_toast_loader, LV_OPA_COVER, 0);
+        lv_loading_orbit_set_opa(g_print_toast_loader, LV_OPA_0);
     }
 
     print_toast_stop_auto_hide_timer();
@@ -135,7 +140,7 @@ void lv_print_toast_create(void)
 
     g_print_toast_loader = lv_loading_orbit_create(g_print_toast);
     lv_obj_align(g_print_toast_loader, LV_ALIGN_TOP_RIGHT, -12, 10);
-    lv_obj_set_style_opa(g_print_toast_loader, LV_OPA_COVER, 0);
+    lv_loading_orbit_set_opa(g_print_toast_loader, LV_OPA_0);
 }
 
 void lv_print_toast_show(const char *text)
@@ -158,7 +163,7 @@ void lv_print_toast_show(const char *text)
         lv_anim_del(g_print_toast_label, print_toast_anim_text_opa_cb);
     }
     if (g_print_toast_loader && lv_obj_is_valid(g_print_toast_loader)) {
-        lv_anim_del(g_print_toast_loader, print_toast_anim_text_opa_cb);
+        lv_anim_del(g_print_toast_loader, print_toast_anim_obj_opa_cb);
     }
 
     g_print_toast_hiding = false;
@@ -174,7 +179,7 @@ void lv_print_toast_show(const char *text)
         lv_obj_set_style_text_opa(g_print_toast_label, PRINT_TOAST_OPA_START, 0);
     }
     if (g_print_toast_loader && lv_obj_is_valid(g_print_toast_loader)) {
-        lv_obj_set_style_opa(g_print_toast_loader, PRINT_TOAST_OPA_START, 0);
+        lv_loading_orbit_set_opa(g_print_toast_loader, PRINT_TOAST_OPA_START);
     }
 
     lv_obj_clear_flag(g_print_toast, LV_OBJ_FLAG_HIDDEN);
@@ -217,7 +222,7 @@ void lv_print_toast_show(const char *text)
         lv_anim_t a4;
         lv_anim_init(&a4);
         lv_anim_set_var(&a4, g_print_toast_loader);
-        lv_anim_set_exec_cb(&a4, print_toast_anim_text_opa_cb);
+        lv_anim_set_exec_cb(&a4, print_toast_anim_obj_opa_cb);
         lv_anim_set_values(&a4, PRINT_TOAST_OPA_START, PRINT_TOAST_OPA_END);
         lv_anim_set_time(&a4, PRINT_TOAST_FADE_TIME);
         lv_anim_set_path_cb(&a4, lv_anim_path_ease_out);
@@ -243,7 +248,7 @@ void lv_print_toast_hide(void)
         lv_anim_del(g_print_toast_label, print_toast_anim_text_opa_cb);
     }
     if (g_print_toast_loader && lv_obj_is_valid(g_print_toast_loader)) {
-        lv_anim_del(g_print_toast_loader, print_toast_anim_text_opa_cb);
+        lv_anim_del(g_print_toast_loader, print_toast_anim_obj_opa_cb);
     }
 
     print_toast_stop_auto_hide_timer();
@@ -257,7 +262,7 @@ void lv_print_toast_hide(void)
         lv_obj_set_style_text_opa(g_print_toast_label, LV_OPA_COVER, 0);
     }
     if (g_print_toast_loader && lv_obj_is_valid(g_print_toast_loader)) {
-        lv_obj_set_style_opa(g_print_toast_loader, LV_OPA_COVER, 0);
+        lv_loading_orbit_set_opa(g_print_toast_loader, LV_OPA_COVER);
     }
 
     lv_anim_t a1;
@@ -285,7 +290,7 @@ void lv_print_toast_hide(void)
         lv_anim_t a3;
         lv_anim_init(&a3);
         lv_anim_set_var(&a3, g_print_toast_loader);
-        lv_anim_set_exec_cb(&a3, print_toast_anim_text_opa_cb);
+        lv_anim_set_exec_cb(&a3, print_toast_anim_obj_opa_cb);
         lv_anim_set_values(&a3, LV_OPA_COVER, LV_OPA_0);
         lv_anim_set_time(&a3, PRINT_TOAST_HIDE_TIME);
         lv_anim_set_path_cb(&a3, lv_anim_path_ease_out);
