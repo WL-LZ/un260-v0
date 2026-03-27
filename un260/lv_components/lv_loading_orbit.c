@@ -16,6 +16,33 @@ static void loading_orbit_rotate_cb(void *var, int32_t v)
     lv_arc_set_rotation((lv_obj_t *)var, (int16_t)v);
 }
 
+void lv_loading_orbit_set_opa(lv_obj_t *orbit, lv_opa_t opa)
+{
+    if (!orbit || !lv_obj_is_valid(orbit)) {
+        return;
+    }
+
+    lv_obj_set_style_bg_opa(orbit, opa, 0);
+    lv_obj_set_style_shadow_opa(orbit, (lv_opa_t)((opa * LV_OPA_10) / LV_OPA_COVER), 0);
+
+    uint32_t child_cnt = lv_obj_get_child_cnt(orbit);
+    for (uint32_t i = 0; i < child_cnt; i++) {
+        lv_obj_t *child = lv_obj_get_child(orbit, i);
+        if (!child || !lv_obj_is_valid(child)) {
+            continue;
+        }
+
+        if (lv_obj_check_type(child, &lv_arc_class)) {
+            lv_obj_set_style_arc_opa(child, (lv_opa_t)((opa * LV_OPA_70) / LV_OPA_COVER),
+                                     LV_PART_MAIN);
+            lv_obj_set_style_arc_opa(child, opa, LV_PART_INDICATOR);
+        } else {
+            lv_obj_set_style_bg_opa(child, opa, 0);
+            lv_obj_set_style_opa(child, opa, 0);
+        }
+    }
+}
+
 lv_obj_t *lv_loading_orbit_create_sized(lv_obj_t *parent, lv_coord_t size)
 {
     lv_coord_t orbit_size = loading_orbit_clamp(size, 20);
