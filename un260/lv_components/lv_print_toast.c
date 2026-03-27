@@ -47,7 +47,7 @@ static void print_toast_anim_bg_opa_cb(void *var, int32_t v)
 
 // 文字透明度动画回调
 static void print_toast_anim_text_opa_cb(void *var, int32_t v)
-c:\Users\XL\Downloads\1 - 副本 (2).html{
+{
     lv_obj_set_style_text_opa((lv_obj_t *)var, (lv_opa_t)v, 0);
 }
 
