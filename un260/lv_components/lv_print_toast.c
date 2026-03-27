@@ -47,13 +47,8 @@ static void print_toast_anim_bg_opa_cb(void *var, int32_t v)
 
 // 文字透明度动画回调
 static void print_toast_anim_text_opa_cb(void *var, int32_t v)
-{
+c:\Users\XL\Downloads\1 - 副本 (2).html{
     lv_obj_set_style_text_opa((lv_obj_t *)var, (lv_opa_t)v, 0);
-}
-
-static void print_toast_anim_obj_opa_cb(void *var, int32_t v)
-{
-    lv_obj_set_style_opa((lv_obj_t *)var, (lv_opa_t)v, 0);
 }
 
 static void print_toast_stop_auto_hide_timer(void)
@@ -78,9 +73,10 @@ static void print_toast_hide_ready_cb(lv_anim_t *a)
         if (g_print_toast_label && lv_obj_is_valid(g_print_toast_label)) {
             lv_obj_set_style_text_opa(g_print_toast_label, LV_OPA_0, 0);
         }
-        if (g_print_toast_loader && lv_obj_is_valid(g_print_toast_loader)) {
-            lv_obj_set_style_opa(g_print_toast_loader, LV_OPA_0, 0);
-        }
+    }
+
+    if (g_print_toast_loader && lv_obj_is_valid(g_print_toast_loader)) {
+        lv_obj_set_style_opa(g_print_toast_loader, LV_OPA_COVER, 0);
     }
 
     print_toast_stop_auto_hide_timer();
@@ -139,7 +135,7 @@ void lv_print_toast_create(void)
 
     g_print_toast_loader = lv_loading_orbit_create(g_print_toast);
     lv_obj_align(g_print_toast_loader, LV_ALIGN_TOP_RIGHT, -12, 10);
-    lv_obj_set_style_opa(g_print_toast_loader, LV_OPA_0, 0);
+    lv_obj_set_style_opa(g_print_toast_loader, LV_OPA_COVER, 0);
 }
 
 void lv_print_toast_show(const char *text)
@@ -158,11 +154,11 @@ void lv_print_toast_show(const char *text)
     // 删除旧动画，避免重复触发时跳动
     lv_anim_del(g_print_toast, print_toast_anim_y_cb);
     lv_anim_del(g_print_toast, print_toast_anim_bg_opa_cb);
-    if (g_print_toast_loader && lv_obj_is_valid(g_print_toast_loader)) {
-        lv_anim_del(g_print_toast_loader, print_toast_anim_obj_opa_cb);
-    }
     if (g_print_toast_label && lv_obj_is_valid(g_print_toast_label)) {
         lv_anim_del(g_print_toast_label, print_toast_anim_text_opa_cb);
+    }
+    if (g_print_toast_loader && lv_obj_is_valid(g_print_toast_loader)) {
+        lv_anim_del(g_print_toast_loader, print_toast_anim_text_opa_cb);
     }
 
     g_print_toast_hiding = false;
@@ -194,7 +190,7 @@ void lv_print_toast_show(const char *text)
     lv_anim_set_path_cb(&a1, lv_anim_path_ease_out);
     lv_anim_start(&a1);
 
-    // 背景/阴影淡入：从可见到完全显示
+    // 背景/阴影淡入：保持现有质感
     lv_anim_t a2;
     lv_anim_init(&a2);
     lv_anim_set_var(&a2, g_print_toast);
@@ -221,10 +217,9 @@ void lv_print_toast_show(const char *text)
         lv_anim_t a4;
         lv_anim_init(&a4);
         lv_anim_set_var(&a4, g_print_toast_loader);
-        lv_anim_set_exec_cb(&a4, print_toast_anim_obj_opa_cb);
+        lv_anim_set_exec_cb(&a4, print_toast_anim_text_opa_cb);
         lv_anim_set_values(&a4, PRINT_TOAST_OPA_START, PRINT_TOAST_OPA_END);
         lv_anim_set_time(&a4, PRINT_TOAST_FADE_TIME);
-        lv_anim_set_delay(&a4, 0);
         lv_anim_set_path_cb(&a4, lv_anim_path_ease_out);
         lv_anim_start(&a4);
     }
@@ -244,11 +239,11 @@ void lv_print_toast_hide(void)
 
     lv_anim_del(g_print_toast, print_toast_anim_y_cb);
     lv_anim_del(g_print_toast, print_toast_anim_bg_opa_cb);
-    if (g_print_toast_loader && lv_obj_is_valid(g_print_toast_loader)) {
-        lv_anim_del(g_print_toast_loader, print_toast_anim_obj_opa_cb);
-    }
     if (g_print_toast_label && lv_obj_is_valid(g_print_toast_label)) {
         lv_anim_del(g_print_toast_label, print_toast_anim_text_opa_cb);
+    }
+    if (g_print_toast_loader && lv_obj_is_valid(g_print_toast_loader)) {
+        lv_anim_del(g_print_toast_loader, print_toast_anim_text_opa_cb);
     }
 
     print_toast_stop_auto_hide_timer();
@@ -265,7 +260,6 @@ void lv_print_toast_hide(void)
         lv_obj_set_style_opa(g_print_toast_loader, LV_OPA_COVER, 0);
     }
 
-    // 消失效果保持不变
     lv_anim_t a1;
     lv_anim_init(&a1);
     lv_anim_set_var(&a1, g_print_toast);
@@ -291,11 +285,11 @@ void lv_print_toast_hide(void)
         lv_anim_t a3;
         lv_anim_init(&a3);
         lv_anim_set_var(&a3, g_print_toast_loader);
-        lv_anim_set_exec_cb(&a3, print_toast_anim_obj_opa_cb);
+        lv_anim_set_exec_cb(&a3, print_toast_anim_text_opa_cb);
         lv_anim_set_values(&a3, LV_OPA_COVER, LV_OPA_0);
         lv_anim_set_time(&a3, PRINT_TOAST_HIDE_TIME);
-        lv_anim_set_delay(&a3, 0);
         lv_anim_set_path_cb(&a3, lv_anim_path_ease_out);
         lv_anim_start(&a3);
     }
+
 }
