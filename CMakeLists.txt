@@ -16,6 +16,7 @@ add_executable(${PROJECT_NAME} main.c
 	aic_ui/aic_dec.c
 	aic_ui/aic_ui.c
 	aic_ui/cpu_mem.c
+	aic_ui/perf_stats.c
 	aic_ui/font/ui_font_Big.c
 	aic_ui/font/ui_font_Title.c
 	aic_ui/font/ui_font_H1.c
@@ -28,6 +29,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_components/lv_loading_orbit.c
     un260/lv_components/lv_print_toast.c
     un260/lv_components/lv_loading_grid.c
+    un260/lv_components/lv_debug_overlay.c
     un260/lv_core/lv_page_event.c
     un260/lv_core/lv_page_manager.c
     un260/lv_core/page_01_main.c

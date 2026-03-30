@@ -23,6 +23,7 @@
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_components/lv_fault_popup.h"
 #include "un260/lv_components/lv_print_toast.h"
+#include "aic_ui/perf_stats.h"
 #include <stdlib.h>
 //-------------------- UART 打印函数 --------------------
 
@@ -1508,6 +1509,8 @@ int main(void) {
     lv_port_disp_init();
     lv_port_indev_init();
     ui_manager_switch(UI_PAGE_BOOT_ANIM);
+    perf_stats_init();
+    lv_debug_overlay_init();
 
     printf("=== 初始化UART4、UART5和UART6 ===\n");
 
@@ -1539,8 +1542,16 @@ int main(void) {
 
     while (1) {
         uint32_t now = custom_tick_get();
+        struct timeval ui_tv_start;
+        struct timeval ui_tv_end;
+        uint32_t ui_time_us;
 
+        gettimeofday(&ui_tv_start, NULL);
         lv_timer_handler();
+        gettimeofday(&ui_tv_end, NULL);
+        ui_time_us = (uint32_t)((ui_tv_end.tv_sec - ui_tv_start.tv_sec) * 1000000UL +
+                                (ui_tv_end.tv_usec - ui_tv_start.tv_usec));
+        perf_stats_report_ui_time_us(ui_time_us);
         PCCmdHandle();
 
         if (g_denom_query_pending &&

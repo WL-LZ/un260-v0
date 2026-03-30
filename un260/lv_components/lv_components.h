@@ -6,6 +6,7 @@
 #include "un260/lv_components/lv_loading_orbit.h"
 #include "un260/lv_components/lv_print_toast.h"
 #include "un260/lv_components/lv_loading_grid.h"
+#include "un260/lv_components/lv_debug_overlay.h"
 extern uint8_t g_sys_err_last_code;
 void create_batch_num_switch(lv_obj_t* parent);
 lv_obj_t* get_batch_switch_container(void);
