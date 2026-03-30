@@ -1568,7 +1568,7 @@ static void curr_back_btn_click_cb(lv_event_t* e)
     ui_manager_switch(UI_PAGE_MAIN);
 }
 
-static void curr_scroll_to_raw(int x, bool anim)
+static void curr_scroll_to_raw(int x, bool anim, bool apply_style)
 {
     int max_scroll = curr_get_max_scroll();
     if (x < 0) x = 0;
@@ -1583,18 +1583,20 @@ static void curr_scroll_to_raw(int x, bool anim)
         if (abs_idx != g_curr_sel_abs_idx) {
             g_curr_sel_abs_idx = abs_idx;
             g_curr_sel_vis_idx = vis_idx;
-            curr_apply_selected_style();
+            if (apply_style) {
+                curr_apply_selected_style();
+            }
         }
     }
     curr_update_track_by_scroll(x);
 }
 
-static void curr_scroll_to_visible_idx(int vis_idx, bool anim)
+static void curr_scroll_to_visible_idx(int vis_idx, bool anim, bool apply_style)
 {
     if (g_curr_visible_cnt <= 0) return;
     if (vis_idx < 0) vis_idx = 0;
     if (vis_idx >= g_curr_visible_cnt) vis_idx = g_curr_visible_cnt - 1;
-    curr_scroll_to_raw(curr_scroll_from_highlight_idx(vis_idx), anim);
+    curr_scroll_to_raw(curr_scroll_from_highlight_idx(vis_idx), anim, apply_style);
 }
 
 static int curr_pick_nearest_visible_idx(void)
@@ -1612,7 +1614,7 @@ static void curr_snap_timer_cb(lv_timer_t* t)
     g_curr_sel_vis_idx = vis_idx;
     g_curr_sel_abs_idx = g_curr_visible_idx[vis_idx];
     curr_apply_selected_style();
-    curr_scroll_to_visible_idx(vis_idx, true);
+    curr_scroll_to_visible_idx(vis_idx, true, true);
 }
 
 static void curr_start_snap_timer(uint32_t ms)
@@ -1664,7 +1666,7 @@ bool page_07_curr_set_pending_result(uint8_t status)
         curr_set_left_info_by_abs(g_curr_sel_abs_idx);
         if (g_curr_view_mode == CURR_VIEW_MODE_CARD) {
             curr_apply_selected_style();
-            curr_scroll_to_visible_idx(g_curr_sel_vis_idx, true);
+            curr_scroll_to_visible_idx(g_curr_sel_vis_idx, true, true);
         } else {
             curr_refresh_right_views();
         }
@@ -1809,13 +1811,13 @@ static void curr_right_drag_cb(lv_event_t* e)
             int max_scroll = curr_get_max_scroll();
 
             if (desired_scroll < 0) {
-                curr_scroll_to_raw(0, false);
+                curr_scroll_to_raw(0, false, false);
                 curr_apply_overscroll_visual((-desired_scroll) / 3);
             } else if (desired_scroll > max_scroll) {
-                curr_scroll_to_raw(max_scroll, false);
+                curr_scroll_to_raw(max_scroll, false, false);
                 curr_apply_overscroll_visual(-(desired_scroll - max_scroll) / 3);
             } else {
-                curr_scroll_to_raw(desired_scroll, false);
+                curr_scroll_to_raw(desired_scroll, false, false);
             }
         }
         return;
@@ -1840,7 +1842,7 @@ static void curr_right_drag_cb(lv_event_t* e)
             if (fling > max_fling) fling = max_fling;
             if (fling < -max_fling) fling = -max_fling;
 
-            curr_scroll_to_raw(curr_scroll_x_abs() - fling, true);
+            curr_scroll_to_raw(curr_scroll_x_abs() - fling, true, false);
             curr_start_snap_timer(200);
             g_curr_last_drag_tick = lv_tick_get();
             return;
@@ -1852,7 +1854,7 @@ static void curr_right_drag_cb(lv_event_t* e)
         g_curr_sel_vis_idx = vis_idx;
         g_curr_sel_abs_idx = g_curr_visible_idx[vis_idx];
         curr_apply_selected_style();
-        curr_scroll_to_visible_idx(g_curr_sel_vis_idx, true);
+        curr_scroll_to_visible_idx(g_curr_sel_vis_idx, true, true);
     }
 }
 
@@ -2111,15 +2113,17 @@ static void curr_build_grid_layer(void)
 static void curr_set_mode_visible(void)
 {
     if (g_curr_view_mode == CURR_VIEW_MODE_CARD) {
-        if (g_curr_card_layer) lv_obj_clear_flag(g_curr_card_layer, LV_OBJ_FLAG_HIDDEN);
-        if (g_curr_grid_layer) lv_obj_add_flag(g_curr_grid_layer, LV_OBJ_FLAG_HIDDEN);
-        curr_apply_selected_style();
-        curr_update_track_by_scroll(curr_scroll_x_abs());
+        if (g_curr_card_layer) {
+            lv_obj_clear_flag(g_curr_card_layer, LV_OBJ_FLAG_HIDDEN);
+            curr_apply_selected_style();
+            curr_update_track_by_scroll(curr_scroll_x_abs());
+        }
     } else {
-        if (g_curr_card_layer) lv_obj_add_flag(g_curr_card_layer, LV_OBJ_FLAG_HIDDEN);
-        if (g_curr_grid_layer) lv_obj_clear_flag(g_curr_grid_layer, LV_OBJ_FLAG_HIDDEN);
-        for (int i = 0; i < g_curr_visible_cnt; i++) {
-            curr_update_grid_fav_ui(i);
+        if (g_curr_grid_layer) {
+            lv_obj_clear_flag(g_curr_grid_layer, LV_OBJ_FLAG_HIDDEN);
+            for (int i = 0; i < g_curr_visible_cnt; i++) {
+                curr_update_grid_fav_ui(i);
+            }
         }
     }
 }
@@ -2165,13 +2169,18 @@ static void curr_refresh_right_views(void)
         return;
     }
 
-    curr_build_card_layer();
-    curr_build_grid_layer();
+    if (g_curr_view_mode == CURR_VIEW_MODE_CARD) {
+        curr_build_card_layer();
+    } else {
+        curr_build_grid_layer();
+    }
     curr_set_mode_visible();
 
-    curr_scroll_to_visible_idx(g_curr_sel_vis_idx, false);
-    curr_apply_selected_style();
-    curr_update_track_by_scroll(curr_scroll_x_abs());
+    if (g_curr_view_mode == CURR_VIEW_MODE_CARD) {
+        curr_scroll_to_visible_idx(g_curr_sel_vis_idx, false, true);
+        curr_apply_selected_style();
+        curr_update_track_by_scroll(curr_scroll_x_abs());
+    }
 }
 
 static void curr_view_btn_click_cb(lv_event_t* e)
@@ -2179,7 +2188,7 @@ static void curr_view_btn_click_cb(lv_event_t* e)
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
 
     g_curr_view_mode = (g_curr_view_mode == CURR_VIEW_MODE_CARD) ? CURR_VIEW_MODE_GRID : CURR_VIEW_MODE_CARD;
-    curr_set_mode_visible();
+    curr_refresh_right_views();
     curr_refresh_left_buttons();
     ui_state_save_to_file();
 
