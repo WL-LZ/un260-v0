@@ -137,6 +137,11 @@ void page_01_create_mian_scrollable_container(void)
     lv_obj_set_style_pad_all(page_01_main_scroll_container, 0, 0);
     lv_obj_set_scrollbar_mode(page_01_main_scroll_container, LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_scroll_dir(page_01_main_scroll_container, LV_DIR_VER);
+    lv_obj_add_flag(page_01_main_scroll_container, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(page_01_main_scroll_container, page_01_detail_area_event_cb, LV_EVENT_PRESSED, NULL);
+    lv_obj_add_event_cb(page_01_main_scroll_container, page_01_detail_area_event_cb, LV_EVENT_PRESSING, NULL);
+    lv_obj_add_event_cb(page_01_main_scroll_container, page_01_detail_area_event_cb, LV_EVENT_RELEASED, NULL);
+    lv_obj_add_event_cb(page_01_main_scroll_container, page_01_detail_area_event_cb, LV_EVENT_PRESS_LOST, NULL);
  
 
     //将右边详情放到容器里面
@@ -170,10 +175,14 @@ void page_01_create_mian_scrollable_container(void)
             lv_obj_set_pos(obj, 213, (i - 1) * 32);
         }
     }
-    if (sim.denom_number > PAGE_01_REPORT_ITEM)
-        lv_obj_add_flag(page_01_main_scroll_container, LV_OBJ_FLAG_SCROLLABLE);
-    else
-        lv_obj_clear_flag(page_01_main_scroll_container, LV_OBJ_FLAG_SCROLLABLE);
+    if (sim.denom_number > PAGE_01_REPORT_ITEM) {
+        lv_obj_add_flag(page_01_main_scroll_container,
+                        LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC);
+        lv_obj_clear_flag(page_01_main_scroll_container, LV_OBJ_FLAG_SCROLL_MOMENTUM);
+    } else {
+        lv_obj_clear_flag(page_01_main_scroll_container,
+                          LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM);
+    }
 }
 
 

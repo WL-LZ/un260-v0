@@ -15,6 +15,8 @@ lv_timer_t* page_05_password_del_timer = NULL;
 static int32_t g_batch_num_pending = -1;
 static lv_obj_t* g_batch_tip_label = NULL;
 
+#define PAGE_01_DETAIL_TAP_THRESHOLD     10
+
 // 声明外部变量
 
 bool pcs_batch_num_lock_200 = false;
@@ -36,6 +38,70 @@ void page_01_list_btn_event_cb(lv_event_t* e) {
         ui_manager_push_page(UI_PAGE_LIST);
     }
 }
+
+void page_01_detail_area_event_cb(lv_event_t* e)
+{
+    typedef struct {
+        bool pressed;
+        bool dragging;
+        lv_point_t start_pt;
+        lv_point_t last_pt;
+    } detail_touch_state_t;
+
+    static detail_touch_state_t s_touch = {0};
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_indev_t* indev = lv_indev_get_act();
+    lv_obj_t* cont = lv_event_get_target(e);
+    lv_point_t pt;
+
+    if (cont == NULL || indev == NULL) return;
+
+    lv_indev_get_point(indev, &pt);
+
+    switch (code) {
+    case LV_EVENT_PRESSED:
+        s_touch.pressed = true;
+        s_touch.dragging = false;
+        s_touch.start_pt = pt;
+        s_touch.last_pt = pt;
+        break;
+
+    case LV_EVENT_PRESSING:
+        if (!s_touch.pressed) break;
+
+        if (!s_touch.dragging) {
+            if (LV_ABS(pt.y - s_touch.start_pt.y) > PAGE_01_DETAIL_TAP_THRESHOLD ||
+                LV_ABS(pt.x - s_touch.start_pt.x) > PAGE_01_DETAIL_TAP_THRESHOLD) {
+                s_touch.dragging = true;
+            }
+        }
+
+        s_touch.last_pt = pt;
+        break;
+
+    case LV_EVENT_RELEASED:
+        if (!s_touch.pressed) break;
+
+        if (!s_touch.dragging &&
+            LV_ABS(pt.y - s_touch.start_pt.y) < PAGE_01_DETAIL_TAP_THRESHOLD &&
+            LV_ABS(pt.x - s_touch.start_pt.x) < PAGE_01_DETAIL_TAP_THRESHOLD) {
+            ui_manager_push_page(UI_PAGE_LIST);
+        }
+
+        s_touch.pressed = false;
+        s_touch.dragging = false;
+        break;
+
+    case LV_EVENT_PRESS_LOST:
+        s_touch.pressed = false;
+        s_touch.dragging = false;
+        break;
+
+    default:
+        break;
+    }
+}
+
 void page_01_menu_btn_event_cb(lv_event_t* e) {
     if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
         icon_feedback_comp("page_01_menu_icon.png", page_01_main_obj, page_01_main_len);
