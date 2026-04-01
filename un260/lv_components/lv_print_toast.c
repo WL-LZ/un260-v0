@@ -1,6 +1,6 @@
 #include "lv_print_toast.h"
-#include "lv_print_toast_text.h"
 #include "lv_loading_orbit.h"
+#include "un260/lv_system/ui_text.h"
 #include <string.h>
 
 // 打印提示框参数
@@ -218,7 +218,7 @@ void lv_print_toast_show(const char *text)
 {
     lv_print_toast_config_t config = lv_print_toast_get_default_config();
 
-    config.text = text ? text : lv_print_toast_text_get(PRINT_TOAST_TEXT_PRINTING);
+    config.text = text ? text : ui_text_get(UI_TEXT_WIDGET_PRINT_TOAST_PRINTING);
     config.auto_hide_ms = LV_PRINT_TOAST_DEFAULT_AUTO_HIDE_MS;
     config.show_loader = true;
     config.loader_color = LV_PRINT_TOAST_DEFAULT_LOADER_COLOR;

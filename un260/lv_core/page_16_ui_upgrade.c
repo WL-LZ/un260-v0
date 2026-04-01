@@ -2,6 +2,7 @@
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/ui_upgrade_service.h"
 #include "un260/lv_components/lv_upgrade_popup.h"
+#include "un260/lv_system/ui_text.h"
 
 #include <stdbool.h>
 
@@ -26,6 +27,11 @@ static bool        g_upgrading = false;
 static lv_anim_t   g_arc_anim;
 static bool        g_arc_anim_inited = false;
 
+static const char* page_16_text_get(ui_text_id_t text_id) //获取升级页面当前语言文本
+{
+    return ui_text_get(text_id);
+}
+
 static void update_upgrade_status(void) //刷新U盘/挂载/包状态（升级中不刷新）
 {
     ui_upgrade_detect_info_t detect_info;
@@ -34,31 +40,37 @@ static void update_upgrade_status(void) //刷新U盘/挂载/包状态（升级�
     ui_upgrade_service_detect(&detect_info);
 
     if (upgrade_usb_status_label && lv_obj_is_valid(upgrade_usb_status_label)) {
-        lv_label_set_text_fmt(upgrade_usb_status_label, "U DISK: %s",
-                              detect_info.usb_present ? "INSERTED" : "NOT INSERTED");
+        lv_label_set_text_fmt(upgrade_usb_status_label, page_16_text_get(UI_TEXT_PAGE16_USB_STATUS_FMT),
+                              detect_info.usb_present ?
+                              page_16_text_get(UI_TEXT_PAGE16_USB_INSERTED) :
+                              page_16_text_get(UI_TEXT_PAGE16_USB_NOT_INSERTED));
         lv_obj_set_style_text_color(upgrade_usb_status_label,
             detect_info.usb_present ? lv_color_hex(0x1F9D55) : lv_color_hex(0xC03A2B), 0);
     }
 
     if (upgrade_file_status_label && lv_obj_is_valid(upgrade_file_status_label)) {
         lv_label_set_text_fmt(upgrade_file_status_label,
-            "MOUNT: %s   PACKAGE: %s",
-            detect_info.usb_mounted ? "OK" : "NOT MOUNTED",
-            detect_info.package_found ? "FOUND" : "NOT FOUND");
+            page_16_text_get(UI_TEXT_PAGE16_FILE_STATUS_FMT),
+            detect_info.usb_mounted ?
+            page_16_text_get(UI_TEXT_PAGE16_MOUNT_OK) :
+            page_16_text_get(UI_TEXT_PAGE16_MOUNT_NOT),
+            detect_info.package_found ?
+            page_16_text_get(UI_TEXT_PAGE16_PACKAGE_FOUND) :
+            page_16_text_get(UI_TEXT_PAGE16_PACKAGE_NOT_FOUND));
     }
 
     if (upgrade_hint_label && lv_obj_is_valid(upgrade_hint_label)) {
         if (!detect_info.usb_present) {
-            lv_label_set_text(upgrade_hint_label, "Please insert U disk.");
+            lv_label_set_text(upgrade_hint_label, page_16_text_get(UI_TEXT_PAGE16_HINT_INSERT_USB));
             lv_obj_set_style_text_color(upgrade_hint_label, lv_color_hex(0xC03A2B), 0);
         } else if (!detect_info.usb_mounted) {
-            lv_label_set_text(upgrade_hint_label, "U disk inserted. Click UPGRADE to auto-mount and upgrade.");
+            lv_label_set_text(upgrade_hint_label, page_16_text_get(UI_TEXT_PAGE16_HINT_INSERTED_CLICK_UPGRADE));
             lv_obj_set_style_text_color(upgrade_hint_label, lv_color_hex(0xC07A2B), 0);
         } else if (!detect_info.package_found) {
-            lv_label_set_text(upgrade_hint_label, "Mounted. Missing /mnt/usb/update/test_lvgl.");
+            lv_label_set_text(upgrade_hint_label, page_16_text_get(UI_TEXT_PAGE16_HINT_MISSING_PACKAGE));
             lv_obj_set_style_text_color(upgrade_hint_label, lv_color_hex(0xC07A2B), 0);
         } else {
-            lv_label_set_text(upgrade_hint_label, "Ready to upgrade UI.");
+            lv_label_set_text(upgrade_hint_label, page_16_text_get(UI_TEXT_PAGE16_HINT_READY));
             lv_obj_set_style_text_color(upgrade_hint_label, lv_color_hex(0x1F9D55), 0);
         }
     }
@@ -91,12 +103,12 @@ static void wait_timer_cb(lv_timer_t* t) //升级中：每秒更新提示文字
     g_wait_sec++;
 
     if (upgrade_hint_label && lv_obj_is_valid(upgrade_hint_label)) {
-        lv_label_set_text_fmt(upgrade_hint_label, "Upgrading... please wait. (%us)", (unsigned)g_wait_sec);
+        lv_label_set_text_fmt(upgrade_hint_label, page_16_text_get(UI_TEXT_PAGE16_HINT_UPGRADING_WAIT_FMT), (unsigned)g_wait_sec);
         lv_obj_set_style_text_color(upgrade_hint_label, lv_color_hex(0x1F9D55), 0);
     }
 
     if (g_wait_sec == 60 && g_poweroff_label && lv_obj_is_valid(g_poweroff_label)) {
-        lv_label_set_text(g_poweroff_label, "Still updating... Do NOT power off.");
+        lv_label_set_text(g_poweroff_label, page_16_text_get(UI_TEXT_PAGE16_POWER_OFF_LONG));
     }
 }
 
@@ -122,7 +134,9 @@ static void upgrade_waiting_exit(bool success)
 
     if (g_poweroff_label && lv_obj_is_valid(g_poweroff_label)) {
         lv_label_set_text(g_poweroff_label,
-                          success ? "Update finished." : "Update failed. Please check the package.");
+                          success ?
+                          page_16_text_get(UI_TEXT_PAGE16_HINT_FINISHED) :
+                          page_16_text_get(UI_TEXT_PAGE16_HINT_FAILED));
     }
 }
 
@@ -159,7 +173,7 @@ static void upgrade_result_timer_cb(lv_timer_t* timer)
             lv_label_set_text(upgrade_hint_label,
                               status.result_text[0] != '\0' ?
                               status.result_text :
-                              "Upgrade failed. Please check the package and try again.");
+                              page_16_text_get(UI_TEXT_PAGE16_HINT_FAILED));
             lv_obj_set_style_text_color(upgrade_hint_label, lv_color_hex(0xC03A2B), 0);
         }
     }
@@ -174,7 +188,7 @@ static void upgrade_ui_enter_waiting(void) //进入升级等待界面（圆环�
     if (g_esc_btn)     lv_obj_add_state(g_esc_btn, LV_STATE_DISABLED);
 
     if (upgrade_hint_label && lv_obj_is_valid(upgrade_hint_label)) {
-        lv_label_set_text(upgrade_hint_label, "Upgrading... please wait.");
+        lv_label_set_text(upgrade_hint_label, page_16_text_get(UI_TEXT_PAGE16_HINT_UPGRADING_WAIT));
         lv_obj_set_style_text_color(upgrade_hint_label, lv_color_hex(0x1F9D55), 0);
     }
 
@@ -200,11 +214,11 @@ static void upgrade_ui_enter_waiting(void) //进入升级等待界面（圆环�
 
     if (!g_poweroff_label) {
         g_poweroff_label = lv_label_create(upgrade_page);
-        lv_label_set_text(g_poweroff_label, "Do NOT power off during update.");
+        lv_label_set_text(g_poweroff_label, page_16_text_get(UI_TEXT_PAGE16_POWER_OFF));
         lv_obj_set_style_text_color(g_poweroff_label, lv_color_hex(0xC07A2B), 0);
         lv_obj_set_pos(g_poweroff_label, 360, 305);
     } else {
-        lv_label_set_text(g_poweroff_label, "Do NOT power off during update.");
+        lv_label_set_text(g_poweroff_label, page_16_text_get(UI_TEXT_PAGE16_POWER_OFF));
     }
 
     if (!g_arc_anim_inited) {
@@ -248,7 +262,7 @@ static void upgrade_start_btn_cb(lv_event_t* e) //升级按钮：检查U盘->启
 
     if (!detect_info.usb_present) {
         if (upgrade_hint_label) {
-            lv_label_set_text(upgrade_hint_label, "No U disk. Please insert U disk.");
+            lv_label_set_text(upgrade_hint_label, page_16_text_get(UI_TEXT_PAGE16_HINT_NO_USB));
             lv_obj_set_style_text_color(upgrade_hint_label, lv_color_hex(0xC03A2B), 0);
         }
         return;
@@ -256,7 +270,7 @@ static void upgrade_start_btn_cb(lv_event_t* e) //升级按钮：检查U盘->启
 
     if (!detect_info.usb_mounted) {
         if (upgrade_hint_label) {
-            lv_label_set_text(upgrade_hint_label, "Auto-mount failed. Please mount U disk to /mnt/usb.");
+            lv_label_set_text(upgrade_hint_label, page_16_text_get(UI_TEXT_PAGE16_HINT_AUTO_MOUNT_FAILED));
             lv_obj_set_style_text_color(upgrade_hint_label, lv_color_hex(0xC03A2B), 0);
         }
         return;
@@ -264,7 +278,7 @@ static void upgrade_start_btn_cb(lv_event_t* e) //升级按钮：检查U盘->启
 
     if (!detect_info.package_found) {
         if (upgrade_hint_label) {
-            lv_label_set_text(upgrade_hint_label, "Missing /mnt/usb/update/test_lvgl");
+            lv_label_set_text(upgrade_hint_label, page_16_text_get(UI_TEXT_PAGE16_HINT_MISSING_PACKAGE));
             lv_obj_set_style_text_color(upgrade_hint_label, lv_color_hex(0xC03A2B), 0);
         }
         return;
@@ -276,7 +290,7 @@ static void upgrade_start_btn_cb(lv_event_t* e) //升级按钮：检查U盘->启
     if (ui_upgrade_service_start() != 0) {
         upgrade_waiting_exit(false);
         if (upgrade_hint_label) {
-            lv_label_set_text(upgrade_hint_label, "Start update script failed.");
+            lv_label_set_text(upgrade_hint_label, page_16_text_get(UI_TEXT_PAGE16_HINT_START_SCRIPT_FAILED));
             lv_obj_set_style_text_color(upgrade_hint_label, lv_color_hex(0xC03A2B), 0);
         }
         return;
@@ -304,7 +318,7 @@ void ui_page_16_ui_upgrade_create(lv_obj_t* parent) //创建升级页面
     lv_obj_set_style_bg_opa(upgrade_page, LV_OPA_COVER, 0);
 
     lv_obj_t* title = lv_label_create(upgrade_page);
-    lv_label_set_text(title, "UI UPGRADE");
+    lv_label_set_text(title, page_16_text_get(UI_TEXT_PAGE16_TITLE));
     lv_obj_set_style_text_font(title, &lv_font_montserrat_28, 0);
     lv_obj_set_style_text_color(title, lv_color_hex(0x2D3A4A), 0);
     lv_obj_set_pos(title, 36, 20);
@@ -315,7 +329,7 @@ void ui_page_16_ui_upgrade_create(lv_obj_t* parent) //创建升级页面
     lv_obj_add_event_cb(g_esc_btn, upgrade_esc_btn_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t* esc_label = lv_label_create(g_esc_btn);
-    lv_label_set_text(esc_label, "ESC");
+    lv_label_set_text(esc_label, page_16_text_get(UI_TEXT_PAGE16_ESC));
     lv_obj_center(esc_label);
 
     lv_obj_t* card = lv_obj_create(upgrade_page);
@@ -328,17 +342,20 @@ void ui_page_16_ui_upgrade_create(lv_obj_t* parent) //创建升级页面
     lv_obj_set_style_border_color(card, lv_color_hex(0xD7DEE8), 0);
 
     upgrade_usb_status_label = lv_label_create(card);
-    lv_label_set_text(upgrade_usb_status_label, "U DISK: NOT INSERTED");
+    lv_label_set_text_fmt(upgrade_usb_status_label, page_16_text_get(UI_TEXT_PAGE16_USB_STATUS_FMT),
+                          page_16_text_get(UI_TEXT_PAGE16_USB_NOT_INSERTED));
     lv_obj_set_style_text_font(upgrade_usb_status_label, &lv_font_montserrat_24, 0);
     lv_obj_set_pos(upgrade_usb_status_label, 36, 28);
 
     upgrade_file_status_label = lv_label_create(card);
-    lv_label_set_text(upgrade_file_status_label, "MOUNT: NOT MOUNTED   PACKAGE: NOT FOUND");
+    lv_label_set_text_fmt(upgrade_file_status_label, page_16_text_get(UI_TEXT_PAGE16_FILE_STATUS_FMT),
+                          page_16_text_get(UI_TEXT_PAGE16_MOUNT_NOT),
+                          page_16_text_get(UI_TEXT_PAGE16_PACKAGE_NOT_FOUND));
     lv_obj_set_style_text_font(upgrade_file_status_label, &lv_font_montserrat_20, 0);
     lv_obj_set_pos(upgrade_file_status_label, 36, 78);
 
     upgrade_hint_label = lv_label_create(card);
-    lv_label_set_text(upgrade_hint_label, "Insert U disk to begin.");
+    lv_label_set_text(upgrade_hint_label, page_16_text_get(UI_TEXT_PAGE16_HINT_INSERT_USB));
     lv_obj_set_style_text_font(upgrade_hint_label, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(upgrade_hint_label, lv_color_hex(0x5F6E7D), 0);
     lv_obj_set_pos(upgrade_hint_label, 36, 126);
@@ -351,7 +368,7 @@ void ui_page_16_ui_upgrade_create(lv_obj_t* parent) //创建升级页面
     lv_obj_add_event_cb(g_upgrade_btn, upgrade_start_btn_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t* upgrade_label = lv_label_create(g_upgrade_btn);
-    lv_label_set_text(upgrade_label, "UPGRADE UI");
+    lv_label_set_text(upgrade_label, page_16_text_get(UI_TEXT_PAGE16_UPGRADE_BTN));
     lv_obj_set_style_text_font(upgrade_label, &lv_font_montserrat_22, 0);
     lv_obj_center(upgrade_label);
 

@@ -1,6 +1,6 @@
 #include "lv_upgrade_popup.h"
-#include "lv_upgrade_popup_text.h"
 #include "un260/lv_core/ui_upgrade_service.h"
+#include "un260/lv_system/ui_text.h"
 
 #include "lvgl/lvgl.h"
 #include <stdbool.h>
@@ -393,7 +393,7 @@ static void upgrade_popup_on_confirm_click(lv_event_t* e)
     }
 
     if (ui_upgrade_service_start() != 0) {
-        upgrade_popup_show_fail(lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_FAIL_START_SCRIPT));
+        upgrade_popup_show_fail(ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_FAIL_START_SCRIPT));
         return;
     }
 
@@ -487,14 +487,14 @@ static void upgrade_popup_create_prompt_card(void)
     lv_obj_set_pos(g_upgrade_popup.prompt_title_group, 128, 38);
 
     g_upgrade_popup.prompt_tag = lv_label_create(g_upgrade_popup.prompt_title_group);
-    lv_label_set_text(g_upgrade_popup.prompt_tag, lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_TAG));
+    lv_label_set_text(g_upgrade_popup.prompt_tag, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_TAG));
     upgrade_popup_apply_text_style(g_upgrade_popup.prompt_tag,
                                    lv_color_hex(UPGRADE_POPUP_TEXT_LIGHT_COLOR),
                                    &lv_font_montserrat_10);
     lv_obj_set_pos(g_upgrade_popup.prompt_tag, 0, 0);
 
     g_upgrade_popup.prompt_title = lv_label_create(g_upgrade_popup.prompt_title_group);
-    lv_label_set_text(g_upgrade_popup.prompt_title, lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_PROMPT_TITLE));
+    lv_label_set_text(g_upgrade_popup.prompt_title, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_PROMPT_TITLE));
     upgrade_popup_apply_text_style(g_upgrade_popup.prompt_title,
                                    lv_color_hex(UPGRADE_POPUP_TEXT_MAIN_COLOR),
                                    &lv_font_montserrat_18);
@@ -509,7 +509,7 @@ static void upgrade_popup_create_prompt_card(void)
     lv_obj_set_width(g_upgrade_popup.prompt_desc, 372);
     lv_label_set_long_mode(g_upgrade_popup.prompt_desc, LV_LABEL_LONG_WRAP);
     lv_label_set_text(g_upgrade_popup.prompt_desc,
-                      lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_PROMPT_DESC));
+                      ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_PROMPT_DESC));
     upgrade_popup_apply_text_style(g_upgrade_popup.prompt_desc,
                                    lv_color_hex(UPGRADE_POPUP_TEXT_DESC_COLOR),
                                    &lv_font_montserrat_14);
@@ -517,13 +517,13 @@ static void upgrade_popup_create_prompt_card(void)
 
     g_upgrade_popup.prompt_btn_cancel =
         upgrade_popup_create_btn(g_upgrade_popup.prompt_content_group,
-                                 lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_PROMPT_BTN_CANCEL),
+                                 ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_PROMPT_BTN_CANCEL),
                                  216, 56, 116, 48,
                                  UPGRADE_POPUP_BTN_GHOST,
                                  upgrade_popup_on_cancel_click);
     g_upgrade_popup.prompt_btn_confirm =
         upgrade_popup_create_btn(g_upgrade_popup.prompt_content_group,
-                                 lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_PROMPT_BTN_CONFIRM),
+                                 ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_PROMPT_BTN_CONFIRM),
                                  348, 56, 136, 48,
                                  UPGRADE_POPUP_BTN_MAIN,
                                  upgrade_popup_on_confirm_click);
@@ -556,7 +556,7 @@ static void upgrade_popup_create_progress_card(void)
     lv_obj_set_pos(g_upgrade_popup.progress_title_group, 102, 38);
 
     g_upgrade_popup.progress_tag = lv_label_create(g_upgrade_popup.progress_title_group);
-    lv_label_set_text(g_upgrade_popup.progress_tag, lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_TAG));
+    lv_label_set_text(g_upgrade_popup.progress_tag, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_TAG));
     upgrade_popup_apply_text_style(g_upgrade_popup.progress_tag,
                                    lv_color_hex(UPGRADE_POPUP_TEXT_LIGHT_COLOR),
                                    &lv_font_montserrat_10);
@@ -565,7 +565,7 @@ static void upgrade_popup_create_progress_card(void)
     lv_obj_set_pos(g_upgrade_popup.progress_tag, 0, 0);
 
     g_upgrade_popup.progress_title = lv_label_create(g_upgrade_popup.progress_title_group);
-    lv_label_set_text(g_upgrade_popup.progress_title, lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_PROGRESS_TITLE));
+    lv_label_set_text(g_upgrade_popup.progress_title, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_PROGRESS_TITLE));
     upgrade_popup_apply_text_style(g_upgrade_popup.progress_title,
                                    lv_color_hex(UPGRADE_POPUP_TEXT_MAIN_COLOR),
                                    &lv_font_montserrat_16);
@@ -574,7 +574,7 @@ static void upgrade_popup_create_progress_card(void)
     lv_obj_set_pos(g_upgrade_popup.progress_title, 0, 18);
 
     g_upgrade_popup.progress_subtitle = lv_label_create(g_upgrade_popup.progress_card);
-    lv_label_set_text(g_upgrade_popup.progress_subtitle, lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_PROGRESS_DESC));
+    lv_label_set_text(g_upgrade_popup.progress_subtitle, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_PROGRESS_DESC));
     upgrade_popup_apply_text_style(g_upgrade_popup.progress_subtitle,
                                    lv_color_hex(UPGRADE_POPUP_TEXT_DESC_COLOR),
                                    &lv_font_montserrat_12);
@@ -611,7 +611,7 @@ static void upgrade_popup_create_progress_card(void)
     lv_obj_set_width(g_upgrade_popup.progress_step, 220);
     lv_obj_set_style_text_align(g_upgrade_popup.progress_step, LV_TEXT_ALIGN_RIGHT, 0);
     lv_label_set_text(g_upgrade_popup.progress_step,
-                      lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_PROGRESS_STEP_VERIFY));
+                      ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_PROGRESS_STEP_VERIFY));
     upgrade_popup_apply_text_style(g_upgrade_popup.progress_step,
                                    lv_color_hex(UPGRADE_POPUP_TEXT_DESC_COLOR),
                                    &lv_font_montserrat_12);
@@ -645,7 +645,7 @@ static void upgrade_popup_create_success_card(void)
     lv_obj_set_pos(g_upgrade_popup.success_title_group, 102, 38);
 
     g_upgrade_popup.success_tag = lv_label_create(g_upgrade_popup.success_title_group);
-    lv_label_set_text(g_upgrade_popup.success_tag, lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_TAG));
+    lv_label_set_text(g_upgrade_popup.success_tag, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_TAG));
     upgrade_popup_apply_text_style(g_upgrade_popup.success_tag,
                                    lv_color_hex(UPGRADE_POPUP_TEXT_LIGHT_COLOR),
                                    &lv_font_montserrat_10);
@@ -654,7 +654,7 @@ static void upgrade_popup_create_success_card(void)
     lv_obj_set_pos(g_upgrade_popup.success_tag, 0, 0);
 
     g_upgrade_popup.success_title = lv_label_create(g_upgrade_popup.success_title_group);
-    lv_label_set_text(g_upgrade_popup.success_title, lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_SUCCESS_TITLE));
+    lv_label_set_text(g_upgrade_popup.success_title, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_SUCCESS_TITLE));
     upgrade_popup_apply_text_style(g_upgrade_popup.success_title,
                                    lv_color_hex(UPGRADE_POPUP_TEXT_MAIN_COLOR),
                                    &lv_font_montserrat_18);
@@ -671,7 +671,7 @@ static void upgrade_popup_create_success_card(void)
     lv_obj_set_width(g_upgrade_popup.success_desc, 320);
     lv_obj_set_style_text_align(g_upgrade_popup.success_desc, LV_TEXT_ALIGN_CENTER, 0);
     lv_label_set_text(g_upgrade_popup.success_desc,
-                      lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_SUCCESS_DESC));
+                      ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_SUCCESS_DESC));
     upgrade_popup_apply_text_style(g_upgrade_popup.success_desc,
                                    lv_color_hex(UPGRADE_POPUP_TEXT_DESC_COLOR),
                                    &lv_font_montserrat_14);
@@ -680,13 +680,13 @@ static void upgrade_popup_create_success_card(void)
 
     g_upgrade_popup.success_btn_later =
         upgrade_popup_create_btn(g_upgrade_popup.success_content_group,
-                                 lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_SUCCESS_BTN_LATER),
+                                 ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_SUCCESS_BTN_LATER),
                                  0, 56, 116, 50,
                                  UPGRADE_POPUP_BTN_GHOST,
                                  upgrade_popup_on_reboot_later_click);
     g_upgrade_popup.success_btn =
         upgrade_popup_create_btn(g_upgrade_popup.success_content_group,
-                                 lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_SUCCESS_BTN_CONFIRM),
+                                 ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_SUCCESS_BTN_CONFIRM),
                                  132, 56, 228, 50,
                                  UPGRADE_POPUP_BTN_SUCCESS,
                                  upgrade_popup_on_reboot_click);
@@ -717,7 +717,7 @@ static void upgrade_popup_create_fail_card(void)
     lv_obj_align(g_upgrade_popup.fail_title_group, LV_ALIGN_TOP_MID, 0, 118);
 
     g_upgrade_popup.fail_title = lv_label_create(g_upgrade_popup.fail_title_group);
-    lv_label_set_text(g_upgrade_popup.fail_title, lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_FAIL_TITLE));
+    lv_label_set_text(g_upgrade_popup.fail_title, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_FAIL_TITLE));
     upgrade_popup_apply_text_style(g_upgrade_popup.fail_title,
                                    lv_color_hex(UPGRADE_POPUP_TEXT_MAIN_COLOR),
                                    &lv_font_montserrat_18);
@@ -732,7 +732,7 @@ static void upgrade_popup_create_fail_card(void)
     lv_obj_set_width(g_upgrade_popup.fail_desc, 320);
     lv_obj_set_style_text_align(g_upgrade_popup.fail_desc, LV_TEXT_ALIGN_CENTER, 0);
     lv_label_set_text(g_upgrade_popup.fail_desc,
-                      lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_FAIL_DESC));
+                      ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_FAIL_DESC));
     upgrade_popup_apply_text_style(g_upgrade_popup.fail_desc,
                                    lv_color_hex(UPGRADE_POPUP_TEXT_DESC_COLOR),
                                    &lv_font_montserrat_14);
@@ -741,7 +741,7 @@ static void upgrade_popup_create_fail_card(void)
 
     g_upgrade_popup.fail_btn =
         upgrade_popup_create_btn(g_upgrade_popup.fail_content_group,
-                                 lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_FAIL_BTN_RETRY),
+                                 ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_FAIL_BTN_RETRY),
                                  82, 56, 196, 50,
                                  UPGRADE_POPUP_BTN_MAIN,
                                  upgrade_popup_on_retry_click);
@@ -815,7 +815,7 @@ static void upgrade_popup_set_state(upgrade_popup_state_t state)
         lv_bar_set_value(g_upgrade_popup.progress_bar, 0, LV_ANIM_OFF);
         lv_label_set_text(g_upgrade_popup.progress_percent, "0%");
         lv_label_set_text(g_upgrade_popup.progress_step,
-                          lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_PROGRESS_STEP_VERIFY));
+                          ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_PROGRESS_STEP_VERIFY));
         upgrade_popup_reset_card_pos(g_upgrade_popup.progress_card);
         lv_obj_clear_flag(g_upgrade_popup.progress_card, LV_OBJ_FLAG_HIDDEN);
         upgrade_popup_run_state_anim(state);
@@ -987,60 +987,60 @@ static void upgrade_popup_show_prompt(void)
 static void upgrade_popup_refresh_text_internal(void) //刷新升级弹窗当前语言文本
 {
     if (g_upgrade_popup.prompt_tag) {
-        lv_label_set_text(g_upgrade_popup.prompt_tag, lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_TAG));
+        lv_label_set_text(g_upgrade_popup.prompt_tag, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_TAG));
     }
     if (g_upgrade_popup.prompt_title) {
-        lv_label_set_text(g_upgrade_popup.prompt_title, lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_PROMPT_TITLE));
+        lv_label_set_text(g_upgrade_popup.prompt_title, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_PROMPT_TITLE));
     }
     if (g_upgrade_popup.prompt_desc) {
-        lv_label_set_text(g_upgrade_popup.prompt_desc, lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_PROMPT_DESC));
+        lv_label_set_text(g_upgrade_popup.prompt_desc, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_PROMPT_DESC));
     }
     if (g_upgrade_popup.prompt_btn_cancel) {
         upgrade_popup_btn_set_text(g_upgrade_popup.prompt_btn_cancel,
-                                   lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_PROMPT_BTN_CANCEL));
+                                   ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_PROMPT_BTN_CANCEL));
     }
     if (g_upgrade_popup.prompt_btn_confirm) {
         upgrade_popup_btn_set_text(g_upgrade_popup.prompt_btn_confirm,
-                                   lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_PROMPT_BTN_CONFIRM));
+                                   ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_PROMPT_BTN_CONFIRM));
     }
 
     if (g_upgrade_popup.progress_tag) {
-        lv_label_set_text(g_upgrade_popup.progress_tag, lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_TAG));
+        lv_label_set_text(g_upgrade_popup.progress_tag, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_TAG));
     }
     if (g_upgrade_popup.progress_title) {
-        lv_label_set_text(g_upgrade_popup.progress_title, lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_PROGRESS_TITLE));
+        lv_label_set_text(g_upgrade_popup.progress_title, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_PROGRESS_TITLE));
     }
     if (g_upgrade_popup.progress_subtitle) {
-        lv_label_set_text(g_upgrade_popup.progress_subtitle, lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_PROGRESS_DESC));
+        lv_label_set_text(g_upgrade_popup.progress_subtitle, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_PROGRESS_DESC));
     }
 
     if (g_upgrade_popup.success_tag) {
-        lv_label_set_text(g_upgrade_popup.success_tag, lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_TAG));
+        lv_label_set_text(g_upgrade_popup.success_tag, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_TAG));
     }
     if (g_upgrade_popup.success_title) {
-        lv_label_set_text(g_upgrade_popup.success_title, lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_SUCCESS_TITLE));
+        lv_label_set_text(g_upgrade_popup.success_title, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_SUCCESS_TITLE));
     }
     if (g_upgrade_popup.success_desc) {
-        lv_label_set_text(g_upgrade_popup.success_desc, lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_SUCCESS_DESC));
+        lv_label_set_text(g_upgrade_popup.success_desc, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_SUCCESS_DESC));
     }
     if (g_upgrade_popup.success_btn_later) {
         upgrade_popup_btn_set_text(g_upgrade_popup.success_btn_later,
-                                   lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_SUCCESS_BTN_LATER));
+                                   ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_SUCCESS_BTN_LATER));
     }
     if (g_upgrade_popup.success_btn) {
         upgrade_popup_btn_set_text(g_upgrade_popup.success_btn,
-                                   lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_SUCCESS_BTN_CONFIRM));
+                                   ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_SUCCESS_BTN_CONFIRM));
     }
 
     if (g_upgrade_popup.fail_title) {
-        lv_label_set_text(g_upgrade_popup.fail_title, lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_FAIL_TITLE));
+        lv_label_set_text(g_upgrade_popup.fail_title, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_FAIL_TITLE));
     }
     if (g_upgrade_popup.fail_desc) {
-        lv_label_set_text(g_upgrade_popup.fail_desc, lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_FAIL_DESC));
+        lv_label_set_text(g_upgrade_popup.fail_desc, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_FAIL_DESC));
     }
     if (g_upgrade_popup.fail_btn) {
         upgrade_popup_btn_set_text(g_upgrade_popup.fail_btn,
-                                   lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_FAIL_BTN_RETRY));
+                                   ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_FAIL_BTN_RETRY));
     }
 }
 
@@ -1227,7 +1227,7 @@ static void upgrade_popup_result_timer_cb(lv_timer_t* timer)
     if (g_upgrade_popup.result_success) {
         upgrade_popup_show_success();
     } else {
-        upgrade_popup_show_fail(lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_FAIL_DESC));
+        upgrade_popup_show_fail(ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_FAIL_DESC));
     }
 }
 
@@ -1296,13 +1296,13 @@ static void upgrade_popup_show_fail(const char* desc_text)
                                   LV_PART_INDICATOR);
         lv_bar_set_value(g_upgrade_popup.progress_bar, 12, LV_ANIM_ON);
         lv_label_set_text(g_upgrade_popup.progress_step,
-                          lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_PROGRESS_STEP_VERIFY_FAIL));
+                          ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_PROGRESS_STEP_VERIFY_FAIL));
         lv_label_set_text(g_upgrade_popup.progress_percent, "12%");
     }
 
     if (g_upgrade_popup.fail_desc) {
         lv_label_set_text(g_upgrade_popup.fail_desc,
-                          desc_text ? desc_text : lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_FAIL_DESC));
+                          desc_text ? desc_text : ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_FAIL_DESC));
     }
 
     upgrade_popup_set_state(UPGRADE_POPUP_STATE_FAIL);
@@ -1347,7 +1347,7 @@ void lv_upgrade_popup_show_result(bool success, const char* desc_text)
             lv_label_set_text(g_upgrade_popup.success_desc,
                               (desc_text && desc_text[0] != '\0') ?
                               desc_text :
-                              lv_upgrade_popup_text_get(UPGRADE_POPUP_TEXT_SUCCESS_DESC));
+                              ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_SUCCESS_DESC));
         }
         upgrade_popup_show_success();
         return;
