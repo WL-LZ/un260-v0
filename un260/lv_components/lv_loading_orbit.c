@@ -43,6 +43,27 @@ void lv_loading_orbit_set_opa(lv_obj_t *orbit, lv_opa_t opa)
     }
 }
 
+void lv_loading_orbit_set_indicator_color(lv_obj_t *orbit, lv_color_t color) //设置旋转环高亮颜色
+{
+    uint32_t child_cnt;
+
+    if (!orbit || !lv_obj_is_valid(orbit)) {
+        return;
+    }
+
+    child_cnt = lv_obj_get_child_cnt(orbit);
+    for (uint32_t i = 0; i < child_cnt; i++) {
+        lv_obj_t *child = lv_obj_get_child(orbit, i);
+        if (!child || !lv_obj_is_valid(child)) {
+            continue;
+        }
+
+        if (lv_obj_check_type(child, &lv_arc_class)) {
+            lv_obj_set_style_arc_color(child, color, LV_PART_INDICATOR);
+        }
+    }
+}
+
 lv_obj_t *lv_loading_orbit_create_sized(lv_obj_t *parent, lv_coord_t size)
 {
     lv_coord_t orbit_size = loading_orbit_clamp(size, 20);

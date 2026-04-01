@@ -27,6 +27,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_components/lv_components.c
     un260/lv_components/lv_fault_popup.c
     un260/lv_components/lv_loading_orbit.c
+    un260/lv_components/lv_print_toast_text.c
     un260/lv_components/lv_print_toast.c
     un260/lv_components/lv_loading_grid.c
     un260/lv_components/lv_debug_overlay.c
