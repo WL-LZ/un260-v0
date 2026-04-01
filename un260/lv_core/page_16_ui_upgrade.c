@@ -1,18 +1,9 @@
 #include "page_16_ui_upgrade.h"
 #include "un260/lv_core/lv_page_manager.h"
+#include "un260/lv_core/ui_upgrade_service.h"
+#include "un260/lv_components/lv_upgrade_popup.h"
 
 #include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <fcntl.h>
-
-#define USB_MNT            "/mnt/usb"
-#define UPGRADE_FILE_PATH  "/mnt/usb/update/test_lvgl"
-#define UPDATE_SCRIPT_PATH "/usr/bin/ui_update.sh"
 
 static lv_obj_t*   upgrade_page = NULL;
 static lv_obj_t*   upgrade_usb_status_label = NULL;
@@ -28,145 +19,42 @@ static lv_obj_t*   g_arc_label = NULL;
 static lv_obj_t*   g_poweroff_label = NULL;
 
 static lv_timer_t* g_wait_timer = NULL;
+static lv_timer_t* g_upgrade_result_timer = NULL;
 static uint32_t    g_wait_sec = 0;
 static bool        g_upgrading = false;
 
 static lv_anim_t   g_arc_anim;
 static bool        g_arc_anim_inited = false;
 
-static void log_append(const char* msg) //写调试日志到 /tmp/ui_btn.log
-{
-    int fd = open("/tmp/ui_btn.log", O_WRONLY | O_CREAT | O_APPEND, 0644);
-    if (fd < 0) return;
-    write(fd, msg, (int)strlen(msg));
-    write(fd, "\n", 1);
-    fsync(fd);
-    close(fd);
-}
-
-static bool upgrade_file_exists(void) //检查升级包是否存在
-{
-    struct stat st;
-    return (stat(UPGRADE_FILE_PATH, &st) == 0) && S_ISREG(st.st_mode);
-}
-
-static bool usb_device_present(void) //检查U盘设备节点是否存在
-{
-    return (access("/dev/sda1", F_OK) == 0) || (access("/dev/sdb1", F_OK) == 0);
-}
-
-static bool usb_mounted_on_mnt_usb(void) //检查 /mnt/usb 是否已挂载
-{
-    FILE* fp = fopen("/proc/mounts", "r");
-    if (!fp) return false;
-
-    char dev[128], dir[128], fstype[64];
-    bool mounted = false;
-
-    while (fscanf(fp, "%127s %127s %63s %*s %*d %*d\n", dev, dir, fstype) == 3) {
-        if (strcmp(dir, USB_MNT) == 0) { mounted = true; break; }
-    }
-
-    fclose(fp);
-    return mounted;
-}
-
-static void try_mount_usb_once(void) //尝试自动挂载U盘到 /mnt/usb
-{
-    system("mkdir -p /mnt/usb");
-
-    if (usb_mounted_on_mnt_usb()) return;
-
-    system("mount /dev/sda1 /mnt/usb 2>/dev/null");
-    if (usb_mounted_on_mnt_usb()) return;
-
-    system("mount /dev/sdb1 /mnt/usb 2>/dev/null");
-}
-
-static int strip_crlf_inplace(const char* path) //去除脚本CRLF换行避免BusyBox解析失败
-{
-    int in = open(path, O_RDONLY);
-    if (in < 0) return -1;
-
-    char tmp_path[256];
-    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", path);
-
-    int out = open(tmp_path, O_WRONLY | O_CREAT | O_TRUNC, 0755);
-    if (out < 0) { close(in); return -1; }
-
-    char buf[512];
-    ssize_t n;
-    while ((n = read(in, buf, sizeof(buf))) > 0) {
-        for (ssize_t i = 0; i < n; i++) {
-            if (buf[i] == '\r') continue;
-            if (write(out, &buf[i], 1) != 1) {
-                close(in); close(out);
-                return -1;
-            }
-        }
-    }
-
-    fsync(out);
-    close(in);
-    close(out);
-
-    if (rename(tmp_path, path) != 0) return -1;
-    chmod(path, 0755);
-    sync();
-    return 0;
-}
-
-static int start_update_script_async(void) //后台启动升级脚本（不阻塞UI）
-{
-    pid_t pid = fork();
-    if (pid < 0) return -1;
-
-    if (pid == 0) {
-        FILE* fp = fopen("/mnt/usb/ui_update_child.log", "a");
-        if (fp) {
-            dup2(fileno(fp), 1);
-            dup2(fileno(fp), 2);
-        }
-
-        strip_crlf_inplace(UPDATE_SCRIPT_PATH);
-
-        execl("/bin/sh", "sh", UPDATE_SCRIPT_PATH, (char*)NULL);
-        _exit(127);
-    }
-
-    return 0;
-}
-
 static void update_upgrade_status(void) //刷新U盘/挂载/包状态（升级中不刷新）
 {
-    if (g_upgrading) return;
+    ui_upgrade_detect_info_t detect_info;
 
-    const bool dev_ok  = usb_device_present();
-    const bool mnt_ok  = usb_mounted_on_mnt_usb();
-    const bool file_ok = upgrade_file_exists();
+    if (g_upgrading) return;
+    ui_upgrade_service_detect(&detect_info);
 
     if (upgrade_usb_status_label && lv_obj_is_valid(upgrade_usb_status_label)) {
         lv_label_set_text_fmt(upgrade_usb_status_label, "U DISK: %s",
-                              dev_ok ? "INSERTED" : "NOT INSERTED");
+                              detect_info.usb_present ? "INSERTED" : "NOT INSERTED");
         lv_obj_set_style_text_color(upgrade_usb_status_label,
-            dev_ok ? lv_color_hex(0x1F9D55) : lv_color_hex(0xC03A2B), 0);
+            detect_info.usb_present ? lv_color_hex(0x1F9D55) : lv_color_hex(0xC03A2B), 0);
     }
 
     if (upgrade_file_status_label && lv_obj_is_valid(upgrade_file_status_label)) {
         lv_label_set_text_fmt(upgrade_file_status_label,
             "MOUNT: %s   PACKAGE: %s",
-            mnt_ok ? "OK" : "NOT MOUNTED",
-            file_ok ? "FOUND" : "NOT FOUND");
+            detect_info.usb_mounted ? "OK" : "NOT MOUNTED",
+            detect_info.package_found ? "FOUND" : "NOT FOUND");
     }
 
     if (upgrade_hint_label && lv_obj_is_valid(upgrade_hint_label)) {
-        if (!dev_ok) {
+        if (!detect_info.usb_present) {
             lv_label_set_text(upgrade_hint_label, "Please insert U disk.");
             lv_obj_set_style_text_color(upgrade_hint_label, lv_color_hex(0xC03A2B), 0);
-        } else if (!mnt_ok) {
+        } else if (!detect_info.usb_mounted) {
             lv_label_set_text(upgrade_hint_label, "U disk inserted. Click UPGRADE to auto-mount and upgrade.");
             lv_obj_set_style_text_color(upgrade_hint_label, lv_color_hex(0xC07A2B), 0);
-        } else if (!file_ok) {
+        } else if (!detect_info.package_found) {
             lv_label_set_text(upgrade_hint_label, "Mounted. Missing /mnt/usb/update/test_lvgl.");
             lv_obj_set_style_text_color(upgrade_hint_label, lv_color_hex(0xC07A2B), 0);
         } else {
@@ -209,6 +97,71 @@ static void wait_timer_cb(lv_timer_t* t) //升级中：每秒更新提示文字
 
     if (g_wait_sec == 60 && g_poweroff_label && lv_obj_is_valid(g_poweroff_label)) {
         lv_label_set_text(g_poweroff_label, "Still updating... Do NOT power off.");
+    }
+}
+
+static void upgrade_waiting_exit(bool success)
+{
+    if (g_wait_timer) {
+        lv_timer_del(g_wait_timer);
+        g_wait_timer = NULL;
+    }
+    if (g_upgrade_result_timer) {
+        lv_timer_del(g_upgrade_result_timer);
+        g_upgrade_result_timer = NULL;
+    }
+
+    g_upgrading = false;
+
+    if (g_upgrade_btn) lv_obj_clear_state(g_upgrade_btn, LV_STATE_DISABLED);
+    if (g_esc_btn)     lv_obj_clear_state(g_esc_btn, LV_STATE_DISABLED);
+
+    if (g_arc && lv_obj_is_valid(g_arc)) {
+        lv_anim_del(g_arc, arc_set_value_cb);
+    }
+
+    if (g_poweroff_label && lv_obj_is_valid(g_poweroff_label)) {
+        lv_label_set_text(g_poweroff_label,
+                          success ? "Update finished." : "Update failed. Please check the package.");
+    }
+}
+
+static void upgrade_result_timer_cb(lv_timer_t* timer)
+{
+    ui_upgrade_service_status_t status;
+
+    (void)timer;
+
+    ui_upgrade_service_poll(&status);
+
+    if (g_arc && lv_obj_is_valid(g_arc)) {
+        lv_arc_set_value(g_arc, (int16_t)status.progress);
+    }
+    if (g_arc_label && lv_obj_is_valid(g_arc_label)) {
+        lv_label_set_text_fmt(g_arc_label, "%d%%", status.progress);
+    }
+
+    if (upgrade_hint_label && lv_obj_is_valid(upgrade_hint_label) &&
+        status.step_text[0] != '\0') {
+        lv_label_set_text(upgrade_hint_label, status.step_text);
+        lv_obj_set_style_text_color(upgrade_hint_label, lv_color_hex(0x1F9D55), 0);
+    }
+
+    if (!status.finished) return;
+
+    upgrade_waiting_exit(status.success);
+
+    if (status.success) {
+        lv_upgrade_popup_show_result(true, status.result_text);
+    } else {
+        lv_upgrade_popup_show_result(false, status.result_text);
+        if (upgrade_hint_label && lv_obj_is_valid(upgrade_hint_label)) {
+            lv_label_set_text(upgrade_hint_label,
+                              status.result_text[0] != '\0' ?
+                              status.result_text :
+                              "Upgrade failed. Please check the package and try again.");
+            lv_obj_set_style_text_color(upgrade_hint_label, lv_color_hex(0xC03A2B), 0);
+        }
     }
 }
 
@@ -286,59 +239,54 @@ static void upgrade_esc_btn_cb(lv_event_t* e) //ESC返回上一页（升级中�
 
 static void upgrade_start_btn_cb(lv_event_t* e) //升级按钮：检查U盘->启动脚本->进入等待动画
 {
-    log_append("BTN: enter upgrade_start_btn_cb");
+    ui_upgrade_detect_info_t detect_info;
+
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
     if (g_upgrading) return;
 
-    if (!usb_device_present()) {
+    ui_upgrade_service_detect(&detect_info);
+
+    if (!detect_info.usb_present) {
         if (upgrade_hint_label) {
             lv_label_set_text(upgrade_hint_label, "No U disk. Please insert U disk.");
             lv_obj_set_style_text_color(upgrade_hint_label, lv_color_hex(0xC03A2B), 0);
         }
-        log_append("ERR: no usb");
         return;
     }
 
-    try_mount_usb_once();
-
-    if (!usb_mounted_on_mnt_usb()) {
+    if (!detect_info.usb_mounted) {
         if (upgrade_hint_label) {
             lv_label_set_text(upgrade_hint_label, "Auto-mount failed. Please mount U disk to /mnt/usb.");
             lv_obj_set_style_text_color(upgrade_hint_label, lv_color_hex(0xC03A2B), 0);
         }
-        log_append("ERR: mount failed");
         return;
     }
 
-    if (!upgrade_file_exists()) {
+    if (!detect_info.package_found) {
         if (upgrade_hint_label) {
             lv_label_set_text(upgrade_hint_label, "Missing /mnt/usb/update/test_lvgl");
             lv_obj_set_style_text_color(upgrade_hint_label, lv_color_hex(0xC03A2B), 0);
         }
-        log_append("ERR: package missing");
         return;
     }
 
     upgrade_ui_enter_waiting();
 
-    if (start_update_script_async() != 0) {
-        g_upgrading = false;
-
-        if (g_upgrade_btn) lv_obj_clear_state(g_upgrade_btn, LV_STATE_DISABLED);
-        if (g_esc_btn)     lv_obj_clear_state(g_esc_btn, LV_STATE_DISABLED);
-
+    ui_upgrade_service_reset();
+    if (ui_upgrade_service_start() != 0) {
+        upgrade_waiting_exit(false);
         if (upgrade_hint_label) {
             lv_label_set_text(upgrade_hint_label, "Start update script failed.");
             lv_obj_set_style_text_color(upgrade_hint_label, lv_color_hex(0xC03A2B), 0);
         }
-
-        if (g_wait_timer) { lv_timer_del(g_wait_timer); g_wait_timer = NULL; }
-
-        log_append("ERR: start script failed");
         return;
     }
 
-    log_append("OK: script started");
+    if (!g_upgrade_result_timer) {
+        g_upgrade_result_timer = lv_timer_create(upgrade_result_timer_cb, 200, NULL);
+    } else {
+        lv_timer_reset(g_upgrade_result_timer);
+    }
 }
 
 void ui_page_16_ui_upgrade_create(lv_obj_t* parent) //创建升级页面
@@ -424,6 +372,11 @@ void ui_page_16_ui_upgrade_destroy(void) //销毁升级页面
     if (g_wait_timer) {
         lv_timer_del(g_wait_timer);
         g_wait_timer = NULL;
+    }
+
+    if (g_upgrade_result_timer) {
+        lv_timer_del(g_upgrade_result_timer);
+        g_upgrade_result_timer = NULL;
     }
 
     if (g_arc && lv_obj_is_valid(g_arc)) {
