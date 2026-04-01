@@ -23,6 +23,7 @@
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_components/lv_fault_popup.h"
 #include "un260/lv_components/lv_print_toast.h"
+#include "un260/lv_core/ui_upgrade_service.h"
 #include "aic_ui/perf_stats.h"
 #include <stdlib.h>
 //-------------------- UART 打印函数 --------------------
@@ -60,10 +61,28 @@ static bool g_denom_query_deferred = false;
 static bool g_denom_query_got_frame = false;
 static uint32_t g_denom_query_tick = 0;
 static uint8_t g_denom_query_retry = 0;
+#define UI_UPGRADE_DETECT_INTERVAL_MS 500
 #define DENOM_QUERY_TIMEOUT_MS 1500
 #define DENOM_QUERY_MAX_RETRY 2
+static uint32_t g_ui_upgrade_detect_tick = 0;
 
 static uint8_t g_boot_selftest_result[5] = {0};
+static void ui_upgrade_popup_poll(uint32_t now)
+{
+    ui_upgrade_detect_info_t detect_info;
+    page_id_t current_page;
+
+    current_page = ui_manager_get_current_page();
+
+    if (current_page == UI_PAGE_BOOT_ANIM || current_page == UI_PAGE_BOOT) return;
+    if (current_page == UI_PAGE_UI_UPGRADE) return;
+    if ((now - g_ui_upgrade_detect_tick) < UI_UPGRADE_DETECT_INTERVAL_MS) return;
+
+    g_ui_upgrade_detect_tick = now;
+    ui_upgrade_service_detect(&detect_info);
+    lv_upgrade_popup_process_detect(detect_info.usb_present, detect_info.package_found);
+}
+
 static void boot_selftest_result_reset(void)
 {
     memset(g_boot_selftest_result, 0, sizeof(g_boot_selftest_result));
@@ -1553,6 +1572,7 @@ int main(void) {
                                 (ui_tv_end.tv_usec - ui_tv_start.tv_usec));
         perf_stats_report_ui_time_us(ui_time_us);
         PCCmdHandle();
+        ui_upgrade_popup_poll(now);
 
         if (g_denom_query_pending &&
             (now - g_denom_query_tick) >= DENOM_QUERY_TIMEOUT_MS) {

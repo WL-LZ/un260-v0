@@ -30,6 +30,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_components/lv_print_toast.c
     un260/lv_components/lv_loading_grid.c
     un260/lv_components/lv_debug_overlay.c
+    un260/lv_components/lv_upgrade_popup.c
     un260/lv_core/lv_page_event.c
     un260/lv_core/lv_page_manager.c
     un260/lv_core/page_01_main.c
@@ -47,6 +48,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_core/page_14_main_upgrade.c
     un260/lv_core/page_15_image_upgrade.c
     un260/lv_core/page_16_ui_upgrade.c
+    un260/lv_core/ui_upgrade_service.c
     un260/lv_core/page_17_motor_test.c
     un260/lv_core/page_00_boot_anim.c
     
