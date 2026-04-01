@@ -4,7 +4,7 @@
 #include "ui_lang.h"
 
 const STR_t str_group[Str_Max] = {
-    {"REJECT:","Reject","zhongwen","hanyu"}
+    {"REJECT:","REJECT","zhongwen","hanyu"}
 };
 
 
