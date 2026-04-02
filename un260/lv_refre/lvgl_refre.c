@@ -821,13 +821,14 @@ void page_01_curr_img_refre(void)
 #define CURR_LEFT_BG_COLOR       0xEDF0F4
 #define CURR_RIGHT_BG_COLOR      0xF4F5F7
 #define CURR_CARD_BG_UNSEL       0xF7F7F7
-#define CURR_TEXT_SEL            0x0080FF
+#define CURR_TEXT_SEL            0xFC4000
 #define CURR_TEXT_UNSEL          0xBEBFC0
 #define CURR_IMG_UNSEL           0xCDCED0
 #define CURR_TRACK_BG            0xEBECED
 #define CURR_TRACK_FG            0x75A2DF
 
 #define CURR_CARD_SELECTED_BG_PATH      "L:/usr/local/share/lvgl_data/selected_card.png"
+#define CURR_GRID_SELECTED_MARK_PATH    "L:/usr/local/share/lvgl_data/view_selected.png"
 #define CURR_CARD_SELECTED_BG_OFS_X     18
 #define CURR_CARD_SELECTED_BG_OFS_TOP   16
 
@@ -865,7 +866,7 @@ void page_01_curr_img_refre(void)
 #define CURR_GRID_TEXT_BOTTOM    -4
 #define CURR_GRID_GROUP_OFS_X    25
 #define CURR_GRID_FLAG_Y         (-6)
-#define CURR_GRID_FAV_X          0
+#define CURR_GRID_FAV_X          -3
 #define CURR_GRID_FAV_Y          -2
 
 #define CURR_FAV_BTN_IN_CARD_X   139
@@ -895,6 +896,7 @@ typedef struct {
 typedef struct {
     lv_obj_t* item;
     lv_obj_t* img;
+    lv_obj_t* selected_mark;
     lv_obj_t* name;
     lv_obj_t* fav_btn;
     lv_obj_t* fav_icon;
@@ -1776,7 +1778,7 @@ static void curr_update_card_fav_ui(int i)
     }
 
     lv_obj_clear_flag(g_curr_cards[i].fav_btn, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_set_style_bg_color(g_curr_cards[i].fav_btn, fav ? lv_color_hex(0xE9DEBD) : lv_color_hex(0xE5E5E6), 0);
+    lv_obj_set_style_bg_color(g_curr_cards[i].fav_btn, fav ? lv_color_hex(0xBFDFFF) : lv_color_hex(0xE5E5E6), 0);
     lv_obj_set_style_bg_opa(g_curr_cards[i].fav_btn, LV_OPA_COVER, 0);
     lv_img_set_src(g_curr_cards[i].fav_icon, fav ? "L:/usr/local/share/lvgl_data/fav.png" : "L:/usr/local/share/lvgl_data/unfav.png");
 }
@@ -2183,8 +2185,18 @@ static void curr_build_grid_layer(void)
         curr_set_img_target_width(g_curr_grid_items[i].img, Machine_para.currencies[abs_idx], CURR_FLAG_TARGET_W);
         lv_obj_align(g_curr_grid_items[i].img, LV_ALIGN_TOP_MID, CURR_GRID_GROUP_OFS_X, CURR_GRID_FLAG_Y);
 
+        g_curr_grid_items[i].selected_mark = lv_img_create(g_curr_grid_items[i].item);
+        lv_img_set_src(g_curr_grid_items[i].selected_mark, CURR_GRID_SELECTED_MARK_PATH);
+        lv_obj_set_size(g_curr_grid_items[i].selected_mark, 24, 24);
+        lv_obj_align_to(g_curr_grid_items[i].selected_mark,
+                        g_curr_grid_items[i].img,
+                        LV_ALIGN_CENTER, 0, 0);
+        if (abs_idx != g_curr_sel_abs_idx) {
+            lv_obj_add_flag(g_curr_grid_items[i].selected_mark, LV_OBJ_FLAG_HIDDEN);
+        }
+
         g_curr_grid_items[i].fav_btn = lv_obj_create(g_curr_grid_items[i].item);
-        lv_obj_set_size(g_curr_grid_items[i].fav_btn, CURR_FAV_BTN_IN_CARD_W, CURR_FAV_BTN_IN_CARD_H);
+        lv_obj_set_size(g_curr_grid_items[i].fav_btn, CURR_FAV_BTN_IN_CARD_W - 2, CURR_FAV_BTN_IN_CARD_H - 2);
         lv_obj_set_pos(g_curr_grid_items[i].fav_btn, CURR_GRID_FAV_X, CURR_GRID_FAV_Y);
         lv_obj_set_style_radius(g_curr_grid_items[i].fav_btn, 0, 0);
         lv_obj_set_style_bg_opa(g_curr_grid_items[i].fav_btn, LV_OPA_TRANSP, 0);
