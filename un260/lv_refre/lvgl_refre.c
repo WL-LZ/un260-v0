@@ -821,6 +821,7 @@ void page_01_curr_img_refre(void)
 #define CURR_LEFT_BG_COLOR       0xEDF0F4
 #define CURR_RIGHT_BG_COLOR      0xF4F5F7
 #define CURR_CARD_BG_UNSEL       0xF7F7F7
+#define CURR_TEXT_SEL            0x0080FF
 #define CURR_TEXT_UNSEL          0xBEBFC0
 #define CURR_IMG_UNSEL           0xCDCED0
 #define CURR_TRACK_BG            0xEBECED
@@ -854,13 +855,18 @@ void page_01_curr_img_refre(void)
 #define CURR_LEFT_NO_X           184
 #define CURR_LEFT_NO_Y           300
 
-#define CURR_GRID_COLS           5
-#define CURR_GRID_CELL_W         190
-#define CURR_GRID_CELL_H         120
-#define CURR_GRID_START_X        20
-#define CURR_GRID_START_Y        25
-#define CURR_GRID_ROW_STEP       120
-#define CURR_GRID_TEXT_BOTTOM    8
+#define CURR_GRID_COLS           6
+#define CURR_GRID_CELL_W         158
+#define CURR_GRID_CELL_H         92
+#define CURR_GRID_ITEM_W         132
+#define CURR_GRID_START_X        8
+#define CURR_GRID_START_Y        10
+#define CURR_GRID_ROW_STEP       92
+#define CURR_GRID_TEXT_BOTTOM    -4
+#define CURR_GRID_GROUP_OFS_X    25
+#define CURR_GRID_FLAG_Y         (-6)
+#define CURR_GRID_FAV_X          0
+#define CURR_GRID_FAV_Y          -2
 
 #define CURR_FAV_BTN_IN_CARD_X   139
 #define CURR_FAV_BTN_IN_CARD_Y   13
@@ -1781,8 +1787,7 @@ static void curr_update_grid_fav_ui(int i)
 
     if (g_curr_grid_items[i].fav_btn == NULL || g_curr_grid_items[i].fav_icon == NULL) return;
 
-    lv_obj_set_style_bg_color(g_curr_grid_items[i].fav_btn, fav ? lv_color_hex(0xE9DEBD) : lv_color_hex(0xE5E5E6), 0);
-    lv_obj_set_style_bg_opa(g_curr_grid_items[i].fav_btn, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_opa(g_curr_grid_items[i].fav_btn, LV_OPA_TRANSP, 0);
     lv_img_set_src(g_curr_grid_items[i].fav_icon, fav ? "L:/usr/local/share/lvgl_data/fav.png" : "L:/usr/local/share/lvgl_data/unfav.png");
 }
 
@@ -1834,7 +1839,7 @@ static void curr_apply_selected_style(void)
             lv_obj_set_style_border_width(g_curr_cards[i].card, 0, 0);
             lv_obj_set_style_shadow_width(g_curr_cards[i].card, 0, 0);
             lv_obj_set_style_shadow_opa(g_curr_cards[i].card, LV_OPA_0, 0);
-            lv_obj_set_style_text_color(g_curr_cards[i].name, lv_color_hex(0x202020), 0);
+            lv_obj_set_style_text_color(g_curr_cards[i].name, lv_color_hex(CURR_TEXT_SEL), 0);
             lv_obj_set_style_text_color(g_curr_cards[i].no, lv_color_hex(0x202020), 0);
             curr_set_image_selected_style(g_curr_cards[i].img);
         } else {
@@ -1849,7 +1854,7 @@ static void curr_apply_selected_style(void)
             lv_obj_set_style_border_width(g_curr_cards[i].card, 0, 0);
             lv_obj_set_style_shadow_width(g_curr_cards[i].card, 0, 0);
             lv_obj_set_style_shadow_opa(g_curr_cards[i].card, LV_OPA_0, 0);
-            lv_obj_set_style_text_color(g_curr_cards[i].name, lv_color_hex(0x8E9093), 0);
+            lv_obj_set_style_text_color(g_curr_cards[i].name, lv_color_hex(0x7E7E7E), 0);
             lv_obj_set_style_text_color(g_curr_cards[i].no, lv_color_hex(CURR_TEXT_UNSEL), 0);
             curr_set_image_unselected_style(g_curr_cards[i].img);
         }
@@ -2165,7 +2170,7 @@ static void curr_build_grid_layer(void)
 
         g_curr_grid_items[i].item = lv_obj_create(content);
         lv_obj_remove_style_all(g_curr_grid_items[i].item);
-        lv_obj_set_size(g_curr_grid_items[i].item, 150, CURR_GRID_CELL_H);
+        lv_obj_set_size(g_curr_grid_items[i].item, CURR_GRID_ITEM_W, CURR_GRID_CELL_H);
         lv_obj_set_pos(g_curr_grid_items[i].item, x, y);
         lv_obj_set_style_bg_opa(g_curr_grid_items[i].item, LV_OPA_TRANSP, 0);
         lv_obj_clear_flag(g_curr_grid_items[i].item, LV_OBJ_FLAG_SCROLLABLE);
@@ -2176,13 +2181,16 @@ static void curr_build_grid_layer(void)
         g_curr_grid_items[i].img = lv_img_create(g_curr_grid_items[i].item);
         lv_img_set_src(g_curr_grid_items[i].img, get_currency_img(Machine_para.currencies[abs_idx]));
         curr_set_img_target_width(g_curr_grid_items[i].img, Machine_para.currencies[abs_idx], CURR_FLAG_TARGET_W);
-        lv_obj_align(g_curr_grid_items[i].img, LV_ALIGN_TOP_MID, 20, 0);
+        lv_obj_align(g_curr_grid_items[i].img, LV_ALIGN_TOP_MID, CURR_GRID_GROUP_OFS_X, CURR_GRID_FLAG_Y);
 
         g_curr_grid_items[i].fav_btn = lv_obj_create(g_curr_grid_items[i].item);
         lv_obj_set_size(g_curr_grid_items[i].fav_btn, CURR_FAV_BTN_IN_CARD_W, CURR_FAV_BTN_IN_CARD_H);
-        lv_obj_set_pos(g_curr_grid_items[i].fav_btn, 0, 0);
-        lv_obj_set_style_radius(g_curr_grid_items[i].fav_btn, 14, 0);
+        lv_obj_set_pos(g_curr_grid_items[i].fav_btn, CURR_GRID_FAV_X, CURR_GRID_FAV_Y);
+        lv_obj_set_style_radius(g_curr_grid_items[i].fav_btn, 0, 0);
+        lv_obj_set_style_bg_opa(g_curr_grid_items[i].fav_btn, LV_OPA_TRANSP, 0);
         lv_obj_set_style_border_width(g_curr_grid_items[i].fav_btn, 0, 0);
+        lv_obj_set_style_shadow_width(g_curr_grid_items[i].fav_btn, 0, 0);
+        lv_obj_set_style_shadow_opa(g_curr_grid_items[i].fav_btn, LV_OPA_0, 0);
         lv_obj_set_scrollbar_mode(g_curr_grid_items[i].fav_btn, LV_SCROLLBAR_MODE_OFF);
         lv_obj_clear_flag(g_curr_grid_items[i].fav_btn, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_EVENT_BUBBLE);
         lv_obj_add_flag(g_curr_grid_items[i].fav_btn, LV_OBJ_FLAG_CLICKABLE);
@@ -2197,12 +2205,12 @@ static void curr_build_grid_layer(void)
 
         g_curr_grid_items[i].name = lv_label_create(g_curr_grid_items[i].item);
         lv_label_set_text_fmt(g_curr_grid_items[i].name, "%s", Machine_para.currencies[abs_idx]);
-        lv_obj_set_width(g_curr_grid_items[i].name, 150);
+        lv_obj_set_width(g_curr_grid_items[i].name, CURR_GRID_ITEM_W);
         lv_obj_set_style_text_align(g_curr_grid_items[i].name, LV_TEXT_ALIGN_CENTER, 0);
         lv_obj_set_style_text_font(g_curr_grid_items[i].name, &lv_font_montserrat_20, 0);
         lv_obj_set_style_text_color(g_curr_grid_items[i].name,
-                                    (abs_idx == g_curr_sel_abs_idx) ? lv_color_hex(0x000000) : lv_color_hex(0x8E9093), 0);
-        lv_obj_align(g_curr_grid_items[i].name, LV_ALIGN_BOTTOM_MID, 20, -CURR_GRID_TEXT_BOTTOM);
+                                    (abs_idx == g_curr_sel_abs_idx) ? lv_color_hex(CURR_TEXT_SEL) : lv_color_hex(0x7E7E7E), 0);
+        lv_obj_align(g_curr_grid_items[i].name, LV_ALIGN_BOTTOM_MID, CURR_GRID_GROUP_OFS_X, -CURR_GRID_TEXT_BOTTOM);
 
         if (abs_idx == g_curr_sel_abs_idx) {
             curr_set_image_selected_style(g_curr_grid_items[i].img);
