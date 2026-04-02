@@ -13,6 +13,8 @@
 #include "lv_page_declear.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_components/lv_print_toast.h"
+#include "un260/lv_drivers/lv_drivers.h"
+
 // 添加数组元素计数变量
 int page_01_main_len = 0;
 
@@ -32,6 +34,7 @@ static void time_area_clicked_cb(lv_event_t* e)
 
 static lv_obj_t* s_time_label = NULL;
 static lv_timer_t* s_time_timer = NULL;
+static bool s_main_init_protocol_sent = false;
 
 static void main_time_refresh(void)
 {
@@ -47,6 +50,20 @@ static void main_time_timer_cb(lv_timer_t* t)
 {
     (void)t;
     main_time_refresh();
+}
+
+static void page_01_main_send_init_protocol(void) //主界面首次进入时发送初始化协议
+{
+    uint8_t sub = 0x02;
+
+    if (s_main_init_protocol_sent) return;
+    if (fd4 < 0) return;
+
+    send_command(fd4, 0xC0, &sub, 1); //FD DF 06 C0 02：通知下位机进入采集误报数据模式
+
+    /* 预留：后续新增主界面首次进入协议时，继续在这里统一发送。 */
+
+    s_main_init_protocol_sent = true;
 }
 
 ui_element_t page_01_main_obj[] = {
@@ -606,6 +623,7 @@ void ui_main_create(lv_obj_t* parent)
     main_time_refresh();
     if (!s_time_timer) s_time_timer = lv_timer_create(main_time_timer_cb, 1000, NULL);
     lv_print_toast_create();
+    page_01_main_send_init_protocol();
 
 
 }
