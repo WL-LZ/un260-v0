@@ -47,6 +47,12 @@ static lv_obj_t* s_bottom_a_label_mode = NULL;
 static lv_obj_t* s_bottom_a_label_add = NULL;
 static lv_obj_t* s_bottom_a_label_work = NULL;
 static lv_obj_t* s_bottom_a_label_fo = NULL;
+static lv_obj_t* s_bottom_c_btn_batch = NULL;
+static lv_obj_t* s_bottom_c_btn_speed = NULL;
+static lv_obj_t* s_bottom_c_box_cfd = NULL;
+static lv_obj_t* s_bottom_c_label_batch = NULL;
+static lv_obj_t* s_bottom_c_label_speed = NULL;
+static lv_obj_t* s_bottom_c_label_cfd = NULL;
 
 typedef enum {
     PAGE_01_BOTTOM_TEXT_ANIM_NONE = 0,
@@ -201,6 +207,16 @@ static const char* page_01_bottom_fo_text_get(void) //获取底部A区F/O文本
         ui_text_get(UI_TEXT_PAGE01_BOTTOM_FO_ON);
 }
 
+static const char* page_01_bottom_speed_text_get(void) //获取底部C区速度文本
+{
+    switch (Machine_para.speed) {
+    case 0: return ui_text_get(UI_TEXT_PAGE01_BOTTOM_SPEED_LOW);
+    case 1: return ui_text_get(UI_TEXT_PAGE01_BOTTOM_SPEED_MID);
+    case 2: return ui_text_get(UI_TEXT_PAGE01_BOTTOM_SPEED_HIGH);
+    default: return ui_text_get(UI_TEXT_PAGE01_BOTTOM_SPEED_LOW);
+    }
+}
+
 static lv_obj_t* page_01_bottom_btn_create(lv_coord_t x, lv_coord_t y, lv_coord_t w, lv_coord_t h,
     lv_event_cb_t event_cb) //创建主界面底部A区按钮
 {
@@ -241,6 +257,26 @@ static lv_obj_t* page_01_bottom_btn_label_create(lv_obj_t* parent) //创建主�
     return label;
 }
 
+static lv_obj_t* page_01_bottom_box_create(lv_coord_t x, lv_coord_t y, lv_coord_t w, lv_coord_t h,
+    lv_color_t bg_color) //创建主界面底部背景盒子
+{
+    lv_obj_t* obj = lv_obj_create(main_page);
+
+    lv_obj_remove_style_all(obj);
+    lv_obj_set_pos(obj, x, y);
+    lv_obj_set_size(obj, w, h);
+    lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_color(obj, bg_color, 0);
+    lv_obj_set_style_radius(obj, 32, 0);
+    lv_obj_set_style_border_width(obj, 0, 0);
+    lv_obj_set_style_outline_width(obj, 0, 0);
+    lv_obj_set_style_shadow_width(obj, 0, 0);
+    lv_obj_set_style_pad_all(obj, 0, 0);
+    lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+
+    return obj;
+}
+
 static void page_01_bottom_old_bar_hide(void) //隐藏旧底部信息栏对象，避免与新A区重叠
 {
     const char* old_obj_name[] = {
@@ -257,6 +293,24 @@ static void page_01_bottom_old_bar_hide(void) //隐藏旧底部信息栏对象�
             lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
         }
     }
+}
+
+static lv_obj_t* page_01_bottom_c_btn_create(lv_coord_t x, lv_coord_t y, lv_coord_t w, lv_coord_t h,
+    lv_color_t bg_color, lv_event_cb_t event_cb, bool clickable) //创建主界面底部C区按钮
+{
+    lv_obj_t* btn = page_01_bottom_box_create(x, y, w, h, bg_color);
+
+    if (clickable) {
+        lv_obj_set_style_bg_color(btn, lv_color_hex(0xCECECE), LV_STATE_PRESSED);
+        lv_obj_add_flag(btn, LV_OBJ_FLAG_CLICKABLE);
+        if (event_cb) {
+            lv_obj_add_event_cb(btn, event_cb, LV_EVENT_CLICKED, NULL);
+        }
+    } else {
+        lv_obj_clear_flag(btn, LV_OBJ_FLAG_CLICKABLE);
+    }
+
+    return btn;
 }
 
 static void page_01_bottom_a_create(void) //创建主界面底部A区四个按钮
@@ -291,6 +345,36 @@ static void page_01_bottom_a_destroy(void) //销毁主界面底部A区四个按�
     s_bottom_a_label_add = NULL;
     s_bottom_a_label_work = NULL;
     s_bottom_a_label_fo = NULL;
+}
+
+static void page_01_bottom_c_create(void) //创建主界面底部C区三个区域
+{
+    if (s_bottom_c_btn_batch || s_bottom_c_btn_speed || s_bottom_c_box_cfd) return;
+
+    s_bottom_c_btn_batch = page_01_bottom_c_btn_create(805, 354, 209, 32,
+        lv_color_hex(0xF8F5F5), page_01_bottom_batch_btn_event_cb, true);
+    s_bottom_c_btn_speed = page_01_bottom_c_btn_create(1020, 354, 113, 32,
+        lv_color_hex(0xF8F5F5), page_01_bottom_speed_btn_event_cb, true);
+    s_bottom_c_box_cfd = page_01_bottom_c_btn_create(1139, 354, 104, 32,
+        lv_color_hex(0xFFFFFF), NULL, false);
+
+    s_bottom_c_label_batch = page_01_bottom_btn_label_create(s_bottom_c_btn_batch);
+    s_bottom_c_label_speed = page_01_bottom_btn_label_create(s_bottom_c_btn_speed);
+    s_bottom_c_label_cfd = page_01_bottom_btn_label_create(s_bottom_c_box_cfd);
+}
+
+static void page_01_bottom_c_destroy(void) //销毁主界面底部C区三个区域
+{
+    if (s_bottom_c_btn_batch) lv_obj_del(s_bottom_c_btn_batch);
+    if (s_bottom_c_btn_speed) lv_obj_del(s_bottom_c_btn_speed);
+    if (s_bottom_c_box_cfd) lv_obj_del(s_bottom_c_box_cfd);
+
+    s_bottom_c_btn_batch = NULL;
+    s_bottom_c_btn_speed = NULL;
+    s_bottom_c_box_cfd = NULL;
+    s_bottom_c_label_batch = NULL;
+    s_bottom_c_label_speed = NULL;
+    s_bottom_c_label_cfd = NULL;
 }
 
 static lv_obj_t* page_01_bottom_bg_create(lv_coord_t x, lv_coord_t y, lv_coord_t w, lv_coord_t h,
@@ -361,6 +445,36 @@ void page_01_bottom_a_refresh_fo(bool anim_en) //刷新主界面底部A区F/O文
 {
     page_01_bottom_label_anim_run(s_bottom_a_label_fo, page_01_bottom_fo_text_get(),
         anim_en ? PAGE_01_BOTTOM_TEXT_ANIM_SLIDE : PAGE_01_BOTTOM_TEXT_ANIM_NONE);
+}
+
+void page_01_bottom_c_refresh_batch(bool anim_en) //刷新主界面底部C区Batch文本
+{
+    char text_buf[32];
+
+    if (Machine_para.batch_switch_enable) {
+        lv_snprintf(text_buf, sizeof(text_buf), ui_text_get(UI_TEXT_PAGE01_BOTTOM_BATCH_VALUE_FMT),
+            Machine_para.batch_num);
+    } else {
+        lv_snprintf(text_buf, sizeof(text_buf), "%s", ui_text_get(UI_TEXT_PAGE01_BOTTOM_BATCH_OFF));
+    }
+
+    page_01_bottom_label_anim_run(s_bottom_c_label_batch, text_buf,
+        anim_en ? PAGE_01_BOTTOM_TEXT_ANIM_NONE : PAGE_01_BOTTOM_TEXT_ANIM_NONE);
+}
+
+void page_01_bottom_c_refresh_speed(bool anim_en) //刷新主界面底部C区速度文本
+{
+    page_01_bottom_label_anim_run(s_bottom_c_label_speed, page_01_bottom_speed_text_get(),
+        anim_en ? PAGE_01_BOTTOM_TEXT_ANIM_SLIDE : PAGE_01_BOTTOM_TEXT_ANIM_NONE);
+}
+
+void page_01_bottom_c_refresh_cfd(void) //刷新主界面底部C区CFD文本
+{
+    char text_buf[24];
+
+    lv_snprintf(text_buf, sizeof(text_buf), ui_text_get(UI_TEXT_PAGE01_BOTTOM_CFD_FMT),
+        "L");
+    page_01_bottom_label_anim_run(s_bottom_c_label_cfd, text_buf, PAGE_01_BOTTOM_TEXT_ANIM_NONE);
 }
 
 ui_element_t page_01_main_obj[] = {
@@ -916,10 +1030,14 @@ void ui_main_create(lv_obj_t* parent)
     page_01_curr_img_refre();
     page_01_bottom_bg_create_all();
     page_01_bottom_a_create();
+    page_01_bottom_c_create();
     page_01_bottom_a_refresh_mode(false);
     page_01_bottom_a_refresh_add(false);
     page_01_bottom_a_refresh_work(false);
     page_01_bottom_a_refresh_fo(false);
+    page_01_bottom_c_refresh_batch(false);
+    page_01_bottom_c_refresh_speed(false);
+    page_01_bottom_c_refresh_cfd();
     PAGE_01_time_obj_creat();
     PAGE_01_time_btn_obj_creat();
     s_time_label = time_label;
@@ -937,6 +1055,7 @@ void ui_main_destroy(void)
         // 安全清理所有资源和定时器
         cleanup_counting_sim();
         page_01_bottom_a_destroy();
+        page_01_bottom_c_destroy();
         page_01_bottom_bg_destroy_all();
         
         lv_obj_del(main_page);
@@ -953,4 +1072,7 @@ void page_01_update_language_texts(void) //刷新主界面多语言文本
     page_01_bottom_a_refresh_add(false);
     page_01_bottom_a_refresh_work(false);
     page_01_bottom_a_refresh_fo(false);
+    page_01_bottom_c_refresh_batch(false);
+    page_01_bottom_c_refresh_speed(false);
+    page_01_bottom_c_refresh_cfd();
 }

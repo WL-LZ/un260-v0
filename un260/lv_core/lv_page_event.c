@@ -338,6 +338,34 @@ void page_01_fo_btn_event_cb(lv_event_t* e) //切换主界面底部F/O开关
     page_01_face_refre();
 }
 
+void page_01_bottom_batch_btn_event_cb(lv_event_t* e) //进入主界面底部C区Batch设置页
+{
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+
+    ui_manager_push_page(UI_PAGE_MENU);
+}
+
+void page_01_bottom_speed_btn_event_cb(lv_event_t* e) //切换主界面底部C区速度
+{
+    uint8_t speed_cmd = 0x03;
+
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+
+    Machine_para.speed = (Machine_para.speed + 1) % 3;
+
+    if (Machine_para.speed == 0) {
+        speed_cmd = 0x03;
+    } else if (Machine_para.speed == 1) {
+        speed_cmd = 0x02;
+    } else {
+        speed_cmd = 0x01;
+    }
+
+    send_command(fd4, 0x16, &speed_cmd, 1);
+    page_01_bottom_c_refresh_speed(true);
+    page_01_speed_refre();
+}
+
 
 void page_01_set_btn_event_cb(lv_event_t* e){
     if (lv_event_get_code(e) == LV_EVENT_CLICKED) {

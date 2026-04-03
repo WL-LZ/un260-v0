@@ -12,6 +12,12 @@ const ui_text_item_t g_ui_text_page_group[UI_TEXT_PAGE_MAX] = {
     [UI_TEXT_PAGE01_BOTTOM_WORK_MANUAL] = {"MANUAL", "手动", "MANUAL"},
     [UI_TEXT_PAGE01_BOTTOM_FO_ON] = {"F./O:ON", "F./O:开", "F./O:ON"},
     [UI_TEXT_PAGE01_BOTTOM_FO_OFF] = {"F./O:OFF", "F./O:关", "F./O:OFF"},
+    [UI_TEXT_PAGE01_BOTTOM_BATCH_OFF] = {"BATCH:OFF", "BATCH:关", "BATCH:OFF"},
+    [UI_TEXT_PAGE01_BOTTOM_BATCH_VALUE_FMT] = {"BATCH:%d", "BATCH:%d", "BATCH:%d"},
+    [UI_TEXT_PAGE01_BOTTOM_SPEED_LOW] = {"LOW", "低", "LOW"},
+    [UI_TEXT_PAGE01_BOTTOM_SPEED_MID] = {"MID", "中", "MID"},
+    [UI_TEXT_PAGE01_BOTTOM_SPEED_HIGH] = {"HIGH", "高", "HIGH"},
+    [UI_TEXT_PAGE01_BOTTOM_CFD_FMT] = {"CFD:%s", "CFD:%s", "CFD:%s"},
 
     //PAGE16
     [UI_TEXT_PAGE16_TITLE] = {"UI UPGRADE", "界面升级", "UI 업그레이드"},

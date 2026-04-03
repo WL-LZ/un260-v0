@@ -757,6 +757,7 @@ void page_01_batch_refre(void)
         update_label_by_name(page_01_main_obj, page_01_main_len, "bacth_num_label", "%s", "OFF");
     }
 
+    page_01_bottom_c_refresh_batch(false);
 
 }
 void page_01_face_refre(void)
@@ -772,12 +773,14 @@ void page_01_cfd_refre(void)
     char* cfd[3] = { "L","M","H"  };
     update_label_by_name(page_01_main_obj, page_01_main_len, "cfd_value_label", "%s", cfd[Machine_para.cfd_mode]);
     printf("cfd:%s\n", cfd[Machine_para.cfd_mode]);
+    page_01_bottom_c_refresh_cfd();
 
 }
 void page_01_speed_refre(void)
 {
     int speed[3] = { 600,800,1000 };
     update_label_by_name(page_01_main_obj, page_01_main_len, "speed_num_label", "%d", speed[Machine_para.speed]);
+    page_01_bottom_c_refresh_speed(false);
 }
 
 void page_01_err_num_refre(void)
