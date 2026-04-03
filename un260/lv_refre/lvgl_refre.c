@@ -5,6 +5,7 @@
 #include <string.h>
 #include "lvgl/lvgl.h"
 #include "un260/lv_refre/lvgl_refre.h"
+#include "un260/lv_core/page_01_main.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/user_cfg.h"
@@ -121,6 +122,7 @@ void page_01_mode_switch_refre()
 
     update_label_by_name(page_01_main_obj, page_01_main_len, "mix_label", "%s", mode_str);
     update_label_by_name(page_01_main_obj, page_01_main_len, "mode_label", "%s", mode_str);
+    page_01_bottom_a_refresh_mode(false);
 }
 
 void page_01_create_mian_scrollable_container(void)
@@ -730,12 +732,14 @@ void page_01_add_refre(void)
 {
     
     update_label_by_name(page_01_main_obj, page_01_main_len, "add_label", "%s", Machine_para.add_enable == true?"ADD:ON":"ADD:OFF");
+    page_01_bottom_a_refresh_add(false);
 
 }
 void page_01_work_refre(void)
 {
     char* work[2] = {"AUTO","MANUAL"};
     update_label_by_name(page_01_main_obj, page_01_main_len, "auto_label", "%s", work[Machine_para.work_mode]);
+    page_01_bottom_a_refresh_work(false);
 
 }
 void page_01_batch_refre(void)
@@ -760,6 +764,7 @@ void page_01_face_refre(void)
     char* batch[4] = { "F./O. : OFF","F.","O." ,"F./O."};
 
     update_label_by_name(page_01_main_obj, page_01_main_len, "face_label", "%s", batch[Machine_para.fo_mode]);
+    page_01_bottom_a_refresh_fo(false);
 
 }
 void page_01_cfd_refre(void)

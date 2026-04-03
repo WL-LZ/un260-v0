@@ -3,6 +3,15 @@
 const ui_text_item_t g_ui_text_page_group[UI_TEXT_PAGE_MAX] = {
     //PAGE01
     [UI_TEXT_PAGE01_QR_CODE] = {"QR CODE", "二维码", "QR 코드"},
+    [UI_TEXT_PAGE01_BOTTOM_MODE_MDC] = {"MDC", "MDC", "MDC"},
+    [UI_TEXT_PAGE01_BOTTOM_MODE_SDC] = {"SDC", "SDC", "SDC"},
+    [UI_TEXT_PAGE01_BOTTOM_MODE_CNT] = {"CNT", "CNT", "CNT"},
+    [UI_TEXT_PAGE01_BOTTOM_ADD_ON] = {"ADD:ON", "ADD:开", "ADD:ON"},
+    [UI_TEXT_PAGE01_BOTTOM_ADD_OFF] = {"ADD:OFF", "ADD:关", "ADD:OFF"},
+    [UI_TEXT_PAGE01_BOTTOM_WORK_AUTO] = {"AUTO", "自动", "AUTO"},
+    [UI_TEXT_PAGE01_BOTTOM_WORK_MANUAL] = {"MANUAL", "手动", "MANUAL"},
+    [UI_TEXT_PAGE01_BOTTOM_FO_ON] = {"F./O:ON", "F./O:开", "F./O:ON"},
+    [UI_TEXT_PAGE01_BOTTOM_FO_OFF] = {"F./O:OFF", "F./O:关", "F./O:OFF"},
 
     //PAGE16
     [UI_TEXT_PAGE16_TITLE] = {"UI UPGRADE", "界面升级", "UI 업그레이드"},

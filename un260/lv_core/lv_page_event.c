@@ -13,13 +13,16 @@
 #include "un260/lv_components/lv_qr_popup.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/ui_qr_data.h"
+#include "un260/lv_core/page_01_main.h"
 
 lv_timer_t* page_03_batch_num_del_timer = NULL;
 lv_timer_t* page_05_password_del_timer = NULL;
 static int32_t g_batch_num_pending = -1;
 static lv_obj_t* g_batch_tip_label = NULL;
+static uint32_t g_page01_mode_req_tick = 0;
 
 #define PAGE_01_DETAIL_TAP_THRESHOLD     10
+#define PAGE_01_MODE_REQ_TIMEOUT_MS      800
 
 // 声明外部变量
 
@@ -232,39 +235,108 @@ void page_01_start_btn_event_cb(lv_event_t* e) // 开始仿真
 //     }
 // }
 
- void page_01_mode_btn_event_cb(lv_event_t* e)
- {
-     if (lv_event_get_code(e) == LV_EVENT_CLICKED)
-     {
-         icon_feedback_comp("page_01_mode_icon.png", page_01_main_obj, page_01_main_len);
-         if (Machine_work_code.mode_code != 0) {
-             return;
-         }
+static bool page_01_mode_req_busy(void) //判断模式切换是否仍在等待回包
+{
+    uint32_t now_tick = lv_tick_get();
 
-         uint8_t next_mode = MODE_MDC;
-         if (Machine_para.mode == MODE_MDC)
-             next_mode = MODE_SDC;
-         else if (Machine_para.mode == MODE_SDC)
-             next_mode = MODE_CNT;
-         else if (Machine_para.mode == MODE_CNT)
-             next_mode = MODE_MDC;
-         else
-             next_mode = MODE_MDC;
+    if (Machine_work_code.mode_code == 0) {
+        return false;
+    }
 
-         uint8_t mode_cmd = 0x03;
-         if (next_mode == MODE_MDC)
-             mode_cmd = 0x03;
-         else if (next_mode == MODE_SDC)
-             mode_cmd = 0x04;
-         else if (next_mode == MODE_CNT)
-             mode_cmd = 0x05;
+    // 防止某次回包丢失导致 mode_code 一直锁死，超时后允许继续下发
+    if ((now_tick - g_page01_mode_req_tick) >= PAGE_01_MODE_REQ_TIMEOUT_MS) {
+        Machine_work_code.mode_code = 0;
+        return false;
+    }
 
-         Machine_work_code.mode_code = mode_cmd; //等待 0x04 回包后再切 UI 
-         send_command(fd4, 0x04, &mode_cmd, 1);
+    return true;
+}
 
-     }
+static void page_01_mode_send_next(bool show_icon_feedback) //发送主界面模式切换命令
+{
+    uint8_t next_mode = MODE_MDC;
+    uint8_t mode_cmd = 0x03;
 
- }
+    if (show_icon_feedback) {
+        icon_feedback_comp("page_01_mode_icon.png", page_01_main_obj, page_01_main_len);
+    }
+
+    if (page_01_mode_req_busy()) {
+        return;
+    }
+
+    if (Machine_para.mode == MODE_MDC)
+        next_mode = MODE_SDC;
+    else if (Machine_para.mode == MODE_SDC)
+        next_mode = MODE_CNT;
+    else if (Machine_para.mode == MODE_CNT)
+        next_mode = MODE_MDC;
+    else
+        next_mode = MODE_MDC;
+
+    if (next_mode == MODE_MDC)
+        mode_cmd = 0x03;
+    else if (next_mode == MODE_SDC)
+        mode_cmd = 0x04;
+    else if (next_mode == MODE_CNT)
+        mode_cmd = 0x05;
+
+    Machine_work_code.mode_code = mode_cmd;
+    g_page01_mode_req_tick = lv_tick_get();
+    send_command(fd4, 0x04, &mode_cmd, 1);
+    page_01_bottom_a_refresh_mode_preview(next_mode);
+}
+
+void page_01_mode_btn_event_cb(lv_event_t* e)
+{
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+    page_01_mode_send_next(true);
+}
+
+void page_01_bottom_mode_btn_event_cb(lv_event_t* e) //切换主界面底部A区点钞模式
+{
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+    page_01_mode_send_next(false);
+}
+
+void page_01_add_btn_event_cb(lv_event_t* e) //切换主界面底部ADD开关
+{
+    uint8_t add_cmd;
+
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+
+    Machine_para.add_enable = !Machine_para.add_enable;
+    add_cmd = Machine_para.add_enable ? 0x01 : 0x00;
+    send_command(fd4, 0x39, &add_cmd, 1);
+    page_01_bottom_a_refresh_add(true);
+    page_01_add_refre();
+}
+
+void page_01_work_btn_event_cb(lv_event_t* e) //切换主界面底部工作模式
+{
+    uint8_t work_cmd;
+
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+
+    Machine_para.work_mode = Machine_para.work_mode ? 0 : 1;
+    work_cmd = (Machine_para.work_mode == 1) ? 0x00 : 0x01;
+    send_command(fd4, 0x38, &work_cmd, 1);
+    page_01_bottom_a_refresh_work(true);
+    page_01_work_refre();
+}
+
+void page_01_fo_btn_event_cb(lv_event_t* e) //切换主界面底部F/O开关
+{
+    uint8_t fo_cmd;
+
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+
+    Machine_para.fo_mode = (Machine_para.fo_mode == 0) ? 3 : 0;
+    fo_cmd = (uint8_t)(Machine_para.fo_mode + 1);
+    send_command(fd4, 0x3A, &fo_cmd, 1);
+    page_01_bottom_a_refresh_fo(true);
+    page_01_face_refre();
+}
 
 
 void page_01_set_btn_event_cb(lv_event_t* e){

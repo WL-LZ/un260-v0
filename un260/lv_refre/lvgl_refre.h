@@ -29,6 +29,11 @@ extern "C" {
     void page_01_speed_refre(void);
     void page_01_err_num_refre(void);
     void page_01_curr_img_refre(void);
+    void page_01_bottom_a_refresh_mode(bool anim_en);
+    void page_01_bottom_a_refresh_mode_preview(uint8_t mode);
+    void page_01_bottom_a_refresh_add(bool anim_en);
+    void page_01_bottom_a_refresh_work(bool anim_en);
+    void page_01_bottom_a_refresh_fo(bool anim_en);
 
     void page_03_create_batch_label_switcher(lv_obj_t* parent);
     void page_03_batch_num_container(void);

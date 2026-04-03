@@ -40,6 +40,10 @@ void page_01_menu_btn_event_cb(lv_event_t* e);
 void page_01_start_btn_event_cb(lv_event_t* e);
 void page_01_esc_btn_event_cb(lv_event_t* e);
 void page_01_mode_btn_event_cb(lv_event_t* e);
+void page_01_bottom_mode_btn_event_cb(lv_event_t* e);
+void page_01_add_btn_event_cb(lv_event_t* e);
+void page_01_work_btn_event_cb(lv_event_t* e);
+void page_01_fo_btn_event_cb(lv_event_t* e);
 
 void page_01_set_btn_event_cb(lv_event_t* e);
 void page_01_curr_btn_event_cb(lv_event_t* e);
