@@ -18,6 +18,7 @@
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/lv_page_declear.h"
 #include "un260/lv_core/lv_page_event.h"
+#include "un260/lv_core/page_01_main.h"
 #include "un260/lv_components/lv_components.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_system/platform_app.h"
@@ -67,6 +68,9 @@ static uint8_t g_denom_query_retry = 0;
 static uint32_t g_ui_upgrade_detect_tick = 0;
 
 static uint8_t g_boot_selftest_result[5] = {0};
+static bool g_boot_selftest_has_error = false;
+static uint8_t g_boot_selftest_first_error_type = 0;
+static uint8_t g_boot_selftest_first_error_result = 0;
 static void ui_upgrade_popup_poll(uint32_t now)
 {
     ui_upgrade_detect_info_t detect_info;
@@ -86,43 +90,9 @@ static void ui_upgrade_popup_poll(uint32_t now)
 static void boot_selftest_result_reset(void)
 {
     memset(g_boot_selftest_result, 0, sizeof(g_boot_selftest_result));
-}
-
-static void build_boot_selftest_message(char* msg, size_t msg_size)
-{
-    if (msg == NULL || msg_size == 0) return;
-
-    msg[0] = '\0';
-
-    strncat(msg, "Self-test abnormal items:\n", msg_size - strlen(msg) - 1);
-
-    if (g_boot_selftest_result[0] == 2)
-        strncat(msg, "Sensor self-test failed\n", msg_size - strlen(msg) - 1);
-    else if (g_boot_selftest_result[0] == 3)
-        strncat(msg, "Sensor self-test timeout\n", msg_size - strlen(msg) - 1);
-
-    if (g_boot_selftest_result[1] == 2)
-        strncat(msg, "Motor self-test failed\n", msg_size - strlen(msg) - 1);
-    else if (g_boot_selftest_result[1] == 3)
-        strncat(msg, "Motor self-test timeout\n", msg_size - strlen(msg) - 1);
-
-    if (g_boot_selftest_result[2] == 2)
-        strncat(msg, "Electromagnet self-test failed\n", msg_size - strlen(msg) - 1);
-    else if (g_boot_selftest_result[2] == 3)
-        strncat(msg, "Electromagnet self-test timeout\n", msg_size - strlen(msg) - 1);
-
-    if (g_boot_selftest_result[3] == 2)
-        strncat(msg, "Read config parameters failed\n", msg_size - strlen(msg) - 1);
-    else if (g_boot_selftest_result[3] == 3)
-        strncat(msg, "Read config parameters timeout\n", msg_size - strlen(msg) - 1);
-
-    if (g_boot_selftest_result[4] == 2)
-        strncat(msg, "Image board self-test failed\n", msg_size - strlen(msg) - 1);
-    else if (g_boot_selftest_result[4] == 3)
-        strncat(msg, "Image board self-test timeout\n", msg_size - strlen(msg) - 1);
-
-    if (strcmp(msg, "Self-test abnormal items:\n") == 0)
-        strncat(msg, "Unknown self-test error", msg_size - strlen(msg) - 1);
+    g_boot_selftest_has_error = false;
+    g_boot_selftest_first_error_type = 0;
+    g_boot_selftest_first_error_result = 0;
 }
 
 //-------------------- 工具函数 --------------------
@@ -548,7 +518,16 @@ void PCCmdHandle(void)
                     Machine_para.mode = MODE_CNT;
                 }
                 Machine_work_code.mode_code = 0;
-                page_01_mode_switch_refre();
+                {
+                    const char* mode_str = "NONE";
+                    if (Machine_para.mode == MODE_MDC) mode_str = "MDC";
+                    else if (Machine_para.mode == MODE_SDC) mode_str = "SDC";
+                    else if (Machine_para.mode == MODE_CNT) mode_str = "CNT";
+
+                    update_label_by_name(page_01_main_obj, page_01_main_len, "mix_label", "%s", mode_str);
+                    update_label_by_name(page_01_main_obj, page_01_main_len, "mode_label", "%s", mode_str);
+                    page_01_bottom_a_refresh_mode(true);
+                }
                 sim_clear_all_sn(&sim);
                 uart_printf(fd6, "Set work mode success\n");
             }
@@ -1063,47 +1042,59 @@ void PCCmdHandle(void)
                     break;
             }
 
-            if (result == 0x01)
-            {
+            if (result == 0x01) {
                 char logbuf[64];
 
-                if (index >= 0)
+                if (index >= 0) {
                     g_boot_selftest_result[index] = 1;
+                }
 
                 snprintf(logbuf, sizeof(logbuf), "%s self-test SUCCESS", name);
                 bootlog_append(logbuf);
+            } else {
+                char logbuf[64];
+
                 if (index >= 0) {
-                    boot_progress_set((uint8_t)(30 + index * 10));
+                    g_boot_selftest_result[index] = (result == 0x03) ? 3 : 2;
                 }
 
-                g_boot_stage++;
-
-                if (g_boot_stage <= BOOT_STAGE_IMAGE)
-                {
-                    boot_send_next_selftest();
+                if (result == 0x03) {
+                    snprintf(logbuf, sizeof(logbuf), "%s self-test TIMEOUT", name);
+                } else {
+                    snprintf(logbuf, sizeof(logbuf), "%s self-test FAIL", name);
                 }
-                else
-                {
+                bootlog_append(logbuf);
+
+                // 自检期间先记录首个错误，待全部流程结束后再统一弹出
+                if (!g_boot_selftest_has_error) {
+                    g_boot_selftest_has_error = true;
+                    g_boot_selftest_first_error_type = test_type;
+                    g_boot_selftest_first_error_result = result;
+                }
+            }
+
+            if (index >= 0) {
+                boot_progress_set((uint8_t)(30 + index * 10));
+            }
+
+            g_boot_stage++;
+
+            if (g_boot_stage <= BOOT_STAGE_IMAGE) {
+                boot_send_next_selftest();
+            } else {
+                if (!g_boot_selftest_has_error) {
                     bootlog_append("self-test SUCCESS");
                     boot_progress_set(100);
                     send_command(fd4, 0x56, (uint8_t[]){0x01}, 1);
                     lv_timer_create(boot_selftest_finish_cb, 2000, NULL);
-
+                } else {
+                    bootlog_append("self-test finished with errors");
+                    g_boot_stage = BOOT_STAGE_FAIL;
+                    // 自检失败也继续读取主控货币列表，避免页面回落本地默认配置
+                    send_command(fd4, 0x56, (uint8_t[]){0x01}, 1);
+                    show_boot_fault_popup(g_boot_selftest_first_error_type,
+                                          g_boot_selftest_first_error_result);
                 }
-            }
-            else
-            {
-                char logbuf[64];
-                char msg[512];
-
-                if (index >= 0)
-                    g_boot_selftest_result[index] = 2;
-
-                snprintf(logbuf, sizeof(logbuf), "%s self-test FAIL", name);
-                bootlog_append(logbuf);
-                build_boot_selftest_message(msg, sizeof(msg));
-                g_boot_stage = BOOT_STAGE_FAIL;
-                show_boot_fault_popup(test_type, result);
             }
         }
         break;
@@ -1229,14 +1220,21 @@ void PCCmdHandle(void)
             uint8_t sub = buf[4];
 
             if (sub == 0x00) { 
+                bool target = false;
+                page_01_add_req_finish(true, &target);
+                Machine_para.add_enable = target;
+                page_01_bottom_a_refresh_add(true);
                 uart_printf(fd6, "ADD set success\n");
             } else if (sub == 0x01) { 
+                bool target = false;
+                page_01_add_req_finish(false, &target);
                 uart_printf(fd6, "ADD set failed\n");
-                Machine_para.add_enable = !Machine_para.add_enable;
                 page_03_update_menu_button_states_refresh();
             } else if (sub == 0x02) { 
                 uint8_t v = buf[5];
                 Machine_para.add_enable = (v == 0x00) ? true : false;
+                page_01_add_req_finish(false, NULL);
+                page_01_bottom_a_refresh_add(false);
                 uart_printf(fd6, "ADD boot status: %s\n", Machine_para.add_enable ? "ON" : "OFF");
                 page_03_update_menu_button_states_refresh();
             }
@@ -1324,14 +1322,20 @@ void PCCmdHandle(void)
                 } else {
                     uart_printf(fd6, "FO boot sync: invalid mode=0x%02X\n", val);
                 }
+                page_01_fo_req_finish(false, NULL);
+                page_01_bottom_a_refresh_fo(false);
                 break;
             }
             if (type >= 0x01 && type <= 0x04) {
                 if (val == 0x01) {
-                    Machine_para.fo_mode = (uint8_t)(type - 1); // 0~3
+                    uint8_t target_mode = (uint8_t)(type - 1);
+                    page_01_fo_req_finish(true, &target_mode);
+                    Machine_para.fo_mode = target_mode;
+                    page_01_bottom_a_refresh_fo(true);
                     uart_printf(fd6, "FO set SUCCESS: type=0x%02X -> ui=%u\n",
                                 type, Machine_para.fo_mode);
                 } else if (val == 0x02) {
+                    page_01_fo_req_finish(false, NULL);
                     uart_printf(fd6, "FO set FAIL: type=0x%02X\n", type);
                     page_03_update_menu_button_states_refresh();
                 } else {
@@ -1355,20 +1359,29 @@ void PCCmdHandle(void)
                 } else if (mode == 0x01) {
                     Machine_para.work_mode = 0;
                 }
+                page_01_work_req_finish(false, NULL);
+                page_01_bottom_a_refresh_work(false);
                 uart_printf(fd6, "0x38 BOOT mode=0x%02X\n", mode);
                 break;
             }
 
             uint8_t res = buf[4];
             if (res == 0x00) {
-                Machine_para.work_mode = 1;
+                uint8_t target_mode = 1;
+                page_01_work_req_finish(true, &target_mode);
+                Machine_para.work_mode = target_mode;
+                page_01_bottom_a_refresh_work(true);
                 page_03_update_menu_button_states_refresh();
                 uart_printf(fd6, "0x38 MANUAL OK\n");
             } else if (res == 0x01) {
-                Machine_para.work_mode = 0;
+                uint8_t target_mode = 0;
+                page_01_work_req_finish(true, &target_mode);
+                Machine_para.work_mode = target_mode;
+                page_01_bottom_a_refresh_work(true);
                 page_03_update_menu_button_states_refresh();
                 uart_printf(fd6, "0x38 AUTO OK\n");
             } else {
+                page_01_work_req_finish(false, NULL);
                 uart_printf(fd6, "0x38 RES=0x%02X\n", res);
             }
                 break;

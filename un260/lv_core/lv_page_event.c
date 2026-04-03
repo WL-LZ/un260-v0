@@ -20,6 +20,12 @@ lv_timer_t* page_05_password_del_timer = NULL;
 static int32_t g_batch_num_pending = -1;
 static lv_obj_t* g_batch_tip_label = NULL;
 static uint32_t g_page01_mode_req_tick = 0;
+static bool g_page01_add_req_pending = false;
+static bool g_page01_add_req_target = false;
+static bool g_page01_work_req_pending = false;
+static uint8_t g_page01_work_req_target = 0;
+static bool g_page01_fo_req_pending = false;
+static uint8_t g_page01_fo_req_target = 0;
 
 #define PAGE_01_DETAIL_TAP_THRESHOLD     10
 #define PAGE_01_MODE_REQ_TIMEOUT_MS      800
@@ -284,7 +290,57 @@ static void page_01_mode_send_next(bool show_icon_feedback) //发送主界面模
     Machine_work_code.mode_code = mode_cmd;
     g_page01_mode_req_tick = lv_tick_get();
     send_command(fd4, 0x04, &mode_cmd, 1);
-    page_01_bottom_a_refresh_mode_preview(next_mode);
+}
+
+bool page_01_add_req_start(bool target) //开始主界面ADD切换请求
+{
+    if (g_page01_add_req_pending) return false;
+    g_page01_add_req_pending = true;
+    g_page01_add_req_target = target;
+    return true;
+}
+
+void page_01_add_req_finish(bool success, bool* target) //结束主界面ADD切换请求
+{
+    if (target) {
+        *target = g_page01_add_req_target;
+    }
+    (void)success;
+    g_page01_add_req_pending = false;
+}
+
+bool page_01_work_req_start(uint8_t target_mode) //开始主界面工作模式切换请求
+{
+    if (g_page01_work_req_pending) return false;
+    g_page01_work_req_pending = true;
+    g_page01_work_req_target = target_mode;
+    return true;
+}
+
+void page_01_work_req_finish(bool success, uint8_t* target_mode) //结束主界面工作模式切换请求
+{
+    if (target_mode) {
+        *target_mode = g_page01_work_req_target;
+    }
+    (void)success;
+    g_page01_work_req_pending = false;
+}
+
+bool page_01_fo_req_start(uint8_t target_mode) //开始主界面F/O模式切换请求
+{
+    if (g_page01_fo_req_pending) return false;
+    g_page01_fo_req_pending = true;
+    g_page01_fo_req_target = target_mode;
+    return true;
+}
+
+void page_01_fo_req_finish(bool success, uint8_t* target_mode) //结束主界面F/O模式切换请求
+{
+    if (target_mode) {
+        *target_mode = g_page01_fo_req_target;
+    }
+    (void)success;
+    g_page01_fo_req_pending = false;
 }
 
 void page_01_mode_btn_event_cb(lv_event_t* e)
@@ -302,40 +358,43 @@ void page_01_bottom_mode_btn_event_cb(lv_event_t* e) //切换主界面底部A区
 void page_01_add_btn_event_cb(lv_event_t* e) //切换主界面底部ADD开关
 {
     uint8_t add_cmd;
+    bool target;
 
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
 
-    Machine_para.add_enable = !Machine_para.add_enable;
-    add_cmd = Machine_para.add_enable ? 0x01 : 0x00;
+    target = !Machine_para.add_enable;
+    if (!page_01_add_req_start(target)) return;
+
+    add_cmd = target ? 0x01 : 0x00;
     send_command(fd4, 0x39, &add_cmd, 1);
-    page_01_bottom_a_refresh_add(true);
-    page_01_add_refre();
 }
 
 void page_01_work_btn_event_cb(lv_event_t* e) //切换主界面底部工作模式
 {
     uint8_t work_cmd;
+    uint8_t target_mode;
 
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
 
-    Machine_para.work_mode = Machine_para.work_mode ? 0 : 1;
-    work_cmd = (Machine_para.work_mode == 1) ? 0x00 : 0x01;
+    target_mode = Machine_para.work_mode ? 0 : 1;
+    if (!page_01_work_req_start(target_mode)) return;
+
+    work_cmd = (target_mode == 1) ? 0x00 : 0x01;
     send_command(fd4, 0x38, &work_cmd, 1);
-    page_01_bottom_a_refresh_work(true);
-    page_01_work_refre();
 }
 
 void page_01_fo_btn_event_cb(lv_event_t* e) //切换主界面底部F/O开关
 {
     uint8_t fo_cmd;
+    uint8_t target_mode;
 
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
 
-    Machine_para.fo_mode = (Machine_para.fo_mode == 0) ? 3 : 0;
-    fo_cmd = (uint8_t)(Machine_para.fo_mode + 1);
+    target_mode = (uint8_t)((Machine_para.fo_mode + 1) % 4);
+    if (!page_01_fo_req_start(target_mode)) return;
+
+    fo_cmd = (uint8_t)(target_mode + 1);
     send_command(fd4, 0x3A, &fo_cmd, 1);
-    page_01_bottom_a_refresh_fo(true);
-    page_01_face_refre();
 }
 
 void page_01_bottom_batch_btn_event_cb(lv_event_t* e) //进入主界面底部C区Batch设置页

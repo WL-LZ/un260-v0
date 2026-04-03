@@ -203,8 +203,13 @@ static const char* page_01_bottom_work_text_get(void) //获取底部A区工作�
 
 static const char* page_01_bottom_fo_text_get(void) //获取底部A区F/O文本
 {
-    return (Machine_para.fo_mode == 0) ? ui_text_get(UI_TEXT_PAGE01_BOTTOM_FO_OFF) :
-        ui_text_get(UI_TEXT_PAGE01_BOTTOM_FO_ON);
+    switch (Machine_para.fo_mode) {
+    case 0: return ui_text_get(UI_TEXT_PAGE01_BOTTOM_FO_OFF);
+    case 1: return ui_text_get(UI_TEXT_PAGE01_BOTTOM_FO_F);
+    case 2: return ui_text_get(UI_TEXT_PAGE01_BOTTOM_FO_O);
+    case 3: return ui_text_get(UI_TEXT_PAGE01_BOTTOM_FO_FO);
+    default: return ui_text_get(UI_TEXT_PAGE01_BOTTOM_FO_OFF);
+    }
 }
 
 static const char* page_01_bottom_speed_text_get(void) //获取底部C区速度文本

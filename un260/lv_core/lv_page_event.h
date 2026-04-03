@@ -46,6 +46,12 @@ void page_01_work_btn_event_cb(lv_event_t* e);
 void page_01_fo_btn_event_cb(lv_event_t* e);
 void page_01_bottom_batch_btn_event_cb(lv_event_t* e);
 void page_01_bottom_speed_btn_event_cb(lv_event_t* e);
+bool page_01_add_req_start(bool target);
+void page_01_add_req_finish(bool success, bool* target);
+bool page_01_work_req_start(uint8_t target_mode);
+void page_01_work_req_finish(bool success, uint8_t* target_mode);
+bool page_01_fo_req_start(uint8_t target_mode);
+void page_01_fo_req_finish(bool success, uint8_t* target_mode);
 
 void page_01_set_btn_event_cb(lv_event_t* e);
 void page_01_curr_btn_event_cb(lv_event_t* e);
