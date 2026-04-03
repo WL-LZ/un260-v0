@@ -1,6 +1,9 @@
 #include "ui_text.h"
 
 const ui_text_item_t g_ui_text_page_group[UI_TEXT_PAGE_MAX] = {
+    //PAGE01
+    [UI_TEXT_PAGE01_QR_CODE] = {"QR CODE", "二维码", "QR 코드"},
+
     //PAGE16
     [UI_TEXT_PAGE16_TITLE] = {"UI UPGRADE", "界面升级", "UI 업그레이드"},
     [UI_TEXT_PAGE16_ESC] = {"ESC", "返回", "ESC"},

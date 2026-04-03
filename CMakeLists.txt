@@ -31,6 +31,8 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_components/lv_loading_grid.c
     un260/lv_components/lv_debug_overlay.c
     un260/lv_components/lv_upgrade_popup.c
+    un260/lv_components/lv_qr_popup.c
+    un260/lv_components/qrcodegen.c
     un260/lv_core/lv_page_event.c
     un260/lv_core/lv_page_manager.c
     un260/lv_core/page_01_main.c
@@ -59,6 +61,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_system/ui_lang.c
     un260/lv_system/ui_text_page.c
     un260/lv_system/ui_text_widget.c
+    un260/lv_system/ui_qr_data.c
     un260/lv_system/user_cfg.c
     un260/lv_system/machine_time.c
     un260/lv_drivers/lv_drivers.c

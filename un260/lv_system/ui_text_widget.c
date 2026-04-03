@@ -30,7 +30,20 @@ static const ui_text_item_t g_ui_text_widget_group[UI_TEXT_MAX - UI_TEXT_WIDGET_
 
     //打印弹窗
     [UI_TEXT_WIDGET_PRINT_TOAST_PRINTING - UI_TEXT_WIDGET_BASE] = {"Printing...", "正在打印...", "인쇄 중..."},
-    [UI_TEXT_WIDGET_PRINT_TOAST_COUNT_FIRST - UI_TEXT_WIDGET_BASE] = {"Please count first", "请先点钞", "먼저 계수해 주세요"}
+    [UI_TEXT_WIDGET_PRINT_TOAST_COUNT_FIRST - UI_TEXT_WIDGET_BASE] = {"Please count first", "请先点钞", "먼저 계수해 주세요"},
+
+    //二维码弹窗
+    [UI_TEXT_WIDGET_QR_POPUP_TITLE - UI_TEXT_WIDGET_BASE] = {"COUNTING QR", "点钞二维码", "계수 QR"},
+    [UI_TEXT_WIDGET_QR_POPUP_DESC - UI_TEXT_WIDGET_BASE] = {"Scan with your phone to view counting details", "使用手机扫码查看本次点钞详情", "휴대폰으로 스캔해 이번 계수 상세를 확인하세요"},
+    [UI_TEXT_WIDGET_QR_POPUP_BTN_CLOSE - UI_TEXT_WIDGET_BASE] = {"Close", "关闭", "닫기"},
+    [UI_TEXT_WIDGET_QR_POPUP_NO_DATA - UI_TEXT_WIDGET_BASE] = {"No counting data", "暂无点钞数据", "계수 데이터가 없습니다"},
+    [UI_TEXT_WIDGET_QR_POPUP_DATA_TOO_LARGE - UI_TEXT_WIDGET_BASE] = {"QR data is too large", "二维码数据过大", "QR 데이터가 너무 큽니다"},
+    [UI_TEXT_WIDGET_QR_DATA_TIME - UI_TEXT_WIDGET_BASE] = {"TIME", "时间", "시간"},
+    [UI_TEXT_WIDGET_QR_DATA_CUR - UI_TEXT_WIDGET_BASE] = {"CUR", "币种", "통화"},
+    [UI_TEXT_WIDGET_QR_DATA_AMOUNT - UI_TEXT_WIDGET_BASE] = {"AMOUNT", "金额", "금액"},
+    [UI_TEXT_WIDGET_QR_DATA_PCS - UI_TEXT_WIDGET_BASE] = {"PCS", "张数", "매수"},
+    [UI_TEXT_WIDGET_QR_DATA_SN - UI_TEXT_WIDGET_BASE] = {"SN", "冠字号", "일련번호"},
+    [UI_TEXT_WIDGET_QR_DATA_ERR - UI_TEXT_WIDGET_BASE] = {"ERR", "报错", "오류"}
 };
 
 static const char* ui_text_pick(const ui_text_item_t* item) //按当前语言选择文本

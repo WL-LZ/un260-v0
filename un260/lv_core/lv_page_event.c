@@ -10,7 +10,9 @@
 #include "un260/lv_core/page_03_menu.h"
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_components/lv_print_toast.h"
+#include "un260/lv_components/lv_qr_popup.h"
 #include "un260/lv_system/ui_text.h"
+#include "un260/lv_system/ui_qr_data.h"
 
 lv_timer_t* page_03_batch_num_del_timer = NULL;
 lv_timer_t* page_05_password_del_timer = NULL;
@@ -22,6 +24,35 @@ static lv_obj_t* g_batch_tip_label = NULL;
 // 声明外部变量
 
 bool pcs_batch_num_lock_200 = false;
+
+static void page_01_qr_show_toast(ui_text_id_t text_id) //显示二维码相关提示框
+{
+    lv_print_toast_config_t toast_cfg = lv_print_toast_get_default_config();
+
+    toast_cfg.w = 320;
+    toast_cfg.h = 101;
+    toast_cfg.text = ui_text_get(text_id);
+    toast_cfg.show_loader = false;
+    toast_cfg.align_center = true;
+    toast_cfg.use_text_area = false;
+    toast_cfg.auto_hide_ms = 1200;
+
+    lv_print_toast_show_with_config(&toast_cfg);
+}
+
+static void page_01_qr_show_popup(void) //显示当前点钞结果二维码
+{
+    char qr_text[3072];
+
+    if (!ui_qr_data_build(qr_text, sizeof(qr_text))) {
+        page_01_qr_show_toast(UI_TEXT_WIDGET_QR_POPUP_DATA_TOO_LARGE);
+        return;
+    }
+
+    if (!lv_qr_popup_show(qr_text)) {
+        page_01_qr_show_toast(UI_TEXT_WIDGET_QR_POPUP_DATA_TOO_LARGE);
+    }
+}
 
 //跳转页面
 void page_switch_btn_event_cb(lv_event_t* e)
@@ -281,6 +312,20 @@ void page_01_print_btn_event_cb(lv_event_t* e)
 
     lv_print_toast_show(ui_text_get(UI_TEXT_WIDGET_PRINT_TOAST_PRINTING));
     send_command(fd4, 0x3C, payload, 9);
+}
+
+void page_01_qr_btn_event_cb(lv_event_t* e)
+{
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
+        return;
+    }
+
+    if (!ui_qr_data_is_ready()) {
+        page_01_qr_show_toast(UI_TEXT_WIDGET_QR_POPUP_NO_DATA);
+        return;
+    }
+
+    page_01_qr_show_popup();
 }
 
 void page_01_curr_btn_event_cb(lv_event_t* e)
