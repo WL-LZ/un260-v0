@@ -1220,20 +1220,25 @@ void PCCmdHandle(void)
             uint8_t sub = buf[4];
 
             if (sub == 0x00) { 
-                bool target = false;
-                page_01_add_req_finish(true, &target);
-                Machine_para.add_enable = target;
-                page_01_bottom_a_refresh_add(true);
+                if (page_01_add_req_is_pending()) {
+                    bool target = false;
+                    page_01_add_req_finish(true, &target);
+                    Machine_para.add_enable = target;
+                    page_01_bottom_a_refresh_add(true);
+                }
                 uart_printf(fd6, "ADD set success\n");
             } else if (sub == 0x01) { 
-                bool target = false;
-                page_01_add_req_finish(false, &target);
+                if (page_01_add_req_is_pending()) {
+                    page_01_add_req_finish(false, NULL);
+                }
                 uart_printf(fd6, "ADD set failed\n");
                 page_03_update_menu_button_states_refresh();
             } else if (sub == 0x02) { 
                 uint8_t v = buf[5];
                 Machine_para.add_enable = (v == 0x00) ? true : false;
-                page_01_add_req_finish(false, NULL);
+                if (page_01_add_req_is_pending()) {
+                    page_01_add_req_finish(false, NULL);
+                }
                 page_01_bottom_a_refresh_add(false);
                 uart_printf(fd6, "ADD boot status: %s\n", Machine_para.add_enable ? "ON" : "OFF");
                 page_03_update_menu_button_states_refresh();
@@ -1322,20 +1327,29 @@ void PCCmdHandle(void)
                 } else {
                     uart_printf(fd6, "FO boot sync: invalid mode=0x%02X\n", val);
                 }
-                page_01_fo_req_finish(false, NULL);
+                if (page_01_fo_req_is_pending()) {
+                    page_01_fo_req_finish(false, NULL);
+                }
                 page_01_bottom_a_refresh_fo(false);
                 break;
             }
             if (type >= 0x01 && type <= 0x04) {
                 if (val == 0x01) {
-                    uint8_t target_mode = (uint8_t)(type - 1);
-                    page_01_fo_req_finish(true, &target_mode);
-                    Machine_para.fo_mode = target_mode;
-                    page_01_bottom_a_refresh_fo(true);
+                    if (page_01_fo_req_is_pending()) {
+                        uint8_t target_mode = 0;
+                        page_01_fo_req_finish(true, &target_mode);
+                        Machine_para.fo_mode = target_mode;
+                        page_01_bottom_a_refresh_fo(true);
+                    } else {
+                        Machine_para.fo_mode = (uint8_t)(type - 1);
+                        page_01_bottom_a_refresh_fo(false);
+                    }
                     uart_printf(fd6, "FO set SUCCESS: type=0x%02X -> ui=%u\n",
                                 type, Machine_para.fo_mode);
                 } else if (val == 0x02) {
-                    page_01_fo_req_finish(false, NULL);
+                    if (page_01_fo_req_is_pending()) {
+                        page_01_fo_req_finish(false, NULL);
+                    }
                     uart_printf(fd6, "FO set FAIL: type=0x%02X\n", type);
                     page_03_update_menu_button_states_refresh();
                 } else {
@@ -1359,7 +1373,9 @@ void PCCmdHandle(void)
                 } else if (mode == 0x01) {
                     Machine_para.work_mode = 0;
                 }
-                page_01_work_req_finish(false, NULL);
+                if (page_01_work_req_is_pending()) {
+                    page_01_work_req_finish(false, NULL);
+                }
                 page_01_bottom_a_refresh_work(false);
                 uart_printf(fd6, "0x38 BOOT mode=0x%02X\n", mode);
                 break;
@@ -1367,21 +1383,33 @@ void PCCmdHandle(void)
 
             uint8_t res = buf[4];
             if (res == 0x00) {
-                uint8_t target_mode = 1;
-                page_01_work_req_finish(true, &target_mode);
-                Machine_para.work_mode = target_mode;
-                page_01_bottom_a_refresh_work(true);
+                if (page_01_work_req_is_pending()) {
+                    uint8_t target_mode = 0;
+                    page_01_work_req_finish(true, &target_mode);
+                    Machine_para.work_mode = target_mode;
+                    page_01_bottom_a_refresh_work(true);
+                } else {
+                    Machine_para.work_mode = 1;
+                    page_01_bottom_a_refresh_work(false);
+                }
                 page_03_update_menu_button_states_refresh();
                 uart_printf(fd6, "0x38 MANUAL OK\n");
             } else if (res == 0x01) {
-                uint8_t target_mode = 0;
-                page_01_work_req_finish(true, &target_mode);
-                Machine_para.work_mode = target_mode;
-                page_01_bottom_a_refresh_work(true);
+                if (page_01_work_req_is_pending()) {
+                    uint8_t target_mode = 0;
+                    page_01_work_req_finish(true, &target_mode);
+                    Machine_para.work_mode = target_mode;
+                    page_01_bottom_a_refresh_work(true);
+                } else {
+                    Machine_para.work_mode = 0;
+                    page_01_bottom_a_refresh_work(false);
+                }
                 page_03_update_menu_button_states_refresh();
                 uart_printf(fd6, "0x38 AUTO OK\n");
             } else {
-                page_01_work_req_finish(false, NULL);
+                if (page_01_work_req_is_pending()) {
+                    page_01_work_req_finish(false, NULL);
+                }
                 uart_printf(fd6, "0x38 RES=0x%02X\n", res);
             }
                 break;

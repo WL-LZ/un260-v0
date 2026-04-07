@@ -228,7 +228,7 @@ ui_element_t page_03_menu_obj[] = {
 
     { "03_f_o_label", LV_OBJ_TYPE_LABEL, NULL,
         { 616, 294, 100, 40, 255, 255, 255 },
-        { "F/O", 0, 115, 255, &lv_font_montserrat_24, LV_TEXT_ALIGN_LEFT },
+        { "SORT", 0, 115, 255, &lv_font_montserrat_24, LV_TEXT_ALIGN_LEFT },
         { 255, 18, 0, false },
         NULL, 0, NULL, NULL,
         UI_BTN_STYLE_NONE },

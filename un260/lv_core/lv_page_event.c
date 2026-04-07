@@ -300,6 +300,11 @@ bool page_01_add_req_start(bool target) //开始主界面ADD切换请求
     return true;
 }
 
+bool page_01_add_req_is_pending(void) //查询主界面ADD切换请求是否挂起
+{
+    return g_page01_add_req_pending;
+}
+
 void page_01_add_req_finish(bool success, bool* target) //结束主界面ADD切换请求
 {
     if (target) {
@@ -317,6 +322,11 @@ bool page_01_work_req_start(uint8_t target_mode) //开始主界面工作模式�
     return true;
 }
 
+bool page_01_work_req_is_pending(void) //查询主界面工作模式切换请求是否挂起
+{
+    return g_page01_work_req_pending;
+}
+
 void page_01_work_req_finish(bool success, uint8_t* target_mode) //结束主界面工作模式切换请求
 {
     if (target_mode) {
@@ -332,6 +342,11 @@ bool page_01_fo_req_start(uint8_t target_mode) //开始主界面F/O模式切换�
     g_page01_fo_req_pending = true;
     g_page01_fo_req_target = target_mode;
     return true;
+}
+
+bool page_01_fo_req_is_pending(void) //查询主界面F/O切换请求是否挂起
+{
+    return g_page01_fo_req_pending;
 }
 
 void page_01_fo_req_finish(bool success, uint8_t* target_mode) //结束主界面F/O模式切换请求
