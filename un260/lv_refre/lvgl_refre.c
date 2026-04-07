@@ -17,6 +17,155 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
+static lv_obj_t* s_page_01_scroll_spacer = NULL;
+static lv_obj_t* s_page_01_scroll_hint_up = NULL;
+static lv_obj_t* s_page_01_scroll_hint_down = NULL;
+static bool s_page_01_scroll_hint_up_show = false;
+static bool s_page_01_scroll_hint_down_show = false;
+
+#define PAGE_01_SCROLL_HINT_UP_IMG_PATH       "L:/usr/local/share/lvgl_data/main_pol_up.png"
+#define PAGE_01_SCROLL_HINT_DOWN_IMG_PATH     "L:/usr/local/share/lvgl_data/main_pol_down.png"
+#define PAGE_01_SCROLL_HINT_UP_IMG_PATH_USB   "L:/mnt/usb/lvgl_data/main_pol_up.png"
+#define PAGE_01_SCROLL_HINT_DOWN_IMG_PATH_USB "L:/mnt/usb/lvgl_data/main_pol_down.png"
+
+static bool page_01_set_hint_img_src(lv_obj_t* img_obj, const char* primary_path, const char* fallback_path) //设置遮挡提示图片（带回退路径）
+{
+    lv_img_header_t header;
+
+    if (!img_obj || !lv_obj_is_valid(img_obj)) return false;
+
+    if (lv_img_decoder_get_info(primary_path, &header) == LV_RES_OK) {
+        lv_img_set_src(img_obj, primary_path);
+        return true;
+    }
+
+    if (fallback_path && lv_img_decoder_get_info(fallback_path, &header) == LV_RES_OK) {
+        lv_img_set_src(img_obj, fallback_path);
+        return true;
+    }
+
+    return false;
+}
+
+static int page_01_get_visible_denom_count(void) //获取当前币种有效面额数量（数据侧）
+{
+    int count = 0;
+    int max_cnt = (int)(sizeof(sim.denom) / sizeof(sim.denom[0]));
+
+    for (int i = 0; i < max_cnt; i++) {
+        if (sim.denom[i].value > 0) {
+            count++;
+        }
+    }
+
+    return count;
+}
+
+static int page_01_get_visible_row_count_from_ui(void) //获取主界面右侧当前可见行数（UI侧）
+{
+    int count = 0;
+    char name[32];
+
+    for (int i = 1; i <= 10; i++) {
+        lv_obj_t* obj;
+        snprintf(name, sizeof(name), "denom_%d_label", i);
+        obj = find_obj_by_name(name, page_01_main_obj, page_01_main_len);
+        if (obj && !lv_obj_has_flag(obj, LV_OBJ_FLAG_HIDDEN)) {
+            count++;
+        }
+    }
+
+    return count;
+}
+
+bool page_01_is_small_denom_mode(void) //当前币种是否为“小面额可见行”模式
+{
+    int ui_visible_rows = page_01_get_visible_row_count_from_ui();
+    int data_visible_cnt = page_01_get_visible_denom_count();
+
+    if (ui_visible_rows > 0) {
+        return (ui_visible_rows <= PAGE_01_REPORT_ITEM);
+    }
+
+    return (data_visible_cnt <= PAGE_01_REPORT_ITEM);
+}
+
+static void page_01_scroll_hint_sync_visible(void) //同步遮挡提示最终可见状态
+{
+    if (s_page_01_scroll_hint_up && lv_obj_is_valid(s_page_01_scroll_hint_up)) {
+        if (s_page_01_scroll_hint_up_show) lv_obj_clear_flag(s_page_01_scroll_hint_up, LV_OBJ_FLAG_HIDDEN);
+        else lv_obj_add_flag(s_page_01_scroll_hint_up, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (s_page_01_scroll_hint_down && lv_obj_is_valid(s_page_01_scroll_hint_down)) {
+        if (s_page_01_scroll_hint_down_show) lv_obj_clear_flag(s_page_01_scroll_hint_down, LV_OBJ_FLAG_HIDDEN);
+        else lv_obj_add_flag(s_page_01_scroll_hint_down, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+static void page_01_scroll_hint_refresh(bool force_blink) //刷新主界面详情遮挡提示（无动画）
+{
+    int top_hidden = 0;
+    int bottom_hidden = 0;
+    bool top_show;
+    bool bottom_show;
+    bool small_denom_mode;
+    (void)force_blink;
+
+    if (!page_01_main_scroll_container || !lv_obj_is_valid(page_01_main_scroll_container)) return;
+    if (!main_page || !lv_obj_is_valid(main_page)) return;
+    // 先更新布局，避免切币种后拿到旧的滚动范围导致提示残留
+    lv_obj_update_layout(main_page);
+    lv_obj_update_layout(page_01_main_scroll_container);
+
+    top_hidden = lv_obj_get_scroll_top(page_01_main_scroll_container);
+    bottom_hidden = lv_obj_get_scroll_bottom(page_01_main_scroll_container);
+    top_show = (top_hidden > 0);
+    bottom_show = (bottom_hidden > 0);
+    small_denom_mode = page_01_is_small_denom_mode();
+
+    // 小面额币种不显示上下遮挡提示
+    if (small_denom_mode) {
+        top_show = false;
+        bottom_show = false;
+    }
+
+    s_page_01_scroll_hint_up_show = top_show;
+    s_page_01_scroll_hint_down_show = bottom_show;
+
+    page_01_scroll_hint_sync_visible();
+}
+
+static void page_01_scroll_hint_event_cb(lv_event_t* e) //详情滚动事件：更新遮挡提示
+{
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if (code == LV_EVENT_SCROLL) {
+        page_01_scroll_hint_refresh(false);
+        return;
+    }
+
+    if (code == LV_EVENT_SCROLL_END) {
+        if (page_01_is_small_denom_mode() &&
+            page_01_main_scroll_container && lv_obj_is_valid(page_01_main_scroll_container)) {
+            // 小面额币种允许拖动，但松手后回到顶部
+            lv_obj_scroll_to_y(page_01_main_scroll_container, 0, LV_ANIM_ON);
+        }
+        page_01_scroll_hint_refresh(false);
+    }
+}
+
+void page_01_scroll_hint_on_enter(void) //主界面进入/切币种后触发遮挡提示检测
+{
+    page_01_scroll_hint_refresh(true);
+}
+
+void page_01_scroll_hint_force_hide(void) //强制隐藏主界面详情遮挡提示
+{
+    s_page_01_scroll_hint_up_show = false;
+    s_page_01_scroll_hint_down_show = false;
+    page_01_scroll_hint_sync_visible();
+}
+
 void ui_switch_to(page_id_t page)
 {
     lv_obj_add_flag(main_page, LV_OBJ_FLAG_HIDDEN);
@@ -144,6 +293,8 @@ void page_01_create_mian_scrollable_container(void)
     lv_obj_add_event_cb(page_01_main_scroll_container, page_01_detail_area_event_cb, LV_EVENT_PRESSING, NULL);
     lv_obj_add_event_cb(page_01_main_scroll_container, page_01_detail_area_event_cb, LV_EVENT_RELEASED, NULL);
     lv_obj_add_event_cb(page_01_main_scroll_container, page_01_detail_area_event_cb, LV_EVENT_PRESS_LOST, NULL);
+    lv_obj_add_event_cb(page_01_main_scroll_container, page_01_scroll_hint_event_cb, LV_EVENT_SCROLL, NULL);
+    lv_obj_add_event_cb(page_01_main_scroll_container, page_01_scroll_hint_event_cb, LV_EVENT_SCROLL_END, NULL);
  
 
     //将右边详情放到容器里面
@@ -177,14 +328,42 @@ void page_01_create_mian_scrollable_container(void)
             lv_obj_set_pos(obj, 213, (i - 1) * 32);
         }
     }
-    if (sim.denom_number > PAGE_01_REPORT_ITEM) {
-        lv_obj_add_flag(page_01_main_scroll_container,
-                        LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC);
-        lv_obj_clear_flag(page_01_main_scroll_container, LV_OBJ_FLAG_SCROLL_MOMENTUM);
-    } else {
-        lv_obj_clear_flag(page_01_main_scroll_container,
-                          LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM);
+
+    // 固定一个不可见占位点，保证任意币种都具备可拖动回弹的滚动空间
+    s_page_01_scroll_spacer = lv_obj_create(page_01_main_scroll_container);
+    lv_obj_remove_style_all(s_page_01_scroll_spacer);
+    lv_obj_set_size(s_page_01_scroll_spacer, 1, 1);
+    lv_obj_set_pos(s_page_01_scroll_spacer, 0, 272); // 比容器(240)略大，保证始终可上下拖动
+    lv_obj_set_style_bg_opa(s_page_01_scroll_spacer, LV_OPA_TRANSP, 0);
+    lv_obj_clear_flag(s_page_01_scroll_spacer, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(s_page_01_scroll_spacer, LV_OBJ_FLAG_CLICKABLE);
+
+    // 主界面详情区始终允许上下滑动，不再按面额数量阈值开关
+    lv_obj_add_flag(page_01_main_scroll_container,
+                    LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC);
+    lv_obj_clear_flag(page_01_main_scroll_container, LV_OBJ_FLAG_SCROLL_MOMENTUM);
+
+    if (!s_page_01_scroll_hint_up || !lv_obj_is_valid(s_page_01_scroll_hint_up)) {
+        s_page_01_scroll_hint_up = lv_img_create(main_page);
+        lv_obj_remove_style_all(s_page_01_scroll_hint_up);
+        lv_obj_set_pos(s_page_01_scroll_hint_up, 1051, 26);
+        if (!page_01_set_hint_img_src(s_page_01_scroll_hint_up, PAGE_01_SCROLL_HINT_UP_IMG_PATH, PAGE_01_SCROLL_HINT_UP_IMG_PATH_USB)) {
+            lv_obj_add_flag(s_page_01_scroll_hint_up, LV_OBJ_FLAG_HIDDEN);
+        }
+        lv_obj_add_flag(s_page_01_scroll_hint_up, LV_OBJ_FLAG_HIDDEN);
     }
+
+    if (!s_page_01_scroll_hint_down || !lv_obj_is_valid(s_page_01_scroll_hint_down)) {
+        s_page_01_scroll_hint_down = lv_img_create(main_page);
+        lv_obj_remove_style_all(s_page_01_scroll_hint_down);
+        lv_obj_set_pos(s_page_01_scroll_hint_down, 1051, 309);
+        if (!page_01_set_hint_img_src(s_page_01_scroll_hint_down, PAGE_01_SCROLL_HINT_DOWN_IMG_PATH, PAGE_01_SCROLL_HINT_DOWN_IMG_PATH_USB)) {
+            lv_obj_add_flag(s_page_01_scroll_hint_down, LV_OBJ_FLAG_HIDDEN);
+        }
+        lv_obj_add_flag(s_page_01_scroll_hint_down, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    page_01_scroll_hint_refresh(true);
 }
 
 
@@ -1745,12 +1924,21 @@ bool page_07_curr_set_pending_result(uint8_t status)
         memcpy(Machine_para.curr_code, g_curr_pending_code, 4);
         set_curr(get_curr_item(g_curr_pending_code));
         sim_clear_all_sn(&sim);
+        memset(sim.denom, 0, sizeof(sim.denom)); //切币种时清空旧币种面额缓存，避免三角提示残留
+        sim.denom_number = 0;
+        sim.total_pcs = 0;
+        sim.total_amount = 0.0f;
         g_curr_sel_abs_idx = g_curr_pending_abs_idx;
         g_curr_sel_vis_idx = curr_find_visible_pos_by_abs(g_curr_sel_abs_idx);
         g_curr_pending_abs_idx = -1;
         memset(g_curr_pending_code, 0, sizeof(g_curr_pending_code));
         ui_state_save_to_file();
         ui_manager_switch(UI_PAGE_MAIN);
+        page_01_scroll_hint_force_hide();
+        if (page_01_main_scroll_container && lv_obj_is_valid(page_01_main_scroll_container)) {
+            // 切换币种成功后再次归零，确保不会出现首行被遮挡
+            lv_obj_scroll_to_y(page_01_main_scroll_container, 0, LV_ANIM_OFF);
+        }
         return true;
     }
 

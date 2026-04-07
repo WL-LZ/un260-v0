@@ -130,6 +130,11 @@ void page_01_detail_area_event_cb(lv_event_t* e)
             ui_manager_push_page(UI_PAGE_LIST);
         }
 
+        if (page_01_is_small_denom_mode() && cont && lv_obj_is_valid(cont)) {
+            // 小面额币种支持拖动回弹，松手后自动回到顶部
+            lv_obj_scroll_to_y(cont, 0, LV_ANIM_ON);
+        }
+
         s_touch.pressed = false;
         s_touch.dragging = false;
         break;

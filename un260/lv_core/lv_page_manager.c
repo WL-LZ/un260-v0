@@ -68,6 +68,10 @@ static void create_new_page(ui_page_t page)
     if (page == UI_PAGE_MAIN && main_page && lv_obj_is_valid(main_page)) {
         lv_obj_clear_flag(main_page, LV_OBJ_FLAG_HIDDEN); // 显示主页面
         resume_counting_sim(); // 恢复计数
+        if (page_01_main_scroll_container && lv_obj_is_valid(page_01_main_scroll_container)) {
+            // 返回主界面时强制把详情区滚动位置归零，避免切币种后沿用旧偏移
+            lv_obj_scroll_to_y(page_01_main_scroll_container, 0, LV_ANIM_OFF);
+        }
         page_01_add_refre();
         page_01_work_refre();
         page_01_batch_refre();
@@ -78,6 +82,11 @@ static void create_new_page(ui_page_t page)
         page_01_curr_img_refre();
         //sim_data_init();
         ui_refresh_main_page();
+        if (page_01_main_scroll_container && lv_obj_is_valid(page_01_main_scroll_container)) {
+            // 数据刷新后再次归零，避免布局更新导致首行被遮挡
+            lv_obj_scroll_to_y(page_01_main_scroll_container, 0, LV_ANIM_OFF);
+        }
+        page_01_scroll_hint_on_enter();
 
         return; // 直接返回，不执行创建
     }

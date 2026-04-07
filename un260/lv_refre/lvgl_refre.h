@@ -20,6 +20,9 @@ extern "C" {
 
     void page_01_mode_switch_refre(void);
     void page_01_create_mian_scrollable_container(void);
+    void page_01_scroll_hint_on_enter(void);
+    void page_01_scroll_hint_force_hide(void);
+    bool page_01_is_small_denom_mode(void);
 
     void page_01_add_refre(void);
     void page_01_work_refre(void);

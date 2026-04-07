@@ -5,6 +5,7 @@
 #include "un260/lv_resources/lv_img_init.h" 
 #include "user_cfg.h"
 #include "un260/lv_core/lv_page_manager.h"
+#include "un260/lv_refre/lvgl_refre.h"
 #include "un260/lv_system/platform_app.h"
 // 全局变量定义
 counting_sim_t sim = { 0 };
@@ -526,15 +527,14 @@ void ui_refresh_main_page(void) {
     format_amount_with_comma(amount_total, sizeof(amount_total), sim_data->total_amount);
     lv_label_set_text(find_obj_by_name("total_amount_label", page_01_main_obj, page_01_main_len), amount_total);//更新总金额格式
 
-    if (page_01_main_scroll_container != NULL && lv_obj_is_valid(page_01_main_scroll_container))
-        if (sim_data->denom_number > PAGE_01_REPORT_ITEM)
-            lv_obj_add_flag(page_01_main_scroll_container, LV_OBJ_FLAG_SCROLLABLE);
-        else
-        {
-            lv_obj_clear_flag(page_01_main_scroll_container, LV_OBJ_FLAG_SCROLLABLE);
-
-        }
+    if (page_01_main_scroll_container != NULL && lv_obj_is_valid(page_01_main_scroll_container)) {
+        // 主界面详情区始终允许上下滑动，不再按面额数量阈值开关
+        lv_obj_add_flag(page_01_main_scroll_container,
+                        LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC);
+        lv_obj_clear_flag(page_01_main_scroll_container, LV_OBJ_FLAG_SCROLL_MOMENTUM);
+    }
     page_01_err_num_refre();
+    page_01_scroll_hint_on_enter(); //主界面数据刷新后同步更新上下遮挡提示
 }
 
 void cleanup_counting_sim(void) {
