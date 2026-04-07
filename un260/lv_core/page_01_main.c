@@ -1012,10 +1012,7 @@ void ui_main_create(lv_obj_t* parent)
 
     if (frist_creat)
     {
-        /* If denom list already came from protocol during boot, keep it. */
-        if (sim.denom_number <= 0) {
-            sim_data_init();
-        }
+        /* Main page denomination data is master-driven (0x0B), no local fallback here. */
         page_01_mode_switch_refre();
 
         frist_creat = false;

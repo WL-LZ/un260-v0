@@ -62,9 +62,11 @@ static bool g_denom_query_deferred = false;
 static bool g_denom_query_got_frame = false;
 static uint32_t g_denom_query_tick = 0;
 static uint8_t g_denom_query_retry = 0;
+static uint32_t g_denom_query_idle_retry_tick = 0;
 #define UI_UPGRADE_DETECT_INTERVAL_MS 500
 #define DENOM_QUERY_TIMEOUT_MS 1500
 #define DENOM_QUERY_MAX_RETRY 2
+#define DENOM_QUERY_IDLE_RETRY_MS 2500
 static uint32_t g_ui_upgrade_detect_tick = 0;
 
 static uint8_t g_boot_selftest_result[5] = {0};
@@ -187,6 +189,14 @@ static bool is_main_page_active(void)
            main_page && lv_obj_is_valid(main_page);
 }
 
+// Clear cached denomination rows; next view refresh will wait for master 0x0B data.
+static void clear_master_denom_cache(void)
+{
+    memset(sim.denom, 0, sizeof(sim.denom));
+    sim.denom_number = 0;
+    g_denom_query_got_frame = false;
+}
+
 static void request_denom_list(void)
 {
     uint8_t sub = 0x01;
@@ -201,7 +211,7 @@ static void trigger_denom_query(void)
 {
     g_denom_query_retry = 0;
     /* Avoid injecting extra command during boot self-test/param-read flow. */
-    if (g_boot_stage != BOOT_STAGE_DONE) {
+    if (g_boot_stage != BOOT_STAGE_DONE && g_boot_stage != BOOT_STAGE_FAIL) {
         g_denom_query_deferred = true;
         uart_printf(fd6, "defer denom query until boot done\n");
         return;
@@ -495,6 +505,10 @@ void PCCmdHandle(void)
                 Machine_para.curr_code[3] = '\0';
 
                 uart_printf(fd6, "Boot curr: %s\n", Machine_para.curr_code);
+                clear_master_denom_cache();
+                if (is_main_page_active()) {
+                    ui_refresh_main_page();
+                }
                 trigger_denom_query();
             }
 
@@ -1625,20 +1639,28 @@ int main(void) {
                                 g_denom_query_retry, DENOM_QUERY_MAX_RETRY);
                     request_denom_list();
                 } else {
-                    uart_printf(fd6, "0x0B query timeout, fallback to local mapping\n");
-                    sim_data_init();
-                    if (is_main_page_active()) {
-                        ui_refresh_main_page();
-                    }
+                    uart_printf(fd6, "0x0B query timeout, keep master-only mode (no local fallback)\n");
                 }
             }
         }
 
         if (g_denom_query_deferred &&
             !g_denom_query_pending &&
-            g_boot_stage == BOOT_STAGE_DONE) {
+            (g_boot_stage == BOOT_STAGE_DONE || g_boot_stage == BOOT_STAGE_FAIL)) {
             g_denom_query_deferred = false;
             request_denom_list();
+        }
+
+        if (!g_denom_query_pending &&
+            !g_denom_query_got_frame &&
+            is_main_page_active() &&
+            (g_boot_stage == BOOT_STAGE_DONE || g_boot_stage == BOOT_STAGE_FAIL)) {
+            if ((now - g_denom_query_idle_retry_tick) >= DENOM_QUERY_IDLE_RETRY_MS) {
+                g_denom_query_idle_retry_tick = now;
+                g_denom_query_retry = 0;
+                uart_printf(fd6, "0x0B idle retry on main page\n");
+                request_denom_list();
+            }
         }
 
         if (g_boot_stage == BOOT_STAGE_HANDSHAKE &&
