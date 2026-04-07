@@ -63,6 +63,7 @@ static bool g_denom_query_got_frame = false;
 static uint32_t g_denom_query_tick = 0;
 static uint8_t g_denom_query_retry = 0;
 static uint32_t g_denom_query_idle_retry_tick = 0;
+static lv_timer_t* g_mode_clear_timer = NULL;
 #define UI_UPGRADE_DETECT_INTERVAL_MS 500
 #define DENOM_QUERY_TIMEOUT_MS 1500
 #define DENOM_QUERY_MAX_RETRY 2
@@ -217,6 +218,32 @@ static void trigger_denom_query(void)
         return;
     }
     request_denom_list();
+}
+
+static void mode_switch_clear_timer_cb(lv_timer_t* timer)
+{
+    LV_UNUSED(timer);
+    g_mode_clear_timer = NULL;
+    sim_clear_all_sn(&sim);
+}
+
+static void schedule_mode_switch_clear(void)
+{
+    // 无数据时不做清理，避免无意义开销
+    if (sim.total_pcs == 0 && sim.err_num == 0 && sim.err_expected == 0) {
+        return;
+    }
+
+    if (g_mode_clear_timer != NULL) {
+        lv_timer_del(g_mode_clear_timer);
+        g_mode_clear_timer = NULL;
+    }
+
+    // 让底部文本动画先跑起来，再执行重置，降低按键卡顿体感
+    g_mode_clear_timer = lv_timer_create(mode_switch_clear_timer_cb, 120, NULL);
+    if (g_mode_clear_timer != NULL) {
+        lv_timer_set_repeat_count(g_mode_clear_timer, 1);
+    }
 }
 
 // ===== RX HEX 转字符串 =====
@@ -542,7 +569,7 @@ void PCCmdHandle(void)
                     update_label_by_name(page_01_main_obj, page_01_main_len, "mode_label", "%s", mode_str);
                     page_01_bottom_a_refresh_mode(true);
                 }
-                sim_clear_all_sn(&sim);
+                schedule_mode_switch_clear();
                 uart_printf(fd6, "Set work mode success\n");
             }
             else if (status == 0x02)
@@ -839,6 +866,12 @@ void PCCmdHandle(void)
                     send_command(fd4, 0x0D, sn_req, 2);
                     g_wait_sn_after_reject_end = false;
                 }
+                break;
+            }
+
+            /* ESC 清除后 err_expected=0，此时丢弃延迟到达的旧错误明细，避免主界面与 list 显示不一致。 */
+            if (sim.err_expected == 0) {
+                uart_printf(fd6, "0x0C detail ignored because err_expected=0\n");
                 break;
             }
 
