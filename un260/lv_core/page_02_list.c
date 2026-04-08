@@ -5,10 +5,62 @@
 #include "lv_page_event.h"
 #include "un260/lv_refre/lvgl_refre.h"
 #include "../aic_ui/aic_ui.h"
+#include "un260/lv_system/platform_app.h"
+#include <stdio.h>
+#include <string.h>
 
 
 // 添加长度变量
 int page_02_list_len = 0;
+
+#define PAGE_02_SCROLL_ROW_GAP          31
+#define PAGE_02_SCROLL_ROW_Y_OFFSET     10
+#define PAGE_02_SCROLL_COL_MAX          3
+#define PAGE_02_SCROLL_POOL_MAX         (PAGE_02_C_ITEM + 1)
+#define PAGE_02_SCROLL_EDGE_BUFFER      32
+
+typedef struct {
+    page_02_section_id_t section_id;
+    lv_obj_t *container;
+    lv_obj_t *spacer;
+    lv_obj_t *cell[PAGE_02_SCROLL_POOL_MAX][PAGE_02_SCROLL_COL_MAX];
+    lv_coord_t x;
+    lv_coord_t y;
+    lv_coord_t w;
+    lv_coord_t h;
+    lv_coord_t col_x[PAGE_02_SCROLL_COL_MAX];
+    lv_coord_t col_w[PAGE_02_SCROLL_COL_MAX];
+    uint8_t page_size;
+    uint8_t pool_row;
+    uint8_t col_count;
+    uint16_t total_row;
+    uint16_t first_row;
+    bool press_moved;
+    lv_point_t press_point;
+} page_02_scroll_section_t;
+
+static page_02_scroll_section_t s_page_02_scroll_sections[PAGE_02_SECTION_COUNT];
+
+static int page_02_a_valid_count_get(void); // 获取A区有效面额条数
+static int page_02_b_valid_count_get(void); // 获取B区有效冠字号条数
+static int page_02_b_nth_valid_index_get(int nth); // 获取B区第nth条有效数据索引
+static page_02_scroll_section_t *page_02_scroll_section_get(page_02_section_id_t section_id); // 获取分区配置
+static void page_02_scroll_section_init_config(void); // 初始化A/B/C滚动容器配置
+static void page_02_scroll_section_style_init(lv_obj_t *obj); // 统一设置滚动容器样式
+static lv_obj_t *page_02_scroll_cell_create(lv_obj_t *parent, lv_coord_t width); // 创建滚动单元标签
+static void page_02_scroll_section_create(page_02_scroll_section_t *section); // 创建单个分区滚动容器
+static void page_02_scroll_section_event_cb(lv_event_t *e); // 处理滚动与点击翻页
+static void page_02_scroll_section_total_page_refresh(page_02_scroll_section_t *section); // 刷新分区总页数
+static void page_02_scroll_section_spacer_refresh(page_02_scroll_section_t *section); // 刷新滚动内容高度
+static void page_02_scroll_section_status_refresh(page_02_scroll_section_t *section); // 根据滚动位置刷新页码
+static void page_02_scroll_section_row_bind(page_02_scroll_section_t *section, uint16_t pool_row, int data_index); // 绑定滚动行内容
+static void page_02_scroll_section_visible_refresh(page_02_scroll_section_t *section); // 刷新可见行
+static void page_02_scroll_section_sync_to_status(page_02_scroll_section_t *section, bool anim_en); // 根据页码同步滚动位置
+static bool page_02_scroll_section_small_data(page_02_scroll_section_t *section); // 判断当前分区是否为小数据量
+static uint16_t page_02_scroll_section_last_page_first_row_get(page_02_scroll_section_t *section); // 获取最后一页的起始行
+static lv_coord_t page_02_scroll_section_real_bottom_scroll_y_get(page_02_scroll_section_t *section); // 获取真实内容底部的滚动位置
+static lv_coord_t page_02_scroll_section_max_scroll_y_get(page_02_scroll_section_t *section); // 获取分区允许的最大滚动距离
+static void page_02_scroll_section_pull_limit(page_02_scroll_section_t *section); // 限制最后一页过拉距离
 
 ui_element_t page_02_list_obj[] = {
 
@@ -168,124 +220,12 @@ ui_element_t page_02_list_obj[] = {
          NULL, 0, NULL, NULL ,
          UI_BTN_STYLE_NONE},
 
-//************  a_REPORT ****************//
-    { "02_a_denom_1", LV_OBJ_TYPE_LABEL, NULL,
-      { 72,  89, 80, 36, 255, 255, 255 },
-      { "1", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-      { 255, 18, 0, false },
-      NULL, 0, "1", NULL,
-      UI_BTN_STYLE_NONE },
-
-    { "02_a_denom_2", LV_OBJ_TYPE_LABEL, NULL,
-      { 72, 120, 80, 36, 255, 255, 255 },
-      { "2", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-      { 255, 18, 0, false },
-      NULL, 0, "2", NULL,
-      UI_BTN_STYLE_NONE },
-
-    { "02_a_denom_3", LV_OBJ_TYPE_LABEL, NULL,
-      { 72, 151, 80, 36, 255, 255, 255 },
-      { "3", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-      { 255, 18, 0, false },
-      NULL, 0, "3", NULL,
-      UI_BTN_STYLE_NONE },
-
-    { "02_a_denom_4", LV_OBJ_TYPE_LABEL, NULL,
-      { 72, 182, 80, 36, 255, 255, 255 },
-      { "4", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-      { 255, 18, 0, false },
-      NULL, 0, "4", NULL,
-      UI_BTN_STYLE_NONE },
-
-    { "02_a_denom_5", LV_OBJ_TYPE_LABEL, NULL,
-      { 72, 213, 80, 36, 255, 255, 255 },
-      { "5", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-      { 255, 18, 0, false },
-      NULL, 0, "5", NULL,
-      UI_BTN_STYLE_NONE },
-
-    { "02_a_denom_6", LV_OBJ_TYPE_LABEL, NULL,
-      { 72, 244, 80, 36, 255, 255, 255 },
-      { "6", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-      { 255, 18, 0, false },
-      NULL, 0, "6", NULL,
-      UI_BTN_STYLE_NONE },
-
-    { "02_a_denom_7", LV_OBJ_TYPE_LABEL, NULL,
-      { 72, 275, 80, 36, 255, 255, 255 },
-      { "7", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-      { 255, 18, 0, false },
-      NULL, 0, "7", NULL,
-      UI_BTN_STYLE_NONE },
-
-    { "02_a_denom_8", LV_OBJ_TYPE_LABEL, NULL,
-      { 72, 306, 80, 36, 255, 255, 255 },
-      { "8", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-      { 255, 18, 0, false },
-      NULL, 0, "8", NULL,
-      UI_BTN_STYLE_NONE },
-
+//************  a_TOTAL ****************//
     { "02_a_denom_total", LV_OBJ_TYPE_LABEL, NULL,
       { 58, 337, 80, 36, 255, 255, 255 },
       { "TOTAL", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
       { 255, 18, 0, false },
       NULL, 0, 0, NULL,
-      UI_BTN_STYLE_NONE },
-//a_pcs
-    { "02_a_pcs_1", LV_OBJ_TYPE_LABEL, NULL,
-      { 171,  89, 70, 36, 255, 255, 255 },
-      { "1", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-      { 255, 18, 0, false },
-      NULL, 0, "1", NULL,
-      UI_BTN_STYLE_NONE },
-
-    { "02_a_pcs_2", LV_OBJ_TYPE_LABEL, NULL,
-      { 171, 120, 70, 36, 255, 255, 255 },
-      { "2", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-      { 255, 18, 0, false },
-      NULL, 0, "2", NULL,
-      UI_BTN_STYLE_NONE },
-
-    { "02_a_pcs_3", LV_OBJ_TYPE_LABEL, NULL,
-      { 171, 151, 70, 36, 255, 255, 255 },
-      { "3", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-      { 255, 18, 0, false },
-      NULL, 0, "3", NULL,
-      UI_BTN_STYLE_NONE },
-
-    { "02_a_pcs_4", LV_OBJ_TYPE_LABEL, NULL,
-      { 171, 182, 70, 36, 255, 255, 255 },
-      { "4", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-      { 255, 18, 0, false },
-      NULL, 0, "4", NULL,
-      UI_BTN_STYLE_NONE },
-
-    { "02_a_pcs_5", LV_OBJ_TYPE_LABEL, NULL,
-      { 171, 213, 70, 36, 255, 255, 255 },
-      { "5", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-      { 255, 18, 0, false },
-      NULL, 0, "5", NULL,
-      UI_BTN_STYLE_NONE },
-
-    { "02_a_pcs_6", LV_OBJ_TYPE_LABEL, NULL,
-      { 171, 244, 70, 36, 255, 255, 255 },
-      { "6", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-      { 255, 18, 0, false },
-      NULL, 0, "6", NULL,
-      UI_BTN_STYLE_NONE },
-
-    { "02_a_pcs_7", LV_OBJ_TYPE_LABEL, NULL,
-      { 171, 275, 70, 36, 255, 255, 255 },
-      { "7", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-      { 255, 18, 0, false },
-      NULL, 0, "7", NULL,
-      UI_BTN_STYLE_NONE },
-
-    { "02_a_pcs_8", LV_OBJ_TYPE_LABEL, NULL,
-      { 171, 306, 70, 36, 255, 255, 255 },
-      { "8", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-      { 255, 18, 0, false },
-      NULL, 0, "8", NULL,
       UI_BTN_STYLE_NONE },
 
     { "02_a_pcs_amount", LV_OBJ_TYPE_LABEL, NULL,
@@ -294,442 +234,13 @@ ui_element_t page_02_list_obj[] = {
       { 255, 18, 0, false },
       NULL, 0, 0, NULL,
       UI_BTN_STYLE_NONE },
-//amount_total
-      { "02_a_amount_1", LV_OBJ_TYPE_LABEL, NULL,
-        { 267,  89, 80, 36, 255, 255, 255 },
-        { "1", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-        { 255, 18, 0, false },
-        NULL, 0, "1", NULL,
-        UI_BTN_STYLE_NONE },
 
-      { "02_a_amount_2", LV_OBJ_TYPE_LABEL, NULL,
-        { 267, 120, 80, 36, 255, 255, 255 },
-        { "2", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-        { 255, 18, 0, false },
-        NULL, 0, "2", NULL,
-        UI_BTN_STYLE_NONE },
-
-      { "02_a_amount_3", LV_OBJ_TYPE_LABEL, NULL,
-        { 267, 151, 80, 36, 255, 255, 255 },
-        { "3", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-        { 255, 18, 0, false },
-        NULL, 0, "3", NULL,
-        UI_BTN_STYLE_NONE },
-
-      { "02_a_amount_4", LV_OBJ_TYPE_LABEL, NULL,
-        { 267, 182, 80, 36, 255, 255, 255 },
-        { "4", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-        { 255, 18, 0, false },
-        NULL, 0, "4", NULL,
-        UI_BTN_STYLE_NONE },
-
-      { "02_a_amount_5", LV_OBJ_TYPE_LABEL, NULL,
-        { 267, 213, 80, 36, 255, 255, 255 },
-        { "5", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-        { 255, 18, 0, false },
-        NULL, 0, "5", NULL,
-        UI_BTN_STYLE_NONE },
-
-      { "02_a_amount_6", LV_OBJ_TYPE_LABEL, NULL,
-        { 267, 244, 80, 36, 255, 255, 255 },
-        { "6", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-        { 255, 18, 0, false },
-        NULL, 0, "6", NULL,
-        UI_BTN_STYLE_NONE },
-
-      { "02_a_amount_7", LV_OBJ_TYPE_LABEL, NULL,
-        { 267, 275, 80, 36, 255, 255, 255 },
-        { "7", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-        { 255, 18, 0, false },
-        NULL, 0, "7", NULL,
-        UI_BTN_STYLE_NONE },
-
-      { "02_a_amount_8", LV_OBJ_TYPE_LABEL, NULL,
-        { 267, 306, 80, 36, 255, 255, 255 },
-        { "8", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-        { 255, 18, 0, false },
-        NULL, 0, "8", NULL,
-        UI_BTN_STYLE_NONE },
-
-      { "02_a_amount_total", LV_OBJ_TYPE_LABEL, NULL,
-        { 267, 337, 80, 36, 255, 255, 255 },
-        { "0", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-        { 255, 18, 0, false },
-        NULL, 0, 0, NULL,
-        UI_BTN_STYLE_NONE },
-
-//************  b_REPORT ****************//
-    { "02_b_no_1", LV_OBJ_TYPE_LABEL, NULL ,
-        { 446, 89, 70, 36, 255, 255, 255 },
-        { "1", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-        { 255, 18, 0, false },
-         NULL, 0, "1", NULL ,
-         UI_BTN_STYLE_NONE },
-    { "02_b_no_2", LV_OBJ_TYPE_LABEL, NULL ,
-        { 446, 120, 70, 36, 255, 255, 255 },
-        { "2", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-        { 255, 18, 0, false },
-         NULL, 0, "2", NULL ,
-         UI_BTN_STYLE_NONE },
-      { "02_b_no_3", LV_OBJ_TYPE_LABEL, NULL ,
-          { 446, 151, 70, 36, 255, 255, 255 },
-          { "3", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-          { 255, 18, 0, false },
-           NULL, 0, "3", NULL ,
-           UI_BTN_STYLE_NONE },
-      { "02_b_no_4", LV_OBJ_TYPE_LABEL, NULL ,
-          { 446, 182, 70, 36, 255, 255, 255 },
-          { "4", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-          { 255, 18, 0, false },
-           NULL, 0, "4", NULL ,
-           UI_BTN_STYLE_NONE },
-      { "02_b_no_5", LV_OBJ_TYPE_LABEL, NULL ,
-          { 446, 213, 70, 36, 255, 255, 255 },
-          { "5", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-          { 255, 18, 0, false },
-           NULL, 0, "5", NULL ,
-           UI_BTN_STYLE_NONE },
-      { "02_b_no_6", LV_OBJ_TYPE_LABEL, NULL ,
-          { 446, 244, 70, 36, 255, 255, 255 },
-          { "6", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-          { 255, 18, 0, false },
-           NULL, 0, "6", NULL ,
-           UI_BTN_STYLE_NONE },
-      { "02_b_no_7", LV_OBJ_TYPE_LABEL, NULL ,
-          { 446, 275, 70, 36, 255, 255, 255 },
-          { "7", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-          { 255, 18, 0, false },
-           NULL, 0, "7", NULL ,
-           UI_BTN_STYLE_NONE },
-      { "02_b_no_8", LV_OBJ_TYPE_LABEL, NULL ,
-          { 446, 306, 70, 36, 255, 255, 255 },
-          { "8", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-          { 255, 18, 0, false },
-           NULL, 0, "8", NULL ,
-           UI_BTN_STYLE_NONE },
-        { "02_b_no_9", LV_OBJ_TYPE_LABEL, NULL ,
-            { 446, 337, 70, 36, 255, 255, 255 },
-            { "9", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-            { 255, 18, 0, false },
-             NULL, 0, "9", NULL ,
-             UI_BTN_STYLE_NONE },
-
-//b_sn
-      { "02_b_sn_1", LV_OBJ_TYPE_LABEL, NULL,
-        { 516,  89, 200, 36, 255, 255, 255 },
-        { "1", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-        { 255, 18, 0, false },
-        NULL, 0, "1", NULL,
-        UI_BTN_STYLE_NONE },
-
-      { "02_b_sn_2", LV_OBJ_TYPE_LABEL, NULL,
-        { 516, 120, 200, 36, 255, 255, 255 },
-        { "2", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-        { 255, 18, 0, false },
-        NULL, 0, "2", NULL,
-        UI_BTN_STYLE_NONE },
-
-      { "02_b_sn_3", LV_OBJ_TYPE_LABEL, NULL,
-        { 516, 151, 200, 36, 255, 255, 255 },
-        { "3", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-        { 255, 18, 0, false },
-        NULL, 0, "3", NULL,
-        UI_BTN_STYLE_NONE },
-
-      { "02_b_sn_4", LV_OBJ_TYPE_LABEL, NULL,
-        { 516, 182, 200, 36, 255, 255, 255 },
-        { "4", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-        { 255, 18, 0, false },
-        NULL, 0, "4", NULL,
-        UI_BTN_STYLE_NONE },
-
-      { "02_b_sn_5", LV_OBJ_TYPE_LABEL, NULL,
-        { 516, 213, 200, 36, 255, 255, 255 },
-        { "5", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-        { 255, 18, 0, false },
-        NULL, 0, "5", NULL,
-        UI_BTN_STYLE_NONE },
-
-      { "02_b_sn_6", LV_OBJ_TYPE_LABEL, NULL,
-        { 516, 244, 200, 36, 255, 255, 255 },
-        { "6", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-        { 255, 18, 0, false },
-        NULL, 0, "6", NULL,
-        UI_BTN_STYLE_NONE },
-
-      { "02_b_sn_7", LV_OBJ_TYPE_LABEL, NULL,
-        { 516, 275, 200, 36, 255, 255, 255 },
-        { "7", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-        { 255, 18, 0, false },
-        NULL, 0, "7", NULL,
-        UI_BTN_STYLE_NONE },
-
-      { "02_b_sn_8", LV_OBJ_TYPE_LABEL, NULL,
-        { 516, 306, 200, 36, 255, 255, 255 },
-        { "8", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-        { 255, 18, 0, false },
-        NULL, 0, "8", NULL,
-        UI_BTN_STYLE_NONE },
-
-      { "02_b_sn_9", LV_OBJ_TYPE_LABEL, NULL,
-        { 516, 337, 200, 36, 255, 255, 255 },
-        { "9", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-        { 255, 18, 0, false },
-        NULL, 0, "9", NULL,
-        UI_BTN_STYLE_NONE },
-//b_denom
-          { "02_b_denom_1", LV_OBJ_TYPE_LABEL, NULL,
-            { 679,  89, 70, 36, 255, 255, 255 },
-            { "1", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-            { 255, 18, 0, false },
-            NULL, 0, "1", NULL,
-            UI_BTN_STYLE_NONE },
-
-          { "02_b_denom_2", LV_OBJ_TYPE_LABEL, NULL,
-            { 679, 120, 70, 36, 255, 255, 255 },
-            { "2", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-            { 255, 18, 0, false },
-            NULL, 0, "2", NULL,
-            UI_BTN_STYLE_NONE },
-
-          { "02_b_denom_3", LV_OBJ_TYPE_LABEL, NULL,
-            { 679, 151, 70, 36, 255, 255, 255 },
-            { "3", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-            { 255, 18, 0, false },
-            NULL, 0, "3", NULL,
-            UI_BTN_STYLE_NONE },
-
-          { "02_b_denom_4", LV_OBJ_TYPE_LABEL, NULL,
-            { 679, 182, 70, 36, 255, 255, 255 },
-            { "4", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-            { 255, 18, 0, false },
-            NULL, 0, "4", NULL,
-            UI_BTN_STYLE_NONE },
-
-          { "02_b_denom_5", LV_OBJ_TYPE_LABEL, NULL,
-            { 679, 213, 70, 36, 255, 255, 255 },
-            { "5", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-            { 255, 18, 0, false },
-            NULL, 0, "5", NULL,
-            UI_BTN_STYLE_NONE },
-
-          { "02_b_denom_6", LV_OBJ_TYPE_LABEL, NULL,
-            { 679, 244, 70, 36, 255, 255, 255 },
-            { "6", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-            { 255, 18, 0, false },
-            NULL, 0, "6", NULL,
-            UI_BTN_STYLE_NONE },
-
-          { "02_b_denom_7", LV_OBJ_TYPE_LABEL, NULL,
-            { 679, 275, 70, 36, 255, 255, 255 },
-            { "7", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-            { 255, 18, 0, false },
-            NULL, 0, "7", NULL,
-            UI_BTN_STYLE_NONE },
-
-          { "02_b_denom_8", LV_OBJ_TYPE_LABEL, NULL,
-            { 679, 306, 70, 36, 255, 255, 255 },
-            { "8", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-            { 255, 18, 0, false },
-            NULL, 0, "8", NULL,
-            UI_BTN_STYLE_NONE },
-
-          { "02_b_denom_9", LV_OBJ_TYPE_LABEL, NULL,
-            { 679, 337, 70, 36, 255, 255, 255 },
-            { "9", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-            { 255, 18, 0, false },
-            NULL, 0, "9", NULL,
-            UI_BTN_STYLE_NONE },
-//************  c_REPORT ****************//
-        { "02_c_no_1", LV_OBJ_TYPE_LABEL, NULL,
-          { 834,  89, 70, 36, 255, 255, 255 },
-          { "1", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-          { 255, 18, 0, false },
-          NULL, 0, "1", NULL,
-          UI_BTN_STYLE_NONE },
-
-        { "02_c_no_2", LV_OBJ_TYPE_LABEL, NULL,
-          { 834, 120, 70, 36, 255, 255, 255 },
-          { "2", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-          { 255, 18, 0, false },
-          NULL, 0, "2", NULL,
-          UI_BTN_STYLE_NONE },
-
-        { "02_c_no_3", LV_OBJ_TYPE_LABEL, NULL,
-          { 834, 151, 70, 36, 255, 255, 255 },
-          { "3", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-          { 255, 18, 0, false },
-          NULL, 0, "3", NULL,
-          UI_BTN_STYLE_NONE },
-
-        { "02_c_no_4", LV_OBJ_TYPE_LABEL, NULL,
-          { 834, 182, 70, 36, 255, 255, 255 },
-          { "4", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-          { 255, 18, 0, false },
-          NULL, 0, "4", NULL,
-          UI_BTN_STYLE_NONE },
-
-        { "02_c_no_5", LV_OBJ_TYPE_LABEL, NULL,
-          { 834, 213, 70, 36, 255, 255, 255 },
-          { "5", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-          { 255, 18, 0, false },
-          NULL, 0, "5", NULL,
-          UI_BTN_STYLE_NONE },
-
-        { "02_c_no_6", LV_OBJ_TYPE_LABEL, NULL,
-          { 834, 244, 70, 36, 255, 255, 255 },
-          { "6", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-          { 255, 18, 0, false },
-          NULL, 0, "6", NULL,
-          UI_BTN_STYLE_NONE },
-
-        { "02_c_no_7", LV_OBJ_TYPE_LABEL, NULL,
-          { 834, 275, 70, 36, 255, 255, 255 },
-          { "7", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-          { 255, 18, 0, false },
-          NULL, 0, "7", NULL,
-          UI_BTN_STYLE_NONE },
-
-        { "02_c_no_8", LV_OBJ_TYPE_LABEL, NULL,
-          { 834, 306, 70, 36, 255, 255, 255 },
-          { "8", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-          { 255, 18, 0, false },
-          NULL, 0, "8", NULL,
-          UI_BTN_STYLE_NONE },
-
-        { "02_c_no_9", LV_OBJ_TYPE_LABEL, NULL,
-          { 834, 337, 70, 36, 255, 255, 255 },
-          { "9", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-          { 255, 18, 0, false },
-          NULL, 0, "9", NULL,
-          UI_BTN_STYLE_NONE },
-//c_denom
-
-          { "02_c_denom_1", LV_OBJ_TYPE_LABEL, NULL,
-            { 887,  89, 70, 36, 255, 255, 255 },
-            { "1", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-            { 255, 18, 0, false },
-            NULL, 0, "1", NULL,
-            UI_BTN_STYLE_NONE },
-
-          { "02_c_denom_2", LV_OBJ_TYPE_LABEL, NULL,
-            { 887, 120, 70, 36, 255, 255, 255 },
-            { "2", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-            { 255, 18, 0, false },
-            NULL, 0, "2", NULL,
-            UI_BTN_STYLE_NONE },
-
-          { "02_c_denom_3", LV_OBJ_TYPE_LABEL, NULL,
-            { 887, 151, 70, 36, 255, 255, 255 },
-            { "3", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-            { 255, 18, 0, false },
-            NULL, 0, "3", NULL,
-            UI_BTN_STYLE_NONE },
-
-          { "02_c_denom_4", LV_OBJ_TYPE_LABEL, NULL,
-            { 887, 182, 70, 36, 255, 255, 255 },
-            { "4", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-            { 255, 18, 0, false },
-            NULL, 0, "4", NULL,
-            UI_BTN_STYLE_NONE },
-
-          { "02_c_denom_5", LV_OBJ_TYPE_LABEL, NULL,
-            { 887, 213, 70, 36, 255, 255, 255 },
-            { "5", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-            { 255, 18, 0, false },
-            NULL, 0, "5", NULL,
-            UI_BTN_STYLE_NONE },
-
-          { "02_c_denom_6", LV_OBJ_TYPE_LABEL, NULL,
-            { 887, 244, 70, 36, 255, 255, 255 },
-            { "6", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-            { 255, 18, 0, false },
-            NULL, 0, "6", NULL,
-            UI_BTN_STYLE_NONE },
-
-          { "02_c_denom_7", LV_OBJ_TYPE_LABEL, NULL,
-            { 887, 275, 70, 36, 255, 255, 255 },
-            { "7", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-            { 255, 18, 0, false },
-            NULL, 0, "7", NULL,
-            UI_BTN_STYLE_NONE },
-
-          { "02_c_denom_8", LV_OBJ_TYPE_LABEL, NULL,
-            { 887, 306, 70, 36, 255, 255, 255 },
-            { "8", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-            { 255, 18, 0, false },
-            NULL, 0, "8", NULL,
-            UI_BTN_STYLE_NONE },
-
-          { "02_c_denom_9", LV_OBJ_TYPE_LABEL, NULL,
-            { 887, 337, 70, 36, 255, 255, 255 },
-            { "9", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-            { 255, 18, 0, false },
-            NULL, 0, "9", NULL,
-            UI_BTN_STYLE_NONE },
-//c_err_code
-        { "02_c_reject_1", LV_OBJ_TYPE_LABEL, NULL,
-          { 973,  89, 200, 36, 255, 255, 255 },
-          { "1", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-          { 255, 18, 0, false },
-          NULL, 0, "1", NULL,
-          UI_BTN_STYLE_NONE },
-
-        { "02_c_reject_2", LV_OBJ_TYPE_LABEL, NULL,
-          { 973, 120, 200, 36, 255, 255, 255 },
-          { "2", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-          { 255, 18, 0, false },
-          NULL, 0, "2", NULL,
-          UI_BTN_STYLE_NONE },
-
-        { "02_c_reject_3", LV_OBJ_TYPE_LABEL, NULL,
-          { 973, 151, 200, 36, 255, 255, 255 },
-          { "3", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-          { 255, 18, 0, false },
-          NULL, 0, "3", NULL,
-          UI_BTN_STYLE_NONE },
-
-        { "02_c_reject_4", LV_OBJ_TYPE_LABEL, NULL,
-          { 973, 182, 200, 36, 255, 255, 255 },
-          { "4", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-          { 255, 18, 0, false },
-          NULL, 0, "4", NULL,
-          UI_BTN_STYLE_NONE },
-
-        { "02_c_reject_5", LV_OBJ_TYPE_LABEL, NULL,
-          { 973, 213, 200, 36, 255, 255, 255 },
-          { "5", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-          { 255, 18, 0, false },
-          NULL, 0, "5", NULL,
-          UI_BTN_STYLE_NONE },
-
-        { "02_c_reject_6", LV_OBJ_TYPE_LABEL, NULL,
-          { 973, 244, 200, 36, 255, 255, 255 },
-          { "6", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-          { 255, 18, 0, false },
-          NULL, 0, "6", NULL,
-          UI_BTN_STYLE_NONE },
-
-        { "02_c_reject_7", LV_OBJ_TYPE_LABEL, NULL,
-          { 973, 275, 200, 36, 255, 255, 255 },
-          { "7", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-          { 255, 18, 0, false },
-          NULL, 0, "7", NULL,
-          UI_BTN_STYLE_NONE },
-
-        { "02_c_reject_8", LV_OBJ_TYPE_LABEL, NULL,
-          { 973, 306, 200, 36, 255, 255, 255 },
-          { "8", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-          { 255, 18, 0, false },
-          NULL, 0, "8", NULL,
-          UI_BTN_STYLE_NONE },
-
-        { "02_c_reject_9", LV_OBJ_TYPE_LABEL, NULL,
-          { 973, 337, 200, 36, 255, 255, 255 },
-          { "9", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
-          { 255, 18, 0, false },
-          NULL, 0, "9", NULL,
-          UI_BTN_STYLE_NONE },
+    { "02_a_amount_total", LV_OBJ_TYPE_LABEL, NULL,
+      { 267, 337, 80, 36, 255, 255, 255 },
+      { "0", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
+      { 255, 18, 0, false },
+      NULL, 0, 0, NULL,
+      UI_BTN_STYLE_NONE },
 
         { "02_page_curr", LV_OBJ_TYPE_LABEL, NULL,
           { 1135, 58, 140, 36, 255, 255, 255 },
@@ -761,6 +272,580 @@ ui_element_t page_02_list_obj[] = {
 
 };
 
+static int page_02_a_valid_count_get(void) // 获取A区有效面额条数
+{
+    int valid_count = 0;
+
+    for (int i = 0; i < sim.denom_number; i++) {
+        if (sim.denom[i].value > 0) {
+            valid_count++;
+        }
+    }
+
+    return valid_count;
+}
+
+static int page_02_b_valid_count_get(void) // 获取B区有效冠字号条数
+{
+    int valid_count = 0;
+
+    if (sim.sn_str == NULL) return 0;
+
+    for (int i = 0; i < sim.total_pcs; i++) {
+        if (sim.sn_str[i] != NULL && sim.denom_mix[i] > 0) {
+            valid_count++;
+        }
+    }
+
+    return valid_count;
+}
+
+static int page_02_b_nth_valid_index_get(int nth) // 获取B区第nth条有效数据索引
+{
+    int valid_count = 0;
+
+    if (nth < 0 || sim.sn_str == NULL) return -1;
+
+    for (int i = 0; i < sim.total_pcs; i++) {
+        if (sim.sn_str[i] == NULL || sim.denom_mix[i] <= 0) continue;
+        if (valid_count == nth) return i;
+        valid_count++;
+    }
+
+    return -1;
+}
+
+static page_02_scroll_section_t *page_02_scroll_section_get(page_02_section_id_t section_id) // 获取分区配置
+{
+    if (section_id >= PAGE_02_SECTION_COUNT) return NULL;
+    return &s_page_02_scroll_sections[section_id];
+}
+
+static void page_02_scroll_section_init_config(void) // 初始化A/B/C滚动容器配置
+{
+    memset(s_page_02_scroll_sections, 0, sizeof(s_page_02_scroll_sections));
+
+    s_page_02_scroll_sections[PAGE_02_SECTION_A].section_id = PAGE_02_SECTION_A;
+    s_page_02_scroll_sections[PAGE_02_SECTION_A].x = 25;
+    s_page_02_scroll_sections[PAGE_02_SECTION_A].y = 79;
+    s_page_02_scroll_sections[PAGE_02_SECTION_A].w = 359;
+    s_page_02_scroll_sections[PAGE_02_SECTION_A].h = 248;
+    s_page_02_scroll_sections[PAGE_02_SECTION_A].col_x[0] = 47;
+    s_page_02_scroll_sections[PAGE_02_SECTION_A].col_x[1] = 146;
+    s_page_02_scroll_sections[PAGE_02_SECTION_A].col_x[2] = 242;
+    s_page_02_scroll_sections[PAGE_02_SECTION_A].col_w[0] = 80;
+    s_page_02_scroll_sections[PAGE_02_SECTION_A].col_w[1] = 70;
+    s_page_02_scroll_sections[PAGE_02_SECTION_A].col_w[2] = 100;
+    s_page_02_scroll_sections[PAGE_02_SECTION_A].page_size = PAGE_02_A_ITEM;
+    s_page_02_scroll_sections[PAGE_02_SECTION_A].pool_row = PAGE_02_A_ITEM + 1;
+    s_page_02_scroll_sections[PAGE_02_SECTION_A].col_count = 3;
+
+    s_page_02_scroll_sections[PAGE_02_SECTION_B].section_id = PAGE_02_SECTION_B;
+    s_page_02_scroll_sections[PAGE_02_SECTION_B].x = 405;
+    s_page_02_scroll_sections[PAGE_02_SECTION_B].y = 79;
+    s_page_02_scroll_sections[PAGE_02_SECTION_B].w = 392;
+    s_page_02_scroll_sections[PAGE_02_SECTION_B].h = 279;
+    s_page_02_scroll_sections[PAGE_02_SECTION_B].col_x[0] = 39;
+    s_page_02_scroll_sections[PAGE_02_SECTION_B].col_x[1] = 111;
+    s_page_02_scroll_sections[PAGE_02_SECTION_B].col_x[2] = 274;
+    s_page_02_scroll_sections[PAGE_02_SECTION_B].col_w[0] = 60;
+    s_page_02_scroll_sections[PAGE_02_SECTION_B].col_w[1] = 150;
+    s_page_02_scroll_sections[PAGE_02_SECTION_B].col_w[2] = 80;
+    s_page_02_scroll_sections[PAGE_02_SECTION_B].page_size = PAGE_02_B_ITEM;
+    s_page_02_scroll_sections[PAGE_02_SECTION_B].pool_row = PAGE_02_B_ITEM + 1;
+    s_page_02_scroll_sections[PAGE_02_SECTION_B].col_count = 3;
+
+    s_page_02_scroll_sections[PAGE_02_SECTION_C].section_id = PAGE_02_SECTION_C;
+    s_page_02_scroll_sections[PAGE_02_SECTION_C].x = 820;
+    s_page_02_scroll_sections[PAGE_02_SECTION_C].y = 79;
+    s_page_02_scroll_sections[PAGE_02_SECTION_C].w = 333;
+    s_page_02_scroll_sections[PAGE_02_SECTION_C].h = 279;
+    s_page_02_scroll_sections[PAGE_02_SECTION_C].col_x[0] = 14;
+    s_page_02_scroll_sections[PAGE_02_SECTION_C].col_x[1] = 67;
+    s_page_02_scroll_sections[PAGE_02_SECTION_C].col_x[2] = 153;
+    s_page_02_scroll_sections[PAGE_02_SECTION_C].col_w[0] = 45;
+    s_page_02_scroll_sections[PAGE_02_SECTION_C].col_w[1] = 70;
+    s_page_02_scroll_sections[PAGE_02_SECTION_C].col_w[2] = 170;
+    s_page_02_scroll_sections[PAGE_02_SECTION_C].page_size = PAGE_02_C_ITEM;
+    s_page_02_scroll_sections[PAGE_02_SECTION_C].pool_row = PAGE_02_C_ITEM + 1;
+    s_page_02_scroll_sections[PAGE_02_SECTION_C].col_count = 3;
+}
+
+static void page_02_scroll_section_style_init(lv_obj_t *obj) // 统一设置滚动容器样式
+{
+    lv_obj_set_style_bg_opa(obj, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_opa(obj, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_outline_opa(obj, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_shadow_opa(obj, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_radius(obj, 0, 0);
+    lv_obj_set_style_pad_all(obj, 0, 0);
+    lv_obj_set_style_pad_right(obj, 0, 0);
+    lv_obj_set_scrollbar_mode(obj, LV_SCROLLBAR_MODE_OFF);
+}
+
+static lv_obj_t *page_02_scroll_cell_create(lv_obj_t *parent, lv_coord_t width) // 创建滚动单元标签
+{
+    lv_obj_t *label = lv_label_create(parent);
+
+    lv_obj_set_size(label, width, 36);
+    lv_obj_set_style_text_color(label, lv_color_hex(0x5D5D5D), 0);
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_16, 0);
+    lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
+    lv_label_set_text(label, "");
+
+    return label;
+}
+
+static void page_02_scroll_section_create(page_02_scroll_section_t *section) // 创建单个分区滚动容器
+{
+    if (section == NULL || list_page == NULL) return;
+
+    section->container = lv_obj_create(list_page);
+    lv_obj_remove_style_all(section->container);
+    lv_obj_set_pos(section->container, section->x, section->y);
+    lv_obj_set_size(section->container, section->w, section->h);
+    lv_obj_set_scroll_dir(section->container, LV_DIR_VER);
+    lv_obj_set_scrollbar_mode(section->container, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_add_flag(section->container, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(section->container, LV_OBJ_FLAG_SCROLL_MOMENTUM);
+    lv_obj_add_flag(section->container, LV_OBJ_FLAG_SCROLL_ELASTIC);
+    lv_obj_add_flag(section->container, LV_OBJ_FLAG_CLICKABLE);
+    page_02_scroll_section_style_init(section->container);
+    lv_obj_add_event_cb(section->container, page_02_scroll_section_event_cb, LV_EVENT_PRESSED, section);
+    lv_obj_add_event_cb(section->container, page_02_scroll_section_event_cb, LV_EVENT_PRESSING, section);
+    lv_obj_add_event_cb(section->container, page_02_scroll_section_event_cb, LV_EVENT_RELEASED, section);
+    lv_obj_add_event_cb(section->container, page_02_scroll_section_event_cb, LV_EVENT_PRESS_LOST, section);
+    lv_obj_add_event_cb(section->container, page_02_scroll_section_event_cb, LV_EVENT_SCROLL, section);
+    lv_obj_add_event_cb(section->container, page_02_scroll_section_event_cb, LV_EVENT_SCROLL_END, section);
+    lv_obj_add_event_cb(section->container, page_02_scroll_section_event_cb, LV_EVENT_CLICKED, section);
+
+    for (int row = 0; row < section->pool_row; row++) {
+        for (int col = 0; col < section->col_count; col++) {
+            section->cell[row][col] = page_02_scroll_cell_create(section->container, section->col_w[col]);
+            lv_obj_set_pos(section->cell[row][col], section->col_x[col], PAGE_02_SCROLL_ROW_Y_OFFSET + row * PAGE_02_SCROLL_ROW_GAP);
+        }
+    }
+
+    section->spacer = lv_obj_create(section->container);
+    lv_obj_remove_style_all(section->spacer);
+    lv_obj_set_size(section->spacer, 1, section->h);
+    lv_obj_set_pos(section->spacer, 0, section->h - 1);
+    lv_obj_clear_flag(section->spacer, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(section->spacer, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_move_background(section->spacer);
+}
+
+static void page_02_scroll_section_total_page_refresh(page_02_scroll_section_t *section) // 刷新分区总页数
+{
+    if (section == NULL) return;
+
+    switch (section->section_id) {
+    case PAGE_02_SECTION_A:
+        section->total_row = page_02_a_valid_count_get();
+        page_02_a_report_status.total_page = (section->total_row == 0) ? 1 : ((section->total_row + PAGE_02_A_ITEM - 1) / PAGE_02_A_ITEM);
+        break;
+    case PAGE_02_SECTION_B:
+        section->total_row = page_02_b_valid_count_get();
+        page_02_b_report_status.total_page = (section->total_row == 0) ? 1 : ((section->total_row + PAGE_02_B_ITEM - 1) / PAGE_02_B_ITEM);
+        break;
+    case PAGE_02_SECTION_C:
+        section->total_row = sim.err_num;
+        page_02_c_report_status.total_page = (section->total_row == 0) ? 1 : ((section->total_row + PAGE_02_C_ITEM - 1) / PAGE_02_C_ITEM);
+        break;
+    default:
+        break;
+    }
+}
+
+static void page_02_scroll_section_spacer_refresh(page_02_scroll_section_t *section) // 刷新滚动内容高度
+{
+    lv_coord_t content_h;
+    lv_coord_t max_scroll_y;
+
+    if (section == NULL || section->spacer == NULL) return;
+
+    page_02_scroll_section_total_page_refresh(section);
+    content_h = PAGE_02_SCROLL_ROW_Y_OFFSET + (lv_coord_t)section->total_row * PAGE_02_SCROLL_ROW_GAP;
+    content_h += PAGE_02_SCROLL_EDGE_BUFFER;
+    max_scroll_y = page_02_scroll_section_max_scroll_y_get(section);
+    if (content_h < section->h + max_scroll_y) {
+        content_h = section->h + max_scroll_y;
+    }
+    if (content_h < section->h) {
+        content_h = section->h;
+    }
+
+    lv_obj_set_pos(section->spacer, 0, content_h - 1);
+}
+
+static bool page_02_scroll_section_small_data(page_02_scroll_section_t *section) // 判断当前分区是否为小数据量
+{
+    if (section == NULL) return false;
+    return section->total_row <= section->page_size;
+}
+
+static uint16_t page_02_scroll_section_last_page_first_row_get(page_02_scroll_section_t *section) // 获取最后一页的起始行
+{
+    if (section == NULL) return 0;
+    if (section->total_row == 0) return 0;
+    if (section->total_row <= section->page_size) return 0;
+    return (uint16_t)(((section->total_row - 1) / section->page_size) * section->page_size);
+}
+
+static lv_coord_t page_02_scroll_section_real_bottom_scroll_y_get(page_02_scroll_section_t *section) // 获取真实内容底部的滚动位置
+{
+    lv_coord_t content_h;
+
+    if (section == NULL) return 0;
+
+    content_h = PAGE_02_SCROLL_ROW_Y_OFFSET + (lv_coord_t)section->total_row * PAGE_02_SCROLL_ROW_GAP;
+    content_h += PAGE_02_SCROLL_EDGE_BUFFER;
+    if (content_h <= section->h) {
+        return 0;
+    }
+
+    return content_h - section->h;
+}
+
+static lv_coord_t page_02_scroll_section_max_scroll_y_get(page_02_scroll_section_t *section) // 获取分区允许的最大滚动距离
+{
+    if (section == NULL) return 0;
+    if (page_02_scroll_section_small_data(section)) return 0;
+
+    return page_02_scroll_section_last_page_first_row_get(section) * PAGE_02_SCROLL_ROW_GAP
+        + PAGE_02_SCROLL_EDGE_BUFFER;
+}
+
+static void page_02_scroll_section_pull_limit(page_02_scroll_section_t *section) // 限制最后一页过拉距离
+{
+    lv_coord_t scroll_top;
+    lv_coord_t max_scroll_y;
+
+    if (section == NULL || section->container == NULL) return;
+    if (page_02_scroll_section_small_data(section)) return;
+
+    max_scroll_y = page_02_scroll_section_max_scroll_y_get(section);
+    scroll_top = lv_obj_get_scroll_top(section->container);
+    if (scroll_top > max_scroll_y) {
+        lv_obj_scroll_to_y(section->container, max_scroll_y, LV_ANIM_OFF);
+    }
+}
+
+static void page_02_scroll_section_row_bind(page_02_scroll_section_t *section, uint16_t pool_row, int data_index) // 绑定滚动行内容
+{
+    int actual_index;
+
+    if (section == NULL || pool_row >= section->pool_row) return;
+
+    if (data_index < 0 || data_index >= section->total_row) {
+        for (int col = 0; col < section->col_count; col++) {
+            lv_obj_add_flag(section->cell[pool_row][col], LV_OBJ_FLAG_HIDDEN);
+        }
+        return;
+    }
+
+    for (int col = 0; col < section->col_count; col++) {
+        lv_obj_clear_flag(section->cell[pool_row][col], LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_pos(section->cell[pool_row][col], section->col_x[col],
+            PAGE_02_SCROLL_ROW_Y_OFFSET + data_index * PAGE_02_SCROLL_ROW_GAP);
+    }
+
+    switch (section->section_id) {
+    case PAGE_02_SECTION_A:
+        lv_label_set_text_fmt(section->cell[pool_row][0], "%d", sim.denom[data_index].value);
+        lv_label_set_text_fmt(section->cell[pool_row][1], "%d", sim.denom[data_index].pcs);
+        lv_label_set_text_fmt(section->cell[pool_row][2], "%.0f", sim.denom[data_index].amount);
+        break;
+    case PAGE_02_SECTION_B:
+        actual_index = page_02_b_nth_valid_index_get(data_index);
+        if (actual_index < 0) {
+            for (int col = 0; col < section->col_count; col++) {
+                lv_obj_add_flag(section->cell[pool_row][col], LV_OBJ_FLAG_HIDDEN);
+            }
+            return;
+        }
+        lv_label_set_text_fmt(section->cell[pool_row][0], "%d", data_index + 1);
+        lv_label_set_text(section->cell[pool_row][1], sim.sn_str[actual_index]);
+        lv_label_set_text_fmt(section->cell[pool_row][2], "%d", sim.denom_mix[actual_index]);
+        break;
+    case PAGE_02_SECTION_C:
+        lv_label_set_text_fmt(section->cell[pool_row][0], "%d", data_index + 1);
+        if (sim.err_pcs != NULL) {
+            lv_label_set_text_fmt(section->cell[pool_row][1], "%d", sim.err_pcs[data_index]);
+        } else {
+            lv_label_set_text(section->cell[pool_row][1], "-");
+        }
+        if (sim.err_str != NULL && sim.err_str[data_index] != NULL) {
+            lv_label_set_text(section->cell[pool_row][2], sim.err_str[data_index]);
+        } else {
+            lv_label_set_text(section->cell[pool_row][2], "Unknown Error");
+        }
+        break;
+    default:
+        break;
+    }
+}
+
+static void page_02_scroll_section_visible_refresh(page_02_scroll_section_t *section) // 刷新可见行
+{
+    lv_coord_t scroll_top;
+    uint16_t first_row;
+    uint16_t last_page_first_row;
+
+    if (section == NULL || section->container == NULL) return;
+
+    page_02_scroll_section_spacer_refresh(section);
+    scroll_top = lv_obj_get_scroll_top(section->container);
+    if (scroll_top < 0) {
+        scroll_top = 0;
+    }
+    first_row = (uint16_t)(scroll_top / PAGE_02_SCROLL_ROW_GAP);
+    last_page_first_row = page_02_scroll_section_last_page_first_row_get(section);
+    if (first_row > last_page_first_row) {
+        first_row = last_page_first_row;
+    }
+    section->first_row = first_row;
+
+    for (uint16_t row = 0; row < section->pool_row; row++) {
+        page_02_scroll_section_row_bind(section, row, (int)first_row + row);
+    }
+}
+
+static void page_02_scroll_section_status_refresh(page_02_scroll_section_t *section) // 根据滚动位置刷新页码
+{
+    uint8_t current_page;
+    lv_coord_t scroll_top;
+    lv_coord_t real_bottom_scroll_y;
+
+    if (section == NULL) return;
+
+    page_02_scroll_section_total_page_refresh(section);
+    scroll_top = lv_obj_get_scroll_top(section->container);
+    if (scroll_top < 0) {
+        scroll_top = 0;
+    }
+    real_bottom_scroll_y = page_02_scroll_section_real_bottom_scroll_y_get(section);
+
+    // 最后一页条目不足一整页时，到达真实底部就应进入最后一页
+    if (!page_02_scroll_section_small_data(section)
+        && scroll_top >= real_bottom_scroll_y) {
+        current_page = (uint8_t)((section->total_row + section->page_size - 1) / section->page_size);
+    } else {
+        current_page = (section->first_row / section->page_size) + 1;
+    }
+    if (current_page < 1) current_page = 1;
+
+    switch (section->section_id) {
+    case PAGE_02_SECTION_A:
+        if (current_page > page_02_a_report_status.total_page) current_page = page_02_a_report_status.total_page;
+        page_02_a_report_status.curent_page = current_page;
+        page_02_a_page_num_refre();
+        break;
+    case PAGE_02_SECTION_B:
+        if (current_page > page_02_b_report_status.total_page) current_page = page_02_b_report_status.total_page;
+        page_02_b_report_status.curent_page = current_page;
+        page_02_b_page_num_refre();
+        break;
+    case PAGE_02_SECTION_C:
+        if (current_page > page_02_c_report_status.total_page) current_page = page_02_c_report_status.total_page;
+        page_02_c_report_status.curent_page = current_page;
+        page_02_c_page_num_refre();
+        break;
+    default:
+        break;
+    }
+}
+
+static void page_02_scroll_section_sync_to_status(page_02_scroll_section_t *section, bool anim_en) // 根据页码同步滚动位置
+{
+    uint16_t first_row = 0;
+
+    if (section == NULL || section->container == NULL) return;
+
+    switch (section->section_id) {
+    case PAGE_02_SECTION_A:
+        if (page_02_a_report_status.curent_page > 0) {
+            first_row = (page_02_a_report_status.curent_page - 1) * PAGE_02_A_ITEM;
+        }
+        break;
+    case PAGE_02_SECTION_B:
+        if (page_02_b_report_status.curent_page > 0) {
+            first_row = (page_02_b_report_status.curent_page - 1) * PAGE_02_B_ITEM;
+        }
+        break;
+    case PAGE_02_SECTION_C:
+        if (page_02_c_report_status.curent_page > 0) {
+            first_row = (page_02_c_report_status.curent_page - 1) * PAGE_02_C_ITEM;
+        }
+        break;
+    default:
+        break;
+    }
+
+    if (first_row > page_02_scroll_section_last_page_first_row_get(section)) {
+        first_row = page_02_scroll_section_last_page_first_row_get(section);
+    }
+
+    lv_obj_scroll_to_y(section->container, first_row * PAGE_02_SCROLL_ROW_GAP, anim_en ? LV_ANIM_ON : LV_ANIM_OFF);
+    page_02_scroll_section_visible_refresh(section);
+    page_02_scroll_section_status_refresh(section);
+}
+
+static void page_02_scroll_section_event_cb(lv_event_t *e) // 处理滚动与点击翻页
+{
+    lv_event_code_t code;
+    page_02_scroll_section_t *section;
+
+    if (e == NULL) return;
+
+    code = lv_event_get_code(e);
+    section = lv_event_get_user_data(e);
+    if (section == NULL) return;
+
+    if (code == LV_EVENT_PRESSED) {
+        lv_indev_t *indev = lv_event_get_indev(e);
+        if (indev == NULL) return;
+        lv_indev_get_point(indev, &section->press_point);
+        section->press_moved = false;
+        return;
+    }
+
+    if (code == LV_EVENT_PRESSING) {
+        lv_indev_t *indev = lv_event_get_indev(e);
+        lv_point_t point;
+        lv_coord_t delta_x;
+        lv_coord_t delta_y;
+
+        if (indev == NULL) return;
+        lv_indev_get_point(indev, &point);
+        delta_x = LV_ABS(point.x - section->press_point.x);
+        delta_y = LV_ABS(point.y - section->press_point.y);
+        if (delta_x > 8 || delta_y > 8) {
+            section->press_moved = true;
+        }
+        return;
+    }
+
+    if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
+        return;
+    }
+
+    if (code == LV_EVENT_SCROLL) {
+        page_02_scroll_section_pull_limit(section);
+        page_02_scroll_section_visible_refresh(section);
+        page_02_scroll_section_status_refresh(section);
+        return;
+    }
+
+    if (code == LV_EVENT_SCROLL_END) {
+        if (page_02_scroll_section_small_data(section)) {
+            lv_obj_scroll_to_y(section->container, 0, LV_ANIM_ON);
+            page_02_scroll_section_visible_refresh(section);
+            page_02_scroll_section_status_refresh(section);
+            return;
+        }
+        if (section->section_id == PAGE_02_SECTION_A &&
+            page_02_a_report_status.curent_page == page_02_a_report_status.total_page) {
+            page_02_scroll_section_status_refresh(section);
+            page_02_scroll_section_sync_to_status(section, true);
+            return;
+        }
+        if (section->section_id == PAGE_02_SECTION_B &&
+            page_02_b_report_status.curent_page == page_02_b_report_status.total_page) {
+            page_02_scroll_section_status_refresh(section);
+            page_02_scroll_section_sync_to_status(section, true);
+            return;
+        }
+        if (section->section_id == PAGE_02_SECTION_C &&
+            page_02_c_report_status.curent_page == page_02_c_report_status.total_page) {
+            page_02_scroll_section_status_refresh(section);
+            page_02_scroll_section_sync_to_status(section, true);
+            return;
+        }
+        page_02_scroll_section_visible_refresh(section);
+        page_02_scroll_section_status_refresh(section);
+        return;
+    }
+
+    if (code == LV_EVENT_CLICKED) {
+        lv_indev_t *indev = lv_event_get_indev(e);
+        lv_point_t point;
+        lv_area_t coords;
+        int step;
+
+        if (section->press_moved) {
+            section->press_moved = false;
+            return;
+        }
+        if (indev == NULL) return;
+        lv_indev_get_point(indev, &point);
+        lv_obj_get_coords(section->container, &coords);
+        step = (point.y < ((coords.y1 + coords.y2) / 2)) ? -1 : 1;
+        page_02_list_section_page_step(section->section_id, step, false);
+    }
+}
+
+void page_02_list_section_refresh(page_02_section_id_t section_id) // 刷新指定分区滚动内容
+{
+    page_02_scroll_section_t *section = page_02_scroll_section_get(section_id);
+
+    if (section == NULL || section->container == NULL || !lv_obj_is_valid(section->container)) return;
+    page_02_scroll_section_visible_refresh(section);
+    page_02_scroll_section_status_refresh(section);
+}
+
+void page_02_list_section_refresh_all(void) // 刷新全部分区滚动内容
+{
+    for (int i = 0; i < PAGE_02_SECTION_COUNT; i++) {
+        page_02_list_section_refresh((page_02_section_id_t)i);
+    }
+}
+
+void page_02_list_section_scroll_to_page(page_02_section_id_t section_id, bool anim_en) // 按页码同步滚动位置
+{
+    page_02_scroll_section_t *section = page_02_scroll_section_get(section_id);
+
+    if (section == NULL) return;
+    page_02_scroll_section_spacer_refresh(section);
+    page_02_scroll_section_sync_to_status(section, anim_en);
+}
+
+void page_02_list_section_page_step(page_02_section_id_t section_id, int step, bool anim_en) // 分区翻页，供点击与其它入口复用
+{
+    page_02_scroll_section_t *section = page_02_scroll_section_get(section_id);
+
+    if (section == NULL) return;
+    page_02_scroll_section_total_page_refresh(section);
+
+    switch (section_id) {
+    case PAGE_02_SECTION_A:
+        page_02_a_report_status.curent_page += step;
+        if (page_02_a_report_status.curent_page == 0) page_02_a_report_status.curent_page = page_02_a_report_status.total_page;
+        if (page_02_a_report_status.curent_page > page_02_a_report_status.total_page) page_02_a_report_status.curent_page = 1;
+        page_02_a_page_refre();
+        page_02_a_page_num_refre();
+        break;
+    case PAGE_02_SECTION_B:
+        page_02_b_report_status.curent_page += step;
+        if (page_02_b_report_status.curent_page == 0) page_02_b_report_status.curent_page = page_02_b_report_status.total_page;
+        if (page_02_b_report_status.curent_page > page_02_b_report_status.total_page) page_02_b_report_status.curent_page = 1;
+        page_02_b_page_refre();
+        page_02_b_page_num_refre();
+        break;
+    case PAGE_02_SECTION_C:
+        page_02_c_report_status.curent_page += step;
+        if (page_02_c_report_status.curent_page == 0) page_02_c_report_status.curent_page = page_02_c_report_status.total_page;
+        if (page_02_c_report_status.curent_page > page_02_c_report_status.total_page) page_02_c_report_status.curent_page = 1;
+        page_02_c_page_refre();
+        page_02_c_page_num_refre();
+        break;
+    default:
+        break;
+    }
+
+    page_02_list_section_scroll_to_page(section_id, anim_en);
+}
+
 
 
 void ui_page_02_list_create(lv_obj_t* parent)
@@ -781,6 +866,10 @@ void ui_page_02_list_create(lv_obj_t* parent)
     
     //创建图片
     lv_ui_obj_init(list_page, page_02_list_obj, page_02_list_len);
+    page_02_scroll_section_init_config();
+    for (int i = 0; i < PAGE_02_SECTION_COUNT; i++) {
+        page_02_scroll_section_create(&s_page_02_scroll_sections[i]);
+    }
     page_02_a_page_refre();
     page_02_b_page_refre();
     page_02_c_page_refre();
@@ -788,11 +877,13 @@ void ui_page_02_list_create(lv_obj_t* parent)
     page_02_a_page_num_refre();
     page_02_b_page_num_refre();
     page_02_c_page_num_refre();
+    page_02_list_section_refresh_all();
 
 }
 
 void ui_page_02_list_destroy(void)
 {
+    memset(s_page_02_scroll_sections, 0, sizeof(s_page_02_scroll_sections));
     if (list_page) {
         lv_obj_del(list_page);
         list_page = NULL;

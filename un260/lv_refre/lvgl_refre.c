@@ -10,6 +10,7 @@
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_core/lv_page_event.h"
+#include "un260/lv_core/page_02_list.h"
 #include "un260/lv_core/lv_page_declear.h"
 #include "un260/lv_components/lv_components.h"
 #include "un260/lv_resources/lv_img_init.h"
@@ -715,47 +716,10 @@ void create_liquid_glass_panel(lv_obj_t* parent) {
 
 void page_02_a_page_refre(void)
 {
-    lv_obj_t* a_denom;
-    lv_obj_t* a_pcs;
-    lv_obj_t* a_amount;
-    char a_denom_buf[32], a_pcs_buf[32], a_amount_buf[32];
-
     update_label_by_name(page_02_list_obj, page_02_list_len, "02_a_pcs_amount", "%d", sim.total_pcs);
     update_label_by_name(page_02_list_obj, page_02_list_len, "02_a_amount_total", "%.0f", sim.total_amount);
 
-    for (int i = 0; i < PAGE_02_A_ITEM; i++)
-    {
-        int row;
-        row = i + 1;
-        snprintf(a_denom_buf, sizeof(a_denom_buf), "02_a_denom_%d", row);
-        snprintf(a_pcs_buf, sizeof(a_pcs_buf), "02_a_pcs_%d", row);
-        snprintf(a_amount_buf, sizeof(a_amount_buf), "02_a_amount_%d", row);
-        a_denom = find_obj_by_name(a_denom_buf, page_02_list_obj, page_02_list_len);
-        a_pcs = find_obj_by_name(a_pcs_buf, page_02_list_obj, page_02_list_len);
-        a_amount = find_obj_by_name(a_amount_buf, page_02_list_obj, page_02_list_len);
-        int temp_current;
-        temp_current = i + (page_02_a_report_status.curent_page - 1) * PAGE_02_A_ITEM;
-
-        if (!a_denom || !a_pcs || !a_amount) {
-            continue;
-        }
-
-        if (temp_current >= sim.denom_number || sim.denom[temp_current].value <= 0) {
-            lv_obj_add_flag(a_denom, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(a_pcs, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(a_amount, LV_OBJ_FLAG_HIDDEN);
-            continue;
-        }
-
-        update_label_by_name(page_02_list_obj, page_02_list_len, a_denom_buf, "%d", sim.denom[temp_current].value);
-        update_label_by_name(page_02_list_obj, page_02_list_len, a_pcs_buf, "%d", sim.denom[temp_current].pcs);
-        update_label_by_name(page_02_list_obj, page_02_list_len, a_amount_buf, "%.0f", sim.denom[temp_current].amount);
-
-        lv_obj_clear_flag(a_denom, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_clear_flag(a_pcs, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_clear_flag(a_amount, LV_OBJ_FLAG_HIDDEN);
-
-    }
+    page_02_list_section_refresh(PAGE_02_SECTION_A);
 }
 
 static int page_02_b_valid_count_get(void) //获取B区有效冠字号条数（仅统计有SN且面额有效的数据）
@@ -772,127 +736,17 @@ static int page_02_b_valid_count_get(void) //获取B区有效冠字号条数（�
     return valid_count;
 }
 
-static int page_02_b_nth_valid_index_get(int nth) //获取第nth条有效冠字号对应的源索引
-{
-    int valid_count = 0;
-
-    if (nth < 0 || sim.sn_str == NULL) return -1;
-
-    for (int i = 0; i < sim.total_pcs; i++) {
-        if (sim.sn_str[i] == NULL || sim.denom_mix[i] <= 0) continue;
-        if (valid_count == nth) return i;
-        valid_count++;
-    }
-
-    return -1;
-}
-//仿真模式 非实机函数
-
 void page_02_b_page_refre(void)
 {
-    lv_obj_t* b_no;
-    lv_obj_t* b_denom;
-    lv_obj_t* b_sn;
-    char b_no_buf[32], b_denom_buf[32], b_sn_buf[32];
-    int valid_total;
-
     if (page_02_list_len <= 0) return;
-    valid_total = page_02_b_valid_count_get();
-
-    for (int i = 0; i < PAGE_02_B_ITEM; i++)
-    {
-        int row;
-        int valid_pos;
-        int temp_current;
-
-        row = i + 1;
-        snprintf(b_no_buf, sizeof(b_no_buf), "02_b_no_%d", row);
-        snprintf(b_denom_buf, sizeof(b_denom_buf), "02_b_denom_%d", row);
-        snprintf(b_sn_buf, sizeof(b_sn_buf), "02_b_sn_%d", row);
-        b_no = find_obj_by_name(b_no_buf, page_02_list_obj, page_02_list_len);
-        b_denom = find_obj_by_name(b_denom_buf, page_02_list_obj, page_02_list_len);
-        b_sn = find_obj_by_name(b_sn_buf, page_02_list_obj, page_02_list_len);
-        if (!b_no || !b_denom || !b_sn) {
-            continue;
-        }
-
-        valid_pos = i + (page_02_b_report_status.curent_page - 1) * PAGE_02_B_ITEM;
-        if (valid_pos < valid_total)
-        {
-            temp_current = page_02_b_nth_valid_index_get(valid_pos);
-            if (temp_current < 0) {
-                lv_obj_add_flag(b_no, LV_OBJ_FLAG_HIDDEN);
-                lv_obj_add_flag(b_denom, LV_OBJ_FLAG_HIDDEN);
-                lv_obj_add_flag(b_sn, LV_OBJ_FLAG_HIDDEN);
-                continue;
-            }
-
-            update_label_by_name(page_02_list_obj, page_02_list_len, b_no_buf, "%d", valid_pos + 1);
-            update_label_by_name(page_02_list_obj, page_02_list_len, b_denom_buf, "%d", sim.denom_mix[temp_current]);
-            update_label_by_name(page_02_list_obj, page_02_list_len, b_sn_buf, "%s", sim.sn_str[temp_current]);
-            lv_obj_clear_flag(b_no, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_clear_flag(b_denom, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_clear_flag(b_sn, LV_OBJ_FLAG_HIDDEN);
-        }
-        else
-        {
-            lv_obj_add_flag(b_no, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(b_denom, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(b_sn, LV_OBJ_FLAG_HIDDEN);
-        }
-
-
-    }
+    page_02_list_section_refresh(PAGE_02_SECTION_B);
 }
 //仿真模式 非实机函数
 void page_02_c_page_refre(void)
 {
-    lv_obj_t* c_no;
-    lv_obj_t* c_denom;
-    lv_obj_t* c_reject;
-    char c_no_buf[32], c_denom_buf[32], c_reject_buf[32];
     if (page_02_list_len <= 0) return;
 
-    for (int i = 0; i < PAGE_02_C_ITEM; i++)
-    {
-        int row;
-        row = i + 1;
-        snprintf(c_no_buf, sizeof(c_no_buf), "02_c_no_%d", row);
-        snprintf(c_denom_buf, sizeof(c_denom_buf), "02_c_denom_%d", row);
-        snprintf(c_reject_buf, sizeof(c_reject_buf), "02_c_reject_%d", row);
-        c_no = find_obj_by_name(c_no_buf, page_02_list_obj, page_02_list_len);
-        c_denom = find_obj_by_name(c_denom_buf, page_02_list_obj, page_02_list_len);
-        c_reject = find_obj_by_name(c_reject_buf, page_02_list_obj, page_02_list_len);
-        if (!c_no || !c_denom || !c_reject) {
-            continue;
-        }
-        int temp_current;
-        temp_current = i + (page_02_c_report_status.curent_page - 1) * PAGE_02_C_ITEM;
-        if (temp_current < sim.err_num)
-        {
-            update_label_by_name(page_02_list_obj, page_02_list_len, c_no_buf, "%d", (page_02_c_report_status.curent_page - 1) * PAGE_02_C_ITEM + i + 1);
-            if (sim.err_pcs != NULL) {
-                update_label_by_name(page_02_list_obj, page_02_list_len, c_denom_buf, "%d", sim.err_pcs[temp_current]);
-            } else {
-                update_label_by_name(page_02_list_obj, page_02_list_len, c_denom_buf, "%s", "-");
-            }
-            if (sim.err_str != NULL && sim.err_str[temp_current] != NULL) {
-                update_label_by_name(page_02_list_obj, page_02_list_len, c_reject_buf, "%s", sim.err_str[temp_current]);
-            } else {
-                update_label_by_name(page_02_list_obj, page_02_list_len, c_reject_buf, "%s", "Unknown Error");
-            }
-            lv_obj_clear_flag(c_no, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_clear_flag(c_denom, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_clear_flag(c_reject, LV_OBJ_FLAG_HIDDEN);
-        }
-        else
-        {
-            lv_obj_add_flag(c_no, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(c_denom, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(c_reject, LV_OBJ_FLAG_HIDDEN);
-
-        }
-    }
+    page_02_list_section_refresh(PAGE_02_SECTION_C);
 }
 
 
