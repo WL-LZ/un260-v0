@@ -35,6 +35,7 @@ typedef struct {
     uint8_t col_count;
     uint16_t total_row;
     uint16_t first_row;
+    bool pressing;
     bool press_moved;
     lv_point_t press_point;
 } page_02_scroll_section_t;
@@ -518,17 +519,7 @@ static lv_coord_t page_02_scroll_section_max_scroll_y_get(page_02_scroll_section
 
 static void page_02_scroll_section_pull_limit(page_02_scroll_section_t *section) // 限制最后一页过拉距离
 {
-    lv_coord_t scroll_top;
-    lv_coord_t max_scroll_y;
-
-    if (section == NULL || section->container == NULL) return;
-    if (page_02_scroll_section_small_data(section)) return;
-
-    max_scroll_y = page_02_scroll_section_max_scroll_y_get(section);
-    scroll_top = lv_obj_get_scroll_top(section->container);
-    if (scroll_top > max_scroll_y) {
-        lv_obj_scroll_to_y(section->container, max_scroll_y, LV_ANIM_OFF);
-    }
+    (void)section;
 }
 
 static void page_02_scroll_section_row_bind(page_02_scroll_section_t *section, uint16_t pool_row, int data_index) // 绑定滚动行内容
@@ -706,6 +697,7 @@ static void page_02_scroll_section_event_cb(lv_event_t *e) // 处理滚动与点
         lv_indev_t *indev = lv_event_get_indev(e);
         if (indev == NULL) return;
         lv_indev_get_point(indev, &section->press_point);
+        section->pressing = true;
         section->press_moved = false;
         return;
     }
@@ -727,40 +719,52 @@ static void page_02_scroll_section_event_cb(lv_event_t *e) // 处理滚动与点
     }
 
     if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
+        section->pressing = false;
         return;
     }
 
     if (code == LV_EVENT_SCROLL) {
-        page_02_scroll_section_pull_limit(section);
         page_02_scroll_section_visible_refresh(section);
         page_02_scroll_section_status_refresh(section);
         return;
     }
 
     if (code == LV_EVENT_SCROLL_END) {
+        if (section->pressing) {
+            page_02_scroll_section_visible_refresh(section);
+            page_02_scroll_section_status_refresh(section);
+            return;
+        }
         if (page_02_scroll_section_small_data(section)) {
             lv_obj_scroll_to_y(section->container, 0, LV_ANIM_ON);
             page_02_scroll_section_visible_refresh(section);
             page_02_scroll_section_status_refresh(section);
             return;
         }
-        if (section->section_id == PAGE_02_SECTION_A &&
-            page_02_a_report_status.curent_page == page_02_a_report_status.total_page) {
-            page_02_scroll_section_status_refresh(section);
-            page_02_scroll_section_sync_to_status(section, true);
-            return;
+        if (section->section_id == PAGE_02_SECTION_A ||
+            section->section_id == PAGE_02_SECTION_C) {
+            lv_coord_t scroll_top;
+            lv_coord_t last_page_scroll_y;
+
+            scroll_top = lv_obj_get_scroll_top(section->container);
+            last_page_scroll_y = (lv_coord_t)page_02_scroll_section_last_page_first_row_get(section) * PAGE_02_SCROLL_ROW_GAP;
+            if (scroll_top > last_page_scroll_y) {
+                page_02_scroll_section_status_refresh(section);
+                page_02_scroll_section_sync_to_status(section, true);
+                return;
+            }
         }
-        if (section->section_id == PAGE_02_SECTION_B &&
-            page_02_b_report_status.curent_page == page_02_b_report_status.total_page) {
-            page_02_scroll_section_status_refresh(section);
-            page_02_scroll_section_sync_to_status(section, true);
-            return;
-        }
-        if (section->section_id == PAGE_02_SECTION_C &&
-            page_02_c_report_status.curent_page == page_02_c_report_status.total_page) {
-            page_02_scroll_section_status_refresh(section);
-            page_02_scroll_section_sync_to_status(section, true);
-            return;
+        if (section->section_id == PAGE_02_SECTION_B) {
+            lv_coord_t scroll_top;
+            lv_coord_t last_page_scroll_y;
+
+            scroll_top = lv_obj_get_scroll_top(section->container);
+            last_page_scroll_y = (lv_coord_t)page_02_scroll_section_last_page_first_row_get(section) * PAGE_02_SCROLL_ROW_GAP;
+            if (scroll_top > last_page_scroll_y) {
+                page_02_scroll_section_status_refresh(section);
+                page_02_scroll_section_sync_to_status(section, true);
+                return;
+            }
         }
         page_02_scroll_section_visible_refresh(section);
         page_02_scroll_section_status_refresh(section);
@@ -768,20 +772,8 @@ static void page_02_scroll_section_event_cb(lv_event_t *e) // 处理滚动与点
     }
 
     if (code == LV_EVENT_CLICKED) {
-        lv_indev_t *indev = lv_event_get_indev(e);
-        lv_point_t point;
-        lv_area_t coords;
-        int step;
-
-        if (section->press_moved) {
-            section->press_moved = false;
-            return;
-        }
-        if (indev == NULL) return;
-        lv_indev_get_point(indev, &point);
-        lv_obj_get_coords(section->container, &coords);
-        step = (point.y < ((coords.y1 + coords.y2) / 2)) ? -1 : 1;
-        page_02_list_section_page_step(section->section_id, step, false);
+        section->press_moved = false;
+        return; //A/B/C都只保留滑动，不再通过点击翻页
     }
 }
 
