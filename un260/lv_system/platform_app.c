@@ -621,10 +621,22 @@ void mode_switch(void)
 
 void page_02_report_init(void)
 {
+    int b_valid_count = 0;
+
     page_02_a_report_status.curent_page = 1;
     page_02_a_report_status.total_page = sim.denom_number == 0 ? 1 : (sim.denom_number + PAGE_02_A_ITEM - 1) / PAGE_02_A_ITEM;
     page_02_b_report_status.curent_page = 1;
-    page_02_b_report_status.total_page = (sim.total_pcs == 0) ? 1 : ((sim.total_pcs + PAGE_02_B_ITEM - 1) / PAGE_02_B_ITEM);
+
+    // B区只按有效冠字号详情计页，避免 total_pcs 触发占位显示。 
+    if (sim.sn_str != NULL) {
+        for (int i = 0; i < sim.total_pcs; i++) {
+            if (sim.sn_str[i] != NULL && sim.denom_mix[i] > 0) {
+                b_valid_count++;
+            }
+        }
+    }
+    page_02_b_report_status.total_page = (b_valid_count == 0) ? 1 : ((b_valid_count + PAGE_02_B_ITEM - 1) / PAGE_02_B_ITEM);
+
     page_02_c_report_status.curent_page = 1;
     page_02_c_report_status.total_page = (sim.err_num == 0) ? 1 : ((sim.err_num + PAGE_02_C_ITEM - 1) / PAGE_02_C_ITEM);
 }

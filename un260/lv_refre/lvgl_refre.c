@@ -757,6 +757,35 @@ void page_02_a_page_refre(void)
 
     }
 }
+
+static int page_02_b_valid_count_get(void) //获取B区有效冠字号条数（仅统计有SN且面额有效的数据）
+{
+    int valid_count = 0;
+
+    if (sim.sn_str == NULL) return 0;
+
+    for (int i = 0; i < sim.total_pcs; i++) {
+        if (sim.sn_str[i] != NULL && sim.denom_mix[i] > 0) {
+            valid_count++;
+        }
+    }
+    return valid_count;
+}
+
+static int page_02_b_nth_valid_index_get(int nth) //获取第nth条有效冠字号对应的源索引
+{
+    int valid_count = 0;
+
+    if (nth < 0 || sim.sn_str == NULL) return -1;
+
+    for (int i = 0; i < sim.total_pcs; i++) {
+        if (sim.sn_str[i] == NULL || sim.denom_mix[i] <= 0) continue;
+        if (valid_count == nth) return i;
+        valid_count++;
+    }
+
+    return -1;
+}
 //仿真模式 非实机函数
 
 void page_02_b_page_refre(void)
@@ -765,10 +794,17 @@ void page_02_b_page_refre(void)
     lv_obj_t* b_denom;
     lv_obj_t* b_sn;
     char b_no_buf[32], b_denom_buf[32], b_sn_buf[32];
+    int valid_total;
+
     if (page_02_list_len <= 0) return;
+    valid_total = page_02_b_valid_count_get();
+
     for (int i = 0; i < PAGE_02_B_ITEM; i++)
     {
         int row;
+        int valid_pos;
+        int temp_current;
+
         row = i + 1;
         snprintf(b_no_buf, sizeof(b_no_buf), "02_b_no_%d", row);
         snprintf(b_denom_buf, sizeof(b_denom_buf), "02_b_denom_%d", row);
@@ -779,20 +815,21 @@ void page_02_b_page_refre(void)
         if (!b_no || !b_denom || !b_sn) {
             continue;
         }
-        int temp_current;
-        temp_current = i + (page_02_b_report_status.curent_page - 1) * PAGE_02_B_ITEM;
-        if (temp_current < sim.total_pcs)
+
+        valid_pos = i + (page_02_b_report_status.curent_page - 1) * PAGE_02_B_ITEM;
+        if (valid_pos < valid_total)
         {
-            update_label_by_name(page_02_list_obj, page_02_list_len, b_no_buf, "%d", (page_02_b_report_status.curent_page - 1) * PAGE_02_B_ITEM + i + 1);
+            temp_current = page_02_b_nth_valid_index_get(valid_pos);
+            if (temp_current < 0) {
+                lv_obj_add_flag(b_no, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(b_denom, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(b_sn, LV_OBJ_FLAG_HIDDEN);
+                continue;
+            }
+
+            update_label_by_name(page_02_list_obj, page_02_list_len, b_no_buf, "%d", valid_pos + 1);
             update_label_by_name(page_02_list_obj, page_02_list_len, b_denom_buf, "%d", sim.denom_mix[temp_current]);
-            if (sim.sn_str != NULL && sim.sn_str[temp_current] != NULL)
-            {
-                update_label_by_name(page_02_list_obj, page_02_list_len, b_sn_buf, "%s", sim.sn_str[temp_current]);
-            }
-            else
-            {
-                update_label_by_name(page_02_list_obj, page_02_list_len, b_sn_buf, "%s", "-");
-            }
+            update_label_by_name(page_02_list_obj, page_02_list_len, b_sn_buf, "%s", sim.sn_str[temp_current]);
             lv_obj_clear_flag(b_no, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(b_denom, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(b_sn, LV_OBJ_FLAG_HIDDEN);
@@ -884,6 +921,15 @@ void page_02_b_page_num_refre(void)
     int curr_num, total_num;
     // lv_obj_t* curr_obj;
     char curr_buf[16];
+    int valid_total = page_02_b_valid_count_get();
+
+    page_02_b_report_status.total_page = (valid_total == 0) ? 1 : ((valid_total + PAGE_02_B_ITEM - 1) / PAGE_02_B_ITEM);
+    if (page_02_b_report_status.curent_page < 1) {
+        page_02_b_report_status.curent_page = 1;
+    } else if (page_02_b_report_status.curent_page > page_02_b_report_status.total_page) {
+        page_02_b_report_status.curent_page = page_02_b_report_status.total_page;
+    }
+
     curr_num = page_02_b_report_status.curent_page;
     total_num = page_02_b_report_status.total_page;
     snprintf(curr_buf, sizeof(curr_buf), "%d/%d", curr_num, total_num);
