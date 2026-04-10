@@ -1600,7 +1600,6 @@ int main(void) {
     lv_port_indev_init();
     ui_manager_switch(UI_PAGE_BOOT_ANIM);
     perf_stats_init();
-    lv_debug_overlay_init();
 
     printf("=== 初始化UART4、UART5和UART6 ===\n");
 
