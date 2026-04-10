@@ -142,6 +142,7 @@ typedef enum {
 } selftest_type_t; //自检命令枚举
 
 void boot_send_next_selftest(void);
+uint8_t boot_get_selftest_step(void); // 获取当前自检步骤
 // CIS校准命令
 void boot_handshake_waiting_log_reset(void);
 

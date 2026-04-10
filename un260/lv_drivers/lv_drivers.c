@@ -10,6 +10,7 @@
 #include <stdarg.h>
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_core/lv_page_manager.h"
+#include "un260/lv_core/page_08_boot.h"
 
 
 Machine_work_code_t Machine_work_code={0};
@@ -273,29 +274,26 @@ void boot_send_next_selftest(void)
 {
     g_boot_stage_tick = custom_tick_get();
 
+    boot_selftest_list_sync_step((uint8_t)selftest_step);
+
     switch (selftest_step) {
         case 0:
-            bootlog_append("Read config parameters...");
             send_command(fd4, 0x37, (uint8_t[]){0x04}, 1);
             break;
 
         case 1:
-            bootlog_append("Sensor self-test running...");
             send_command(fd4, 0x37, (uint8_t[]){0x01}, 1);
             break;
 
         case 2:
-            bootlog_append("Motor self-test running...");
             send_command(fd4, 0x37, (uint8_t[]){0x02}, 1);
             break;
 
         case 3:
-            bootlog_append("Electromagnet self-test running...");
             send_command(fd4, 0x37, (uint8_t[]){0x03}, 1);
             break;
 
         case 4:
-            bootlog_append("Image board self-test running...");
             send_command(fd4, 0x37, (uint8_t[]){0x05}, 1);
             break;
 
@@ -306,6 +304,18 @@ void boot_send_next_selftest(void)
     selftest_step++;
 }
 
+uint8_t boot_get_selftest_step(void) // 获取当前自检步骤
+{
+    if (selftest_step < 0) {
+        return 0;
+    }
+
+    if (selftest_step > selftest_total) {
+        return (uint8_t)selftest_total;
+    }
+
+    return (uint8_t)selftest_step;
+}
 
 void boot_handshake_waiting_log_reset(void)
 {

@@ -22,6 +22,7 @@
 #include "un260/lv_components/lv_components.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_system/platform_app.h"
+#include "un260/lv_core/page_08_boot.h"
 #include "un260/lv_components/lv_fault_popup.h"
 #include "un260/lv_components/lv_print_toast.h"
 #include "un260/lv_core/ui_upgrade_service.h"
@@ -390,6 +391,7 @@ void* uart5_thread(void* arg) {
 
 static void boot_selftest_finish_cb(lv_timer_t* timer)
 {
+    boot_selftest_list_finish();     // 自检结束后补全最后一项成功状态
     ui_manager_switch(UI_PAGE_MAIN); // 切到主页面
     lv_timer_del(timer);             // 删除定时器
 }

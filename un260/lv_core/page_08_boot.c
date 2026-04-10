@@ -6,6 +6,7 @@
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_components/lv_components.h"
 #include "un260/lv_refre/lvgl_refre.h"
+#include "un260/lv_drivers/lv_drivers.h"
 #include "../aic_ui/aic_ui.h"
 #include "page_08_boot.h"
 static lv_timer_t* boot_waiting_timer = NULL;
@@ -17,6 +18,20 @@ static lv_obj_t* boot_progress_percent_label = NULL;
 static lv_obj_t* boot_progress_loading_label = NULL;
 static uint8_t boot_progress_percent = 0;
 static lv_timer_t* boot_progress_handshake_timer = NULL;
+
+#define BOOT_SELFTEST_LIST_X 575
+#define BOOT_SELFTEST_LIST_Y 76
+#define BOOT_SELFTEST_LIST_COUNT 5
+
+static lv_obj_t* boot_selftest_list = NULL;
+static const char* boot_selftest_names[BOOT_SELFTEST_LIST_COUNT] = {
+    "Read config parameters...",
+    "Sensor self-test running...",
+    "Motor self-test running...",
+    "Electromagnet self-test running...",
+    "Image board self-test running...",
+};
+
 ui_element_t page_08_curr_obj[] = {
     // 背景图
 
@@ -31,7 +46,6 @@ ui_element_t page_08_curr_obj[] = {
 
 int page_08_curr_len = sizeof(page_08_curr_obj) / sizeof(page_08_curr_obj[0]);
 
-#define BOOTLOG_LINE_MS 400           
 #define BOOTLOG_BUFFER_SIZE 8192       
 #define BOOTLOG_CONT_W 682
 #define BOOTLOG_CONT_H 354
@@ -42,7 +56,10 @@ static lv_obj_t* boot_cont = NULL;
 static lv_obj_t* boot_label = NULL;
 static lv_timer_t* boot_timer = NULL;
 static char boot_buf[BOOTLOG_BUFFER_SIZE];
-static int boot_line_index = 0;
+
+static void boot_selftest_list_create(lv_obj_t* parent); // 创建自检卡片列表
+static void boot_selftest_list_apply_state(uint8_t index, lv_selftest_list_state_t state); // 刷新单卡状态
+static void boot_selftest_list_mark_pending(void); // 全部恢复待测
 
 #define BOOT_PROGRESS_X 39
 #define BOOT_PROGRESS_Y 380
@@ -97,6 +114,9 @@ void boot_progress_set(uint8_t percent)
     if (percent >= 20) {
         boot_progress_handshake_tick_stop();
     }
+    if (percent >= 100) {
+        boot_selftest_list_finish();
+    }
 }
 
 void boot_progress_reset(void)
@@ -135,6 +155,96 @@ static void boot_progress_create(lv_obj_t* parent)
     lv_obj_set_style_text_font(boot_progress_percent_label, LV_FONT_DEFAULT, 0);
 
     boot_progress_apply(boot_progress_percent);
+}
+
+static void boot_selftest_list_create(lv_obj_t* parent) // 创建自检卡片列表
+{
+    if (parent == NULL || boot_selftest_list != NULL) {
+        return;
+    }
+
+    lv_selftest_list_config_t cfg;
+
+    lv_selftest_list_config_init(&cfg);
+    cfg.item_w = 682;
+    cfg.item_h = 36;
+    cfg.item_gap = 10;
+    cfg.item_pad_x = 10;
+    cfg.icon_size = 15;
+    cfg.spinner_size = 15;
+    cfg.name_gap = 7;
+    cfg.state_w = 100;
+
+    boot_selftest_list = lv_selftest_list_create_with_config(parent, BOOT_SELFTEST_LIST_COUNT, &cfg);
+    if (boot_selftest_list == NULL) {
+        return;
+    }
+
+    lv_obj_set_pos(boot_selftest_list, BOOT_SELFTEST_LIST_X, BOOT_SELFTEST_LIST_Y);
+    lv_obj_move_foreground(boot_selftest_list);
+
+    for (uint8_t i = 0; i < BOOT_SELFTEST_LIST_COUNT; i++) {
+        lv_selftest_list_set_item(boot_selftest_list, i, boot_selftest_names[i],
+                                  LV_SELFTEST_LIST_STATE_PENDING);
+    }
+}
+
+static void boot_selftest_list_apply_state(uint8_t index, lv_selftest_list_state_t state) // 刷新单卡状态
+{
+    if (boot_selftest_list == NULL || index >= BOOT_SELFTEST_LIST_COUNT) {
+        return;
+    }
+
+    lv_selftest_list_set_item_state(boot_selftest_list, index, state);
+}
+
+static void boot_selftest_list_mark_pending(void) // 全部恢复待测
+{
+    for (uint8_t i = 0; i < BOOT_SELFTEST_LIST_COUNT; i++) {
+        boot_selftest_list_apply_state(i, LV_SELFTEST_LIST_STATE_PENDING);
+    }
+}
+
+void boot_selftest_list_reset(void) // 重置自检卡片显示
+{
+    if (boot_selftest_list == NULL || !lv_obj_is_valid(boot_selftest_list)) {
+        return;
+    }
+
+    boot_selftest_list_mark_pending();
+}
+
+void boot_selftest_list_sync_step(uint8_t step) // 根据步骤同步自检卡片
+{
+    if (boot_selftest_list == NULL || !lv_obj_is_valid(boot_selftest_list)) {
+        return;
+    }
+
+    if (step >= BOOT_SELFTEST_LIST_COUNT) {
+        boot_selftest_list_finish();
+        return;
+    }
+
+    for (uint8_t i = 0; i < BOOT_SELFTEST_LIST_COUNT; i++) {
+        if (i < step) {
+            boot_selftest_list_apply_state(i, LV_SELFTEST_LIST_STATE_SUCCESS);
+        } else if (i == step) {
+            boot_selftest_list_apply_state(i, LV_SELFTEST_LIST_STATE_LOADING);
+        } else {
+            boot_selftest_list_apply_state(i, LV_SELFTEST_LIST_STATE_PENDING);
+        }
+    }
+}
+
+void boot_selftest_list_finish(void) // 自检完成后全部置成功
+{
+    if (boot_selftest_list == NULL || !lv_obj_is_valid(boot_selftest_list)) {
+        return;
+    }
+
+    for (uint8_t i = 0; i < BOOT_SELFTEST_LIST_COUNT; i++) {
+        boot_selftest_list_apply_state(i, LV_SELFTEST_LIST_STATE_SUCCESS);
+    }
 }
 
 static void boot_waiting_timer_cb(lv_timer_t* timer)
@@ -221,91 +331,11 @@ void bootlog_append(const char* text)
 }
 
 
-// 把你给的日志原样按行放到这里
-static const char* boot_lines[] = {
-    "Pre-Boot Program ... ",
-    "DDR3 128MB",
-    "Going to init DDR3. freq: 672MHz",
-    "DDR3 initialized",
-    "41123 56716 83516",
-    "PBP done",
-    "",
-    "U-Boot SPL ",
-    "[SPL]: Boot device = 5(BD_SPINAND)",
-    "Trying to boot from SPINAND",
-    "Jumping to Linux via RISC-V OpenSBI",
-    "[    1.369909] Timeout during wait phy stop state c",
-    "Startup time: 3.686 sec (from Power-On-Reset)",
-    "Load touch driver: /",
-    "Starting test_lvgl: OK",
-    "Starting syslogd: OK",
-    "Starting klogd: OK",
-    "Starting mdev... OK",
-    "Starting system message bus: dbus-daemon: dbus-daemon: no version information available (required by dbus-daemon)",
-    "done",
-    "Starting adbd: mkdir: can't create directory '/dev/pts': File exists",
-    "Link encap:Local Loopback",
-    "          inet addr:127.0.0.1  Mask:255.0.0.0",
-    "          UP LOOPBACK RUNNING  MTU:65536  Metric:1",
-    "          RX packets:0 errors:0 dropped:0 overruns:0 frame:0",
-    "          TX packets:0 errors:0 dropped:0 overruns:0 carrier:0",
-    "          collisions:0 txqueuelen:1000",
-    "          RX bytes:0 (0.0 B)  TX bytes:0 (0.0 B)",
-    "",
-    "install_listener('tcp:5037','*smartsocket*')>>>",
-     "Detecting Image Sensor>>>",
-    "Detecting UV Sensor>>>",
-    "Detecting MGS Sensor>>>",
-    "Detecting MGB Sensor>>>",
-    "Detecting Double Sensor>>>",
-    "Detecting Start Sensor>>>",
-    "Detecting Clear Sensor>>>",
-    "Starting Image Board>>>",
-    "Loading Clear Sensor Sensitivity>>>",
-    "OK",
-    "Welcome to UN260A!"
-};
-static const int boot_line_count = sizeof(boot_lines) / sizeof(boot_lines[0]);
-
-static void boot_timer_cb(lv_timer_t* t)
-{
-    (void)t;
-    if (!boot_label || !boot_cont) return;
-
-    if (boot_line_index >= boot_line_count) {
-        if (boot_timer) {
-            lv_timer_del(boot_timer);
-            boot_timer = NULL;
-        }
-        return;
-    }
-
-    size_t cur_len = strlen(boot_buf);
-    size_t avail = (BOOTLOG_BUFFER_SIZE - cur_len - 2);
-    if (avail > 0) {
-        strncat(boot_buf, boot_lines[boot_line_index], avail);
-        strncat(boot_buf, "\n", avail);
-        lv_label_set_text(boot_label, boot_buf);
-#ifdef LV_USE_OBJ_SCROLL_TO_VIEW
-        lv_obj_scroll_to_view(boot_cont, boot_label, LV_ANIM_OFF);
-#else
-        lv_coord_t lh = lv_obj_get_height(boot_label);
-        lv_coord_t ch = lv_obj_get_height(boot_cont);
-        if (lh > ch) {
-            lv_obj_scroll_to_y(boot_cont, lh, LV_ANIM_OFF);
-        }
-#endif
-    }
-
-    boot_line_index++;
-}
-
 void bootlog_start(lv_obj_t* parent)
 {
     if (boot_timer) return; // 已在运行，则不重复创建
 
     memset(boot_buf, 0, sizeof(boot_buf));
-    boot_line_index = 0;
 
     // 创建容器（白底）
     boot_cont = lv_obj_create(parent);
@@ -357,6 +387,9 @@ void ui_page_08_curr_create(lv_obj_t* parent)
     lv_ui_obj_init(boot_page, page_08_curr_obj, page_08_curr_len);
     bootlog_start(boot_page);
     boot_progress_create(boot_page);
+    boot_selftest_list_create(boot_page);
+    boot_selftest_list_reset();
+    boot_selftest_list_sync_step(boot_get_selftest_step());
 
     /* Restore legacy behavior: show waiting hint on boot page during handshake stage. */
     if (g_boot_stage == BOOT_STAGE_HANDSHAKE &&
@@ -386,6 +419,7 @@ void ui_page_08_curr_destroy(void)
     boot_progress_fill = NULL;
     boot_progress_percent_label = NULL;
     boot_progress_loading_label = NULL;
+    boot_selftest_list = NULL;
     boot_progress_handshake_tick_stop();
     boot_waiting_anim_stop();
 }
