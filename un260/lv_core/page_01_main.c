@@ -30,7 +30,7 @@ int page_01_main_len = 0;
 static void time_area_clicked_cb(lv_event_t* e)
 {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
-    ui_manager_push_page(UI_PAGE_TIMESET);   /* 你的页面跳转接口按工程实际替换 */
+    ui_manager_push_page(UI_PAGE_TIMESET);   // 进入时间设置页
 }
 
 static lv_obj_t* s_time_label = NULL;
@@ -53,6 +53,14 @@ static lv_obj_t* s_bottom_c_box_cfd = NULL;
 static lv_obj_t* s_bottom_c_label_batch = NULL;
 static lv_obj_t* s_bottom_c_label_speed = NULL;
 static lv_obj_t* s_bottom_c_label_cfd = NULL;
+
+// 时间显示和点击区域统一放到B区居中
+#define PAGE_01_TIME_AREA_X   492
+#define PAGE_01_TIME_AREA_Y   348
+#define PAGE_01_TIME_AREA_W   261
+#define PAGE_01_TIME_AREA_H   44
+#define PAGE_01_TIME_TEXT_H   20
+#define PAGE_01_TIME_TEXT_Y   (PAGE_01_TIME_AREA_Y + ((PAGE_01_TIME_AREA_H - PAGE_01_TIME_TEXT_H) / 2))
 
 typedef enum {
     PAGE_01_BOTTOM_TEXT_ANIM_NONE = 0,
@@ -969,24 +977,31 @@ static lv_obj_t* time_label = NULL;
 static lv_obj_t* time_btn = NULL;
 static void PAGE_01_time_obj_creat(void)
 {
-time_label = lv_label_create(main_page);
-lv_obj_set_pos(time_label, 569, 24);
-lv_obj_set_size(time_label, 269, 60);
-lv_obj_set_style_text_color(time_label, lv_color_make(136, 136, 136),0);
-lv_obj_set_style_text_font(time_label, &lv_font_montserrat_20, 0);
-lv_label_set_text(time_label, "");
+    if (main_page == NULL) return;
+
+    time_label = lv_label_create(main_page);
+    lv_obj_set_pos(time_label, PAGE_01_TIME_AREA_X, PAGE_01_TIME_TEXT_Y);
+    lv_obj_set_size(time_label, PAGE_01_TIME_AREA_W, PAGE_01_TIME_TEXT_H);
+    lv_label_set_long_mode(time_label, LV_LABEL_LONG_CLIP);
+    lv_obj_set_style_text_color(time_label, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_font(time_label, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_align(time_label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_label_set_text(time_label, "");
+    lv_obj_move_foreground(time_label);
     
 }
 
 static void PAGE_01_time_btn_obj_creat(void)
 {
-time_btn = lv_btn_create(main_page);
-lv_obj_set_pos(time_btn, 534, 0);
-lv_obj_set_size(time_btn, 133, 62);
-lv_obj_set_style_bg_opa(time_btn, LV_OPA_TRANSP, 0);
-lv_obj_set_style_border_opa(time_btn, LV_OPA_TRANSP, 0);
-lv_obj_set_style_shadow_opa(time_btn, LV_OPA_TRANSP, 0);
-lv_obj_add_event_cb(time_btn, time_area_clicked_cb, LV_EVENT_CLICKED, NULL);
+    if (main_page == NULL) return;
+
+    time_btn = lv_btn_create(main_page);
+    lv_obj_set_pos(time_btn, PAGE_01_TIME_AREA_X, PAGE_01_TIME_AREA_Y);
+    lv_obj_set_size(time_btn, PAGE_01_TIME_AREA_W, PAGE_01_TIME_AREA_H);
+    lv_obj_set_style_bg_opa(time_btn, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_opa(time_btn, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_shadow_opa(time_btn, LV_OPA_TRANSP, 0);
+    lv_obj_add_event_cb(time_btn, time_area_clicked_cb, LV_EVENT_CLICKED, NULL);
     
 }
 
