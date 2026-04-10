@@ -9,9 +9,6 @@
 #include "un260/lv_drivers/lv_drivers.h"
 #include "../aic_ui/aic_ui.h"
 #include "page_08_boot.h"
-static lv_timer_t* boot_waiting_timer = NULL;
-static lv_obj_t* boot_waiting_label = NULL;
-static uint8_t boot_waiting_dot_state = 0;
 static lv_obj_t* boot_progress_bg = NULL;
 static lv_obj_t* boot_progress_fill = NULL;
 static lv_obj_t* boot_progress_percent_label = NULL;
@@ -24,12 +21,40 @@ static lv_timer_t* boot_progress_handshake_timer = NULL;
 #define BOOT_SELFTEST_LIST_COUNT 5
 
 static lv_obj_t* boot_selftest_list = NULL;
-static const char* boot_selftest_names[BOOT_SELFTEST_LIST_COUNT] = {
-    "Read config parameters...",
-    "Sensor self-test running...",
-    "Motor self-test running...",
-    "Electromagnet self-test running...",
-    "Image board self-test running...",
+static const char* boot_selftest_base_names[BOOT_SELFTEST_LIST_COUNT] = {
+    "Read config parameters",
+    "Sensor self-test ",
+    "Motor self-test ",
+    "Electromagnet self-test ",
+    "Image board self-test ",
+};
+static const char* boot_selftest_running_names[BOOT_SELFTEST_LIST_COUNT] = {
+    "Read config parameters ",
+    "Sensor self-test ",
+    "Motor self-test ",
+    "Electromagnet self-test ",
+    "Image board self-test ",
+};
+static const char* boot_selftest_success_names[BOOT_SELFTEST_LIST_COUNT] = {
+    "Read config parameters success",
+    "Sensor self-test success",
+    "Motor self-test success",
+    "Electromagnet self-test success",
+    "Image board self-test success",
+};
+static const char* boot_selftest_failed_names[BOOT_SELFTEST_LIST_COUNT] = {
+    "Read config parameters failed",
+    "Sensor self-test failed",
+    "Motor self-test failed",
+    "Electromagnet self-test failed",
+    "Image board self-test failed",
+};
+static lv_selftest_list_state_t boot_selftest_item_state[BOOT_SELFTEST_LIST_COUNT] = {
+    LV_SELFTEST_LIST_STATE_PENDING,
+    LV_SELFTEST_LIST_STATE_PENDING,
+    LV_SELFTEST_LIST_STATE_PENDING,
+    LV_SELFTEST_LIST_STATE_PENDING,
+    LV_SELFTEST_LIST_STATE_PENDING,
 };
 
 ui_element_t page_08_curr_obj[] = {
@@ -46,20 +71,11 @@ ui_element_t page_08_curr_obj[] = {
 
 int page_08_curr_len = sizeof(page_08_curr_obj) / sizeof(page_08_curr_obj[0]);
 
-#define BOOTLOG_BUFFER_SIZE 8192       
-#define BOOTLOG_CONT_W 682
-#define BOOTLOG_CONT_H 354
-#define BOOTLOG_CONT_X 575
-#define BOOTLOG_CONT_Y 37
-
-static lv_obj_t* boot_cont = NULL;
-static lv_obj_t* boot_label = NULL;
-static lv_timer_t* boot_timer = NULL;
-static char boot_buf[BOOTLOG_BUFFER_SIZE];
-
 static void boot_selftest_list_create(lv_obj_t* parent); // 创建自检卡片列表
 static void boot_selftest_list_apply_state(uint8_t index, lv_selftest_list_state_t state); // 刷新单卡状态
 static void boot_selftest_list_mark_pending(void); // 全部恢复待测
+static const char *boot_selftest_list_text_get(uint8_t index, lv_selftest_list_state_t state); // 获取自检状态文案
+static lv_selftest_list_state_t boot_selftest_list_state_from_result(uint8_t result); // 根据协议结果获取状态
 
 #define BOOT_PROGRESS_X 39
 #define BOOT_PROGRESS_Y 380
@@ -174,6 +190,10 @@ static void boot_selftest_list_create(lv_obj_t* parent) // 创建自检卡片列
     cfg.spinner_size = 15;
     cfg.name_gap = 7;
     cfg.state_w = 100;
+    cfg.success_text_color = lv_color_hex(0x0084FF);
+    cfg.loading_text_color = lv_color_hex(0x0084FF);
+    cfg.pending_text_color = lv_color_hex(0x0084FF);
+    cfg.error_text_color = lv_color_hex(0x0084FF);
 
     boot_selftest_list = lv_selftest_list_create_with_config(parent, BOOT_SELFTEST_LIST_COUNT, &cfg);
     if (boot_selftest_list == NULL) {
@@ -184,7 +204,7 @@ static void boot_selftest_list_create(lv_obj_t* parent) // 创建自检卡片列
     lv_obj_move_foreground(boot_selftest_list);
 
     for (uint8_t i = 0; i < BOOT_SELFTEST_LIST_COUNT; i++) {
-        lv_selftest_list_set_item(boot_selftest_list, i, boot_selftest_names[i],
+        lv_selftest_list_set_item(boot_selftest_list, i, boot_selftest_base_names[i],
                                   LV_SELFTEST_LIST_STATE_PENDING);
     }
 }
@@ -195,12 +215,15 @@ static void boot_selftest_list_apply_state(uint8_t index, lv_selftest_list_state
         return;
     }
 
-    lv_selftest_list_set_item_state(boot_selftest_list, index, state);
+    boot_selftest_item_state[index] = state;
+    lv_selftest_list_set_item(boot_selftest_list, index,
+                              boot_selftest_list_text_get(index, state), state);
 }
 
 static void boot_selftest_list_mark_pending(void) // 全部恢复待测
 {
     for (uint8_t i = 0; i < BOOT_SELFTEST_LIST_COUNT; i++) {
+        boot_selftest_item_state[i] = LV_SELFTEST_LIST_STATE_PENDING;
         boot_selftest_list_apply_state(i, LV_SELFTEST_LIST_STATE_PENDING);
     }
 }
@@ -226,7 +249,11 @@ void boot_selftest_list_sync_step(uint8_t step) // 根据步骤同步自检卡�
     }
 
     for (uint8_t i = 0; i < BOOT_SELFTEST_LIST_COUNT; i++) {
-        if (i < step) {
+        if (boot_selftest_item_state[i] == LV_SELFTEST_LIST_STATE_ERROR) {
+            boot_selftest_list_apply_state(i, LV_SELFTEST_LIST_STATE_ERROR);
+        } else if (boot_selftest_item_state[i] == LV_SELFTEST_LIST_STATE_SUCCESS) {
+            boot_selftest_list_apply_state(i, LV_SELFTEST_LIST_STATE_SUCCESS);
+        } else if (i < step) {
             boot_selftest_list_apply_state(i, LV_SELFTEST_LIST_STATE_SUCCESS);
         } else if (i == step) {
             boot_selftest_list_apply_state(i, LV_SELFTEST_LIST_STATE_LOADING);
@@ -247,131 +274,44 @@ void boot_selftest_list_finish(void) // 自检完成后全部置成功
     }
 }
 
-static void boot_waiting_timer_cb(lv_timer_t* timer)
+void boot_selftest_list_set_result(uint8_t index, uint8_t result) // 按协议结果更新单项状态
 {
-    (void)timer;
-
-    if (boot_waiting_label == NULL) return;
-
-    switch (boot_waiting_dot_state)
-    {
-        case 0:
-            lv_label_set_text(boot_waiting_label, "Waiting for controller response.");
-            break;
-
-        case 1:
-            lv_label_set_text(boot_waiting_label, "Waiting for controller response..");
-            break;
-
-        default:
-            lv_label_set_text(boot_waiting_label, "Waiting for controller response...");
-            break;
+    if (boot_selftest_list == NULL || !lv_obj_is_valid(boot_selftest_list)) {
+        return;
     }
 
-    boot_waiting_dot_state++;
-    if (boot_waiting_dot_state >= 3)
-        boot_waiting_dot_state = 0;
+    if (index >= BOOT_SELFTEST_LIST_COUNT) {
+        return;
+    }
+
+    boot_selftest_list_apply_state(index, boot_selftest_list_state_from_result(result));
 }
 
-void boot_waiting_anim_start(void)
+static lv_selftest_list_state_t boot_selftest_list_state_from_result(uint8_t result) // 根据协议结果获取状态
 {
-    if (boot_cont == NULL || boot_label == NULL) return;
-
-    if (boot_waiting_label == NULL) {
-        boot_waiting_label = lv_label_create(boot_cont);
-
-        lv_label_set_long_mode(boot_waiting_label, LV_LABEL_LONG_WRAP);
-        lv_obj_set_width(boot_waiting_label, BOOTLOG_CONT_W - 16);
-
-        lv_obj_set_style_text_color(boot_waiting_label, lv_color_hex(0x0084FF), 0);
-        lv_obj_set_style_text_font(boot_waiting_label, LV_FONT_DEFAULT, 0);
-        lv_coord_t line_h = lv_font_get_line_height(LV_FONT_DEFAULT);
-        lv_obj_align(boot_waiting_label, LV_ALIGN_TOP_LEFT, 8, 8 + line_h + 2);
+    if (result == 0x01) {
+        return LV_SELFTEST_LIST_STATE_SUCCESS;
     }
 
-    boot_waiting_dot_state = 0;
-    lv_label_set_text(boot_waiting_label, "Waiting for controller response...");
-
-    if (boot_waiting_timer == NULL) {
-        boot_waiting_timer = lv_timer_create(boot_waiting_timer_cb, 500, NULL);
-    } else {
-        lv_timer_resume(boot_waiting_timer);
-    }
+    return LV_SELFTEST_LIST_STATE_ERROR;
 }
 
-void boot_waiting_anim_stop(void)
+static const char *boot_selftest_list_text_get(uint8_t index, lv_selftest_list_state_t state) // 获取自检状态文案
 {
-    if (boot_waiting_timer) {
-        lv_timer_del(boot_waiting_timer);
-        boot_waiting_timer = NULL;
+    if (index >= BOOT_SELFTEST_LIST_COUNT) {
+        return "";
     }
 
-    if (boot_waiting_label && lv_obj_is_valid(boot_waiting_label)) {
-        lv_obj_del(boot_waiting_label);
-    }
-    boot_waiting_label = NULL;
-
-    boot_waiting_dot_state = 0;
-    boot_progress_handshake_tick_stop();
-}
-
-void bootlog_append(const char* text)
-{
-    if (!boot_label) return;
-
-    strncat(boot_buf, text,
-            BOOTLOG_BUFFER_SIZE - strlen(boot_buf) - 2);
-    strncat(boot_buf, "\n",
-            BOOTLOG_BUFFER_SIZE - strlen(boot_buf) - 1);
-
-    lv_label_set_text(boot_label, boot_buf);
-    lv_obj_scroll_to_y(boot_cont,
-        lv_obj_get_height(boot_label),
-        LV_ANIM_OFF);
-}
-
-
-void bootlog_start(lv_obj_t* parent)
-{
-    if (boot_timer) return; // 已在运行，则不重复创建
-
-    memset(boot_buf, 0, sizeof(boot_buf));
-
-    // 创建容器（白底）
-    boot_cont = lv_obj_create(parent);
-    lv_obj_set_size(boot_cont, BOOTLOG_CONT_W, BOOTLOG_CONT_H);
-    lv_obj_set_pos(boot_cont, BOOTLOG_CONT_X, BOOTLOG_CONT_Y);
-    lv_obj_set_style_bg_opa(boot_cont, LV_OPA_TRANSP, 0);
-
-    // 🔹 删除边框
-    lv_obj_set_style_border_width(boot_cont, 0, 0);
-
-    // 🔹 去掉滚动条
-    lv_obj_set_scrollbar_mode(boot_cont, LV_SCROLLBAR_MODE_OFF);
-
-    lv_obj_set_style_pad_all(boot_cont, 8, 0);
-
-    boot_label = lv_label_create(boot_cont);
-    lv_obj_set_width(boot_label, BOOTLOG_CONT_W - 16);
-    lv_label_set_long_mode(boot_label, LV_LABEL_LONG_WRAP);
-    lv_obj_align(boot_label, LV_ALIGN_TOP_LEFT, 8, 8);
-    lv_label_set_text(boot_label, "");
-
-    // boot 自检日志字体统一使用 #0084FF
-    lv_obj_set_style_text_color(boot_label, lv_color_hex(0x0084FF), 0);
-    lv_obj_set_style_text_font(boot_label, LV_FONT_DEFAULT, 0);
-    //boot_timer = lv_timer_create(boot_timer_cb, BOOTLOG_LINE_MS, NULL);
-}
-void bootlog_stop(void)
-{
-    if (boot_timer) {
-        lv_timer_del(boot_timer);
-        boot_timer = NULL;
-    }
-    if (boot_cont) {
-        lv_obj_del(boot_cont);
-        boot_cont = NULL;
-        boot_label = NULL;
+    switch (state) {
+    case LV_SELFTEST_LIST_STATE_LOADING:
+        return boot_selftest_running_names[index];
+    case LV_SELFTEST_LIST_STATE_SUCCESS:
+        return boot_selftest_success_names[index];
+    case LV_SELFTEST_LIST_STATE_ERROR:
+        return boot_selftest_failed_names[index];
+    case LV_SELFTEST_LIST_STATE_PENDING:
+    default:
+        return boot_selftest_base_names[index];
     }
 }
 
@@ -385,16 +325,13 @@ void ui_page_08_curr_create(lv_obj_t* parent)
     lv_obj_clear_flag(boot_page, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_scrollbar_mode(boot_page, LV_SCROLLBAR_MODE_OFF);
     lv_ui_obj_init(boot_page, page_08_curr_obj, page_08_curr_len);
-    bootlog_start(boot_page);
     boot_progress_create(boot_page);
     boot_selftest_list_create(boot_page);
     boot_selftest_list_reset();
     boot_selftest_list_sync_step(boot_get_selftest_step());
 
-    /* Restore legacy behavior: show waiting hint on boot page during handshake stage. */
     if (g_boot_stage == BOOT_STAGE_HANDSHAKE &&
         Machine_Statue.g_handshake_state != HANDSHAKE_OK) {
-        boot_waiting_anim_start();
         boot_progress_set(0);
         boot_progress_handshake_tick_start();
     } else if (g_boot_stage >= BOOT_STAGE_SENSOR && g_boot_stage <= BOOT_STAGE_IMAGE) {
@@ -403,7 +340,7 @@ void ui_page_08_curr_create(lv_obj_t* parent)
     } else if (g_boot_stage == BOOT_STAGE_DONE) {
         boot_progress_set(100);
     } else {
-        boot_waiting_anim_stop();
+        boot_progress_handshake_tick_stop();
     }
 
 };
@@ -421,5 +358,4 @@ void ui_page_08_curr_destroy(void)
     boot_progress_loading_label = NULL;
     boot_selftest_list = NULL;
     boot_progress_handshake_tick_stop();
-    boot_waiting_anim_stop();
 }

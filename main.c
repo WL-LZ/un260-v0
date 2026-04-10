@@ -439,8 +439,6 @@ void PCCmdHandle(void)
         case 0x01: 
         {
             if (buf[4] == 0x01) {
-                boot_waiting_anim_stop();
-                bootlog_append("Handshake OK");
                 boot_progress_set(20);
                 Machine_Statue.g_handshake_state = HANDSHAKE_OK;
                 g_handshake_start_tick = 0;
@@ -1057,33 +1055,27 @@ void PCCmdHandle(void)
             uint8_t test_type = buf[4];
             uint8_t result = buf[5];
 
-            const char* name = "Unknown";
             int index = -1;
 
             switch (test_type)
             {
-                case 0x01:
-                    name = "Sensor";
+                case 0x04:
                     index = 0;
                     break;
 
-                case 0x02:
-                    name = "Motor";
+                case 0x01:
                     index = 1;
                     break;
 
-                case 0x03:
-                    name = "Magnet";
+                case 0x02:
                     index = 2;
                     break;
 
-                case 0x04:
-                    name = "Config";
+                case 0x03:
                     index = 3;
                     break;
 
                 case 0x05:
-                    name = "Image";
                     index = 4;
                     break;
 
@@ -1092,27 +1084,14 @@ void PCCmdHandle(void)
             }
 
             if (result == 0x01) {
-                char logbuf[64];
-
                 if (index >= 0) {
                     g_boot_selftest_result[index] = 1;
                 }
 
-                snprintf(logbuf, sizeof(logbuf), "%s self-test SUCCESS", name);
-                bootlog_append(logbuf);
             } else {
-                char logbuf[64];
-
                 if (index >= 0) {
                     g_boot_selftest_result[index] = (result == 0x03) ? 3 : 2;
                 }
-
-                if (result == 0x03) {
-                    snprintf(logbuf, sizeof(logbuf), "%s self-test TIMEOUT", name);
-                } else {
-                    snprintf(logbuf, sizeof(logbuf), "%s self-test FAIL", name);
-                }
-                bootlog_append(logbuf);
 
                 // 自检期间先记录首个错误，待全部流程结束后再统一弹出
                 if (!g_boot_selftest_has_error) {
@@ -1120,6 +1099,10 @@ void PCCmdHandle(void)
                     g_boot_selftest_first_error_type = test_type;
                     g_boot_selftest_first_error_result = result;
                 }
+            }
+
+            if (index >= 0) {
+                boot_selftest_list_set_result((uint8_t)index, result);
             }
 
             if (index >= 0) {
@@ -1132,12 +1115,10 @@ void PCCmdHandle(void)
                 boot_send_next_selftest();
             } else {
                 if (!g_boot_selftest_has_error) {
-                    bootlog_append("self-test SUCCESS");
                     boot_progress_set(100);
                     send_command(fd4, 0x56, (uint8_t[]){0x01}, 1);
                     lv_timer_create(boot_selftest_finish_cb, 2000, NULL);
                 } else {
-                    bootlog_append("self-test finished with errors");
                     g_boot_stage = BOOT_STAGE_FAIL;
                     // 自检失败也继续读取主控货币列表，避免页面回落本地默认配置
                     send_command(fd4, 0x56, (uint8_t[]){0x01}, 1);
@@ -1711,9 +1692,6 @@ int main(void) {
                     (now - g_handshake_start_tick) >= BOOT_HANDSHAKE_MAX_WAIT_MS)
                 {
                     g_boot_stage = BOOT_STAGE_FAIL;
-
-                    boot_waiting_anim_stop();
-                    bootlog_append("Handshake timeout");
 
                     show_boot_selftest_error_popup(
                         "Controller handshake timeout.\nPress CONFIRM to enter sensor page.");

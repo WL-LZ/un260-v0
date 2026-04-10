@@ -260,8 +260,6 @@ void machine_handshake_send(void)
 
     if (Machine_Statue.g_handshake_state == HANDSHAKE_IDLE) {
         g_handshake_start_tick = now;
-        bootlog_append("Machine starting...");
-        boot_waiting_anim_start();
     }
 
     send_command(fd4, 0x01, &sub, 1);

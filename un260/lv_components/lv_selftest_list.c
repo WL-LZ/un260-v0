@@ -1,5 +1,6 @@
 #include "lv_selftest_list.h"
 
+#include <stdio.h>
 #include <string.h>
 
 #define SELFTEST_LIST_MAX_CTX              8
@@ -225,9 +226,6 @@ static lv_selftest_list_item_t *selftest_list_item_get(lv_selftest_list_ctx_t *c
 
 static void selftest_list_apply_item_style(lv_selftest_list_ctx_t *ctx, lv_selftest_list_item_t *item) // 刷新单项样式
 {
-    lv_coord_t text_pad_top;
-    lv_coord_t line_h;
-
     if (ctx == NULL || item == NULL || item->card == NULL || !lv_obj_is_valid(item->card)) {
         return;
     }
@@ -244,76 +242,67 @@ static void selftest_list_apply_item_style(lv_selftest_list_ctx_t *ctx, lv_selft
     lv_obj_set_style_pad_row(item->card, 0, 0);
     lv_obj_set_style_text_font(item->card, &lv_font_montserrat_14, 0);
 
-    lv_obj_set_size(item->left_box, ctx->cfg.item_w - ctx->cfg.item_pad_x * 2 - ctx->cfg.state_w, ctx->cfg.item_h);
     lv_obj_set_size(item->icon_box, ctx->cfg.icon_size, ctx->cfg.icon_size);
     lv_obj_set_size(item->spinner_arc, ctx->cfg.spinner_size, ctx->cfg.spinner_size);
     lv_obj_set_size(item->pending_ring, ctx->cfg.icon_size, ctx->cfg.icon_size);
     lv_obj_set_size(item->icon_img, ctx->cfg.icon_size, ctx->cfg.icon_size);
     lv_obj_set_size(item->name_label,
-                    lv_obj_get_width(item->left_box) - ctx->cfg.icon_size - ctx->cfg.name_gap,
+                    ctx->cfg.item_w - ctx->cfg.item_pad_x * 2 - ctx->cfg.icon_size - ctx->cfg.name_gap - ctx->cfg.state_w,
                     ctx->cfg.item_h);
     lv_obj_set_size(item->state_label, ctx->cfg.state_w, ctx->cfg.item_h);
 
-    line_h = lv_font_get_line_height(&lv_font_montserrat_14);
-    text_pad_top = (ctx->cfg.item_h > line_h) ? (lv_coord_t)((ctx->cfg.item_h - line_h) / 2) : 0;
-    lv_obj_set_style_pad_top(item->name_label, text_pad_top, 0);
+    lv_obj_set_style_pad_top(item->name_label, 0, 0);
     lv_obj_set_style_pad_bottom(item->name_label, 0, 0);
     lv_obj_set_style_pad_left(item->name_label, 0, 0);
     lv_obj_set_style_pad_right(item->name_label, 0, 0);
     lv_obj_set_style_text_align(item->name_label, LV_TEXT_ALIGN_LEFT, 0);
 
-    lv_obj_set_style_pad_top(item->state_label, text_pad_top, 0);
+    lv_obj_set_style_pad_top(item->state_label, 0, 0);
     lv_obj_set_style_pad_bottom(item->state_label, 0, 0);
     lv_obj_set_style_pad_left(item->state_label, 0, 0);
     lv_obj_set_style_pad_right(item->state_label, 0, 0);
-    lv_obj_set_style_text_align(item->state_label, LV_TEXT_ALIGN_RIGHT, 0);
+    lv_obj_set_style_text_align(item->state_label, LV_TEXT_ALIGN_CENTER, 0);
 
     selftest_list_item_layout_update(ctx, item);
 }
 
 static void selftest_list_item_layout_update(lv_selftest_list_ctx_t *ctx, lv_selftest_list_item_t *item) // 刷新单项位置
 {
+    lv_coord_t icon_x;
     lv_coord_t icon_y;
-    lv_coord_t label_y;
-    lv_coord_t state_y;
     lv_coord_t state_x;
     lv_coord_t name_w;
-    lv_coord_t left_y;
+    lv_coord_t text_y;
+    lv_coord_t line_h;
 
     if (ctx == NULL || item == NULL || item->card == NULL || item->left_box == NULL ||
         item->icon_box == NULL || item->name_label == NULL || item->state_label == NULL) {
         return;
     }
 
-    left_y = 0;
-    if (ctx->cfg.item_h > lv_obj_get_height(item->left_box)) {
-        left_y = (ctx->cfg.item_h - lv_obj_get_height(item->left_box)) / 2;
-    }
-
-    lv_obj_set_pos(item->left_box, ctx->cfg.item_pad_x, left_y);
-
+    icon_x = ctx->cfg.item_pad_x;
     icon_y = 0;
-    if (lv_obj_get_height(item->left_box) > ctx->cfg.icon_size) {
-        icon_y = (lv_obj_get_height(item->left_box) - ctx->cfg.icon_size) / 2;
+    if (ctx->cfg.item_h > ctx->cfg.icon_size) {
+        icon_y = (ctx->cfg.item_h - ctx->cfg.icon_size) / 2;
     }
-    lv_obj_set_pos(item->icon_box, 0, icon_y);
+    lv_obj_set_pos(item->icon_box, icon_x, icon_y);
     lv_obj_center(item->spinner_arc);
     lv_obj_center(item->pending_ring);
     lv_obj_center(item->icon_img);
 
-    name_w = lv_obj_get_width(item->left_box) - ctx->cfg.icon_size - ctx->cfg.name_gap;
+    name_w = ctx->cfg.item_w - ctx->cfg.item_pad_x * 2 - ctx->cfg.icon_size - ctx->cfg.name_gap - ctx->cfg.state_w;
     if (name_w < 0) {
         name_w = 0;
     }
-    lv_obj_set_pos(item->name_label, ctx->cfg.icon_size + ctx->cfg.name_gap, 0);
+    line_h = lv_font_get_line_height(&lv_font_montserrat_14);
+    text_y = (ctx->cfg.item_h > line_h) ? (lv_coord_t)((ctx->cfg.item_h - line_h) / 2) : 0;
+    lv_obj_set_pos(item->name_label,
+                   ctx->cfg.item_pad_x + ctx->cfg.icon_size + ctx->cfg.name_gap,
+                   text_y);
     lv_obj_set_width(item->name_label, name_w);
 
     state_x = ctx->cfg.item_w - ctx->cfg.item_pad_x - ctx->cfg.state_w;
-    state_y = 0;
-    if (ctx->cfg.item_h > lv_obj_get_height(item->state_label)) {
-        state_y = (ctx->cfg.item_h - lv_obj_get_height(item->state_label)) / 2;
-    }
-    lv_obj_set_pos(item->state_label, state_x, state_y);
+    lv_obj_set_pos(item->state_label, state_x, text_y);
 }
 
 static void selftest_list_apply_state(lv_selftest_list_ctx_t *ctx, lv_selftest_list_item_t *item,
@@ -406,11 +395,10 @@ static lv_obj_t *selftest_list_create_item_card(lv_selftest_list_ctx_t *ctx, lv_
     item->left_box = lv_obj_create(card);
     lv_obj_remove_style_all(item->left_box);
     lv_obj_clear_flag(item->left_box, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_bg_opa(item->left_box, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_opa(item->left_box, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_pad_all(item->left_box, 0, 0);
+    lv_obj_add_flag(item->left_box, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_size(item->left_box, 1, 1);
 
-    item->icon_box = lv_obj_create(item->left_box);
+    item->icon_box = lv_obj_create(card);
     lv_obj_remove_style_all(item->icon_box);
     lv_obj_clear_flag(item->icon_box, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_opa(item->icon_box, LV_OPA_TRANSP, 0);
@@ -447,7 +435,7 @@ static lv_obj_t *selftest_list_create_item_card(lv_selftest_list_ctx_t *ctx, lv_
     lv_obj_clear_flag(item->icon_img, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_center(item->icon_img);
 
-    item->name_label = lv_label_create(item->left_box);
+    item->name_label = lv_label_create(card);
     lv_label_set_long_mode(item->name_label, LV_LABEL_LONG_CLIP);
     lv_obj_set_style_text_font(item->name_label, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(item->name_label, ctx->cfg.pending_text_color, 0);
