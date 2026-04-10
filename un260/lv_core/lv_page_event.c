@@ -464,7 +464,8 @@ void page_01_print_btn_event_cb(lv_event_t* e)
         return;
     }
 
-    if (sim.total_amount <= 0.0f) {
+    // 只有金额和张数都为 0 时，才提示先点钞
+    if (sim.total_amount <= 0.0f && sim.total_pcs <= 0) {
         toast_cfg = lv_print_toast_get_default_config();
         toast_cfg.w = 320;
         toast_cfg.h = 101;
@@ -473,7 +474,7 @@ void page_01_print_btn_event_cb(lv_event_t* e)
         toast_cfg.align_center = true;
         toast_cfg.use_text_area = false;
         toast_cfg.loader_color = lv_color_hex(0xC0392B);
-        toast_cfg.auto_hide_ms = 1000;
+        toast_cfg.auto_hide_ms = 2000;
 
         lv_print_toast_show_with_config(&toast_cfg);
         return;
