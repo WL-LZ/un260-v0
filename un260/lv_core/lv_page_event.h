@@ -17,6 +17,7 @@ extern int batch_num;
 extern int batch_num_index;
 extern char input_batch_num[9];
 extern bool pcs_batch_num_lock_200;
+void page_03_batch_num_edit_reset(void);
 
 /*****************定时器********************/
 void page_03_delete_tip_label_cb(lv_timer_t* t);

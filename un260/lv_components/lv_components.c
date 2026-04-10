@@ -362,11 +362,7 @@ void batch_switch_on_0x06_result(uint8_t status)
             Machine_para.batch_num = 200;
         }
         update_switch_visual(Machine_para.batch_switch_enable, true);
-        if (Machine_para.batch_switch_enable) {
-            update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label", "%d", Machine_para.batch_num);
-        } else {
-            update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label", "%s", "OFF");
-        }
+        page_03_batch_num_refre();
         page_01_batch_refre();
         g_batch_switch_wait_ack = false;
         return;
@@ -465,6 +461,14 @@ void set_batch_switch_state(bool enable) {
 
     // 外部调用时不执行动画
     update_switch_visual(enable, false);
+}
+
+// 记录最近一次可恢复的 batch 数值
+void batch_switch_set_last_on_num(uint8_t num)
+{
+    if (num >= 5 && num <= 199) {
+        g_batch_last_on_num = num;
+    }
 }
 
 

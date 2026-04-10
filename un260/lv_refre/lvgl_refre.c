@@ -512,6 +512,8 @@ void page_03_batch_num_refre(void)
     } else {
         update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label", "%s", "OFF");
     }
+    // 菜单重新显示时，编辑态统一回到 0，避免上次输入残留影响下一次输入
+    page_03_batch_num_edit_reset();
 
 }
 

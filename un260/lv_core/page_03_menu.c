@@ -18,6 +18,18 @@ int batch_num = 0;
 int batch_num_index=0;
  char input_batch_num[9]= {0};
 
+void page_03_batch_num_edit_reset(void) //清空batch编辑态，只保留已保存的batch值
+{
+    pcs_batch_num_lock_200 = false;
+    memset(input_batch_num, 0, sizeof(input_batch_num));
+    batch_num_index = 0;
+
+    if (batch_num_display && lv_obj_is_valid(batch_num_display)) {
+        lv_label_set_text(batch_num_display, "0");
+        lv_obj_set_align(batch_num_display, LV_ALIGN_RIGHT_MID);
+    }
+}
+
 
 
 // 添加长度变量
@@ -434,8 +446,7 @@ void ui_page_03_menu_create(lv_obj_t* parent)
     if (menu_page) return;
     Machine_para.batch_mode = PCS_BATCH_MODE;
     is_amount_active = false;
-    memset(input_batch_num, 0, sizeof(input_batch_num));
-    batch_num_index = 0;
+    page_03_batch_num_edit_reset();
     menu_page = lv_obj_create(lv_scr_act());
     lv_obj_remove_style_all(menu_page);
     lv_obj_set_pos(menu_page, 0, 0);

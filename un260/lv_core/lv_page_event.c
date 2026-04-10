@@ -751,16 +751,21 @@ void page_03_batch_num_keypad_event_cb(lv_event_t* e)
     lv_label_set_text(batch_num_display,input_batch_num);
     /* 数字键仅负责输入，协议发送统一在确认键处理 */
     lv_obj_set_align(batch_num_display, LV_ALIGN_RIGHT_MID);
+
+    if (atoi(input_batch_num) > 200) {
+        pcs_batch_num_lock_200 = true;
+        strcpy(input_batch_num, "200");
+        batch_num_index = 3;
+        lv_label_set_text(batch_num_display, "200");
+        lv_obj_set_align(batch_num_display, LV_ALIGN_RIGHT_MID);
+    }
 }
 
 void page_03_batch_num_keypad_clear_event_cb(lv_event_t* e)
 {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
     icon_feedback_comp("page_03_ok_icon.png", page_03_menu_obj, page_03_menu_len);
-    pcs_batch_num_lock_200 = false;
-    memset(input_batch_num, 0, sizeof(input_batch_num));
-    batch_num_index = 0;
-    lv_label_set_text(batch_num_display, "0");
+    page_03_batch_num_edit_reset();
 }
 
 
@@ -791,7 +796,9 @@ void page_03_batch_num_keypad_enter_event_cb(lv_event_t* e)
     }
     if (num <= 0) num = 200;
     if (num < 5) num = 5;
-    if (num > 200) num = 200;
+    if (num >= 200) {
+        num = 200;
+    }
 
     g_batch_num_pending = num;
 
@@ -801,12 +808,8 @@ void page_03_batch_num_keypad_enter_event_cb(lv_event_t* e)
      */
     uint8_t batch_cmd = (uint8_t)g_batch_num_pending;
     send_command(fd4, 0x06, &batch_cmd, 1);
-    pcs_batch_num_lock_200 = false;
-    // 清空输入缓存
-    memset(input_batch_num, 0, sizeof(input_batch_num));
-    batch_num_index = 0;
-
-    lv_label_set_text(batch_num_display, "0");
+    // 确认后清空输入缓存，回到 0，等待下一次重新输入
+    page_03_batch_num_edit_reset();
     printf("batch pending:%d\n", g_batch_num_pending);
 
 
@@ -830,8 +833,7 @@ void page_03_batch_set_result(uint8_t status)
     if (status == 0x01) {
         if (g_batch_num_pending > 0) {
             Machine_para.batch_num = g_batch_num_pending;
-            Machine_para.batch_switch_enable = (Machine_para.batch_num != 200);
-            set_batch_switch_state(Machine_para.batch_switch_enable);
+            batch_switch_set_last_on_num((uint8_t)Machine_para.batch_num);
             if (Machine_para.batch_switch_enable) {
                 update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label",
                                      "%d", Machine_para.batch_num);
@@ -840,6 +842,7 @@ void page_03_batch_set_result(uint8_t status)
                                      "%s", "OFF");
             }
             page_01_batch_refre();
+            page_03_batch_num_edit_reset();
             g_batch_tip_label = lv_label_create(menu_page);
             lv_obj_set_pos(g_batch_tip_label, 160, 207);
             lv_obj_set_style_text_color(g_batch_tip_label, lv_color_make(150,150,150), 0);
