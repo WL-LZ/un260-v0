@@ -146,7 +146,7 @@ uint8_t boot_get_selftest_step(void); // 获取当前自检步骤
 // CIS校准命令
 void boot_handshake_waiting_log_reset(void);
 
-#define BOOT_HANDSHAKE_MAX_WAIT_MS   100000
+#define BOOT_HANDSHAKE_MAX_WAIT_MS   60000
 #define BOOT_SELFTEST_TIMEOUT_MS      60000
 #define BOOT_FAULT_QUERY_WAIT_MS      1000
 

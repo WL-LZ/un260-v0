@@ -70,7 +70,6 @@ static lv_timer_t* g_mode_clear_timer = NULL;
 #define DENOM_QUERY_MAX_RETRY 2
 #define DENOM_QUERY_IDLE_RETRY_MS 2500
 static uint32_t g_ui_upgrade_detect_tick = 0;
-static ui_page_t g_last_page_for_boot_timeout = UI_PAGE_COUNT;
 
 static uint8_t g_boot_selftest_result[5] = {0};
 static bool g_boot_selftest_has_error = false;
@@ -1682,14 +1681,6 @@ int main(void) {
                 uart_printf(fd6, "0x0B idle retry on main page\n");
                 request_denom_list();
             }
-        }
-
-        if (current_page != g_last_page_for_boot_timeout) {
-            if (current_page == UI_PAGE_BOOT &&
-                g_boot_stage >= BOOT_STAGE_SENSOR && g_boot_stage <= BOOT_STAGE_IMAGE) {
-                g_boot_stage_tick = now;
-            }
-            g_last_page_for_boot_timeout = current_page;
         }
 
         if (g_boot_stage == BOOT_STAGE_HANDSHAKE &&

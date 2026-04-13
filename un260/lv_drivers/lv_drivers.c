@@ -266,6 +266,9 @@ void machine_handshake_send(void)
 
     Machine_Statue.g_handshake_state = HANDSHAKE_SENT;
     g_handshake_tick = now;
+    if (g_boot_stage_tick == 0) {
+        g_boot_stage_tick = now; // 从第一次握手开始计时
+    }
 }
 
 void boot_send_next_selftest(void)
