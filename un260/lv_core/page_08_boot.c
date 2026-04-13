@@ -200,6 +200,10 @@ static void boot_selftest_list_create(lv_obj_t* parent) // 创建自检卡片列
         return;
     }
 
+    if (g_boot_stage >= BOOT_STAGE_SENSOR && g_boot_stage <= BOOT_STAGE_IMAGE) {
+        g_boot_stage_tick = custom_tick_get();
+    }
+
     lv_obj_set_pos(boot_selftest_list, BOOT_SELFTEST_LIST_X, BOOT_SELFTEST_LIST_Y);
     lv_obj_move_foreground(boot_selftest_list);
 

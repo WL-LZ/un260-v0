@@ -270,8 +270,6 @@ void machine_handshake_send(void)
 
 void boot_send_next_selftest(void)
 {
-    g_boot_stage_tick = custom_tick_get();
-
     boot_selftest_list_sync_step((uint8_t)selftest_step);
 
     switch (selftest_step) {

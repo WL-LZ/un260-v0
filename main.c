@@ -70,6 +70,7 @@ static lv_timer_t* g_mode_clear_timer = NULL;
 #define DENOM_QUERY_MAX_RETRY 2
 #define DENOM_QUERY_IDLE_RETRY_MS 2500
 static uint32_t g_ui_upgrade_detect_tick = 0;
+static ui_page_t g_last_page_for_boot_timeout = UI_PAGE_COUNT;
 
 static uint8_t g_boot_selftest_result[5] = {0};
 static bool g_boot_selftest_has_error = false;
@@ -1050,6 +1051,10 @@ void PCCmdHandle(void)
         /* ================== 0x37 自检 ================== */
         case 0x37:
         {
+            if (g_boot_stage == BOOT_STAGE_FAIL || g_boot_stage == BOOT_STAGE_DONE) {
+                break;
+            }
+
             if (len < 6) break;
 
             uint8_t test_type = buf[4];
@@ -1631,6 +1636,7 @@ int main(void) {
 
     while (1) {
         uint32_t now = custom_tick_get();
+        ui_page_t current_page = ui_manager_get_current_page();
         struct timeval ui_tv_start;
         struct timeval ui_tv_end;
         uint32_t ui_time_us;
@@ -1678,8 +1684,16 @@ int main(void) {
             }
         }
 
+        if (current_page != g_last_page_for_boot_timeout) {
+            if (current_page == UI_PAGE_BOOT &&
+                g_boot_stage >= BOOT_STAGE_SENSOR && g_boot_stage <= BOOT_STAGE_IMAGE) {
+                g_boot_stage_tick = now;
+            }
+            g_last_page_for_boot_timeout = current_page;
+        }
+
         if (g_boot_stage == BOOT_STAGE_HANDSHAKE &&
-            ui_manager_get_current_page() == UI_PAGE_BOOT)
+            current_page == UI_PAGE_BOOT)
         {
             if (Machine_Statue.g_handshake_state == HANDSHAKE_IDLE)
             {
@@ -1699,6 +1713,18 @@ int main(void) {
                 {
                     machine_handshake_send();
                 }
+            }
+        }
+
+        if (g_boot_stage >= BOOT_STAGE_SENSOR && g_boot_stage <= BOOT_STAGE_IMAGE &&
+            current_page == UI_PAGE_BOOT)
+        {
+            if (g_boot_stage_tick != 0 &&
+                (uint32_t)(now - g_boot_stage_tick) >= BOOT_SELFTEST_TIMEOUT_MS)
+            {
+                g_boot_stage = BOOT_STAGE_FAIL;
+                show_boot_selftest_error_popup(
+                    "Self-test timeout.\nPress CONFIRM to enter sensor page.");
             }
         }
 
