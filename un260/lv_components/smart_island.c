@@ -107,6 +107,7 @@ static bool g_smart_island_ignore_click_once = false;
 static bool g_smart_island_ignore_action_click_once = false;
 static uint8_t g_smart_island_action_page_count = SMART_ISLAND_ACTION_PAGE_COUNT;
 static uint8_t g_smart_island_action_page_index = 0;
+static int8_t g_smart_island_page_slide_dir = 0; // 0:默认 1:向左切页 -1:向右切页
 static struct {
     bool pressed;
     bool swiped;
@@ -133,7 +134,8 @@ static void smart_island_visual_apply_now(smart_island_visual_t visual);
 static void smart_island_visual_apply_anim(smart_island_visual_t visual); 
 static void smart_island_page_apply_now(smart_island_page_t page); 
 static void smart_island_page_apply_anim(smart_island_page_t page); 
-static void smart_island_modal_update(void); 
+ static void smart_island_modal_update(void); 
+static void smart_island_expand_if_needed(bool anim_en);
 static void smart_island_action_btn_create(void); 
 static void smart_island_action_page_set_index(uint8_t index, bool anim_en); 
 static void smart_island_action_page_slide_anim(uint8_t old_index, uint8_t new_index); 
@@ -146,6 +148,8 @@ static void smart_island_reset_time_position(void);
 static void smart_island_raise_compact_header(void); 
 static void smart_island_show_qr_popup(void); 
 static void smart_island_action_page_refresh_language_texts(void); 
+static void smart_island_open_info_page_by_left_swipe(void);
+static void smart_island_open_action_last_page_by_right_swipe(void);
 static const char *smart_island_text_or_default(const char *text, ui_text_id_t text_id); 
 static uint8_t smart_island_page_indicator_count_get(void);
 static uint8_t smart_island_page_indicator_active_get(void);
@@ -161,7 +165,11 @@ static void smart_island_anim_translate_x_cb(void *var, int32_t v)
 {
     lv_obj_set_style_translate_x((lv_obj_t *)var, (lv_coord_t)v, 0);
 }
-static void smart_island_anim_finish_cb(lv_anim_t *a) { LV_UNUSED(a); g_smart_island_anim_running = false; }
+static void smart_island_anim_finish_cb(lv_anim_t *a)
+{
+    LV_UNUSED(a);
+    g_smart_island_anim_running = false;
+}
 static void smart_island_page_slide_anim_finish_cb(lv_anim_t *a) 
 {
     LV_UNUSED(a);
@@ -190,6 +198,7 @@ static void smart_island_page_slide_anim_finish_cb(lv_anim_t *a)
 
     g_smart_island_ignore_click_once = false;
     g_smart_island_ignore_action_click_once = false;
+    g_smart_island_page_slide_dir = 0;
     g_smart_island_anim_running = false;
 }
 static void smart_island_reset_page_positions(void) 
@@ -197,8 +206,9 @@ static void smart_island_reset_page_positions(void)
     if (g_smart_island_page_root && lv_obj_is_valid(g_smart_island_page_root)) lv_obj_set_x(g_smart_island_page_root, 0);
     if (g_smart_island_page_info && lv_obj_is_valid(g_smart_island_page_info)) lv_obj_set_x(g_smart_island_page_info, 0);
     if (g_smart_island_page_action && lv_obj_is_valid(g_smart_island_page_action)) lv_obj_set_x(g_smart_island_page_action, 0);
-    if (g_smart_island_action_track && lv_obj_is_valid(g_smart_island_action_track)) 
+    if (g_smart_island_action_track && lv_obj_is_valid(g_smart_island_action_track)) {
         lv_obj_set_x(g_smart_island_action_track, -(lv_coord_t)g_smart_island_action_page_index * SMART_ISLAND_W);
+    }
 }
 
 static void smart_island_reset_compact_header_position(void) 
@@ -268,13 +278,33 @@ static void smart_island_page_indicator_sync(bool anim_en)
     }
 }
 
+static void smart_island_open_info_page_by_left_swipe(void)
+{
+    g_smart_island_page_slide_dir = 1;
+    smart_island_expand_if_needed(true);
+    smart_island_set_page(SMART_ISLAND_PAGE_INFO, true);
+}
+
+static void smart_island_open_action_last_page_by_right_swipe(void)
+{
+    if (g_smart_island_action_page_count == 0U) {
+        return;
+    }
+
+    smart_island_action_page_set_index((uint8_t)(g_smart_island_action_page_count - 1U), false);
+    g_smart_island_page_slide_dir = -1;
+    smart_island_expand_if_needed(true);
+    smart_island_set_page(SMART_ISLAND_PAGE_ACTION, true);
+}
+
+ 
+
 static void smart_island_expand_if_needed(bool anim_en) 
 {
     if (g_smart_island_visual != SMART_ISLAND_VISUAL_EXPANDED) {
         smart_island_set_visual(SMART_ISLAND_VISUAL_EXPANDED, anim_en);
     }
 }
-
 static void smart_island_swipe_cb(lv_event_t *e) 
 {
     lv_event_code_t code;
@@ -316,8 +346,12 @@ static void smart_island_swipe_cb(lv_event_t *e)
             if (dx < 0) {
                 if (g_smart_island_page == SMART_ISLAND_PAGE_INFO) {
                     smart_island_open_action_page();
-                } else if (g_smart_island_action_page_index + 1U < SMART_ISLAND_ACTION_PAGE_COUNT) {
-                    smart_island_action_page_set_index(g_smart_island_action_page_index + 1U, true);
+                } else if (g_smart_island_page == SMART_ISLAND_PAGE_ACTION) {
+                    if (g_smart_island_action_page_index + 1U < g_smart_island_action_page_count) {
+                        smart_island_action_page_set_index(g_smart_island_action_page_index + 1U, true);
+                    } else {
+                        smart_island_open_info_page_by_left_swipe();
+                    }
                 }
             } else {
                 if (g_smart_island_page == SMART_ISLAND_PAGE_ACTION) {
@@ -326,8 +360,8 @@ static void smart_island_swipe_cb(lv_event_t *e)
                     } else {
                         smart_island_open_info_page();
                     }
-                } else if (g_smart_island_page != SMART_ISLAND_PAGE_INFO) {
-                    smart_island_open_info_page();
+                } else if (g_smart_island_page == SMART_ISLAND_PAGE_INFO) {
+                    smart_island_open_action_last_page_by_right_swipe();
                 }
             }
         }
@@ -338,8 +372,7 @@ static void smart_island_swipe_cb(lv_event_t *e)
         g_smart_island_swipe.pressed = false;
         g_smart_island_swipe.swiped = false;
     }
-}
-
+}   
 static void smart_island_enable_gesture_on_obj(lv_obj_t *obj) 
 {
     if (obj == NULL || !lv_obj_is_valid(obj)) return;
@@ -760,6 +793,7 @@ static void smart_island_page_slide_anim(smart_island_page_t old_page, smart_isl
     lv_coord_t start_old_x = 0, end_old_x = 0;
     lv_coord_t start_new_x = 0, end_new_x = 0;
     lv_coord_t delta_x = 0;
+    bool slide_left = false;
 
     if (g_smart_island_page_info == NULL || g_smart_island_page_action == NULL) return;
 
@@ -775,7 +809,15 @@ static void smart_island_page_slide_anim(smart_island_page_t old_page, smart_isl
     lv_obj_clear_flag(old_obj, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(new_obj, LV_OBJ_FLAG_HIDDEN);
 
-    if (new_page == SMART_ISLAND_PAGE_ACTION) {
+    if (g_smart_island_page_slide_dir > 0) {
+        slide_left = true;
+    } else if (g_smart_island_page_slide_dir < 0) {
+        slide_left = false;
+    } else {
+        slide_left = (new_page == SMART_ISLAND_PAGE_ACTION);
+    }
+
+    if (slide_left) {
         start_old_x = 0;
         end_old_x = -SMART_ISLAND_PAGE_SLIDE_OFFSET;
         start_new_x = SMART_ISLAND_PAGE_SLIDE_OFFSET;
@@ -809,7 +851,6 @@ static void smart_island_page_slide_anim(smart_island_page_t old_page, smart_isl
     lv_anim_set_ready_cb(&a, smart_island_page_slide_anim_finish_cb);
     lv_anim_start(&a);
 
-    /* title 继续按你现在的逻辑滑 */
     if (g_smart_island_title && lv_obj_is_valid(g_smart_island_title)) {
         lv_anim_del(g_smart_island_title, smart_island_anim_x_cb);
         lv_anim_init(&a);
@@ -821,7 +862,6 @@ static void smart_island_page_slide_anim(smart_island_page_t old_page, smart_isl
         lv_anim_start(&a);
     }
 
-    /* dot 继续按你现在的逻辑滑 */
     if (g_smart_island_dot && lv_obj_is_valid(g_smart_island_dot)) {
         lv_anim_del(g_smart_island_dot, smart_island_anim_x_cb);
         lv_anim_init(&a);
@@ -833,7 +873,6 @@ static void smart_island_page_slide_anim(smart_island_page_t old_page, smart_isl
         lv_anim_start(&a);
     }
 
-    /* time 改成 translate_x 跟着滑，结束后再 hidden，避免瞬间消失 */
     if (g_smart_island_time && lv_obj_is_valid(g_smart_island_time)) {
         lv_anim_del(g_smart_island_time, smart_island_anim_translate_x_cb);
 
@@ -852,12 +891,12 @@ static void smart_island_page_slide_anim(smart_island_page_t old_page, smart_isl
             smart_island_reset_time_position();
             smart_island_update_idle_time();
             lv_obj_clear_flag(g_smart_island_time, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_set_style_translate_x(g_smart_island_time, -SMART_ISLAND_PAGE_SLIDE_OFFSET, 0);
+            lv_obj_set_style_translate_x(g_smart_island_time, -delta_x, 0);
 
             lv_anim_init(&a);
             lv_anim_set_var(&a, g_smart_island_time);
             lv_anim_set_exec_cb(&a, smart_island_anim_translate_x_cb);
-            lv_anim_set_values(&a, -SMART_ISLAND_PAGE_SLIDE_OFFSET, 0);
+            lv_anim_set_values(&a, -delta_x, 0);
             lv_anim_set_time(&a, 180);
             lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
             lv_anim_start(&a);
@@ -877,7 +916,6 @@ static void smart_island_page_apply_anim(smart_island_page_t page)
     g_smart_island_page = page;
     smart_island_page_slide_anim(old_page, page);
 }
-
 static void smart_island_action_item_apply(uint8_t index) 
 {
     lv_obj_t *btn = NULL, *label = NULL;
@@ -910,7 +948,6 @@ static void smart_island_action_item_apply(uint8_t index)
         lv_obj_align(label, LV_ALIGN_LEFT_MID, 16, 0); 
     }
 }
-
 static void smart_island_action_page_refresh_language_texts(void) 
 {
     for (uint8_t i = 0; i < g_smart_island_action_page_count; i++) {
@@ -921,17 +958,20 @@ static void smart_island_action_page_refresh_language_texts(void)
         smart_island_action_item_apply(i);
     }
 }
-
 static void smart_island_action_page_slide_anim(uint8_t old_index, uint8_t new_index) 
 {
     lv_anim_t a;
+
     if (g_smart_island_action_track == NULL || !lv_obj_is_valid(g_smart_island_action_track)) return;
+
     if (old_index == new_index) {
         lv_obj_set_x(g_smart_island_action_track, -(lv_coord_t)new_index * SMART_ISLAND_W);
         return;
     }
+
     g_smart_island_anim_running = true;
     lv_anim_del(g_smart_island_action_track, smart_island_anim_x_cb);
+
     lv_anim_init(&a);
     lv_anim_set_var(&a, g_smart_island_action_track);
     lv_anim_set_exec_cb(&a, smart_island_anim_x_cb);
@@ -941,35 +981,55 @@ static void smart_island_action_page_slide_anim(uint8_t old_index, uint8_t new_i
     lv_anim_set_ready_cb(&a, smart_island_anim_finish_cb);
     lv_anim_start(&a);
 }
-
 static void smart_island_action_page_set_index(uint8_t index, bool anim_en) 
 {
-    uint8_t target_index = (index >= g_smart_island_action_page_count && g_smart_island_action_page_count > 0) ? g_smart_island_action_page_count - 1U : index;
+    uint8_t target_index = (index >= g_smart_island_action_page_count && g_smart_island_action_page_count > 0U)
+        ? (uint8_t)(g_smart_island_action_page_count - 1U)
+        : index;
     uint8_t old_index = g_smart_island_action_page_index;
+
     if (g_smart_island_action_page_count == 0U) return;
+
     g_smart_island_action_page_index = target_index;
     smart_island_page_indicator_sync(anim_en);
-    if (g_smart_island_action_track == NULL || !lv_obj_is_valid(g_smart_island_action_track)) return;
-    if (anim_en) smart_island_action_page_slide_anim(old_index, target_index);
-    else lv_obj_set_x(g_smart_island_action_track, -(lv_coord_t)target_index * SMART_ISLAND_W);
-}
 
+    if (g_smart_island_action_track == NULL || !lv_obj_is_valid(g_smart_island_action_track)) return;
+
+    if (anim_en) {
+        smart_island_action_page_slide_anim(old_index, target_index);
+    } else {
+        lv_anim_del(g_smart_island_action_track, smart_island_anim_x_cb);
+        lv_obj_set_x(g_smart_island_action_track, -(lv_coord_t)target_index * SMART_ISLAND_W);
+    }
+}
 bool smart_island_action_page_set_count(uint8_t count) 
 {
     uint8_t new_count = (count == 0U) ? 1U : (count > SMART_ISLAND_ACTION_PAGE_COUNT ? SMART_ISLAND_ACTION_PAGE_COUNT : count);
+
     g_smart_island_action_page_count = new_count;
-    if (g_smart_island_action_track && lv_obj_is_valid(g_smart_island_action_track)) {
-        lv_obj_set_size(g_smart_island_action_track, (lv_coord_t)(SMART_ISLAND_W * g_smart_island_action_page_count), SMART_ISLAND_ACTION_EXPAND_H);
+
+    if (g_smart_island_action_page_index >= g_smart_island_action_page_count) {
+        g_smart_island_action_page_index = (uint8_t)(g_smart_island_action_page_count - 1U);
     }
-    for (uint8_t i = 0; i < SMART_ISLAND_ACTION_PAGE_COUNT; i++) smart_island_action_item_apply(i);
-    if (g_smart_island_action_page_index >= g_smart_island_action_page_count) g_smart_island_action_page_index = g_smart_island_action_page_count - 1U;
+
     if (g_smart_island_action_track && lv_obj_is_valid(g_smart_island_action_track)) {
-        lv_obj_set_x(g_smart_island_action_track, -(lv_coord_t)g_smart_island_action_page_index * SMART_ISLAND_W);
+        lv_obj_set_size(g_smart_island_action_track,
+                        (lv_coord_t)(SMART_ISLAND_W * g_smart_island_action_page_count),
+                        SMART_ISLAND_ACTION_EXPAND_H);
     }
+
+    for (uint8_t i = 0; i < SMART_ISLAND_ACTION_PAGE_COUNT; i++) {
+        smart_island_action_item_apply(i);
+    }
+
+    if (g_smart_island_action_track && lv_obj_is_valid(g_smart_island_action_track)) {
+        lv_obj_set_x(g_smart_island_action_track,
+                     -(lv_coord_t)g_smart_island_action_page_index * SMART_ISLAND_W);
+    }
+
     smart_island_page_indicator_sync(false);
     return true;
 }
-
 bool smart_island_action_page_set_lang_item(uint8_t index, uint8_t action_id, ui_text_id_t text_id) 
 {
     if (index >= SMART_ISLAND_ACTION_PAGE_COUNT) return false;
@@ -992,7 +1052,6 @@ bool smart_island_action_page_set_item(uint8_t index, uint8_t action_id, const c
     else smart_island_action_item_apply(index);
     return true;
 }
-
 static void smart_island_action_btn_create(void) 
 {
     static const uint8_t default_ids[SMART_ISLAND_ACTION_PAGE_COUNT] = {
@@ -1007,7 +1066,9 @@ static void smart_island_action_btn_create(void)
 
     g_smart_island_action_track = lv_obj_create(g_smart_island_page_action);
     lv_obj_remove_style_all(g_smart_island_action_track);
-    lv_obj_set_size(g_smart_island_action_track, (lv_coord_t)(SMART_ISLAND_W * g_smart_island_action_page_count), SMART_ISLAND_ACTION_EXPAND_H);
+    lv_obj_set_size(g_smart_island_action_track,
+                    (lv_coord_t)(SMART_ISLAND_W * g_smart_island_action_page_count),
+                    SMART_ISLAND_ACTION_EXPAND_H);
     lv_obj_set_style_bg_opa(g_smart_island_action_track, LV_OPA_TRANSP, 0);
     lv_obj_clear_flag(g_smart_island_action_track, LV_OBJ_FLAG_SCROLLABLE);
     smart_island_enable_gesture_on_obj(g_smart_island_action_track);
@@ -1051,7 +1112,6 @@ static void smart_island_action_btn_create(void)
     smart_island_action_page_refresh_language_texts();
     smart_island_action_page_set_index(0U, false);
 }
-
 void smart_island_create(lv_obj_t *parent) 
 {
     if (parent == NULL || (g_smart_island_created && g_smart_island && lv_obj_is_valid(g_smart_island))) return;
@@ -1172,6 +1232,8 @@ void smart_island_destroy(void)
     g_smart_island_page_action = NULL;
     g_smart_island_action_track = NULL;
     g_smart_island_page_indicator = NULL;
+    g_smart_island_page_slide_dir = 0;
+
     g_smart_island_created = false;
 }
 void smart_island_refresh_time(void) 
