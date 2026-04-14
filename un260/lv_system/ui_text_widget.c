@@ -43,7 +43,33 @@ static const ui_text_item_t g_ui_text_widget_group[UI_TEXT_MAX - UI_TEXT_WIDGET_
     [UI_TEXT_WIDGET_QR_DATA_AMOUNT - UI_TEXT_WIDGET_BASE] = {"AMOUNT", "金额", "금액"},
     [UI_TEXT_WIDGET_QR_DATA_PCS - UI_TEXT_WIDGET_BASE] = {"PCS", "张数", "매수"},
     [UI_TEXT_WIDGET_QR_DATA_SN - UI_TEXT_WIDGET_BASE] = {"SN", "冠字号", "일련번호"},
-    [UI_TEXT_WIDGET_QR_DATA_ERR - UI_TEXT_WIDGET_BASE] = {"ERR", "报错", "오류"}
+    [UI_TEXT_WIDGET_QR_DATA_ERR - UI_TEXT_WIDGET_BASE] = {"ERR", "报错", "오류"},
+
+    //灵动岛动作页
+    [UI_TEXT_WIDGET_SMART_ISLAND_ACTION_QR - UI_TEXT_WIDGET_BASE] = {"QR", "二维码", "QR"},
+    [UI_TEXT_WIDGET_SMART_ISLAND_ACTION_TIME - UI_TEXT_WIDGET_BASE] = {"Time", "时间", "시간"},
+    [UI_TEXT_WIDGET_SMART_ISLAND_ACTION_FUNC3 - UI_TEXT_WIDGET_BASE] = {"Func3", "功能3", "기능3"},
+    [UI_TEXT_WIDGET_SMART_ISLAND_ACTION_FUNC4 - UI_TEXT_WIDGET_BASE] = {"Func4", "功能4", "기능4"},
+
+    //灵动岛状态文案
+    [UI_TEXT_WIDGET_SMART_ISLAND_READY_TITLE - UI_TEXT_WIDGET_BASE] = {"Ready", "就绪", "준비됨"},
+    [UI_TEXT_WIDGET_SMART_ISLAND_READY_SUBTITLE - UI_TEXT_WIDGET_BASE] = {"System OK", "系统正常", "시스템 정상"},
+    [UI_TEXT_WIDGET_SMART_ISLAND_EXPAND_TITLE - UI_TEXT_WIDGET_BASE] = {"SYSTEM STATUS", "系统状态", "시스템 상태"},
+    [UI_TEXT_WIDGET_SMART_ISLAND_EXPAND_SUBTITLE - UI_TEXT_WIDGET_BASE] = {"ALL ACTIVE", "全部正常", "모두 정상"},
+    [UI_TEXT_WIDGET_SMART_ISLAND_COUNTING_TITLE - UI_TEXT_WIDGET_BASE] = {"Counting...", "正在点钞...", "계수 중..."},
+    [UI_TEXT_WIDGET_SMART_ISLAND_COUNTING_SUBTITLE - UI_TEXT_WIDGET_BASE] = {"Running", "运行中", "실행 중"},
+    [UI_TEXT_WIDGET_SMART_ISLAND_RUNNING_TITLE - UI_TEXT_WIDGET_BASE] = {"Running...", "正在运行...", "실행 중..."},
+    [UI_TEXT_WIDGET_SMART_ISLAND_RUNNING_SUBTITLE - UI_TEXT_WIDGET_BASE] = {"Check banknotes", "请检查纸钞", "지폐를 확인해 주세요"},
+    [UI_TEXT_WIDGET_SMART_ISLAND_WARNING_TITLE - UI_TEXT_WIDGET_BASE] = {"Warning", "警告", "경고"},
+    [UI_TEXT_WIDGET_SMART_ISLAND_WARNING_SUBTITLE - UI_TEXT_WIDGET_BASE] = {"Warning", "警告", "경고"},
+    [UI_TEXT_WIDGET_SMART_ISLAND_RESULT_TITLE - UI_TEXT_WIDGET_BASE] = {"Count Finished", "点钞完成", "계수 완료"},
+    [UI_TEXT_WIDGET_SMART_ISLAND_RESULT_SUBTITLE - UI_TEXT_WIDGET_BASE] = {"Done", "完成", "완료"},
+    [UI_TEXT_WIDGET_SMART_ISLAND_COUNT_FINISHED - UI_TEXT_WIDGET_BASE] = {"Count Finished", "点钞完成", "계수 완료"},
+    [UI_TEXT_WIDGET_SMART_ISLAND_COUNT_ERROR - UI_TEXT_WIDGET_BASE] = {"Count Error", "点钞错误", "계수 오류"},
+    [UI_TEXT_WIDGET_SMART_ISLAND_UPDATE_TITLE - UI_TEXT_WIDGET_BASE] = {"Updating...", "正在升级...", "업데이트 중..."},
+    [UI_TEXT_WIDGET_SMART_ISLAND_UPDATE_SUBTITLE - UI_TEXT_WIDGET_BASE] = {"Please wait", "请稍候", "잠시만 기다려 주세요"},
+    [UI_TEXT_WIDGET_SMART_ISLAND_QR_READY - UI_TEXT_WIDGET_BASE] = {"QR Ready", "二维码就绪", "QR 준비됨"},
+    [UI_TEXT_WIDGET_SMART_ISLAND_QR_SUBTITLE - UI_TEXT_WIDGET_BASE] = {"Tap to continue", "点击继续", "탭하여 계속"}
 };
 
 static const char* ui_text_pick(const ui_text_item_t* item) //按当前语言选择文本

@@ -8,12 +8,13 @@
 #include "un260/lv_resources/lv_img_init.h" 
 #include "un260/lv_refre/lvgl_refre.h"
 #include "../aic_ui/aic_ui.h"
-
+#include "un260/lv_components/smart_island.h"
 #include "un260/lv_system/lv_str.h" 
 #include "lv_page_declear.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_components/lv_print_toast.h"
 #include "un260/lv_drivers/lv_drivers.h"
+#include "un260/lv_system/machine_time.h"
 #include "un260/lv_system/ui_text.h"
 
 // 添加数组元素计数变量
@@ -83,6 +84,7 @@ static void main_time_timer_cb(lv_timer_t* t)
 {
     (void)t;
     main_time_refresh();
+    smart_island_refresh_time(); //刷新灵动岛默认时间
 }
 
 static void page_01_main_send_init_protocol(void) //主界面首次进入时发送初始化协议
@@ -1062,7 +1064,8 @@ void ui_main_create(lv_obj_t* parent)
     if (!s_time_timer) s_time_timer = lv_timer_create(main_time_timer_cb, 1000, NULL);
     lv_print_toast_create();
     page_01_main_send_init_protocol();
-
+    smart_island_create(main_page); //创建主界面B区灵动岛
+    smart_island_refresh_time(); //初始化时间显示
 
 }
 
@@ -1074,7 +1077,7 @@ void ui_main_destroy(void)
         page_01_bottom_a_destroy();
         page_01_bottom_c_destroy();
         page_01_bottom_bg_destroy_all();
-        
+        smart_island_destroy(); //销毁灵动岛
         lv_obj_del(main_page);
         main_page = NULL;
     }
@@ -1092,4 +1095,5 @@ void page_01_update_language_texts(void) //刷新主界面多语言文本
     page_01_bottom_c_refresh_batch(false);
     page_01_bottom_c_refresh_speed(false);
     page_01_bottom_c_refresh_cfd();
+    smart_island_refresh_language_texts();
 }
