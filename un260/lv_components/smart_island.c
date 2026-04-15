@@ -147,6 +147,7 @@ static void smart_island_reset_compact_header_position(void);
 static void smart_island_reset_time_position(void); 
 static void smart_island_raise_compact_header(void); 
 static void smart_island_show_qr_popup(void); 
+static void smart_island_show_qr_error_toast(const char *text);
 static void smart_island_action_page_refresh_language_texts(void); 
 static void smart_island_open_info_page_by_left_swipe(void);
 static void smart_island_open_action_last_page_by_right_swipe(void);
@@ -473,19 +474,35 @@ static const char *smart_island_text_or_default(const char *text, ui_text_id_t t
     return ui_text_get(text_id);
 }
 
+static void smart_island_show_qr_error_toast(const char *text)
+{
+    lv_print_toast_config_t toast_cfg = lv_print_toast_get_default_config();
+
+    toast_cfg.w = 320;
+    toast_cfg.h = 101;
+    toast_cfg.text = smart_island_text_or_default(text, UI_TEXT_WIDGET_QR_POPUP_NO_DATA);
+    toast_cfg.show_loader = true;
+    toast_cfg.align_center = true;
+    toast_cfg.use_text_area = false;
+    toast_cfg.loader_color = lv_color_hex(0xC0392B);
+    toast_cfg.auto_hide_ms = 2000;
+
+    lv_print_toast_show_with_config(&toast_cfg);
+}
+
 static void smart_island_show_qr_popup(void) 
 {
     char qr_text[3072];
     if (!ui_qr_data_is_ready()) {
-        lv_print_toast_show(ui_text_get(UI_TEXT_WIDGET_QR_POPUP_NO_DATA));
+        smart_island_show_qr_error_toast(ui_text_get(UI_TEXT_WIDGET_QR_POPUP_NO_DATA));
         return;
     }
     if (!ui_qr_data_build(qr_text, sizeof(qr_text))) {
-        lv_print_toast_show(ui_text_get(UI_TEXT_WIDGET_QR_POPUP_DATA_TOO_LARGE));
+        smart_island_show_qr_error_toast(ui_text_get(UI_TEXT_WIDGET_QR_POPUP_DATA_TOO_LARGE));
         return;
     }
     if (!lv_qr_popup_show(qr_text)) {
-        lv_print_toast_show(ui_text_get(UI_TEXT_WIDGET_QR_POPUP_DATA_TOO_LARGE));
+        smart_island_show_qr_error_toast(ui_text_get(UI_TEXT_WIDGET_QR_POPUP_DATA_TOO_LARGE));
     }
 }
 
