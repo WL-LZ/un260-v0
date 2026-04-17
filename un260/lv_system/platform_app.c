@@ -458,6 +458,8 @@ void ui_refresh_main_page(void) {
     counting_sim_t* sim_data = &sim;
     char buf[32];
     char amount_buf[32];
+    int right_total_pcs = 0;
+    float right_total_amount = 0.0f;
 
     //main_left_list
     lv_obj_t* curr_label;
@@ -520,11 +522,18 @@ void ui_refresh_main_page(void) {
 
     }
 
-   
-    update_label_by_name(page_01_main_obj, page_01_main_len, "total_pcs_label", "%d", sim_data->total_pcs);
+    for (int i = 0; i < sim_data->denom_number &&
+                    i < (int)(sizeof(sim_data->denom) / sizeof(sim_data->denom[0])); i++) {
+        if (sim_data->denom[i].value > 0) {
+            right_total_pcs += sim_data->denom[i].pcs;
+            right_total_amount += sim_data->denom[i].amount;
+        }
+    }
+
+    update_label_by_name(page_01_main_obj, page_01_main_len, "total_pcs_label", "%d", right_total_pcs);
 
     char amount_total[32];
-    format_amount_with_comma(amount_total, sizeof(amount_total), sim_data->total_amount);
+    format_amount_with_comma(amount_total, sizeof(amount_total), right_total_amount);
     lv_label_set_text(find_obj_by_name("total_amount_label", page_01_main_obj, page_01_main_len), amount_total);//更新总金额格式
 
     if (page_01_main_scroll_container != NULL && lv_obj_is_valid(page_01_main_scroll_container)) {

@@ -20,7 +20,9 @@
 #include "un260/lv_core/lv_page_event.h"
 #include "un260/lv_core/page_01_main.h"
 #include "un260/lv_components/lv_components.h"
+#include "un260/lv_components/smart_island.h"
 #include "un260/lv_system/user_cfg.h"
+#include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_core/page_08_boot.h"
 #include "un260/lv_components/lv_fault_popup.h"
@@ -115,6 +117,21 @@ static const char* get_currency_error_desc(uint8_t code)
     return "Unknown Error";
 }
 
+/* UI显示使用协议错误类型（短文本），不使用调试长文案 */
+static const char* get_start_ui_error_desc(uint8_t code)
+{
+    if (code == 0x00) {
+        return ui_text_get(UI_TEXT_WIDGET_FAULT_NO_NOTE_MAIN);
+    }
+
+    if (code < sizeof(g_start_error_desc) / sizeof(g_start_error_desc[0]) &&
+        g_start_error_desc[code] != NULL) {
+        return g_start_error_desc[code];
+    }
+
+    return ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_COUNT_ERROR);
+}
+
 static void sim_clear_sn_only(counting_sim_t* sim_data)
 {
     if (!sim_data) return;
@@ -183,6 +200,44 @@ static void ui_refresh_main_page_throttled(void)
     }
     last_ms = now;
     ui_refresh_main_page();
+}
+
+static void format_amount_with_comma_fast(char* dest, size_t dest_size, float amount)
+{
+    char temp[32];
+    int len;
+    int dest_index = 0;
+    int i;
+
+    if (dest == NULL || dest_size == 0U) {
+        return;
+    }
+
+    lv_snprintf(temp, sizeof(temp), "%.0f", amount);
+    len = (int)strlen(temp);
+
+    if (len <= 3) {
+        lv_snprintf(dest, dest_size, "%s", temp);
+        return;
+    }
+
+    for (i = 0; i < len && dest_index < (int)dest_size - 1; i++) {
+        dest[dest_index++] = temp[i];
+        if (i < len - 1 && ((len - i - 1) % 3) == 0 && dest_index < (int)dest_size - 1) {
+            dest[dest_index++] = ',';
+        }
+    }
+    dest[dest_index] = '\0';
+}
+
+/* 0x0E 高频帧：仅刷新主界面左侧紧凑区 */
+static void ui_refresh_main_compact_fast(void)
+{
+    char amount_buf[32];
+
+    update_label_by_name(page_01_main_obj, page_01_main_len, "01_pcs_label", "%d", sim.total_pcs);
+    format_amount_with_comma_fast(amount_buf, sizeof(amount_buf), sim.total_amount);
+    update_label_by_name(page_01_main_obj, page_01_main_len, "01_amount_label", "%s", amount_buf);
 }
 
 static bool is_main_page_active(void)
@@ -496,10 +551,17 @@ void PCCmdHandle(void)
                 sim.total_amount = amount;
                 sim.total_pcs    = qty;
                 sim.err_expected = ret;
+                ui_refresh_main_compact_fast();
                 ui_refresh_main_page_throttled();
+                if (!( !fault_popup_get_auto_enabled() && fault_popup_has_pending_start_issue())) {
+                    smart_island_notify_count_start();
+                    smart_island_refresh_summary();
+                }
             } else if (status == 0x02) {
                 uart_printf(fd6, "Count finished\n");
                 ui_refresh_main_page();
+                smart_island_notify_count_end(NULL);
+                smart_island_refresh_summary();
             }
             break;
         }
@@ -516,6 +578,7 @@ void PCCmdHandle(void)
                 page_07_curr_set_pending_result(status);
                 uart_printf(fd6, "Set %s curr success\n", Machine_para.curr_code);
                 trigger_denom_query();
+                smart_island_refresh_summary();
             }
             else if (status == 0x02)
             {
@@ -537,6 +600,7 @@ void PCCmdHandle(void)
                     ui_refresh_main_page();
                 }
                 trigger_denom_query();
+                smart_island_refresh_summary();
             }
 
             break;
@@ -571,6 +635,7 @@ void PCCmdHandle(void)
                 }
                 schedule_mode_switch_clear();
                 uart_printf(fd6, "Set work mode success\n");
+                smart_island_refresh_summary();
             }
             else if (status == 0x02)
             {
@@ -597,6 +662,7 @@ void PCCmdHandle(void)
                 Machine_work_code.mode_code = 0;
                 page_01_mode_switch_refre();
                 uart_printf(fd6, "Boot work mode: 0x%02X\n", mode);
+                smart_island_refresh_summary();
             }
 
             break;
@@ -613,6 +679,7 @@ void PCCmdHandle(void)
                 batch_switch_on_0x06_result(0x01);
                 page_03_batch_set_result(0x01);
                 uart_printf(fd6, "Set batch num success\n");
+                smart_island_refresh_summary();
             }
             else if (status == 0x02)
             {
@@ -636,6 +703,7 @@ void PCCmdHandle(void)
                 }
                 page_01_batch_refre();
                 uart_printf(fd6, "Boot batch num: %d\n", Machine_para.batch_num);
+                smart_island_refresh_summary();
             }
 
             break;
@@ -676,12 +744,16 @@ void PCCmdHandle(void)
 
             if (fault == 0x00) {
                 hide_fault_popup();
+                fault_popup_clear_pending();
+                fault_popup_reset_auto_retry();
                 g_sys_err_last_code = 0x00;
+                smart_island_restore_idle();
                 break;
             }
 
-            show_runtime_fault_popup(fault);
+            fault_popup_report_runtime_fault(fault);
             uart_printf(fd6, "0x0F fault=0x%02X %s\n", fault, get_system_error_desc(fault));
+            smart_island_notify_warning_level(get_system_error_desc(fault), SMART_ISLAND_WARNING_LEVEL_ERROR);
             break;
         }
         /* ================== 0x0a 返回主界面 ================== */
@@ -695,6 +767,8 @@ void PCCmdHandle(void)
             if (type == 0x01) {
                 if (val == 0x01) {
                     hide_counting_error_popup();
+                    fault_popup_clear_pending();
+                    fault_popup_reset_auto_retry();
 
                     if (g_data_collect_mode != DATA_COLLECT_MODE_NONE) {
                         snprintf(g_data_collect_status,
@@ -705,9 +779,13 @@ void PCCmdHandle(void)
                     else if (!g_cb_running) {
                         ui_manager_switch(UI_PAGE_MAIN);
                     }
+                    smart_island_notify_count_start();
                 } else if (val == 0x02) {
-                    show_start_no_note_popup();
+                    fault_popup_report_start_no_note();
                     uart_printf(fd6, "0x0A start fail (no note)\n");
+                    smart_island_notify_warning_level(
+                        ui_text_get(UI_TEXT_WIDGET_FAULT_NO_NOTE_MAIN),
+                        SMART_ISLAND_WARNING_LEVEL_WARNING);
 
                     if (g_data_collect_mode != DATA_COLLECT_MODE_NONE) {
                         snprintf(g_data_collect_status,
@@ -716,9 +794,10 @@ void PCCmdHandle(void)
                         page_06_data_collection_refresh();
                     }
                 } else {
-                    show_start_fault_popup(type, val);
+                    fault_popup_report_start_fault(type, val);
                     uart_printf(fd6, "0x0A start fail (normal): val=%02X desc=%s\n",
                                 val, get_counting_error_desc(type, val));
+                    smart_island_notify_warning_level(get_start_ui_error_desc(val), SMART_ISLAND_WARNING_LEVEL_ERROR);
 
                     if (g_data_collect_mode != DATA_COLLECT_MODE_NONE) {
                         snprintf(g_data_collect_status,
@@ -729,9 +808,10 @@ void PCCmdHandle(void)
                     }
                 }
             } else if (type == 0x02) {
-                show_start_fault_popup(type, val);
+                fault_popup_report_start_fault(type, val);
                 uart_printf(fd6, "0x0A start fail (fault): code=%02X desc=%s\n",
                             val, get_counting_error_desc(type, val));
+                smart_island_notify_warning_level(get_start_ui_error_desc(val), SMART_ISLAND_WARNING_LEVEL_ERROR);
 
                 if (g_data_collect_mode != DATA_COLLECT_MODE_NONE) {
                     snprintf(g_data_collect_status,
@@ -741,9 +821,10 @@ void PCCmdHandle(void)
                     page_06_data_collection_refresh();
                 }
             } else {
-                show_start_fault_popup(type, val);
+                fault_popup_report_start_fault(type, val);
                 uart_printf(fd6, "0x0A start fail (unknown type): type=%02X val=%02X\n",
                             type, val);
+                smart_island_notify_warning_level(ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_COUNT_ERROR), SMART_ISLAND_WARNING_LEVEL_ERROR);
             }
 
             break;
@@ -861,6 +942,7 @@ void PCCmdHandle(void)
                 page_02_c_page_num_refre();
                 uart_printf(fd6, "0x0C reject detail receive end, parsed=%u expected=%u\n",
                             sim.err_num, sim.err_expected);
+                smart_island_refresh_summary();
                 if (g_wait_sn_after_reject_end) {
                     uint8_t sn_req[2] = { 0x01, 0x01 };
                     send_command(fd4, 0x0D, sn_req, 2);
@@ -898,6 +980,7 @@ void PCCmdHandle(void)
                 : ((sim.err_num + PAGE_02_C_ITEM - 1) / PAGE_02_C_ITEM);
             page_02_c_page_refre();
             page_02_c_page_num_refre();
+            smart_island_refresh_summary();
             break;
         }
 
@@ -1261,6 +1344,7 @@ void PCCmdHandle(void)
                     page_01_bottom_a_refresh_add(true);
                 }
                 uart_printf(fd6, "ADD set success\n");
+                smart_island_refresh_summary();
             } else if (sub == 0x01) { 
                 if (page_01_add_req_is_pending()) {
                     page_01_add_req_finish(false, NULL);
@@ -1275,6 +1359,7 @@ void PCCmdHandle(void)
                 }
                 page_01_bottom_a_refresh_add(false);
                 uart_printf(fd6, "ADD boot status: %s\n", Machine_para.add_enable ? "ON" : "OFF");
+                smart_island_refresh_summary();
                 page_03_update_menu_button_states_refresh();
             }
 
@@ -1316,6 +1401,7 @@ void PCCmdHandle(void)
                     page_03_update_menu_button_states_refresh();
                     uart_printf(fd6, "SPEED set SUCCESS: type=0x%02X -> ui=%u\n",
                                 type, Machine_para.speed);
+                    smart_island_refresh_summary();
                 } else if (res == 0x02) {
                     page_03_update_menu_button_states_refresh();
                     uart_printf(fd6, "SPEED set FAIL: type=0x%02X\n", type);
@@ -1330,6 +1416,7 @@ void PCCmdHandle(void)
                     page_03_update_menu_button_states_refresh();
                     uart_printf(fd6, "SPEED boot sync: mode=0x%02X -> ui=%u\n",
                                 res, Machine_para.speed);
+                    smart_island_refresh_summary();
                 } else {
                     uart_printf(fd6, "SPEED boot sync: invalid mode=0x%02X\n", res);
                 }
@@ -1365,6 +1452,7 @@ void PCCmdHandle(void)
                     page_01_fo_req_finish(false, NULL);
                 }
                 page_01_bottom_a_refresh_fo(false);
+                smart_island_refresh_summary();
                 break;
             }
             if (type >= 0x01 && type <= 0x04) {
@@ -1380,6 +1468,7 @@ void PCCmdHandle(void)
                     }
                     uart_printf(fd6, "FO set SUCCESS: type=0x%02X -> ui=%u\n",
                                 type, Machine_para.fo_mode);
+                    smart_island_refresh_summary();
                 } else if (val == 0x02) {
                     if (page_01_fo_req_is_pending()) {
                         page_01_fo_req_finish(false, NULL);
@@ -1412,6 +1501,7 @@ void PCCmdHandle(void)
                 }
                 page_01_bottom_a_refresh_work(false);
                 uart_printf(fd6, "0x38 BOOT mode=0x%02X\n", mode);
+                smart_island_refresh_summary();
                 break;
             }
 
@@ -1428,6 +1518,7 @@ void PCCmdHandle(void)
                 }
                 page_03_update_menu_button_states_refresh();
                 uart_printf(fd6, "0x38 MANUAL OK\n");
+                smart_island_refresh_summary();
             } else if (res == 0x01) {
                 if (page_01_work_req_is_pending()) {
                     uint8_t target_mode = 0;
@@ -1440,6 +1531,7 @@ void PCCmdHandle(void)
                 }
                 page_03_update_menu_button_states_refresh();
                 uart_printf(fd6, "0x38 AUTO OK\n");
+                smart_island_refresh_summary();
             } else {
                 if (page_01_work_req_is_pending()) {
                     page_01_work_req_finish(false, NULL);
