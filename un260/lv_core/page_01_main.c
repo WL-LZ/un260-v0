@@ -1063,6 +1063,7 @@ void ui_main_create(lv_obj_t* parent)
     main_time_refresh();
     if (!s_time_timer) s_time_timer = lv_timer_create(main_time_timer_cb, 1000, NULL);
     lv_print_toast_create();
+    ui_state_apply_common_runtime();
     page_01_main_send_init_protocol();
     smart_island_create(main_page); //创建主界面B区灵动岛
     smart_island_refresh_time(); //初始化时间显示

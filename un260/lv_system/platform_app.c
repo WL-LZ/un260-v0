@@ -269,6 +269,10 @@ void sim_data_init(void)
     sim_data->denom_number = count;
     sim_data->total_amount = 0;
     sim_data->total_pcs = 0;
+    sim_data->last_total_amount = 0;
+    sim_data->last_total_pcs = 0;
+    Machine_para.last_total_amount = 0;
+    Machine_para.last_total_pcs = 0;
     sim_data->is_paused = false;  // 初始化暂停标志为false
 
 }

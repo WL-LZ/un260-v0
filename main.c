@@ -77,6 +77,7 @@ static uint8_t g_boot_selftest_result[5] = {0};
 static bool g_boot_selftest_has_error = false;
 static uint8_t g_boot_selftest_first_error_type = 0;
 static uint8_t g_boot_selftest_first_error_result = 0;
+static bool g_count_session_active = false;
 static void ui_upgrade_popup_poll(uint32_t now)
 {
     ui_upgrade_detect_info_t detect_info;
@@ -448,6 +449,7 @@ static void boot_selftest_finish_cb(lv_timer_t* timer)
 {
     boot_selftest_list_finish();     // 自检结束后补全最后一项成功状态
     sim_data_init();                 // 自检结束后初始化一次 sim
+    g_count_session_active = false;
     ui_manager_switch(UI_PAGE_MAIN); // 切到主页面
     lv_timer_del(timer);             // 删除定时器
 }
@@ -549,6 +551,17 @@ void PCCmdHandle(void)
             uint8_t  status = p[7];
 
             if (status <= 0x01) {
+                if (!g_count_session_active) {
+                    /* Last 语义：仅在“下一把开始”时，提交上一把结果 */
+                    if (sim.total_pcs > 0 || sim.total_amount > 0.0f) {
+                        sim.last_total_pcs = sim.total_pcs;
+                        sim.last_total_amount = sim.total_amount;
+                        Machine_para.last_total_pcs = (uint16_t)sim.total_pcs;
+                        Machine_para.last_total_amount = (uint32_t)sim.total_amount;
+                    }
+                    g_count_session_active = true;
+                }
+
                 sim.total_amount = amount;
                 sim.total_pcs    = qty;
                 sim.err_expected = ret;
@@ -560,6 +573,8 @@ void PCCmdHandle(void)
                 }
             } else if (status == 0x02) {
                 uart_printf(fd6, "Count finished\n");
+                g_count_session_active = false;
+
                 ui_refresh_main_page();
                 smart_island_notify_count_end(NULL);
                 smart_island_refresh_summary();

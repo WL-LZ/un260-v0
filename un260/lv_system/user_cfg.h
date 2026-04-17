@@ -71,6 +71,8 @@ typedef struct {
     uint8_t  hour;
     uint8_t  minute;
     uint8_t  second;
+    uint16_t last_total_pcs;
+    uint32_t last_total_amount;
 }Machine_para_t;
 
 extern Machine_para_t Machine_para;

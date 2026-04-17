@@ -34,6 +34,8 @@ Machine_para_t Machine_para = {
     .hour = 11,
     .minute = 28,
     .second = 30,
+    .last_total_pcs = 0,
+    .last_total_amount = 0,
 };
 Machine_Statue_t Machine_Statue = { 0 };
 sensor_voltage_t g_sensor_voltage = { 0 };
