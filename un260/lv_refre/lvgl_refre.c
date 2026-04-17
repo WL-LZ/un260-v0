@@ -13,6 +13,7 @@
 #include "un260/lv_core/page_02_list.h"
 #include "un260/lv_core/lv_page_declear.h"
 #include "un260/lv_components/lv_components.h"
+#include "un260/lv_components/lv_fault_popup.h"
 #include "un260/lv_resources/lv_img_init.h"
 #include <errno.h>
 #include <unistd.h>
@@ -1084,6 +1085,8 @@ static void page05_state_apply_to_runtime(void);
 
 static void page06_state_pull_from_runtime(void);
 static void page06_state_apply_to_runtime(void);
+void ui_state_apply_common_runtime(void);
+void ui_state_save_popup_auto_state(void);
 
 static void curr_apply_selected_style(void);
 static void curr_style_back_button(void);
@@ -1102,6 +1105,7 @@ static void ui_state_set_defaults(void) //默认掉电配置
     g_ui_state.page07.fav_only = 0;
     g_ui_state.page07.selected_abs_idx = 0;
     g_ui_state.page07.fav_count = 0;
+    g_ui_state.page06.reserved06_enable = 1;
 }
 static void page07_state_pull_from_runtime(void)
 {
@@ -1155,10 +1159,12 @@ static void page05_state_apply_to_runtime(void)
 
 static void page06_state_pull_from_runtime(void)
 {
+    g_ui_state.page06.reserved06_enable = fault_popup_get_auto_enabled() ? 1 : 0;
 }
 
 static void page06_state_apply_to_runtime(void)
 {
+    fault_popup_set_auto_enabled(g_ui_state.page06.reserved06_enable != 0);
 }   //留接口
 static int ui_state_ensure_store_dir(void)
 {
@@ -1260,6 +1266,10 @@ static void ui_state_load_from_file(void)
                     memcpy(g_ui_state.page07.fav_codes[idx], code, 4);
                 }
             }
+        } else if (strncmp(line, "p05_reserved=", 13) == 0) {
+            g_ui_state.page05.reserved05_enable = atoi(line + 13);
+        } else if (strncmp(line, "p06_reserved=", 13) == 0) {
+            g_ui_state.page06.reserved06_enable = atoi(line + 13);
         }
     }
 
@@ -1273,6 +1283,26 @@ static void ui_state_load_from_file(void)
     }
 
     g_ui_state_loaded = true;
+}
+
+void ui_state_apply_common_runtime(void)
+{
+    if (!g_ui_state_loaded) {
+        ui_state_load_from_file();
+    }
+
+    page05_state_apply_to_runtime();
+    page06_state_apply_to_runtime();
+}
+
+void ui_state_save_popup_auto_state(void)
+{
+    if (!g_ui_state_loaded) {
+        ui_state_load_from_file();
+    }
+
+    page06_state_pull_from_runtime();
+    ui_state_save_to_file();
 }
 static void ui_state_save_to_file(void)
 {

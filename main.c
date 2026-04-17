@@ -447,6 +447,7 @@ void* uart5_thread(void* arg) {
 static void boot_selftest_finish_cb(lv_timer_t* timer)
 {
     boot_selftest_list_finish();     // 自检结束后补全最后一项成功状态
+    sim_data_init();                 // 自检结束后初始化一次 sim
     ui_manager_switch(UI_PAGE_MAIN); // 切到主页面
     lv_timer_del(timer);             // 删除定时器
 }

@@ -55,6 +55,8 @@ extern "C" {
 
     void page_07_curr_img_refre(void);
     bool page_07_curr_set_pending_result(uint8_t status);
+    void ui_state_apply_common_runtime(void);
+    void ui_state_save_popup_auto_state(void);
 
 
 
