@@ -2,8 +2,10 @@
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_system/platform_app.h"
+#include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_refre/lvgl_refre.h"
+#include "un260/lv_drivers/lv_drivers.h"
 
 typedef struct {
     lv_obj_t* switch_container;
@@ -642,6 +644,20 @@ const char* get_counting_error_desc(uint8_t type, uint8_t code)
     return "Unknown Counting Fault";
 }
 
+static const char* get_counting_ui_error_desc(uint8_t type, uint8_t code)
+{
+    if (type == 0x01 && (code == 0x00 || code == 0x02)) {
+        return ui_text_get(UI_TEXT_WIDGET_FAULT_NO_NOTE_MAIN);
+    }
+
+    if (code < sizeof(g_start_error_desc) / sizeof(g_start_error_desc[0]) &&
+        g_start_error_desc[code] != NULL) {
+        return g_start_error_desc[code];
+    }
+
+    return ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_COUNT_ERROR);
+}
+
 static lv_obj_t* g_count_err_mask = NULL;
 static lv_obj_t* g_count_err_popup = NULL;
 static lv_obj_t* g_count_err_info_label = NULL;
@@ -682,7 +698,7 @@ void show_counting_error_popup(uint8_t type, uint8_t code)
             return;
         }
         if (g_count_err_info_label && lv_obj_is_valid(g_count_err_info_label)) {
-            lv_label_set_text_fmt(g_count_err_info_label, "%s", get_counting_error_desc(type, code));
+            lv_label_set_text_fmt(g_count_err_info_label, "%s", get_counting_ui_error_desc(type, code));
         }
         g_count_err_last_type = type;
         g_count_err_last_code = code;
@@ -714,7 +730,7 @@ void show_counting_error_popup(uint8_t type, uint8_t code)
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 22);
 
     g_count_err_info_label = lv_label_create(g_count_err_popup);
-    lv_label_set_text_fmt(g_count_err_info_label, "%s", get_counting_error_desc(type, code));
+    lv_label_set_text_fmt(g_count_err_info_label, "%s", get_counting_ui_error_desc(type, code));
     lv_obj_set_width(g_count_err_info_label, 560);
     lv_label_set_long_mode(g_count_err_info_label, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_align(g_count_err_info_label, LV_TEXT_ALIGN_CENTER, 0);

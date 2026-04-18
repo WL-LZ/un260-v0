@@ -26,6 +26,11 @@ typedef enum {
     SMART_ISLAND_PAGE_ACTION
 } smart_island_page_t;
 
+typedef enum {
+    SMART_ISLAND_WARNING_LEVEL_WARNING = 0,
+    SMART_ISLAND_WARNING_LEVEL_ERROR
+} smart_island_warning_level_t;
+
 typedef void (*smart_island_action_cb_t)(uint8_t action_id); //动作按钮回调
 
 typedef struct {
@@ -49,6 +54,7 @@ void smart_island_set_scene(smart_island_scene_t scene, const char *title, const
 void smart_island_notify_count_start(void); //通知：开始点钞
 void smart_island_notify_count_end(const char *result_text); //通知：点钞结束
 void smart_island_notify_warning(const char *warn_text); //通知：警告出现
+void smart_island_notify_warning_level(const char *warn_text, smart_island_warning_level_t level); //通知：警告/报错
 void smart_island_notify_update(uint16_t progress, const char *text); //通知：升级中
 void smart_island_notify_qr(const char *text); //通知：二维码相关提示
 void smart_island_restore_idle(void); //恢复默认待机态
@@ -61,6 +67,9 @@ bool smart_island_action_page_set_count(uint8_t count); //设置动作页数量
 bool smart_island_action_page_set_lang_item(uint8_t index, uint8_t action_id, ui_text_id_t text_id); //设置动作页多语言按键
 bool smart_island_action_page_set_item(uint8_t index, uint8_t action_id, const char *text); //设置动作页按键
 void smart_island_refresh_language_texts(void); //刷新灵动岛多语言文本
+void smart_island_set_idle_info_line1(const char *text); //设置Idle展开第1行（NULL/空字符串恢复默认）
+void smart_island_set_idle_info_line2(const char *text); //设置Idle展开第2行（NULL/空字符串显示none）
+void smart_island_set_idle_info_line3(const char *text); //设置Idle展开第3行（NULL/空字符串显示none）
 void smart_island_close(void); //关闭灵动岛
 void smart_island_open_info_page(void); //打开信息页
 void smart_island_open_action_page(void); //打开功能页

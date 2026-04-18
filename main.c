@@ -78,6 +78,13 @@ static bool g_boot_selftest_has_error = false;
 static uint8_t g_boot_selftest_first_error_type = 0;
 static uint8_t g_boot_selftest_first_error_result = 0;
 static bool g_count_session_active = false;
+static bool g_last_result_pending_valid = false;
+static int g_last_result_pending_pcs = 0;
+static float g_last_result_pending_amount = 0.0f;
+static int g_last_result_pending_valid_pcs = 0;
+static int g_last_result_pending_issue_pcs = 0;
+static int g_last_result_pending_suspect_pcs = 0;
+static int g_last_result_pending_damaged_pcs = 0;
 static void ui_upgrade_popup_poll(uint32_t now)
 {
     ui_upgrade_detect_info_t detect_info;
@@ -116,6 +123,74 @@ static const char* get_currency_error_desc(uint8_t code)
         return g_currency_error_desc[code];
     }
     return "Unknown Error";
+}
+
+static bool currency_error_is_suspect(uint8_t code)
+{
+    if (code >= 0x01 && code <= 0x0F) return true; /* IMG F1~F15 */
+    if (code == 0x11 || code == 0x12 || code == 0x13 || code == 0x14) return true; /* MG/MT */
+    if (code == 0x15 || code == 0x22 || code == 0x23) return true; /* UV/IR */
+    if (code == 0x16 || code == 0x17 || code == 0x31) return true; /* Double */
+    if (code == 0x1D || code == 0x1E || code == 0x1F || code == 0x20 || code == 0x21) return true; /* Version/Face/Ort/Angle */
+    if (code == 0x2D || code == 0x2E || code == 0x2F || code == 0x30) return true; /* IMG F&O / OCR */
+    if (code == 0x1C) return true; /* Size Unknow */
+    return false;
+}
+
+static bool currency_error_is_damaged(uint8_t code)
+{
+    if (code == 0x18 || code == 0x19 || code == 0x1A || code == 0x2C) return true; /* Long/Short/GAP/Limpness */
+    if (code == 0x24 || code == 0x25 || code == 0x27 || code == 0x28 || code == 0x29) return true; /* Hole/DogEar/Tape/Tears/Crumples */
+    if (code == 0x26 || code == 0x2A || code == 0x2B) return true; /* DIRT/De_ink/Soiling */
+    return false;
+}
+
+static void pending_result_recalc_issue_from_reject_detail(void)
+{
+    int suspect = 0;
+    int damaged = 0;
+    int issue = 0;
+    int valid = 0;
+
+    if (!g_last_result_pending_valid) {
+        return;
+    }
+
+    if (sim.err_num == 0 || sim.err_pcs == NULL || sim.err_code == NULL) {
+        return;
+    }
+
+    for (int i = 0; i < sim.err_num; i++) {
+        int pcs = sim.err_pcs[i];
+        uint8_t code = sim.err_code[i];
+
+        if (pcs <= 0) {
+            continue;
+        }
+
+        if (currency_error_is_damaged(code)) {
+            damaged += pcs;
+        } else if (currency_error_is_suspect(code)) {
+            suspect += pcs;
+        } else {
+            /* 未归类的退钞原因，默认归入 suspect */
+            suspect += pcs;
+        }
+    }
+
+    issue = suspect + damaged;
+    if (issue > g_last_result_pending_pcs) {
+        issue = g_last_result_pending_pcs;
+    }
+    valid = g_last_result_pending_pcs - issue;
+    if (valid < 0) {
+        valid = 0;
+    }
+
+    g_last_result_pending_issue_pcs = issue;
+    g_last_result_pending_suspect_pcs = suspect;
+    g_last_result_pending_damaged_pcs = damaged;
+    g_last_result_pending_valid_pcs = valid;
 }
 
 /* UI显示使用协议错误类型（短文本），不使用调试长文案 */
@@ -450,6 +525,7 @@ static void boot_selftest_finish_cb(lv_timer_t* timer)
     boot_selftest_list_finish();     // 自检结束后补全最后一项成功状态
     sim_data_init();                 // 自检结束后初始化一次 sim
     g_count_session_active = false;
+    g_last_result_pending_valid = false;
     ui_manager_switch(UI_PAGE_MAIN); // 切到主页面
     lv_timer_del(timer);             // 删除定时器
 }
@@ -553,11 +629,16 @@ void PCCmdHandle(void)
             if (status <= 0x01) {
                 if (!g_count_session_active) {
                     /* Last 语义：仅在“下一把开始”时，提交上一把结果 */
-                    if (sim.total_pcs > 0 || sim.total_amount > 0.0f) {
-                        sim.last_total_pcs = sim.total_pcs;
-                        sim.last_total_amount = sim.total_amount;
-                        Machine_para.last_total_pcs = (uint16_t)sim.total_pcs;
-                        Machine_para.last_total_amount = (uint32_t)sim.total_amount;
+                    if (g_last_result_pending_valid) {
+                        sim.last_total_pcs = g_last_result_pending_pcs;
+                        sim.last_total_amount = g_last_result_pending_amount;
+                        sim.last_valid_pcs = g_last_result_pending_valid_pcs;
+                        sim.last_issue_pcs = g_last_result_pending_issue_pcs;
+                        sim.last_suspect_pcs = g_last_result_pending_suspect_pcs;
+                        sim.last_damaged_pcs = g_last_result_pending_damaged_pcs;
+                        Machine_para.last_total_pcs = (uint16_t)g_last_result_pending_pcs;
+                        Machine_para.last_total_amount = (uint32_t)g_last_result_pending_amount;
+                        g_last_result_pending_valid = false;
                     }
                     g_count_session_active = true;
                 }
@@ -572,8 +653,29 @@ void PCCmdHandle(void)
                     smart_island_refresh_summary();
                 }
             } else if (status == 0x02) {
+                int final_pcs = 0;
+                float final_amount = 0.0f;
                 uart_printf(fd6, "Count finished\n");
                 g_count_session_active = false;
+                g_last_result_pending_valid = true;
+
+                if (sim.total_pcs > 0 || sim.total_amount > 0.0f) {
+                    final_pcs = sim.total_pcs;
+                    final_amount = sim.total_amount;
+                } else {
+                    final_pcs = (int)qty;
+                    final_amount = (float)amount;
+                }
+
+                g_last_result_pending_pcs = final_pcs;
+                g_last_result_pending_amount = final_amount;
+                g_last_result_pending_issue_pcs = (int)ret;
+                g_last_result_pending_suspect_pcs = (int)ret;
+                g_last_result_pending_damaged_pcs = 0;
+                g_last_result_pending_valid_pcs = final_pcs - (int)ret;
+                if (g_last_result_pending_valid_pcs < 0) {
+                    g_last_result_pending_valid_pcs = 0;
+                }
 
                 ui_refresh_main_page();
                 smart_island_notify_count_end(NULL);
@@ -956,6 +1058,7 @@ void PCCmdHandle(void)
                     : ((sim.err_num + PAGE_02_C_ITEM - 1) / PAGE_02_C_ITEM);
                 page_02_c_page_refre();
                 page_02_c_page_num_refre();
+                pending_result_recalc_issue_from_reject_detail();
                 uart_printf(fd6, "0x0C reject detail receive end, parsed=%u expected=%u\n",
                             sim.err_num, sim.err_expected);
                 smart_island_refresh_summary();
@@ -989,6 +1092,7 @@ void PCCmdHandle(void)
             }
             memcpy(sim.err_str[idx], desc, desc_len + 1);
             sim.err_pcs[idx] = pcs;
+            sim.err_code[idx] = err_code;
             sim.err_num++;
             /* 不等 end 帧：收到一条就刷新 LIST 的报错区 */
             page_02_c_report_status.total_page = (sim.err_num == 0)
@@ -1369,12 +1473,23 @@ void PCCmdHandle(void)
                 page_03_update_menu_button_states_refresh();
             } else if (sub == 0x02) { 
                 uint8_t v = buf[5];
-                Machine_para.add_enable = (v == 0x00) ? true : false;
+                /* 0x39 状态字与设置命令一致：0x00=OFF, 0x01=ON */
+                if (v == 0x00) {
+                    Machine_para.add_enable = false;
+                } else if (v == 0x01) {
+                    Machine_para.add_enable = true;
+                } else {
+                    uart_printf(fd6, "ADD boot status: unexpected raw=0x%02X, keep %s\n",
+                                v,
+                                Machine_para.add_enable ? "ON" : "OFF");
+                }
                 if (page_01_add_req_is_pending()) {
                     page_01_add_req_finish(false, NULL);
                 }
                 page_01_bottom_a_refresh_add(false);
-                uart_printf(fd6, "ADD boot status: %s\n", Machine_para.add_enable ? "ON" : "OFF");
+                uart_printf(fd6, "ADD boot status: raw=0x%02X -> %s\n",
+                            v,
+                            Machine_para.add_enable ? "ON" : "OFF");
                 smart_island_refresh_summary();
                 page_03_update_menu_button_states_refresh();
             }

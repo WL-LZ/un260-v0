@@ -20,6 +20,7 @@ typedef struct {
     int sn_capacity;
     char** err_str;
     uint8_t* err_pcs;
+    uint8_t* err_code;
     int err_capacity;
     bool is_paused;
     uint16_t err_num;//已解析到的退钞明细条数
@@ -27,6 +28,10 @@ typedef struct {
     int denom_mix[10000];
     int last_total_pcs;
     float last_total_amount;
+    int last_valid_pcs;
+    int last_issue_pcs;
+    int last_suspect_pcs;
+    int last_damaged_pcs;
 }counting_sim_t;
 //page_02
 typedef struct {

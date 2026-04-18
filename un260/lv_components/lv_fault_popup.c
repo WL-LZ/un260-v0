@@ -1,6 +1,8 @@
 #include "lv_fault_popup.h"
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_core/lv_page_manager.h"
+#include "un260/lv_components/smart_island.h"
+#include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/user_cfg.h"
 #include <stdio.h>
 #include <string.h>
@@ -12,6 +14,9 @@
 #define FAULT_PROTO_BOOT    0x37
 #define FAULT_PROTO_START   0x0a
 #define FAULT_PROTO_RUNTIME 0x0f
+#define FAULT_AUTO_CONFIRM_DELAY_MS 2000
+#define FAULT_AUTO_RETRY_INTERVAL_MS 2000
+#define FAULT_AUTO_RETRY_MAX         3
 
 #define FAULT_POPUP_BG_PATH   "L:/usr/local/share/lvgl_data/fault_popup_bg.png"
 #define FAULT_MACHINE_IMG_FMT "L:/usr/local/share/lvgl_data/%02Xmachine.png"
@@ -36,8 +41,51 @@ static lv_obj_t* g_fault_version_label = NULL;
 static lv_obj_t* g_solution_title = NULL;
 static lv_obj_t* g_reason_title = NULL;
 
+void show_start_fault_popup(uint8_t type, uint8_t code);
+void show_runtime_fault_popup(uint8_t code);
 
 static fault_popup_data_t g_fault_popup_data;
+typedef enum {
+    FAULT_PENDING_NONE = 0,
+    FAULT_PENDING_START_FAULT,
+    FAULT_PENDING_RUNTIME_FAULT
+} fault_pending_type_t;
+
+typedef struct {
+    bool valid;
+    fault_pending_type_t type;
+    uint8_t fault_type;
+    uint8_t code;
+} fault_pending_t;
+
+static bool g_fault_popup_auto_enabled = true;
+static fault_pending_t g_fault_pending = { false, FAULT_PENDING_NONE, 0, 0 };
+static lv_timer_t* g_fault_auto_confirm_timer = NULL;
+static uint8_t g_fault_auto_retry_count = 0;
+static uint8_t g_fault_auto_retry_type = 0;
+static uint8_t g_fault_auto_retry_code = 0;
+static uint32_t g_fault_auto_retry_last_tick = 0;
+
+static bool fault_popup_should_auto_clear(uint8_t type, uint8_t code)
+{
+    /* type=0x01 code=0x00: no banknotes, 不需要发 0x3D */
+    if (type == 0x01 && code == 0x00) {
+        return false;
+    }
+    return true;
+}
+
+static void fault_popup_track_retry_key(uint8_t type, uint8_t code)
+{
+    if (g_fault_auto_retry_type == type && g_fault_auto_retry_code == code) {
+        return;
+    }
+
+    g_fault_auto_retry_type = type;
+    g_fault_auto_retry_code = code;
+    g_fault_auto_retry_count = 0;
+    g_fault_auto_retry_last_tick = 0;
+}
 
 /* =========================
  * 原因 / 方案映射
@@ -252,54 +300,56 @@ static void get_fault_radar_pos(fault_source_t source, uint8_t code, lv_coord_t*
 
 static const char* get_boot_title(uint8_t code)
 {
-    switch (code) {
-    case 0x01: return "SELF-TEST ERROR";
-    case 0x02: return "SELF-TEST ERROR";
-    case 0x03: return "SELF-TEST ERROR";
-    case 0x04: return "SELF-TEST ERROR";
-    case 0x05: return "SELF-TEST ERROR";
-    default:   return "SELF-TEST ERROR";
-    }
+    LV_UNUSED(code);
+    return ui_text_get(UI_TEXT_WIDGET_FAULT_SELFTEST_ERROR);
 }
 
 static const char* get_boot_main_desc(uint8_t code)
 {
     switch (code) {
-    case 0x01: return "Sensor Self-Test Failed";
-    case 0x02: return "Motor Self-Test Failed";
-    case 0x03: return "Electromagnet Self-Test Failed";
-    case 0x04: return "Read Config Parameters Failed";
-    case 0x05: return "Image Board Self-Test Failed";
-    default:   return "Boot Self-Test Failed";
+    case 0x01: return ui_text_get(UI_TEXT_WIDGET_FAULT_BOOT_SENSOR_FAILED);
+    case 0x02: return ui_text_get(UI_TEXT_WIDGET_FAULT_BOOT_MOTOR_FAILED);
+    case 0x03: return ui_text_get(UI_TEXT_WIDGET_FAULT_BOOT_MAGNET_FAILED);
+    case 0x04: return ui_text_get(UI_TEXT_WIDGET_FAULT_BOOT_CONFIG_FAILED);
+    case 0x05: return ui_text_get(UI_TEXT_WIDGET_FAULT_BOOT_IMAGE_FAILED);
+    default:   return ui_text_get(UI_TEXT_WIDGET_FAULT_BOOT_GENERIC_FAILED);
     }
 }
 
 static const char* get_start_title(uint8_t code)
 {
-    if (code < 0x32 && g_currency_error_desc[code] != NULL) {
-        return "START COUNT ERROR";
+    if (code == 0x00) {
+        return ui_text_get(UI_TEXT_WIDGET_FAULT_START_FAILED);
     }
-    return "START COUNT ERROR";
+
+    if (code < 0x32 && g_currency_error_desc[code] != NULL) {
+        return ui_text_get(UI_TEXT_WIDGET_FAULT_START_COUNT_ERROR);
+    }
+    return ui_text_get(UI_TEXT_WIDGET_FAULT_START_COUNT_ERROR);
 }
 
 static const char* get_start_main_desc(uint8_t code)
 {
+    if (code == 0x00) {
+        return ui_text_get(UI_TEXT_WIDGET_FAULT_NO_NOTE_MAIN);
+    }
+
     if (code < 0x0E && g_start_error_desc[code] != NULL) {
         return g_start_error_desc[code];
     }
-    return "Unknown Start Fault";
+    return ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_COUNT_ERROR);
 }
 
 static const char* get_runtime_title(uint8_t code)
 {
     (void)code;
-    return "ERROR SENSOR";
+    return ui_text_get(UI_TEXT_WIDGET_FAULT_RUNTIME_ERROR_SENSOR);
 }
 
 static const char* get_runtime_main_desc(uint8_t code)
 {
     const char* desc = get_system_error_desc(code);
-    return desc ? desc : "Unknown Runtime Fault";
+    return desc ? desc : ui_text_get(UI_TEXT_WIDGET_FAULT_RUNTIME_UNKNOWN);
 }
 
 static const char* get_fault_reason_text(fault_source_t source, uint8_t code)
@@ -309,6 +359,7 @@ static const char* get_fault_reason_text(fault_source_t source, uint8_t code)
         if (g_boot_reason_desc[code]) return g_boot_reason_desc[code];
         break;
     case FAULT_SRC_START_COUNT:
+        if (code == 0x00) return ui_text_get(UI_TEXT_WIDGET_FAULT_NO_NOTE_REASON);
         if (g_start_reason_desc[code]) return g_start_reason_desc[code];
         break;
     case FAULT_SRC_RUNTIME:
@@ -318,7 +369,7 @@ static const char* get_fault_reason_text(fault_source_t source, uint8_t code)
         break;
     }
 
-    return "Please check machine status and related hardware.";
+    return ui_text_get(UI_TEXT_WIDGET_FAULT_REASON_FALLBACK);
 }
 
 static const char* get_fault_solution_text(fault_source_t source, uint8_t code)
@@ -328,6 +379,7 @@ static const char* get_fault_solution_text(fault_source_t source, uint8_t code)
         if (g_boot_solution_desc[code]) return g_boot_solution_desc[code];
         break;
     case FAULT_SRC_START_COUNT:
+        if (code == 0x00) return ui_text_get(UI_TEXT_WIDGET_FAULT_NO_NOTE_SOLUTION);
         if (g_start_solution_desc[code]) return g_start_solution_desc[code];
         break;
     case FAULT_SRC_RUNTIME:
@@ -337,7 +389,7 @@ static const char* get_fault_solution_text(fault_source_t source, uint8_t code)
         break;
     }
 
-    return "Press CONFIRM after checking the machine.";
+    return ui_text_get(UI_TEXT_WIDGET_FAULT_SOLUTION_FALLBACK);
 }
 
 static fault_confirm_action_t get_confirm_action_by_page(void)
@@ -421,12 +473,40 @@ static void fault_popup_confirm_cb(lv_event_t* e)
         ui_manager_switch(UI_PAGE_SENSOR);
     } else {
         hide_fault_popup();
+        ui_manager_switch(UI_PAGE_MAIN);
+        smart_island_restore_idle();
     }
 }
 
 bool fault_popup_is_showing(void)
 {
     return g_fault_popup != NULL;
+}
+
+void fault_popup_set_auto_enabled(bool enabled)
+{
+    g_fault_popup_auto_enabled = enabled;
+    if (enabled && g_fault_auto_confirm_timer) {
+        lv_timer_del(g_fault_auto_confirm_timer);
+        g_fault_auto_confirm_timer = NULL;
+    }
+}
+
+bool fault_popup_get_auto_enabled(void)
+{
+    return g_fault_popup_auto_enabled;
+}
+
+void fault_popup_clear_pending(void)
+{
+    g_fault_pending.valid = false;
+    g_fault_pending.type = FAULT_PENDING_NONE;
+    g_fault_pending.fault_type = 0;
+    g_fault_pending.code = 0;
+    if (g_fault_auto_confirm_timer) {
+        lv_timer_del(g_fault_auto_confirm_timer);
+        g_fault_auto_confirm_timer = NULL;
+    }
 }
 
 void hide_fault_popup(void)
@@ -455,6 +535,166 @@ void hide_fault_popup(void)
     g_fault_version_label = NULL;
 
     memset(&g_fault_popup_data, 0, sizeof(g_fault_popup_data));
+}
+
+static bool fault_popup_show_pending_internal(void)
+{
+    if (!g_fault_pending.valid) {
+        return false;
+    }
+
+    switch (g_fault_pending.type) {
+    case FAULT_PENDING_START_FAULT:
+        show_start_fault_popup(g_fault_pending.fault_type, g_fault_pending.code);
+        break;
+    case FAULT_PENDING_RUNTIME_FAULT:
+        show_runtime_fault_popup(g_fault_pending.code);
+        break;
+    case FAULT_PENDING_NONE:
+    default:
+        fault_popup_clear_pending();
+        return false;
+    }
+
+    fault_popup_clear_pending();
+    return true;
+}
+
+bool fault_popup_show_pending_now(void)
+{
+    return fault_popup_show_pending_internal();
+}
+
+bool fault_popup_has_pending_start_issue(void)
+{
+    if (!g_fault_pending.valid) {
+        return false;
+    }
+
+    return (g_fault_pending.type == FAULT_PENDING_START_FAULT);
+}
+
+void fault_popup_auto_confirm_pending_if_needed(void)
+{
+    uint8_t clear_cmd = 0x01;
+    uint32_t now_tick;
+
+    if (g_fault_popup_auto_enabled) {
+        return;
+    }
+
+    if (!fault_popup_has_pending_start_issue()) {
+        return;
+    }
+
+    if (!fault_popup_should_auto_clear(g_fault_pending.fault_type, g_fault_pending.code)) {
+        fault_popup_clear_pending();
+        return;
+    }
+
+    fault_popup_track_retry_key(g_fault_pending.fault_type, g_fault_pending.code);
+
+    if (g_fault_auto_retry_count >= FAULT_AUTO_RETRY_MAX) {
+        show_start_fault_popup(g_fault_pending.fault_type, g_fault_pending.code);
+        fault_popup_clear_pending();
+        return;
+    }
+
+    now_tick = lv_tick_get();
+    if (g_fault_auto_retry_last_tick != 0 &&
+        lv_tick_elaps(g_fault_auto_retry_last_tick) < FAULT_AUTO_RETRY_INTERVAL_MS) {
+        return;
+    }
+
+    send_command(fd4, 0x3D, &clear_cmd, 1);
+    g_fault_auto_retry_count++;
+    g_fault_auto_retry_last_tick = now_tick;
+    fault_popup_clear_pending();
+}
+
+static void fault_popup_auto_confirm_timer_cb(lv_timer_t* timer)
+{
+    LV_UNUSED(timer);
+    g_fault_auto_confirm_timer = NULL;
+    fault_popup_auto_confirm_pending_if_needed();
+}
+
+void fault_popup_cancel_auto_confirm(void)
+{
+    if (g_fault_auto_confirm_timer) {
+        lv_timer_del(g_fault_auto_confirm_timer);
+        g_fault_auto_confirm_timer = NULL;
+    }
+}
+
+void fault_popup_schedule_auto_confirm(void)
+{
+    if (g_fault_popup_auto_enabled) {
+        return;
+    }
+
+    if (!fault_popup_has_pending_start_issue()) {
+        return;
+    }
+
+    if (fault_popup_is_showing()) {
+        return;
+    }
+
+    if (g_fault_auto_confirm_timer) {
+        lv_timer_del(g_fault_auto_confirm_timer);
+        g_fault_auto_confirm_timer = NULL;
+    }
+
+    g_fault_auto_confirm_timer = lv_timer_create(fault_popup_auto_confirm_timer_cb, FAULT_AUTO_CONFIRM_DELAY_MS, NULL);
+}
+
+void fault_popup_report_start_fault(uint8_t type, uint8_t code)
+{
+    fault_popup_track_retry_key(type, code);
+
+    g_fault_pending.valid = true;
+    g_fault_pending.type = FAULT_PENDING_START_FAULT;
+    g_fault_pending.fault_type = type;
+    g_fault_pending.code = code;
+
+    if (g_fault_popup_auto_enabled) {
+        (void)fault_popup_show_pending_internal();
+    }
+}
+
+void fault_popup_report_start_no_note(void)
+{
+    fault_popup_track_retry_key(0x01, 0x00);
+
+    g_fault_pending.valid = true;
+    g_fault_pending.type = FAULT_PENDING_START_FAULT;
+    g_fault_pending.fault_type = 0x01;
+    g_fault_pending.code = 0x00;
+
+    if (g_fault_popup_auto_enabled) {
+        (void)fault_popup_show_pending_internal();
+    }
+}
+
+void fault_popup_report_runtime_fault(uint8_t code)
+{
+    g_fault_pending.valid = true;
+    g_fault_pending.type = FAULT_PENDING_RUNTIME_FAULT;
+    g_fault_pending.fault_type = 0x00;
+    g_fault_pending.code = code;
+
+    if (g_fault_popup_auto_enabled) {
+        (void)fault_popup_show_pending_internal();
+    }
+}
+
+void fault_popup_reset_auto_retry(void)
+{
+    g_fault_auto_retry_count = 0;
+    g_fault_auto_retry_type = 0;
+    g_fault_auto_retry_code = 0;
+    g_fault_auto_retry_last_tick = 0;
 }
 
 void show_fault_popup_ex(const fault_popup_data_t* data)
@@ -539,13 +779,13 @@ void show_fault_popup_ex(const fault_popup_data_t* data)
 
     /* 时间/机型 */
     g_fault_time_label = lv_label_create(g_fault_popup);
-    lv_label_set_text_fmt(g_fault_time_label, "TIME: %s", time_buf);
+    lv_label_set_text_fmt(g_fault_time_label, ui_text_get(UI_TEXT_WIDGET_FAULT_TIME_FMT), time_buf);
     lv_obj_set_style_text_color(g_fault_time_label, lv_color_hex(0xB0B0B0), 0);
     lv_obj_set_style_text_font(g_fault_time_label, &lv_font_montserrat_14, 0);
     lv_obj_set_pos(g_fault_time_label, 650, 46);
 
     g_fault_model_label = lv_label_create(g_fault_popup);
-    lv_label_set_text_fmt(g_fault_model_label, "MODEL: %s", MACHINE_MODEL_NAME);
+    lv_label_set_text_fmt(g_fault_model_label, ui_text_get(UI_TEXT_WIDGET_FAULT_MODEL_FMT), MACHINE_MODEL_NAME);
     lv_obj_set_style_text_color(g_fault_model_label, lv_color_hex(0xB0B0B0), 0);
     lv_obj_set_style_text_font(g_fault_model_label, &lv_font_montserrat_14, 0);
     lv_obj_set_pos(g_fault_model_label, 880, 46);
@@ -559,7 +799,7 @@ void show_fault_popup_ex(const fault_popup_data_t* data)
 
     /* 原因框 */
     g_reason_title = lv_label_create(g_fault_popup);
-    lv_label_set_text(g_reason_title, "Reason");
+    lv_label_set_text(g_reason_title, ui_text_get(UI_TEXT_WIDGET_FAULT_REASON_TITLE));
     lv_obj_set_width(g_reason_title, 100);
     lv_obj_set_style_text_color(g_reason_title, lv_color_hex(0xff3b30), 0);
     lv_obj_set_style_text_font(g_reason_title, &lv_font_montserrat_16, 0);
@@ -574,7 +814,7 @@ void show_fault_popup_ex(const fault_popup_data_t* data)
     lv_obj_set_pos(g_fault_reason_label, 629, 128   );
 
     g_solution_title = lv_label_create(g_fault_popup);
-    lv_label_set_text(g_solution_title, "Solution");
+    lv_label_set_text(g_solution_title, ui_text_get(UI_TEXT_WIDGET_FAULT_SOLUTION_TITLE));
     lv_obj_set_width(g_solution_title, 100);
     lv_obj_set_style_text_color(g_solution_title, lv_color_hex(0x007aff), 0);
     lv_obj_set_style_text_font(g_solution_title, &lv_font_montserrat_16, 0);
@@ -606,7 +846,7 @@ void show_fault_popup_ex(const fault_popup_data_t* data)
     lv_obj_add_event_cb(confirm_btn, fault_popup_confirm_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t* confirm_label = lv_label_create(confirm_btn);
-    lv_label_set_text(confirm_label, "CONFIRM");
+    lv_label_set_text(confirm_label, ui_text_get(UI_TEXT_WIDGET_FAULT_CONFIRM));
     lv_obj_set_style_text_color(confirm_label, lv_color_white(), 0);
     lv_obj_set_style_text_font(confirm_label, &lv_font_montserrat_20, 0);
     lv_obj_center(confirm_label);
@@ -624,7 +864,7 @@ void show_boot_fault_popup(uint8_t selftest_type, uint8_t result)
 
     data.source = FAULT_SRC_BOOT;
     data.code = selftest_type;
-    data.diagnostics_title = "MACHINE DIAGNOSTICS";
+    data.diagnostics_title = ui_text_get(UI_TEXT_WIDGET_FAULT_DIAGNOSTICS_TITLE);
     data.fault_type_title = get_boot_title(selftest_type);
     data.fault_main_desc = get_boot_main_desc(selftest_type);
     data.reason_text = get_fault_reason_text(FAULT_SRC_BOOT, selftest_type);
@@ -646,7 +886,7 @@ void show_start_fault_popup(uint8_t type, uint8_t code)
 
     data.source = FAULT_SRC_START_COUNT;
     data.code = code;
-    data.diagnostics_title = "MACHINE DIAGNOSTICS";
+    data.diagnostics_title = ui_text_get(UI_TEXT_WIDGET_FAULT_DIAGNOSTICS_TITLE);
     data.fault_type_title = get_start_title(code);
     data.fault_main_desc = get_start_main_desc(code);
     data.reason_text = get_fault_reason_text(FAULT_SRC_START_COUNT, code);
@@ -666,7 +906,7 @@ void show_runtime_fault_popup(uint8_t code)
 
     data.source = FAULT_SRC_RUNTIME;
     data.code = code;
-    data.diagnostics_title = "MACHINE DIAGNOSTICS";
+    data.diagnostics_title = ui_text_get(UI_TEXT_WIDGET_FAULT_DIAGNOSTICS_TITLE);
     data.fault_type_title = get_runtime_title(code);
     data.fault_main_desc = get_runtime_main_desc(code);
     data.reason_text = get_fault_reason_text(FAULT_SRC_RUNTIME, code);
@@ -674,26 +914,6 @@ void show_runtime_fault_popup(uint8_t code)
     data.machine_img_path = get_fault_machine_img(FAULT_SRC_RUNTIME, code);
     data.err_img_path = get_fault_err_img(FAULT_SRC_RUNTIME, code);
     get_fault_radar_pos(FAULT_SRC_RUNTIME, code, &data.radar_x, &data.radar_y);
-    data.confirm_action = get_confirm_action_by_page();
-
-    show_fault_popup_ex(&data);
-}
-
-void show_start_no_note_popup(void)
-{
-    fault_popup_data_t data;
-    memset(&data, 0, sizeof(data));
-
-    data.source = FAULT_SRC_START_COUNT;
-    data.code = 0x00;
-    data.diagnostics_title = "MACHINE DIAGNOSTICS";
-    data.fault_type_title = "START COUNT FAILED";
-    data.fault_main_desc = "No Banknotes Detected";
-    data.reason_text = "The machine is normal, but no banknotes were detected.";
-    data.solution_text = "Please place banknotes in the hopper and try again.";
-    data.machine_img_path = get_fault_machine_img(FAULT_SRC_START_COUNT, 0x00);
-    data.err_img_path = get_fault_err_img(FAULT_SRC_START_COUNT, 0x00);
-    get_fault_radar_pos(FAULT_SRC_START_COUNT, 0x01, &data.radar_x, &data.radar_y);
     data.confirm_action = get_confirm_action_by_page();
 
     show_fault_popup_ex(&data);

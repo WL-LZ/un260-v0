@@ -52,8 +52,8 @@ static const ui_text_item_t g_ui_text_widget_group[UI_TEXT_MAX - UI_TEXT_WIDGET_
     [UI_TEXT_WIDGET_SMART_ISLAND_ACTION_SELFTEST - UI_TEXT_WIDGET_BASE] = {"Self-test", "自检", "자가 점검"},
     [UI_TEXT_WIDGET_SMART_ISLAND_ACTION_POPUP_ON - UI_TEXT_WIDGET_BASE] = {"Popup: ON", "弹窗: 开", "팝업: 켜짐"},
     [UI_TEXT_WIDGET_SMART_ISLAND_ACTION_POPUP_OFF - UI_TEXT_WIDGET_BASE] = {"Popup: OFF", "弹窗: 关", "팝업: 꺼짐"},
-    [UI_TEXT_WIDGET_SMART_ISLAND_ACTION_FUNC3 - UI_TEXT_WIDGET_BASE] = {"Report", "报表", "리포트"},
-    [UI_TEXT_WIDGET_SMART_ISLAND_ACTION_FUNC4 - UI_TEXT_WIDGET_BASE] = {"Self-test", "自检", "자가 점검"},
+    [UI_TEXT_WIDGET_SMART_ISLAND_ACTION_FUNC3 - UI_TEXT_WIDGET_BASE] = {"Popup", "弹窗", "팝업"},
+    [UI_TEXT_WIDGET_SMART_ISLAND_ACTION_FUNC4 - UI_TEXT_WIDGET_BASE] = {"Pure Count", "纯净跑钞", "순수 계수"},
 
     //灵动岛状态文案
     [UI_TEXT_WIDGET_SMART_ISLAND_READY_TITLE - UI_TEXT_WIDGET_BASE] = {"Ready", "就绪", "준비됨"},
@@ -92,11 +92,32 @@ static const ui_text_item_t g_ui_text_widget_group[UI_TEXT_MAX - UI_TEXT_WIDGET_
     [UI_TEXT_WIDGET_SMART_ISLAND_CUR_PCS_AMOUNT_FMT - UI_TEXT_WIDGET_BASE] = {"%s - %d pcs - %.0f", "%s - %d 张 - %.0f", "%s - %d장 - %.0f"},
     [UI_TEXT_WIDGET_SMART_ISLAND_READY_CUR_FMT - UI_TEXT_WIDGET_BASE] = {"Ready - %s", "就绪 - %s", "준비 - %s"},
     [UI_TEXT_WIDGET_SMART_ISLAND_COUNTING_PCS_FMT - UI_TEXT_WIDGET_BASE] = {"Counting - %d pcs", "点钞中 - %d 张", "계수 중 - %d장"},
-    [UI_TEXT_WIDGET_SMART_ISLAND_DONE_PCS_FMT - UI_TEXT_WIDGET_BASE] = {"Done - %d pcs", "完成 - %d 张", "완료 - %d장"},
-    [UI_TEXT_WIDGET_SMART_ISLAND_LAST_PCS_AMOUNT_FMT - UI_TEXT_WIDGET_BASE] = {"Last - PCS %d | Amount %.0f", "上一把 - 张数 %d | 金额 %.0f", "이전 - 매수 %d | 금액 %.0f"},
+    [UI_TEXT_WIDGET_SMART_ISLAND_LAST_TAG - UI_TEXT_WIDGET_BASE] = {"Last", "上一把", "이전"},
+    [UI_TEXT_WIDGET_SMART_ISLAND_PCS_AMOUNT_FMT - UI_TEXT_WIDGET_BASE] = {
+        "#FFFFFF PCS# #60A5FA %d# #737373 |# #FFFFFF Amount# #60A5FA %.0f#",
+        "#FFFFFF 张数# #60A5FA %d# #737373 |# #FFFFFF 金额# #60A5FA %.0f#",
+        "#FFFFFF 매수# #60A5FA %d# #737373 |# #FFFFFF 금액# #60A5FA %.0f#"
+    },
+    [UI_TEXT_WIDGET_SMART_ISLAND_IDLE_NO_COUNT - UI_TEXT_WIDGET_BASE] = {
+        "No counting yet",
+        "未跑钞",
+        "계수 이력 없음"
+    },
+    [UI_TEXT_WIDGET_SMART_ISLAND_PLACE_BANKNOTES - UI_TEXT_WIDGET_BASE] = {
+        "Please place banknotes",
+        "请放入钞票",
+        "지폐를 넣어 주세요"
+    },
+    [UI_TEXT_WIDGET_SMART_ISLAND_RESULT_OK_TITLE - UI_TEXT_WIDGET_BASE] = {"Batch verified", "批次已校验", "배치 검증 완료"},
+    [UI_TEXT_WIDGET_SMART_ISLAND_RESULT_OK_DETAIL - UI_TEXT_WIDGET_BASE] = {"All notes accepted", "全部钞票通过", "모든 지폐 정상"},
+    [UI_TEXT_WIDGET_SMART_ISLAND_RESULT_ISSUE_TITLE - UI_TEXT_WIDGET_BASE] = {"Processed with issues", "本批次存在异常", "이슈 포함 처리"},
+    [UI_TEXT_WIDGET_SMART_ISLAND_RESULT_ISSUE_DETAIL_FMT - UI_TEXT_WIDGET_BASE] = {
+        "#FF5A5F %d# #FFFFFF Suspect# #737373 |# #FF5A5F %d# #FFFFFF Damaged#",
+        "#FF5A5F %d# #FFFFFF 可疑# #737373 |# #FF5A5F %d# #FFFFFF 破损#",
+        "#FF5A5F %d# #FFFFFF 의심# #737373 |# #FF5A5F %d# #FFFFFF 손상#"
+    },
     [UI_TEXT_WIDGET_SMART_ISLAND_NO_REJECT - UI_TEXT_WIDGET_BASE] = {"No reject note", "无退钞", "리젝트 없음"},
     [UI_TEXT_WIDGET_SMART_ISLAND_SWIPE_ACTIONS - UI_TEXT_WIDGET_BASE] = {"Swipe for actions", "滑动查看功能", "밀어서 기능 보기"},
-    [UI_TEXT_WIDGET_SMART_ISLAND_NONE - UI_TEXT_WIDGET_BASE] = {"none", "无", "없음"},
     [UI_TEXT_WIDGET_SMART_ISLAND_SETTINGS_SAVED - UI_TEXT_WIDGET_BASE] = {"Settings saved", "设置已保存", "설정 저장됨"},
 
     //故障弹窗（no-note）

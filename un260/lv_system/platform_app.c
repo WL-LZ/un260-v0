@@ -7,6 +7,7 @@
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_refre/lvgl_refre.h"
 #include "un260/lv_system/platform_app.h"
+#include "un260/lv_components/smart_island.h"
 // 全局变量定义
 counting_sim_t sim = { 0 };
 page_02_report_status_t page_02_a_report_status = { 0 };
@@ -271,6 +272,10 @@ void sim_data_init(void)
     sim_data->total_pcs = 0;
     sim_data->last_total_amount = 0;
     sim_data->last_total_pcs = 0;
+    sim_data->last_valid_pcs = 0;
+    sim_data->last_issue_pcs = 0;
+    sim_data->last_suspect_pcs = 0;
+    sim_data->last_damaged_pcs = 0;
     Machine_para.last_total_amount = 0;
     Machine_para.last_total_pcs = 0;
     sim_data->is_paused = false;  // 初始化暂停标志为false
@@ -675,6 +680,11 @@ void sim_clear_all_sn(counting_sim_t* sim_data)
         free(sim_data->err_pcs);
         sim_data->err_pcs = NULL;
     }
+    if (sim_data->err_code != NULL)
+    {
+        free(sim_data->err_code);
+        sim_data->err_code = NULL;
+    }
     sim_data->err_capacity = 0;
 
     if (sim_data->sn_str != NULL)
@@ -704,6 +714,7 @@ void sim_clear_all_sn(counting_sim_t* sim_data)
     sim_data->err_num = 0;
     sim_data->err_expected = 0;
     ui_refresh_main_page();
+    smart_island_refresh_summary();
     int clear_data_cmd;
     clear_data_cmd = 0x01;
     send_command(fd4,0x3b,&clear_data_cmd,1);
@@ -727,6 +738,10 @@ void sim_clear_err_only(counting_sim_t* sim_data)
         free(sim_data->err_pcs);
         sim_data->err_pcs = NULL;
     }
+    if (sim_data->err_code != NULL) {
+        free(sim_data->err_code);
+        sim_data->err_code = NULL;
+    }
     sim_data->err_num = 0;
     sim_data->err_capacity = 0;
     /* Keep expected reject count from 0x0E for main-page reject display. */
@@ -735,7 +750,7 @@ void sim_clear_err_only(counting_sim_t* sim_data)
 bool sim_ensure_err_capacity(counting_sim_t* sim_data, int new_total)
 {
     if (!sim_data || new_total <= 0) return false;
-    if (sim_data->err_str == NULL || sim_data->err_pcs == NULL) {
+    if (sim_data->err_str == NULL || sim_data->err_pcs == NULL || sim_data->err_code == NULL) {
         sim_data->err_capacity = 0;
     }
 
@@ -760,9 +775,14 @@ bool sim_ensure_err_capacity(counting_sim_t* sim_data, int new_total)
     if (new_err_pcs == NULL) return false;
     sim_data->err_pcs = new_err_pcs;
 
+    uint8_t* new_err_code = realloc(sim_data->err_code, sizeof(uint8_t) * new_cap);
+    if (new_err_code == NULL) return false;
+    sim_data->err_code = new_err_code;
+
     if (new_cap > old_cap) {
         memset(sim_data->err_str + old_cap, 0, sizeof(char*) * (new_cap - old_cap));
         memset(sim_data->err_pcs + old_cap, 0, sizeof(uint8_t) * (new_cap - old_cap));
+        memset(sim_data->err_code + old_cap, 0, sizeof(uint8_t) * (new_cap - old_cap));
     }
     sim_data->err_capacity = new_cap;
     return true;

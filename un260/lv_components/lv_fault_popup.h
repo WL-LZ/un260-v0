@@ -39,6 +39,18 @@ typedef struct {
 void show_fault_popup_ex(const fault_popup_data_t* data);
 void hide_fault_popup(void);
 bool fault_popup_is_showing(void);
+void fault_popup_set_auto_enabled(bool enabled);
+bool fault_popup_get_auto_enabled(void);
+void fault_popup_report_start_fault(uint8_t type, uint8_t code);
+void fault_popup_report_start_no_note(void);
+void fault_popup_report_runtime_fault(uint8_t code);
+bool fault_popup_show_pending_now(void);
+void fault_popup_clear_pending(void);
+bool fault_popup_has_pending_start_issue(void);
+void fault_popup_auto_confirm_pending_if_needed(void);
+void fault_popup_schedule_auto_confirm(void);
+void fault_popup_cancel_auto_confirm(void);
+void fault_popup_reset_auto_retry(void);
 
 /* 协议适配入口 */
 void show_boot_fault_popup(uint8_t selftest_type, uint8_t result);
