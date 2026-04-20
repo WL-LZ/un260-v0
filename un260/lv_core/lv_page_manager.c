@@ -20,6 +20,7 @@ lv_obj_t* page_debug = NULL;
 lv_obj_t* page_sensor = NULL;
 lv_obj_t* page_upgrade = NULL;
 lv_obj_t* page_motor_test = NULL;
+lv_obj_t* pure_page = NULL;
 lv_obj_t* boot_anim_page = NULL;
 
 ui_element_group_t all_ui_groups[] = {
@@ -60,6 +61,7 @@ static void destroy_current_page(void)
     case UI_PAGE_IMAGE_UPGRADE: ui_page_15_image_upgrade_destroy(); break;
     case UI_PAGE_UI_UPGRADE: ui_page_16_ui_upgrade_destroy(); break;
     case UI_PAGE_MOTOR_TEST: ui_page_17_motor_test_destroy(); break;
+    case UI_PAGE_PURE: ui_page_18_pure_destroy(); break;
     }
 }
 
@@ -68,6 +70,7 @@ static void create_new_page(ui_page_t page)
     if (page == UI_PAGE_MAIN && main_page && lv_obj_is_valid(main_page)) {
         lv_obj_clear_flag(main_page, LV_OBJ_FLAG_HIDDEN); // 显示主页面
         resume_counting_sim(); // 恢复计数
+        smart_island_create(main_page); // 确保灵动岛从其他页面挂回主页面
         if (page_01_main_scroll_container && lv_obj_is_valid(page_01_main_scroll_container)) {
             // 返回主界面时强制把详情区滚动位置归零，避免切币种后沿用旧偏移
             lv_obj_scroll_to_y(page_01_main_scroll_container, 0, LV_ANIM_OFF);
@@ -108,6 +111,7 @@ static void create_new_page(ui_page_t page)
     case UI_PAGE_IMAGE_UPGRADE: ui_page_15_image_upgrade_create(lv_scr_act()); break;
     case UI_PAGE_UI_UPGRADE: ui_page_16_ui_upgrade_create(lv_scr_act()); break;
     case UI_PAGE_MOTOR_TEST: ui_page_17_motor_test_create(lv_scr_act()); break;
+    case UI_PAGE_PURE: ui_page_18_pure_create(lv_scr_act()); break;
     }
 }
 

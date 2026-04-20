@@ -473,8 +473,13 @@ static void fault_popup_confirm_cb(lv_event_t* e)
         ui_manager_switch(UI_PAGE_SENSOR);
     } else {
         hide_fault_popup();
-        ui_manager_switch(UI_PAGE_MAIN);
-        smart_island_restore_idle();
+        /*
+         * Non-boot pages should stay on the current page after confirm.
+         * This avoids data-collection/pure pages being forced back to MAIN.
+         */
+        if (ui_manager_get_current_page() == UI_PAGE_MAIN) {
+            smart_island_restore_idle();
+        }
     }
 }
 

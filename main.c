@@ -78,6 +78,7 @@ static bool g_boot_selftest_has_error = false;
 static uint8_t g_boot_selftest_first_error_type = 0;
 static uint8_t g_boot_selftest_first_error_result = 0;
 static bool g_count_session_active = false;
+static bool g_wait_start_ack_for_next_session = false;
 static bool g_last_result_pending_valid = false;
 static int g_last_result_pending_pcs = 0;
 static float g_last_result_pending_amount = 0.0f;
@@ -212,7 +213,8 @@ static void sim_clear_sn_only(counting_sim_t* sim_data)
 {
     if (!sim_data) return;
     if (sim_data->sn_str != NULL) {
-        for (int i = 0; i < sim_data->total_pcs; i++) {
+        /* 冠字号缓存容量可能大于/小于当前总张数，按容量释放最稳妥 */
+        for (int i = 0; i < sim_data->sn_capacity; i++) {
             if (sim_data->sn_str[i] != NULL) {
                 free(sim_data->sn_str[i]);
                 sim_data->sn_str[i] = NULL;
@@ -221,7 +223,7 @@ static void sim_clear_sn_only(counting_sim_t* sim_data)
         free(sim_data->sn_str);
         sim_data->sn_str = NULL;
     }
-    sim_data->total_pcs = 0;
+    /* 只清冠字号缓存，不改点钞总数，避免 UI 从 0 重新滚动 */
     memset(sim_data->denom_mix, 0, sizeof(sim_data->denom_mix));
     sim_data->sn_capacity = 0;
 }
@@ -238,9 +240,6 @@ static bool sim_ensure_sn_capacity(counting_sim_t* sim_data, int new_total)
     }
 
     if (new_total <= sim_data->sn_capacity) {
-        if (sim_data->total_pcs < new_total) {
-            sim_data->total_pcs = new_total;
-        }
         return true;
     }
 
@@ -263,7 +262,6 @@ static bool sim_ensure_sn_capacity(counting_sim_t* sim_data, int new_total)
     }
     sim_data->sn_str = new_ptr;
     sim_data->sn_capacity = new_cap;
-    sim_data->total_pcs = new_total;
     return true;
 }
 
@@ -525,6 +523,7 @@ static void boot_selftest_finish_cb(lv_timer_t* timer)
     boot_selftest_list_finish();     // 自检结束后补全最后一项成功状态
     sim_data_init();                 // 自检结束后初始化一次 sim
     g_count_session_active = false;
+    g_wait_start_ack_for_next_session = false;
     g_last_result_pending_valid = false;
     ui_manager_switch(UI_PAGE_MAIN); // 切到主页面
     lv_timer_del(timer);             // 删除定时器
@@ -627,6 +626,11 @@ void PCCmdHandle(void)
             uint8_t  status = p[7];
 
             if (status <= 0x01) {
+                if (g_wait_start_ack_for_next_session) {
+                    /* 等待新一把 0x0A 启动成功，忽略结束后的滞留/重放 0x0E 帧 */
+                    break;
+                }
+
                 if (!g_count_session_active) {
                     /* Last 语义：仅在“下一把开始”时，提交上一把结果 */
                     if (g_last_result_pending_valid) {
@@ -657,6 +661,7 @@ void PCCmdHandle(void)
                 float final_amount = 0.0f;
                 uart_printf(fd6, "Count finished\n");
                 g_count_session_active = false;
+                g_wait_start_ack_for_next_session = true;
                 g_last_result_pending_valid = true;
 
                 if (sim.total_pcs > 0 || sim.total_amount > 0.0f) {
@@ -887,6 +892,7 @@ void PCCmdHandle(void)
                     hide_counting_error_popup();
                     fault_popup_clear_pending();
                     fault_popup_reset_auto_retry();
+                    g_wait_start_ack_for_next_session = false;
 
                     if (g_data_collect_mode != DATA_COLLECT_MODE_NONE) {
                         snprintf(g_data_collect_status,
@@ -894,7 +900,8 @@ void PCCmdHandle(void)
                                 "Counting started...");
                         page_06_data_collection_refresh();
                     }
-                    else if (!g_cb_running) {
+                    else if (!g_cb_running &&
+                             ui_manager_get_current_page() != UI_PAGE_PURE) {
                         ui_manager_switch(UI_PAGE_MAIN);
                     }
                     smart_island_notify_count_start();

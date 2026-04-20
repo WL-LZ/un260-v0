@@ -8,6 +8,7 @@
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_refre/lvgl_refre.h"
 #include "un260/lv_core/lv_page_manager.h"
+#include "un260/lv_core/page_18_pure.h"
 #include <stdio.h>
 #include <string.h>
 #include "un260/lv_components/lv_capsule_pagination.h"
@@ -129,6 +130,7 @@ static bool g_smart_island_created = false;
 static bool g_smart_island_anim_running = false;
 static bool g_smart_island_ignore_click_once = false;
 static bool g_smart_island_ignore_action_click_once = false;
+static bool g_smart_island_pure_count_enabled = false;
 static uint8_t g_smart_island_action_page_count = SMART_ISLAND_ACTION_PAGE_COUNT;
 static uint8_t g_smart_island_action_page_index = 0;
 static int8_t g_smart_island_page_slide_dir = 0; // 0:默认 1:向左切页 -1:向右切页
@@ -201,6 +203,7 @@ static const char *smart_island_text_or_default(const char *text, ui_text_id_t t
 static uint8_t smart_island_page_indicator_count_get(void);
 static uint8_t smart_island_page_indicator_active_get(void);
 static void smart_island_page_indicator_sync(bool anim_en);
+static void smart_island_update_time_clickable(void);
 static void smart_island_warning_marquee_start(void);
 static void smart_island_warning_marquee_stop(void);
 static void smart_island_warning_marquee_finish_cb(lv_anim_t *a);
@@ -848,6 +851,24 @@ static void smart_island_action_btn_cb(lv_event_t *e)
 
     action_id = g_smart_island_action_ids[page_index];
 
+    if (action_id == SMART_ISLAND_ACTION_FUNC4) {
+        bool enabled = smart_island_pure_count_is_enabled();
+        smart_island_set_pure_count_enabled(!enabled);
+        smart_island_action_item_apply(page_index);
+
+        if (!enabled) {
+            smart_island_close();
+            ui_manager_push_page(UI_PAGE_PURE);
+        } else {
+            if (ui_manager_get_current_page() == UI_PAGE_PURE) {
+                ui_page_18_pure_request_exit();
+            } else {
+                ui_manager_switch(UI_PAGE_MAIN);
+            }
+        }
+        return;
+    }
+
     if (action_id == SMART_ISLAND_ACTION_QR) {
         smart_island_show_qr_popup();
         return;
@@ -1351,7 +1372,28 @@ static void smart_island_update_pages_visible(void)
         }
     }
 
+    smart_island_update_time_clickable();
     smart_island_apply_quality_indicator();
+}
+
+static void smart_island_update_time_clickable(void)
+{
+    bool clickable;
+
+    if (g_smart_island_time == NULL || !lv_obj_is_valid(g_smart_island_time)) {
+        return;
+    }
+
+    clickable = (g_smart_island_visual == SMART_ISLAND_VISUAL_EXPANDED &&
+                 g_smart_island_page == SMART_ISLAND_PAGE_INFO);
+
+    if (clickable) {
+        lv_obj_add_flag(g_smart_island_time, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_flag(g_smart_island_time, LV_OBJ_FLAG_CLICK_FOCUSABLE);
+    } else {
+        lv_obj_clear_flag(g_smart_island_time, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_clear_flag(g_smart_island_time, LV_OBJ_FLAG_CLICK_FOCUSABLE);
+    }
 }
 
 static void smart_island_apply_scene_style(void) 
@@ -1827,7 +1869,8 @@ static void smart_island_action_btn_style_apply(uint8_t index)
         return;
     }
 
-    is_switch = (g_smart_island_action_ids[index] == SMART_ISLAND_ACTION_FUNC3);
+    is_switch = (g_smart_island_action_ids[index] == SMART_ISLAND_ACTION_FUNC3 ||
+        g_smart_island_action_ids[index] == SMART_ISLAND_ACTION_FUNC4);
 
     lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(btn, 1, 0);
@@ -1851,7 +1894,11 @@ static void smart_island_action_btn_style_apply(uint8_t index)
         return;
     }
 
-    enabled = fault_popup_get_auto_enabled();
+    if (g_smart_island_action_ids[index] == SMART_ISLAND_ACTION_FUNC4) {
+        enabled = smart_island_pure_count_is_enabled();
+    } else {
+        enabled = fault_popup_get_auto_enabled();
+    }
     lv_obj_set_style_bg_color(btn, lv_color_hex(enabled ? SMART_ISLAND_BTN_SWITCH_ON_TOP : SMART_ISLAND_BTN_SWITCH_OFF_TOP), 0);
     lv_obj_set_style_bg_grad_color(btn, lv_color_hex(enabled ? SMART_ISLAND_BTN_SWITCH_ON_BOT : SMART_ISLAND_BTN_SWITCH_OFF_BOT), 0);
     lv_obj_set_style_bg_grad_dir(btn, LV_GRAD_DIR_VER, 0);
@@ -1889,6 +1936,8 @@ static void smart_island_action_item_apply(uint8_t index)
     if (label && lv_obj_is_valid(label)) {
         if (g_smart_island_action_ids[index] == SMART_ISLAND_ACTION_FUNC3) {
             lv_label_set_text(label, ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_ACTION_FUNC3));
+        } else if (g_smart_island_action_ids[index] == SMART_ISLAND_ACTION_FUNC4) {
+            lv_label_set_text(label, ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_ACTION_FUNC4));
         } else if (g_smart_island_action_text_ids[index] < UI_TEXT_MAX) {
             lv_label_set_text(label, ui_text_get(g_smart_island_action_text_ids[index]));
         } else if (g_smart_island_action_texts[index][0] != '\0') {
@@ -2066,7 +2115,21 @@ static void smart_island_action_btn_create(void)
 }
 void smart_island_create(lv_obj_t *parent) 
 {
-    if (parent == NULL || (g_smart_island_created && g_smart_island && lv_obj_is_valid(g_smart_island))) return;
+    if (parent == NULL) return;
+
+    if (g_smart_island_created && g_smart_island && lv_obj_is_valid(g_smart_island)) {
+        lv_obj_t *cur_parent = lv_obj_get_parent(g_smart_island);
+        if (cur_parent != parent) {
+            if (g_smart_island_modal && lv_obj_is_valid(g_smart_island_modal)) {
+                lv_obj_set_parent(g_smart_island_modal, parent);
+                lv_obj_set_pos(g_smart_island_modal, 0, 0);
+            }
+            lv_obj_set_parent(g_smart_island, parent);
+            lv_obj_move_foreground(g_smart_island);
+            smart_island_modal_update();
+        }
+        return;
+    }
 
     memset(&g_smart_island_content, 0, sizeof(g_smart_island_content));
     memset(g_smart_island_warning_text, 0, sizeof(g_smart_island_warning_text));
@@ -2117,9 +2180,8 @@ void smart_island_create(lv_obj_t *parent)
     lv_obj_set_style_text_font(g_smart_island_time, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(g_smart_island_time, lv_color_hex(SMART_ISLAND_TEXT_LIGHT), 0);
     lv_obj_align(g_smart_island_time, LV_ALIGN_RIGHT_MID, -14, 0);
-    lv_obj_add_flag(g_smart_island_time, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_add_flag(g_smart_island_time, LV_OBJ_FLAG_CLICK_FOCUSABLE);
     lv_obj_add_event_cb(g_smart_island_time, smart_island_time_click_cb, LV_EVENT_CLICKED, NULL);
+    smart_island_update_time_clickable();
 
     g_smart_island_badge = lv_obj_create(g_smart_island);
     lv_obj_remove_style_all(g_smart_island_badge);
@@ -2522,4 +2584,14 @@ void smart_island_open_action_page(void)
     smart_island_action_page_set_index(0U, false);
     smart_island_expand_if_needed(true);
     smart_island_set_page(SMART_ISLAND_PAGE_ACTION, true);
+}
+
+void smart_island_set_pure_count_enabled(bool enabled)
+{
+    g_smart_island_pure_count_enabled = enabled;
+}
+
+bool smart_island_pure_count_is_enabled(void)
+{
+    return g_smart_island_pure_count_enabled;
 }

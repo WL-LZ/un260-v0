@@ -55,6 +55,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_core/page_16_ui_upgrade.c
     un260/lv_core/ui_upgrade_service.c
     un260/lv_core/page_17_motor_test.c
+    un260/lv_core/page_18_pure.c
     un260/lv_core/page_00_boot_anim.c
     
     un260/lv_refre/lvgl_refre.c
@@ -92,6 +93,11 @@ add_executable(${PROJECT_NAME} main.c
     un260/font/lv_font_montserrat_44.c
     un260/font/lv_font_montserrat_46.c
     un260/font/lv_font_montserrat_48.c
+    un260/font/MONTSERRAT_EXTRABOLD_35.c
+    un260/font/MONTSERRAT_MEDIUM_15.c
+    un260/font/lv_font_rajdhani_27.c
+    un260/font/lv_font_rajdhani_142.c
+    un260/font/lv_font_rajdhani_194.c
     # img
     un260/lv_resources/page_01_back.c
     un260/lv_resources/page_01_collect_icon.c

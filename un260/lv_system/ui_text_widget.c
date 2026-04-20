@@ -120,6 +120,16 @@ static const ui_text_item_t g_ui_text_widget_group[UI_TEXT_MAX - UI_TEXT_WIDGET_
     [UI_TEXT_WIDGET_SMART_ISLAND_SWIPE_ACTIONS - UI_TEXT_WIDGET_BASE] = {"Swipe for actions", "滑动查看功能", "밀어서 기능 보기"},
     [UI_TEXT_WIDGET_SMART_ISLAND_SETTINGS_SAVED - UI_TEXT_WIDGET_BASE] = {"Settings saved", "设置已保存", "설정 저장됨"},
 
+    //pure页面
+    [UI_TEXT_WIDGET_PURE_AMOUNT - UI_TEXT_WIDGET_BASE] = {"A M O U N T", "金 额", "금 액"},
+    [UI_TEXT_WIDGET_PURE_PCS - UI_TEXT_WIDGET_BASE] = {"P C S", "张 数", "매 수"},
+    [UI_TEXT_WIDGET_PURE_TOTAL - UI_TEXT_WIDGET_BASE] = {"T O T A L", "总 计", "합 계"},
+    [UI_TEXT_WIDGET_PURE_VALUE - UI_TEXT_WIDGET_BASE] = {"V A L U E", "金 额", "금 액"},
+    [UI_TEXT_WIDGET_PURE_PIECES - UI_TEXT_WIDGET_BASE] = {"P I E C E S", "张 数", "매 수"},
+    [UI_TEXT_WIDGET_PURE_REJECT - UI_TEXT_WIDGET_BASE] = {"R E J E C T", "退 钞", "리젝트"},
+    [UI_TEXT_WIDGET_PURE_START - UI_TEXT_WIDGET_BASE] = {"S T A R T", "开 始", "시 작"},
+    [UI_TEXT_WIDGET_PURE_CLEAR - UI_TEXT_WIDGET_BASE] = {"C L E A R", "清 空", "초 기 화"},
+
     //故障弹窗（no-note）
     [UI_TEXT_WIDGET_FAULT_START_FAILED - UI_TEXT_WIDGET_BASE] = {"START COUNT FAILED", "启动点钞失败", "계수 시작 실패"},
     [UI_TEXT_WIDGET_FAULT_START_COUNT_ERROR - UI_TEXT_WIDGET_BASE] = {"START COUNT ERROR", "启动点钞错误", "계수 시작 오류"},

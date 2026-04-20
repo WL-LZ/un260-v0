@@ -15,6 +15,7 @@
 #include"page_15_image_upgrade.h"
 #include"page_16_ui_upgrade.h"
 #include "page_17_motor_test.h"
+#include "page_18_pure.h"
 #include "page_00_boot_anim.h"
 
 #endif // !LV_PAGE_DECLEAR_H
