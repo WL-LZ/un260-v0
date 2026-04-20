@@ -1759,6 +1759,17 @@ void PCCmdHandle(void)
 
             break;
         }
+        /* ================== 0x3B 清除数据应答 ================== */
+        case 0x3B:
+        {
+            if (len < 6) {
+                uart_printf(fd6, "0x3B invalid len=%d\n", len);
+                break;
+            }
+
+            uart_printf(fd6, "0x3B clear data ack: res=0x%02X\n", buf[4]);
+            break;
+        }
         default:
             uart_printf(fd6, "Unknown command 0x%02X\n", cmd);
             break;

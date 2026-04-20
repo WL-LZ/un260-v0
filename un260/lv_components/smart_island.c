@@ -2461,14 +2461,26 @@ void smart_island_notify_count_end(const char *result_text)
 
 void smart_island_notify_warning_level(const char *warn_text, smart_island_warning_level_t level)
 {
-    g_smart_island_warning_level = level;
+    char next_warning_text[sizeof(g_smart_island_warning_text)];
 
     if (warn_text && warn_text[0] != '\0') {
-        lv_snprintf(g_smart_island_warning_text, sizeof(g_smart_island_warning_text), "%s", warn_text);
+        lv_snprintf(next_warning_text, sizeof(next_warning_text), "%s", warn_text);
     } else {
-        lv_snprintf(g_smart_island_warning_text, sizeof(g_smart_island_warning_text), "%s",
+        lv_snprintf(next_warning_text, sizeof(next_warning_text), "%s",
             ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_COUNT_ERROR));
     }
+
+    /* 同一条异常重复上报时，不重启 warning 动画，避免 ESC/CLEAR/START 触发“重新闪烁” */
+    if (g_smart_island_scene == SMART_ISLAND_SCENE_WARNING &&
+        g_smart_island_warning_level == level &&
+        strcmp(g_smart_island_warning_text, next_warning_text) == 0) {
+        return;
+    }
+
+    g_smart_island_warning_level = level;
+
+    lv_snprintf(g_smart_island_warning_text, sizeof(g_smart_island_warning_text), "%s",
+        next_warning_text);
 
     smart_island_stop_warning_timer();
 
@@ -2560,6 +2572,11 @@ void smart_island_refresh_language_texts(void)
 
 void smart_island_refresh_summary(void)
 {
+    /* Warning 场景中避免外部刷新重刷样式，防止 ESC/CLEAR 造成文本“重新闪烁” */
+    if (g_smart_island_scene == SMART_ISLAND_SCENE_WARNING) {
+        return;
+    }
+
     smart_island_rebuild_scene_texts();
     smart_island_apply_scene_style();
 }

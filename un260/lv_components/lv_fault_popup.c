@@ -475,9 +475,10 @@ static void fault_popup_confirm_cb(lv_event_t* e)
         hide_fault_popup();
         /*
          * Non-boot pages should stay on the current page after confirm.
-         * This avoids data-collection/pure pages being forced back to MAIN.
+         * MAIN/PURE both host smart-island and must restore to idle after confirm.
          */
-        if (ui_manager_get_current_page() == UI_PAGE_MAIN) {
+        if (ui_manager_get_current_page() == UI_PAGE_MAIN ||
+            ui_manager_get_current_page() == UI_PAGE_PURE) {
             smart_island_restore_idle();
         }
     }
