@@ -190,6 +190,7 @@ static void smart_island_action_page_slide_anim(uint8_t old_index, uint8_t new_i
 static void smart_island_action_item_apply(uint8_t index); 
 static void smart_island_page_slide_anim(smart_island_page_t old_page, smart_island_page_t new_page); 
 static void smart_island_page_slide_anim_finish_cb(lv_anim_t *a); 
+static void smart_island_action_page_slide_anim_finish_cb(lv_anim_t *a);
 static void smart_island_reset_page_positions(void); 
 static void smart_island_reset_compact_header_position(void); 
 static void smart_island_reset_time_position(void); 
@@ -307,6 +308,13 @@ static void smart_island_anim_finish_cb(lv_anim_t *a)
 {
     LV_UNUSED(a);
     g_smart_island_anim_running = false;
+}
+
+static void smart_island_action_page_slide_anim_finish_cb(lv_anim_t *a)
+{
+    LV_UNUSED(a);
+    g_smart_island_anim_running = false;
+    g_smart_island_ignore_action_click_once = false;
 }
 
 static void smart_island_bg_color_anim_ready_cb(lv_anim_t *a)
@@ -1980,7 +1988,7 @@ static void smart_island_action_page_slide_anim(uint8_t old_index, uint8_t new_i
     lv_anim_set_values(&a, -(lv_coord_t)old_index * SMART_ISLAND_W, -(lv_coord_t)new_index * SMART_ISLAND_W);
     lv_anim_set_time(&a, 160);
     lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
-    lv_anim_set_ready_cb(&a, smart_island_anim_finish_cb);
+    lv_anim_set_ready_cb(&a, smart_island_action_page_slide_anim_finish_cb);
     lv_anim_start(&a);
 }
 static void smart_island_action_page_set_index(uint8_t index, bool anim_en) 
