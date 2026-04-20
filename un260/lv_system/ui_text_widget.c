@@ -34,7 +34,7 @@ static const ui_text_item_t g_ui_text_widget_group[UI_TEXT_MAX - UI_TEXT_WIDGET_
 
     //二维码弹窗
     [UI_TEXT_WIDGET_QR_POPUP_TITLE - UI_TEXT_WIDGET_BASE] = {"COUNTING QR", "点钞二维码", "계수 QR"},
-    [UI_TEXT_WIDGET_QR_POPUP_DESC - UI_TEXT_WIDGET_BASE] = {"Scan with your phone to view counting details", "使用手机扫码查看本次点钞详情", "휴대폰으로 스캔해 이번 계수 상세를 확인하세요"},
+    [UI_TEXT_WIDGET_QR_POPUP_DESC - UI_TEXT_WIDGET_BASE] = {"Scan to view details", "扫码查看详情", "스캔하여 상세보기"},
     [UI_TEXT_WIDGET_QR_POPUP_BTN_CLOSE - UI_TEXT_WIDGET_BASE] = {"Close", "关闭", "닫기"},
     [UI_TEXT_WIDGET_QR_POPUP_NO_DATA - UI_TEXT_WIDGET_BASE] = {"No counting data", "暂无点钞数据", "계수 데이터가 없습니다"},
     [UI_TEXT_WIDGET_QR_POPUP_DATA_TOO_LARGE - UI_TEXT_WIDGET_BASE] = {"QR data is too large", "二维码数据过大", "QR 데이터가 너무 큽니다"},
