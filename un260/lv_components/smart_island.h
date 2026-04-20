@@ -73,6 +73,7 @@ void smart_island_set_idle_info_line3(const char *text); //设置Idle展开第3�
 void smart_island_close(void); //关闭灵动岛
 void smart_island_open_info_page(void); //打开信息页
 void smart_island_open_action_page(void); //打开功能页
+bool smart_island_is_attached_to(lv_obj_t *parent); //灵动岛是否挂载在指定父对象下
 void smart_island_set_pure_count_enabled(bool enabled); //设置纯净跑钞模式开关
 bool smart_island_pure_count_is_enabled(void); //获取纯净跑钞模式开关
 

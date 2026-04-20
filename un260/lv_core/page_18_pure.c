@@ -359,6 +359,10 @@ void ui_page_18_pure_request_exit(void)
     }
 
     pure_page_exiting = true;
+    smart_island_close();
+    if (main_page && lv_obj_is_valid(main_page)) {
+        smart_island_create(main_page);
+    }
     ui_manager_switch(UI_PAGE_MAIN);
     pure_page_exiting = false;
 }
@@ -370,7 +374,9 @@ void ui_page_18_pure_destroy(void)
         pure_refresh_timer = NULL;
     }
 
-    smart_island_destroy();
+    if (smart_island_is_attached_to(pure_page)) {
+        smart_island_destroy();
+    }
 
     if (pure_page && lv_obj_is_valid(pure_page)) {
         lv_obj_del(pure_page);

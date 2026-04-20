@@ -2343,6 +2343,17 @@ void smart_island_destroy(void)
     g_smart_island_action_track = NULL;
     g_smart_island_page_indicator = NULL;
     g_smart_island_page_slide_dir = 0;
+    g_smart_island_anim_running = false;
+    g_smart_island_ignore_click_once = false;
+    g_smart_island_ignore_action_click_once = false;
+    g_smart_island_warning_marquee_running = false;
+    g_smart_island_warning_marquee_step = 0;
+    g_smart_island_warning_text_w_compact = 0;
+    g_smart_island_warning_text_w_expand = 0;
+    g_smart_island_swipe.pressed = false;
+    g_smart_island_swipe.swiped = false;
+    g_smart_island_swipe.start_pt.x = 0;
+    g_smart_island_swipe.start_pt.y = 0;
     g_smart_island_bg_cur = SMART_ISLAND_BG_IDLE;
     g_smart_island_bg_from = SMART_ISLAND_BG_IDLE;
     g_smart_island_bg_to = SMART_ISLAND_BG_IDLE;
@@ -2361,6 +2372,20 @@ void smart_island_destroy(void)
 
     g_smart_island_created = false;
 }
+
+bool smart_island_is_attached_to(lv_obj_t *parent)
+{
+    if (parent == NULL || !lv_obj_is_valid(parent)) {
+        return false;
+    }
+
+    if (g_smart_island == NULL || !lv_obj_is_valid(g_smart_island)) {
+        return false;
+    }
+
+    return lv_obj_get_parent(g_smart_island) == parent;
+}
+
 void smart_island_refresh_time(void) 
 {
     if (g_smart_island_scene == SMART_ISLAND_SCENE_IDLE &&
