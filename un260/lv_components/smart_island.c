@@ -207,6 +207,7 @@ static void smart_island_page_indicator_sync(bool anim_en);
 static void smart_island_update_time_clickable(void);
 static void smart_island_warning_marquee_start(void);
 static void smart_island_warning_marquee_stop(void);
+static void smart_island_warning_apply_static_layout(void);
 static void smart_island_warning_marquee_finish_cb(lv_anim_t *a);
 static void smart_island_warning_marquee_timeout_cb(lv_timer_t *timer);
 static void smart_island_warning_marquee_run_step(void);
@@ -375,6 +376,31 @@ static void smart_island_warning_marquee_stop(void)
     g_smart_island_warning_text_w_compact = 0;
     g_smart_island_warning_text_w_expand = 0;
     smart_island_reset_compact_header_position();
+    smart_island_warning_apply_static_layout();
+}
+
+static void smart_island_warning_apply_static_layout(void)
+{
+    lv_coord_t compact_visible = SMART_ISLAND_W - 36 - 14;
+    lv_coord_t expand_visible = SMART_ISLAND_W - 32 - 12;
+
+    if (g_smart_island_scene != SMART_ISLAND_SCENE_WARNING) {
+        return;
+    }
+
+    if (g_smart_island_title && lv_obj_is_valid(g_smart_island_title)) {
+        lv_label_set_long_mode(g_smart_island_title, LV_LABEL_LONG_CLIP);
+        lv_obj_set_width(g_smart_island_title, compact_visible);
+        lv_obj_set_x(g_smart_island_title, 36);
+        lv_obj_set_y(g_smart_island_title, 13);
+    }
+
+    if (g_smart_island_expand_title && lv_obj_is_valid(g_smart_island_expand_title)) {
+        lv_label_set_long_mode(g_smart_island_expand_title, LV_LABEL_LONG_CLIP);
+        lv_obj_set_width(g_smart_island_expand_title, expand_visible);
+        lv_obj_set_x(g_smart_island_expand_title, 20);
+        lv_obj_set_y(g_smart_island_expand_title, 18);
+    }
 }
 
 static void smart_island_warning_marquee_finish_cb(lv_anim_t *a)
@@ -798,17 +824,22 @@ static void smart_island_modal_click_cb(lv_event_t *e)
 static void smart_island_click_cb(lv_event_t *e) 
 {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+
+    if (g_smart_island_scene == SMART_ISLAND_SCENE_WARNING) {
+        if (g_smart_island_ignore_click_once) {
+            g_smart_island_ignore_click_once = false;
+            return;
+        }
+        if (fault_popup_show_pending_now()) {
+            smart_island_warning_marquee_stop();
+        }
+        return;
+    }
+
     if (g_smart_island_anim_running) return;
 
     if (g_smart_island_ignore_click_once) {
         g_smart_island_ignore_click_once = false;
-        return;
-    }
-
-    if (g_smart_island_scene == SMART_ISLAND_SCENE_WARNING) {
-        if (fault_popup_show_pending_now()) {
-            smart_island_warning_marquee_stop();
-        }
         return;
     }
 
@@ -2474,6 +2505,12 @@ void smart_island_notify_warning_level(const char *warn_text, smart_island_warni
     if (g_smart_island_scene == SMART_ISLAND_SCENE_WARNING &&
         g_smart_island_warning_level == level &&
         strcmp(g_smart_island_warning_text, next_warning_text) == 0) {
+        if (!g_smart_island_warning_marquee_running) {
+            smart_island_warning_apply_static_layout();
+            if (!fault_popup_is_showing()) {
+                smart_island_warning_marquee_start();
+            }
+        }
         return;
     }
 

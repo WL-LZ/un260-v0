@@ -594,7 +594,6 @@ void fault_popup_auto_confirm_pending_if_needed(void)
     }
 
     if (!fault_popup_should_auto_clear(g_fault_pending.fault_type, g_fault_pending.code)) {
-        fault_popup_clear_pending();
         return;
     }
 
