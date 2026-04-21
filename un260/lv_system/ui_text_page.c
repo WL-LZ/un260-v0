@@ -21,6 +21,15 @@ const ui_text_item_t g_ui_text_page_group[UI_TEXT_PAGE_MAX] = {
     [UI_TEXT_PAGE01_BOTTOM_SPEED_MID] = {"MID", "中", "MID"},
     [UI_TEXT_PAGE01_BOTTOM_SPEED_HIGH] = {"HIGH", "高", "HIGH"},
     [UI_TEXT_PAGE01_BOTTOM_CFD_FMT] = {"CFD:%s", "CFD:%s", "CFD:%s"},
+    [UI_TEXT_PAGE01_DETAIL_BTN_A] = {"A", "A", "A"},
+    [UI_TEXT_PAGE01_DETAIL_BTN_B] = {"B", "B", "B"},
+    [UI_TEXT_PAGE01_DETAIL_BTN_C] = {"C", "C", "C"},
+    [UI_TEXT_PAGE01_DETAIL_COL_DENOM] = {"DENOM", "面额", "DENOM"},
+    [UI_TEXT_PAGE01_DETAIL_COL_PCS] = {"PCS", "张数", "PCS"},
+    [UI_TEXT_PAGE01_DETAIL_COL_AMOUNT] = {"AMOUNT", "金额", "AMOUNT"},
+    [UI_TEXT_PAGE01_DETAIL_COL_NO] = {"NO", "序号", "NO"},
+    [UI_TEXT_PAGE01_DETAIL_COL_SN] = {"SN", "冠字号", "SN"},
+    [UI_TEXT_PAGE01_DETAIL_COL_REJECT] = {"REJECT", "拒钞", "REJECT"},
 
     //PAGE16
     [UI_TEXT_PAGE16_TITLE] = {"UI UPGRADE", "界面升级", "UI 업그레이드"},

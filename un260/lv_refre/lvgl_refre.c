@@ -24,11 +24,26 @@ static lv_obj_t* s_page_01_scroll_hint_up = NULL;
 static lv_obj_t* s_page_01_scroll_hint_down = NULL;
 static bool s_page_01_scroll_hint_up_show = false;
 static bool s_page_01_scroll_hint_down_show = false;
+static lv_coord_t s_page_01_detail_scroll_y[PAGE_01_DETAIL_SECTION_C + 1] = { 0 };
+static uint16_t s_page_01_detail_first_row_cache[PAGE_01_DETAIL_SECTION_C + 1] = { 0 };
+static int16_t s_page_01_detail_last_render_first_row[PAGE_01_DETAIL_SECTION_C + 1] = { -1, -1, -1 };
 
 #define PAGE_01_SCROLL_HINT_UP_IMG_PATH       "L:/usr/local/share/lvgl_data/main_pol_up.png"
 #define PAGE_01_SCROLL_HINT_DOWN_IMG_PATH     "L:/usr/local/share/lvgl_data/main_pol_down.png"
 #define PAGE_01_SCROLL_HINT_UP_IMG_PATH_USB   "L:/mnt/usb/lvgl_data/main_pol_up.png"
 #define PAGE_01_SCROLL_HINT_DOWN_IMG_PATH_USB "L:/mnt/usb/lvgl_data/main_pol_down.png"
+
+static lv_coord_t page_01_detail_view_h_get(page_01_detail_section_t section)
+{
+    switch (section) {
+    case PAGE_01_DETAIL_SECTION_A:
+        return 240; // A区保留TOTAL区域
+    case PAGE_01_DETAIL_SECTION_B:
+    case PAGE_01_DETAIL_SECTION_C:
+    default:
+        return 273; // B/C区容器进一步回收，避免滑动内容超出背景框
+    }
+}
 
 static bool page_01_set_hint_img_src(lv_obj_t* img_obj, const char* primary_path, const char* fallback_path) //设置遮挡提示图片（带回退路径）
 {
@@ -49,47 +64,183 @@ static bool page_01_set_hint_img_src(lv_obj_t* img_obj, const char* primary_path
     return false;
 }
 
-static int page_01_get_visible_denom_count(void) //获取当前币种有效面额数量（数据侧）
+static uint8_t page_01_detail_visible_row_limit_get(page_01_detail_section_t section)
+{
+    switch (section) {
+    case PAGE_01_DETAIL_SECTION_A:
+        return 8; // A区底部要显示TOTAL，详情最多8行
+    case PAGE_01_DETAIL_SECTION_B:
+    case PAGE_01_DETAIL_SECTION_C:
+    default:
+        return 9; // B/C无TOTAL，可显示9行
+    }
+}
+
+int page_01_detail_row_gap_get(int section)
+{
+    page_01_detail_section_t sec = (page_01_detail_section_t)section;
+
+    switch (sec) {
+    case PAGE_01_DETAIL_SECTION_A:
+        return 32; // A区保持8行节奏
+    case PAGE_01_DETAIL_SECTION_B:
+    case PAGE_01_DETAIL_SECTION_C:
+    default:
+        return 31; // B/C区对齐list页面行距
+    }
+}
+
+static int page_01_detail_row_count_get(page_01_detail_section_t section)
 {
     int count = 0;
-    int max_cnt = (int)(sizeof(sim.denom) / sizeof(sim.denom[0]));
 
-    for (int i = 0; i < max_cnt; i++) {
-        if (sim.denom[i].value > 0) {
-            count++;
+    switch (section) {
+    case PAGE_01_DETAIL_SECTION_A:
+        for (int i = 0; i < sim.denom_number &&
+            i < (int)(sizeof(sim.denom) / sizeof(sim.denom[0])); i++) {
+            if (sim.denom[i].value > 0) count++;
         }
+        if (count > 10) count = 10;
+        break;
+    case PAGE_01_DETAIL_SECTION_B:
+        if (sim.sn_str != NULL) {
+            for (int i = 0; i < sim.total_pcs; i++) {
+                if (sim.sn_str[i] != NULL && sim.denom_mix[i] > 0) count++;
+            }
+        }
+        break;
+    case PAGE_01_DETAIL_SECTION_C:
+        count = sim.err_num;
+        if (count > 10) count = 10;
+        break;
+    default:
+        break;
     }
 
     return count;
 }
 
-static int page_01_get_visible_row_count_from_ui(void) //获取主界面右侧当前可见行数（UI侧）
+static lv_coord_t page_01_detail_max_scroll_y_get(page_01_detail_section_t section)
 {
-    int count = 0;
-    char name[32];
+    int row_count = page_01_detail_row_count_get(section);
+    int visible_limit = page_01_detail_visible_row_limit_get(section);
+    lv_coord_t row_gap = (lv_coord_t)page_01_detail_row_gap_get(section);
 
-    for (int i = 1; i <= 10; i++) {
-        lv_obj_t* obj;
-        snprintf(name, sizeof(name), "denom_%d_label", i);
-        obj = find_obj_by_name(name, page_01_main_obj, page_01_main_len);
-        if (obj && !lv_obj_has_flag(obj, LV_OBJ_FLAG_HIDDEN)) {
-            count++;
-        }
+    if (row_count <= visible_limit) {
+        return 0;
     }
 
-    return count;
+    return (lv_coord_t)((row_count - visible_limit) * row_gap);
+}
+
+int page_01_detail_scroll_first_row_get(int section)
+{
+    lv_coord_t scroll_top;
+    lv_coord_t max_scroll;
+    uint16_t first_row = 0;
+    const lv_coord_t row_gap = (lv_coord_t)page_01_detail_row_gap_get(section);
+
+    if (section < PAGE_01_DETAIL_SECTION_A || section > PAGE_01_DETAIL_SECTION_C) return 0;
+    if (!page_01_main_scroll_container || !lv_obj_is_valid(page_01_main_scroll_container)) {
+        return (int)s_page_01_detail_first_row_cache[section];
+    }
+
+    scroll_top = lv_obj_get_scroll_top(page_01_main_scroll_container);
+    if (scroll_top < 0) scroll_top = 0;
+    max_scroll = page_01_detail_max_scroll_y_get(section);
+    if (scroll_top > max_scroll) scroll_top = max_scroll;
+
+    first_row = (uint16_t)(scroll_top / row_gap);
+    s_page_01_detail_first_row_cache[section] = first_row;
+    return (int)first_row;
 }
 
 bool page_01_is_small_denom_mode(void) //当前币种是否为“小面额可见行”模式
 {
-    int ui_visible_rows = page_01_get_visible_row_count_from_ui();
-    int data_visible_cnt = page_01_get_visible_denom_count();
+    page_01_detail_section_t section = page_01_detail_section_get();
+    int row_count = page_01_detail_row_count_get(section);
+    int visible_limit = page_01_detail_visible_row_limit_get(section);
 
-    if (ui_visible_rows > 0) {
-        return (ui_visible_rows <= PAGE_01_REPORT_ITEM);
+    return row_count <= visible_limit;
+}
+
+static void page_01_detail_scroll_spacer_refresh(page_01_detail_section_t section)
+{
+    lv_coord_t max_scroll;
+    lv_coord_t spacer_y;
+    lv_coord_t view_h;
+
+    if (s_page_01_scroll_spacer == NULL || !lv_obj_is_valid(s_page_01_scroll_spacer)) return;
+    max_scroll = page_01_detail_max_scroll_y_get(section);
+    view_h = page_01_detail_view_h_get(section);
+    spacer_y = view_h + max_scroll;
+    if (spacer_y < view_h + 1) spacer_y = view_h + 1;
+    lv_obj_set_pos(s_page_01_scroll_spacer, 0, spacer_y);
+}
+
+static void page_01_detail_scroll_save_current(void)
+{
+    page_01_detail_section_t section = page_01_detail_section_get();
+    lv_coord_t scroll_top;
+
+    if (!page_01_main_scroll_container || !lv_obj_is_valid(page_01_main_scroll_container)) return;
+    scroll_top = lv_obj_get_scroll_top(page_01_main_scroll_container);
+    if (scroll_top < 0) scroll_top = 0;
+    s_page_01_detail_scroll_y[section] = scroll_top;
+    s_page_01_detail_first_row_cache[section] =
+        (uint16_t)(scroll_top / page_01_detail_row_gap_get(section));
+}
+
+static void page_01_detail_scroll_restore_current(bool anim_en)
+{
+    page_01_detail_section_t section = page_01_detail_section_get();
+    lv_coord_t target_scroll;
+    lv_coord_t max_scroll;
+    lv_coord_t view_h;
+
+    if (!page_01_main_scroll_container || !lv_obj_is_valid(page_01_main_scroll_container)) return;
+    view_h = page_01_detail_view_h_get(section);
+    lv_obj_set_height(page_01_main_scroll_container, view_h);
+
+    page_01_detail_scroll_spacer_refresh(section);
+    max_scroll = page_01_detail_max_scroll_y_get(section);
+    target_scroll = s_page_01_detail_scroll_y[section];
+    if (target_scroll < 0) target_scroll = 0;
+    if (target_scroll > max_scroll) target_scroll = max_scroll;
+    s_page_01_detail_scroll_y[section] = target_scroll;
+    lv_obj_scroll_to_y(page_01_main_scroll_container, target_scroll, anim_en ? LV_ANIM_ON : LV_ANIM_OFF);
+}
+
+void page_01_detail_scroll_before_section_switch(void)
+{
+    page_01_detail_scroll_save_current();
+}
+
+void page_01_detail_scroll_after_section_switch(void)
+{
+    page_01_detail_scroll_restore_current(false);
+    page_01_scroll_hint_on_enter();
+}
+
+void page_01_detail_scroll_sync_current_section(void)
+{
+    page_01_detail_scroll_restore_current(false);
+    page_01_scroll_hint_on_enter();
+}
+
+void page_01_detail_scroll_reset_all(void)
+{
+    for (int i = 0; i <= PAGE_01_DETAIL_SECTION_C; i++) {
+        s_page_01_detail_scroll_y[i] = 0;
+        s_page_01_detail_first_row_cache[i] = 0;
+        s_page_01_detail_last_render_first_row[i] = -1;
     }
 
-    return (data_visible_cnt <= PAGE_01_REPORT_ITEM);
+    if (page_01_main_scroll_container && lv_obj_is_valid(page_01_main_scroll_container)) {
+        lv_obj_scroll_to_y(page_01_main_scroll_container, 0, LV_ANIM_OFF);
+    }
+
+    page_01_scroll_hint_force_hide();
 }
 
 static void page_01_scroll_hint_sync_visible(void) //同步遮挡提示最终可见状态
@@ -106,35 +257,37 @@ static void page_01_scroll_hint_sync_visible(void) //同步遮挡提示最终可
 
 static void page_01_scroll_hint_refresh(bool force_blink) //刷新主界面详情遮挡提示（无动画）
 {
-    int top_hidden = 0;
-    int bottom_hidden = 0;
+    lv_coord_t top_hidden = 0;
+    lv_coord_t max_scroll = 0;
+    lv_coord_t bottom_epsilon = 2;
+    int row_count = 0;
+    int visible_limit = 0;
     bool top_show;
     bool bottom_show;
-    bool small_denom_mode;
+    page_01_detail_section_t section = page_01_detail_section_get();
     (void)force_blink;
 
     if (!page_01_main_scroll_container || !lv_obj_is_valid(page_01_main_scroll_container)) return;
-    if (!main_page || !lv_obj_is_valid(main_page)) return;
-    // 先更新布局，避免切币种后拿到旧的滚动范围导致提示残留
-    lv_obj_update_layout(main_page);
-    lv_obj_update_layout(page_01_main_scroll_container);
+    row_count = page_01_detail_row_count_get(section);
+    visible_limit = page_01_detail_visible_row_limit_get(section);
+    max_scroll = page_01_detail_max_scroll_y_get(section);
 
     top_hidden = lv_obj_get_scroll_top(page_01_main_scroll_container);
-    bottom_hidden = lv_obj_get_scroll_bottom(page_01_main_scroll_container);
+    if (top_hidden < 0) top_hidden = 0;
     top_show = (top_hidden > 0);
-    bottom_show = (bottom_hidden > 0);
-    small_denom_mode = page_01_is_small_denom_mode();
-
-    // 小面额币种不显示上下遮挡提示
-    if (small_denom_mode) {
+    // 底部回弹收敛阶段给一个小阈值，避免“已到底部但down仍短暂显示”
+    bottom_show = (row_count > visible_limit) && (top_hidden + bottom_epsilon < max_scroll);
+    if (row_count <= visible_limit) {
         top_show = false;
         bottom_show = false;
     }
 
-    s_page_01_scroll_hint_up_show = top_show;
-    s_page_01_scroll_hint_down_show = bottom_show;
-
-    page_01_scroll_hint_sync_visible();
+    if (s_page_01_scroll_hint_up_show != top_show ||
+        s_page_01_scroll_hint_down_show != bottom_show) {
+        s_page_01_scroll_hint_up_show = top_show;
+        s_page_01_scroll_hint_down_show = bottom_show;
+        page_01_scroll_hint_sync_visible();
+    }
 }
 
 static void page_01_scroll_hint_event_cb(lv_event_t* e) //详情滚动事件：更新遮挡提示
@@ -142,6 +295,17 @@ static void page_01_scroll_hint_event_cb(lv_event_t* e) //详情滚动事件：�
     lv_event_code_t code = lv_event_get_code(e);
 
     if (code == LV_EVENT_SCROLL) {
+        page_01_detail_section_t section = page_01_detail_section_get();
+        int first_row = 0;
+
+        page_01_detail_scroll_save_current();
+        if (section == PAGE_01_DETAIL_SECTION_B) {
+            first_row = (int)s_page_01_detail_first_row_cache[section];
+            if (s_page_01_detail_last_render_first_row[section] != first_row) {
+                s_page_01_detail_last_render_first_row[section] = (int16_t)first_row;
+                page_01_main_detail_refresh_rows_only();
+            }
+        }
         page_01_scroll_hint_refresh(false);
         return;
     }
@@ -151,6 +315,9 @@ static void page_01_scroll_hint_event_cb(lv_event_t* e) //详情滚动事件：�
             page_01_main_scroll_container && lv_obj_is_valid(page_01_main_scroll_container)) {
             // 小面额币种允许拖动，但松手后回到顶部
             lv_obj_scroll_to_y(page_01_main_scroll_container, 0, LV_ANIM_ON);
+            s_page_01_detail_scroll_y[page_01_detail_section_get()] = 0;
+        } else {
+            page_01_detail_scroll_save_current();
         }
         page_01_scroll_hint_refresh(false);
     }
@@ -331,16 +498,16 @@ void page_01_create_mian_scrollable_container(void)
         }
     }
 
-    // 固定一个不可见占位点，保证任意币种都具备可拖动回弹的滚动空间
+    // 占位点高度由当前分区有效行数动态驱动
     s_page_01_scroll_spacer = lv_obj_create(page_01_main_scroll_container);
     lv_obj_remove_style_all(s_page_01_scroll_spacer);
     lv_obj_set_size(s_page_01_scroll_spacer, 1, 1);
-    lv_obj_set_pos(s_page_01_scroll_spacer, 0, 272); // 比容器(240)略大，保证始终可上下拖动
+    lv_obj_set_pos(s_page_01_scroll_spacer, 0, 241);
     lv_obj_set_style_bg_opa(s_page_01_scroll_spacer, LV_OPA_TRANSP, 0);
     lv_obj_clear_flag(s_page_01_scroll_spacer, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(s_page_01_scroll_spacer, LV_OBJ_FLAG_CLICKABLE);
 
-    // 主界面详情区始终允许上下滑动，不再按面额数量阈值开关
+    // 主界面详情区始终允许上下滑动，惯性由分区策略动态控制
     lv_obj_add_flag(page_01_main_scroll_container,
                     LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC);
     lv_obj_clear_flag(page_01_main_scroll_container, LV_OBJ_FLAG_SCROLL_MOMENTUM);
@@ -365,7 +532,7 @@ void page_01_create_mian_scrollable_container(void)
         lv_obj_add_flag(s_page_01_scroll_hint_down, LV_OBJ_FLAG_HIDDEN);
     }
 
-    page_01_scroll_hint_refresh(true);
+    page_01_detail_scroll_sync_current_section();
 }
 
 

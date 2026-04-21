@@ -198,6 +198,8 @@ void page_01_start_btn_event_cb(lv_event_t* e) // 开始仿真
 
      stop_counting_sim();
      sim_clear_all_sn(&sim);
+     ui_refresh_main_page();
+     page_01_scroll_hint_force_hide();
     
 
  }

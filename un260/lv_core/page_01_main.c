@@ -17,6 +17,7 @@
 #include "un260/lv_system/machine_time.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/ui_export_data.h"
+#include <stdint.h>
 
 // 添加数组元素计数变量
 int page_01_main_len = 0;
@@ -49,6 +50,14 @@ static lv_obj_t* s_bottom_c_box_cfd = NULL;
 static lv_obj_t* s_bottom_c_label_batch = NULL;
 static lv_obj_t* s_bottom_c_label_speed = NULL;
 static lv_obj_t* s_bottom_c_label_cfd = NULL;
+static lv_obj_t* s_detail_btn_a = NULL;
+static lv_obj_t* s_detail_btn_b = NULL;
+static lv_obj_t* s_detail_btn_c = NULL;
+static page_01_detail_section_t s_detail_section = PAGE_01_DETAIL_SECTION_A;
+
+static void page_01_detail_section_btn_style_apply(void);
+static void page_01_detail_section_btn_event_cb(lv_event_t* e);
+static void page_01_detail_section_btn_text_refresh(void);
 
 static void page_01_smart_island_action_cb(uint8_t action_id)
 {
@@ -384,6 +393,121 @@ static void page_01_bottom_c_destroy(void) //销毁主界面底部C区三个区�
     s_bottom_c_label_batch = NULL;
     s_bottom_c_label_speed = NULL;
     s_bottom_c_label_cfd = NULL;
+}
+
+static void page_01_detail_section_btn_update_one(lv_obj_t* btn, bool selected)
+{
+    if (btn == NULL || !lv_obj_is_valid(btn)) return;
+
+    lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_color(btn, selected ? lv_color_hex(0x4D7DFF) : lv_color_hex(0xF4F4F4), 0);
+    lv_obj_set_style_bg_color(btn, lv_color_hex(0xCECECE), LV_STATE_PRESSED);
+    lv_obj_set_style_radius(btn, 12, 0);
+    lv_obj_set_style_border_width(btn, 1, 0);
+    lv_obj_set_style_border_color(btn, selected ? lv_color_hex(0x4D7DFF) : lv_color_hex(0xD7D7D7), 0);
+    lv_obj_set_style_outline_width(btn, 0, 0);
+    lv_obj_set_style_shadow_width(btn, 0, 0);
+
+    lv_obj_t* label = lv_obj_get_child(btn, 0);
+    if (label != NULL) {
+        lv_obj_set_style_text_color(label, selected ? lv_color_hex(0xFFFFFF) : lv_color_hex(0x6E6E6E), 0);
+        lv_obj_set_style_text_font(label, &lv_font_montserrat_18, 0);
+    }
+}
+
+static void page_01_detail_section_btn_style_apply(void)
+{
+    page_01_detail_section_btn_update_one(s_detail_btn_a, s_detail_section == PAGE_01_DETAIL_SECTION_A);
+    page_01_detail_section_btn_update_one(s_detail_btn_b, s_detail_section == PAGE_01_DETAIL_SECTION_B);
+    page_01_detail_section_btn_update_one(s_detail_btn_c, s_detail_section == PAGE_01_DETAIL_SECTION_C);
+}
+
+static void page_01_detail_section_btn_text_refresh(void)
+{
+    lv_obj_t* label = NULL;
+
+    if (s_detail_btn_a && lv_obj_is_valid(s_detail_btn_a)) {
+        label = lv_obj_get_child(s_detail_btn_a, 0);
+        if (label) lv_label_set_text(label, ui_text_get(UI_TEXT_PAGE01_DETAIL_BTN_A));
+    }
+    if (s_detail_btn_b && lv_obj_is_valid(s_detail_btn_b)) {
+        label = lv_obj_get_child(s_detail_btn_b, 0);
+        if (label) lv_label_set_text(label, ui_text_get(UI_TEXT_PAGE01_DETAIL_BTN_B));
+    }
+    if (s_detail_btn_c && lv_obj_is_valid(s_detail_btn_c)) {
+        label = lv_obj_get_child(s_detail_btn_c, 0);
+        if (label) lv_label_set_text(label, ui_text_get(UI_TEXT_PAGE01_DETAIL_BTN_C));
+    }
+}
+
+static lv_obj_t* page_01_detail_section_btn_create(lv_coord_t x, lv_coord_t y,
+    const char* text, page_01_detail_section_t section)
+{
+    lv_obj_t* btn = lv_btn_create(main_page);
+    lv_obj_t* label;
+
+    lv_obj_set_pos(btn, x, y);
+    lv_obj_set_size(btn, 26, 61);
+    lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_event_cb(btn, page_01_detail_section_btn_event_cb, LV_EVENT_CLICKED, (void*)(uintptr_t)section);
+
+    label = lv_label_create(btn);
+    lv_label_set_text(label, text);
+    lv_obj_center(label);
+
+    return btn;
+}
+
+static void page_01_detail_section_btn_create_all(void)
+{
+    if (s_detail_btn_a || s_detail_btn_b || s_detail_btn_c) return;
+
+    // A/B/C与右侧menu/start/esc按钮中心线对齐，x保持不变
+    s_detail_btn_a = page_01_detail_section_btn_create(1087, 34, ui_text_get(UI_TEXT_PAGE01_DETAIL_BTN_A), PAGE_01_DETAIL_SECTION_A);
+    s_detail_btn_b = page_01_detail_section_btn_create(1087, 144, ui_text_get(UI_TEXT_PAGE01_DETAIL_BTN_B), PAGE_01_DETAIL_SECTION_B);
+    s_detail_btn_c = page_01_detail_section_btn_create(1087, 254, ui_text_get(UI_TEXT_PAGE01_DETAIL_BTN_C), PAGE_01_DETAIL_SECTION_C);
+    page_01_detail_section_btn_text_refresh();
+    page_01_detail_section_btn_style_apply();
+}
+
+static void page_01_detail_section_btn_destroy_all(void)
+{
+    if (s_detail_btn_a) lv_obj_del(s_detail_btn_a);
+    if (s_detail_btn_b) lv_obj_del(s_detail_btn_b);
+    if (s_detail_btn_c) lv_obj_del(s_detail_btn_c);
+
+    s_detail_btn_a = NULL;
+    s_detail_btn_b = NULL;
+    s_detail_btn_c = NULL;
+    s_detail_section = PAGE_01_DETAIL_SECTION_A;
+}
+
+static void page_01_detail_section_btn_event_cb(lv_event_t* e)
+{
+    page_01_detail_section_t section;
+
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+    section = (page_01_detail_section_t)(uintptr_t)lv_event_get_user_data(e);
+    page_01_detail_section_set(section, true);
+}
+
+void page_01_detail_section_set(page_01_detail_section_t section, bool refresh)
+{
+    if (section > PAGE_01_DETAIL_SECTION_C) return;
+    if (s_detail_section == section && !refresh) return;
+
+    page_01_detail_scroll_before_section_switch();
+    s_detail_section = section;
+    page_01_detail_section_btn_style_apply();
+    page_01_detail_scroll_after_section_switch();
+    if (refresh) {
+        ui_refresh_main_page();
+    }
+}
+
+page_01_detail_section_t page_01_detail_section_get(void)
+{
+    return s_detail_section;
 }
 
 static lv_obj_t* page_01_bottom_bg_create(lv_coord_t x, lv_coord_t y, lv_coord_t w, lv_coord_t h,
@@ -1019,6 +1143,7 @@ void ui_main_create(lv_obj_t* parent)
     page_01_bottom_c_refresh_batch(false);
     page_01_bottom_c_refresh_speed(false);
     page_01_bottom_c_refresh_cfd();
+    page_01_detail_section_btn_create_all();
     s_time_label = NULL;
     main_time_refresh();
     if (!s_time_timer) s_time_timer = lv_timer_create(main_time_timer_cb, 1000, NULL);
@@ -1038,6 +1163,7 @@ void ui_main_destroy(void)
         cleanup_counting_sim();
         page_01_bottom_a_destroy();
         page_01_bottom_c_destroy();
+        page_01_detail_section_btn_destroy_all();
         page_01_bottom_bg_destroy_all();
         smart_island_destroy(); //销毁灵动岛
         lv_obj_del(main_page);
@@ -1050,6 +1176,7 @@ void page_01_update_language_texts(void) //刷新主界面多语言文本
 {
     if (!main_page) return;
 
+    page_01_detail_section_btn_text_refresh();
     page_01_bottom_a_refresh_mode(false);
     page_01_bottom_a_refresh_add(false);
     page_01_bottom_a_refresh_work(false);
@@ -1057,5 +1184,6 @@ void page_01_update_language_texts(void) //刷新主界面多语言文本
     page_01_bottom_c_refresh_batch(false);
     page_01_bottom_c_refresh_speed(false);
     page_01_bottom_c_refresh_cfd();
+    ui_refresh_main_page();
     smart_island_refresh_language_texts();
 }

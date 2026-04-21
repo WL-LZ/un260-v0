@@ -63,6 +63,7 @@ void pause_counting_sim(void);
 void resume_counting_sim(void);
 void sim_data_init(void);
 void ui_refresh_main_page(void);//d动态刷新数据
+void page_01_main_detail_refresh_rows_only(void);
 void cleanup_counting_sim(void);//清除资源 防止野指针
 void sim_timer_cb(lv_timer_t* timer);
 void update_label_by_name(ui_element_t* page_cfg_obj, int len, const char* name, const char* fmt, ...);

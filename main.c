@@ -228,6 +228,7 @@ static void sim_clear_sn_only(counting_sim_t* sim_data)
     /* 只清冠字号缓存，不改点钞总数，避免 UI 从 0 重新滚动 */
     memset(sim_data->denom_mix, 0, sizeof(sim_data->denom_mix));
     sim_data->sn_capacity = 0;
+    page_01_detail_scroll_reset_all();
 }
 
 static bool sim_ensure_sn_capacity(counting_sim_t* sim_data, int new_total)
@@ -265,17 +266,6 @@ static bool sim_ensure_sn_capacity(counting_sim_t* sim_data, int new_total)
     sim_data->sn_str = new_ptr;
     sim_data->sn_capacity = new_cap;
     return true;
-}
-
-static void ui_refresh_main_page_throttled(void)
-{
-    static uint32_t last_ms = 0;
-    uint32_t now = custom_tick_get();
-    if ((uint32_t)(now - last_ms) < 50) {
-        return;
-    }
-    last_ms = now;
-    ui_refresh_main_page();
 }
 
 static void format_amount_with_comma_fast(char* dest, size_t dest_size, float amount)
@@ -653,7 +643,6 @@ void PCCmdHandle(void)
                 sim.total_pcs    = qty;
                 sim.err_expected = ret;
                 ui_refresh_main_compact_fast();
-                ui_refresh_main_page_throttled();
                 if (!( !fault_popup_get_auto_enabled() && fault_popup_has_pending_start_issue())) {
                     smart_island_notify_count_start();
                     smart_island_refresh_summary();
@@ -684,7 +673,9 @@ void PCCmdHandle(void)
                     g_last_result_pending_valid_pcs = 0;
                 }
 
-                ui_refresh_main_page();
+                if (is_main_page_active()) {
+                    ui_refresh_main_page();
+                }
                 smart_island_notify_count_end(NULL);
                 smart_island_refresh_summary();
             }
@@ -971,9 +962,6 @@ void PCCmdHandle(void)
                 sim.denom_number = 0;
                 g_denom_query_got_frame = true;
                 uart_printf(fd6, "0x0B denom detail receive start\n");
-                if (is_main_page_active()) {
-                    ui_refresh_main_page_throttled();
-                }
                 break;
             }
 
@@ -989,7 +977,7 @@ void PCCmdHandle(void)
 
                 if (g_denom_query_pending) {
                     g_denom_query_pending = false;
-                    if (is_main_page_active()) {
+                    if (!g_count_session_active) {
                         ui_refresh_main_page();
                     }
                     break;
@@ -999,7 +987,7 @@ void PCCmdHandle(void)
                 uint8_t reject_cmd = 0x01;
                 send_command(fd4, 0x0C, &reject_cmd, 1);
                 g_wait_sn_after_reject_end = true;
-                if (is_main_page_active()) {
+                if (!g_count_session_active) {
                     ui_refresh_main_page();
                 }
                 break;
@@ -1038,10 +1026,6 @@ void PCCmdHandle(void)
                 }
             }
 
-            if (is_main_page_active()) {
-                ui_refresh_main_page_throttled();
-            }
-
             break;
         }
 
@@ -1071,6 +1055,9 @@ void PCCmdHandle(void)
                 uart_printf(fd6, "0x0C reject detail receive end, parsed=%u expected=%u\n",
                             sim.err_num, sim.err_expected);
                 smart_island_refresh_summary();
+                if (is_main_page_active()) {
+                    ui_refresh_main_page(); // C区在退钞明细结束时也自动刷新
+                }
                 if (g_wait_sn_after_reject_end) {
                     uint8_t sn_req[2] = { 0x01, 0x01 };
                     send_command(fd4, 0x0D, sn_req, 2);
@@ -1142,6 +1129,9 @@ void PCCmdHandle(void)
                 page_02_report_init();
                 page_02_b_page_refre();
                 page_02_b_page_num_refre();
+                if (is_main_page_active()) {
+                    ui_refresh_main_page(); // A/B/C在点钞结束后统一刷新显示
+                }
                 break;
             }
 
@@ -1203,6 +1193,21 @@ void PCCmdHandle(void)
             }
             memcpy(sim.sn_str[idx], p, sn_len + 1);
             sim.denom_mix[idx] = denom;
+            if (is_main_page_active() &&
+                page_01_detail_section_get() == PAGE_01_DETAIL_SECTION_B) {
+                int b_valid_count = 0;
+                for (int vi = 0; vi < sim.total_pcs; vi++) {
+                    if (sim.sn_str[vi] != NULL && sim.denom_mix[vi] > 0) b_valid_count++;
+                }
+                // B区自动刷新：前9条实时刷新；超过9条后等结束帧统一刷新，兼顾流畅度
+                if (sim.total_pcs > 9) {
+                    if (b_valid_count <= 9) {
+                        page_01_main_detail_refresh_rows_only();
+                    }
+                } else {
+                    page_01_main_detail_refresh_rows_only();
+                }
+            }
             break;
         }
         /* ================== 0x1D 传感器电压 ================== */

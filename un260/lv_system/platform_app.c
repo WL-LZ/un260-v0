@@ -5,9 +5,11 @@
 #include "un260/lv_resources/lv_img_init.h" 
 #include "user_cfg.h"
 #include "un260/lv_core/lv_page_manager.h"
+#include "un260/lv_core/page_01_main.h"
 #include "un260/lv_refre/lvgl_refre.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_components/smart_island.h"
+#include "un260/lv_system/ui_text.h"
 // 全局变量定义
 counting_sim_t sim = { 0 };
 page_02_report_status_t page_02_a_report_status = { 0 };
@@ -461,10 +463,246 @@ void format_amount_with_comma(char* dest, size_t dest_size, float amount) {
     dest[dest_index] = '\0';
 }
 
+static int page_01_main_b_valid_count_get(void)
+{
+    int valid_count = 0;
+
+    if (sim.sn_str == NULL) return 0;
+
+    for (int i = 0; i < sim.total_pcs; i++) {
+        if (sim.sn_str[i] != NULL && sim.denom_mix[i] > 0) {
+            valid_count++;
+        }
+    }
+
+    return valid_count;
+}
+
+static int page_01_main_b_nth_valid_index_get(int nth)
+{
+    int valid_count = 0;
+
+    if (nth < 0 || sim.sn_str == NULL) return -1;
+
+    for (int i = 0; i < sim.total_pcs; i++) {
+        if (sim.sn_str[i] == NULL || sim.denom_mix[i] <= 0) continue;
+        if (valid_count == nth) return i;
+        valid_count++;
+    }
+
+    return -1;
+}
+
+static void page_01_main_detail_header_apply(page_01_detail_section_t section)
+{
+    lv_obj_t* title_1 = find_obj_by_name("list_demo_label", page_01_main_obj, page_01_main_len);
+    lv_obj_t* title_2 = find_obj_by_name("list_pcs_label", page_01_main_obj, page_01_main_len);
+    lv_obj_t* title_3 = find_obj_by_name("list_amount_label", page_01_main_obj, page_01_main_len);
+    lv_obj_t* total_title = find_obj_by_name("total_label", page_01_main_obj, page_01_main_len);
+    lv_obj_t* total_pcs = find_obj_by_name("total_pcs_label", page_01_main_obj, page_01_main_len);
+    lv_obj_t* total_amount = find_obj_by_name("total_amount_label", page_01_main_obj, page_01_main_len);
+
+    if (title_1 == NULL || title_2 == NULL || title_3 == NULL) return;
+
+    switch (section) {
+    case PAGE_01_DETAIL_SECTION_B:
+        lv_label_set_text(title_1, ui_text_get(UI_TEXT_PAGE01_DETAIL_COL_NO));
+        lv_label_set_text(title_2, ui_text_get(UI_TEXT_PAGE01_DETAIL_COL_SN));
+        lv_label_set_text(title_3, ui_text_get(UI_TEXT_PAGE01_DETAIL_COL_DENOM));
+        lv_obj_set_pos(title_1, 728, 24);
+        lv_obj_set_pos(title_2, 780, 24);
+        lv_obj_set_pos(title_3, 935, 24);
+        lv_obj_set_width(title_1, 40);
+        lv_obj_set_width(title_2, 150);
+        lv_obj_set_width(title_3, 78);
+        lv_obj_set_style_text_align(title_1, LV_TEXT_ALIGN_LEFT, 0);
+        lv_obj_set_style_text_align(title_2, LV_TEXT_ALIGN_LEFT, 0);
+        lv_obj_set_style_text_align(title_3, LV_TEXT_ALIGN_LEFT, 0);
+        if (total_title) lv_obj_add_flag(total_title, LV_OBJ_FLAG_HIDDEN);
+        if (total_pcs) lv_obj_add_flag(total_pcs, LV_OBJ_FLAG_HIDDEN);
+        if (total_amount) lv_obj_add_flag(total_amount, LV_OBJ_FLAG_HIDDEN);
+        break;
+    case PAGE_01_DETAIL_SECTION_C:
+        lv_label_set_text(title_1, ui_text_get(UI_TEXT_PAGE01_DETAIL_COL_NO));
+        lv_label_set_text(title_2, ui_text_get(UI_TEXT_PAGE01_DETAIL_COL_PCS));
+        lv_label_set_text(title_3, ui_text_get(UI_TEXT_PAGE01_DETAIL_COL_REJECT));
+        lv_obj_set_pos(title_1, 728, 24);
+        lv_obj_set_pos(title_2, 780, 24);
+        lv_obj_set_pos(title_3, 850, 24);
+        lv_obj_set_width(title_1, 40);
+        lv_obj_set_width(title_2, 60);
+        lv_obj_set_width(title_3, 170);
+        lv_obj_set_style_text_align(title_1, LV_TEXT_ALIGN_LEFT, 0);
+        lv_obj_set_style_text_align(title_2, LV_TEXT_ALIGN_LEFT, 0);
+        lv_obj_set_style_text_align(title_3, LV_TEXT_ALIGN_LEFT, 0);
+        if (total_title) lv_obj_add_flag(total_title, LV_OBJ_FLAG_HIDDEN);
+        if (total_pcs) lv_obj_add_flag(total_pcs, LV_OBJ_FLAG_HIDDEN);
+        if (total_amount) lv_obj_add_flag(total_amount, LV_OBJ_FLAG_HIDDEN);
+        break;
+    case PAGE_01_DETAIL_SECTION_A:
+    default:
+        lv_label_set_text(title_1, ui_text_get(UI_TEXT_PAGE01_DETAIL_COL_DENOM));
+        lv_label_set_text(title_2, ui_text_get(UI_TEXT_PAGE01_DETAIL_COL_PCS));
+        lv_label_set_text(title_3, ui_text_get(UI_TEXT_PAGE01_DETAIL_COL_AMOUNT));
+        lv_obj_set_pos(title_1, 728, 24);
+        lv_obj_set_pos(title_2, 826, 24);
+        lv_obj_set_pos(title_3, 933, 24);
+        lv_obj_set_width(title_1, 70);
+        lv_obj_set_width(title_2, 54);
+        lv_obj_set_width(title_3, 80);
+        lv_obj_set_style_text_align(title_1, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_set_style_text_align(title_2, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_set_style_text_align(title_3, LV_TEXT_ALIGN_CENTER, 0);
+        if (total_title) lv_obj_clear_flag(total_title, LV_OBJ_FLAG_HIDDEN);
+        if (total_pcs) lv_obj_clear_flag(total_pcs, LV_OBJ_FLAG_HIDDEN);
+        if (total_amount) lv_obj_clear_flag(total_amount, LV_OBJ_FLAG_HIDDEN);
+        break;
+    }
+}
+
+static void page_01_main_detail_row_layout_apply(page_01_detail_section_t section,
+    lv_obj_t* col_1, lv_obj_t* col_2, lv_obj_t* col_3, int data_row)
+{
+    lv_coord_t row_y = 0;
+
+    if (col_1 == NULL || col_2 == NULL || col_3 == NULL) return;
+
+    switch (section) {
+    case PAGE_01_DETAIL_SECTION_B:
+        row_y = (lv_coord_t)(6 + data_row * page_01_detail_row_gap_get((int)section)); // B区整体上移4
+        lv_obj_set_pos(col_1, 8, row_y);
+        lv_obj_set_pos(col_2, 60, row_y);
+        lv_obj_set_pos(col_3, 215, row_y);
+        lv_obj_set_width(col_1, 40);
+        lv_obj_set_width(col_2, 150);
+        lv_obj_set_width(col_3, 78);
+        lv_obj_set_style_text_align(col_1, LV_TEXT_ALIGN_LEFT, 0);
+        lv_obj_set_style_text_align(col_2, LV_TEXT_ALIGN_LEFT, 0);
+        lv_obj_set_style_text_align(col_3, LV_TEXT_ALIGN_LEFT, 0);
+        break;
+    case PAGE_01_DETAIL_SECTION_C:
+        row_y = (lv_coord_t)(6 + data_row * page_01_detail_row_gap_get((int)section)); // C区整体上移4
+        lv_obj_set_pos(col_1, 8, row_y);
+        lv_obj_set_pos(col_2, 60, row_y);
+        lv_obj_set_pos(col_3, 130, row_y);
+        lv_obj_set_width(col_1, 40);
+        lv_obj_set_width(col_2, 60);
+        lv_obj_set_width(col_3, 170);
+        lv_obj_set_style_text_align(col_1, LV_TEXT_ALIGN_LEFT, 0);
+        lv_obj_set_style_text_align(col_2, LV_TEXT_ALIGN_LEFT, 0);
+        lv_obj_set_style_text_align(col_3, LV_TEXT_ALIGN_LEFT, 0);
+        break;
+    case PAGE_01_DETAIL_SECTION_A:
+    default:
+        row_y = (lv_coord_t)(data_row * page_01_detail_row_gap_get((int)section));
+        lv_obj_set_pos(col_1, 8, row_y);
+        lv_obj_set_pos(col_2, 106, row_y);
+        lv_obj_set_pos(col_3, 213, row_y);
+        lv_obj_set_width(col_1, 77);
+        lv_obj_set_width(col_2, 54);
+        lv_obj_set_width(col_3, 80);
+        lv_obj_set_style_text_align(col_1, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_set_style_text_align(col_2, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_set_style_text_align(col_3, LV_TEXT_ALIGN_CENTER, 0);
+        break;
+    }
+}
+
+static void page_01_main_detail_rows_refresh(page_01_detail_section_t section, int first_row)
+{
+    counting_sim_t* sim_data = &sim;
+
+    for (int i = 0; i < 10; i++)
+    {
+        int row = i + 1;
+        int data_row = first_row + i;
+        char denom_buf[32], pcs_buf[32], amount_buf[32];
+        lv_obj_t* denom;
+        lv_obj_t* pcs;
+        lv_obj_t* amount;
+        bool row_show = false;
+
+        snprintf(denom_buf, sizeof(denom_buf), "denom_%d_label", row);
+        snprintf(pcs_buf, sizeof(pcs_buf), "pcs_%d_label", row);
+        snprintf(amount_buf, sizeof(amount_buf), "amount_%d_label", row);
+
+        denom = find_obj_by_name(denom_buf, page_01_main_obj, page_01_main_len);
+        pcs = find_obj_by_name(pcs_buf, page_01_main_obj, page_01_main_len);
+        amount = find_obj_by_name(amount_buf, page_01_main_obj, page_01_main_len);
+
+        // 行位置按可见槽位固定，数据内容按data_row映射，避免滚动后错位
+        page_01_main_detail_row_layout_apply(section, denom, pcs, amount, i);
+
+        switch (section) {
+        case PAGE_01_DETAIL_SECTION_B:
+        {
+            int b_valid_total = page_01_main_b_valid_count_get();
+            int actual_idx = -1;
+
+            if (data_row < b_valid_total) {
+                actual_idx = page_01_main_b_nth_valid_index_get(data_row);
+            }
+            if (actual_idx >= 0) {
+                update_label_by_name(page_01_main_obj, page_01_main_len, denom_buf, "%d", data_row + 1);
+                update_label_by_name(page_01_main_obj, page_01_main_len, pcs_buf, "%s", sim_data->sn_str[actual_idx]);
+                update_label_by_name(page_01_main_obj, page_01_main_len, amount_buf, "%d", sim_data->denom_mix[actual_idx]);
+                row_show = true;
+            }
+            break;
+        }
+        case PAGE_01_DETAIL_SECTION_C:
+            if (data_row < sim_data->err_num && data_row < 10) {
+                const char* err_text = "Unknown Error";
+
+                update_label_by_name(page_01_main_obj, page_01_main_len, denom_buf, "%d", data_row + 1);
+                if (sim_data->err_pcs != NULL) {
+                    update_label_by_name(page_01_main_obj, page_01_main_len, pcs_buf, "%d", sim_data->err_pcs[data_row]);
+                } else {
+                    update_label_by_name(page_01_main_obj, page_01_main_len, pcs_buf, "%s", "-");
+                }
+                if (sim_data->err_str != NULL && sim_data->err_str[data_row] != NULL) {
+                    err_text = sim_data->err_str[data_row];
+                }
+                update_label_by_name(page_01_main_obj, page_01_main_len, amount_buf, "%s", err_text);
+                row_show = true;
+            }
+            break;
+        case PAGE_01_DETAIL_SECTION_A:
+        default:
+            if (data_row < sim_data->denom_number && sim_data->denom[data_row].value) {
+                update_label_by_name(page_01_main_obj, page_01_main_len, denom_buf, "%d", sim_data->denom[data_row].value);
+                update_label_by_name(page_01_main_obj, page_01_main_len, pcs_buf, "%d", sim_data->denom[data_row].pcs);
+                update_label_by_name(page_01_main_obj, page_01_main_len, amount_buf, "%.0f", sim_data->denom[data_row].amount);
+                row_show = true;
+            }
+            break;
+        }
+
+        if (row_show) {
+            if (denom) lv_obj_clear_flag(denom, LV_OBJ_FLAG_HIDDEN);
+            if (pcs) lv_obj_clear_flag(pcs, LV_OBJ_FLAG_HIDDEN);
+            if (amount) lv_obj_clear_flag(amount, LV_OBJ_FLAG_HIDDEN);
+        } else {
+            if (denom) lv_obj_add_flag(denom, LV_OBJ_FLAG_HIDDEN);
+            if (pcs) lv_obj_add_flag(pcs, LV_OBJ_FLAG_HIDDEN);
+            if (amount) lv_obj_add_flag(amount, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+}
+
+void page_01_main_detail_refresh_rows_only(void)
+{
+    page_01_detail_section_t section = page_01_detail_section_get();
+    int first_row = page_01_detail_scroll_first_row_get(section);
+    page_01_main_detail_rows_refresh(section, first_row);
+}
+
 
 //主界面右侧详情数据初始化和写入
 void ui_refresh_main_page(void) {
     counting_sim_t* sim_data = &sim;
+    page_01_detail_section_t section = page_01_detail_section_get();
+    int first_row = page_01_detail_scroll_first_row_get(section);
     char buf[32];
     char amount_buf[32];
     int right_total_pcs = 0;
@@ -500,36 +738,9 @@ void ui_refresh_main_page(void) {
     //main_right_list
     //清空
 
-    for (int i = 0; i < 10; i++)
-    {
-        int row = i + 1;
-        char denom_buf[32], pcs_buf[32], amount_buf[32];
+    page_01_main_detail_header_apply(section);
 
-        snprintf(denom_buf, sizeof(denom_buf), "denom_%d_label", row);
-        snprintf(pcs_buf, sizeof(pcs_buf), "pcs_%d_label", row);
-        snprintf(amount_buf, sizeof(amount_buf), "amount_%d_label", row);
-
-        lv_obj_t* denom = find_obj_by_name(denom_buf, page_01_main_obj, page_01_main_len);
-        lv_obj_t* pcs = find_obj_by_name(pcs_buf, page_01_main_obj, page_01_main_len);
-        lv_obj_t* amount = find_obj_by_name(amount_buf, page_01_main_obj, page_01_main_len);
-
-        if (i < sim_data->denom_number  &&sim_data->denom[i].value) {
-            update_label_by_name(page_01_main_obj, page_01_main_len, denom_buf, "%d", sim_data->denom[i].value);
-            update_label_by_name(page_01_main_obj, page_01_main_len, pcs_buf, "%d", sim_data->denom[i].pcs);
-            update_label_by_name(page_01_main_obj, page_01_main_len, amount_buf, "%.0f", sim_data->denom[i].amount);
-
-            if (denom) lv_obj_clear_flag(denom, LV_OBJ_FLAG_HIDDEN);
-            if (pcs) lv_obj_clear_flag(pcs, LV_OBJ_FLAG_HIDDEN);
-            if (amount) lv_obj_clear_flag(amount, LV_OBJ_FLAG_HIDDEN);
-
-        }
-        else {
-            if (denom) lv_obj_add_flag(denom, LV_OBJ_FLAG_HIDDEN);
-            if (pcs) lv_obj_add_flag(pcs, LV_OBJ_FLAG_HIDDEN);
-            if (amount) lv_obj_add_flag(amount, LV_OBJ_FLAG_HIDDEN);
-        }
-
-    }
+    page_01_main_detail_rows_refresh(section, first_row);
 
     for (int i = 0; i < sim_data->denom_number &&
                     i < (int)(sizeof(sim_data->denom) / sizeof(sim_data->denom[0])); i++) {
@@ -539,20 +750,31 @@ void ui_refresh_main_page(void) {
         }
     }
 
-    update_label_by_name(page_01_main_obj, page_01_main_len, "total_pcs_label", "%d", right_total_pcs);
+    if (section == PAGE_01_DETAIL_SECTION_A) {
+        update_label_by_name(page_01_main_obj, page_01_main_len, "total_pcs_label", "%d", right_total_pcs);
 
-    char amount_total[32];
-    format_amount_with_comma(amount_total, sizeof(amount_total), right_total_amount);
-    lv_label_set_text(find_obj_by_name("total_amount_label", page_01_main_obj, page_01_main_len), amount_total);//更新总金额格式
+        char amount_total[32];
+        lv_obj_t* total_amount = find_obj_by_name("total_amount_label", page_01_main_obj, page_01_main_len);
+        format_amount_with_comma(amount_total, sizeof(amount_total), right_total_amount);
+        if (total_amount && lv_obj_is_valid(total_amount)) {
+            lv_label_set_text(total_amount, amount_total); //更新总金额格式
+        }
+    }
 
     if (page_01_main_scroll_container != NULL && lv_obj_is_valid(page_01_main_scroll_container)) {
-        // 主界面详情区始终允许上下滑动，不再按面额数量阈值开关
+        // 主界面详情区始终允许上下滑动
         lv_obj_add_flag(page_01_main_scroll_container,
                         LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC);
-        lv_obj_clear_flag(page_01_main_scroll_container, LV_OBJ_FLAG_SCROLL_MOMENTUM);
+        // B区开启惯性滑动（对齐 list 体验），A/C 关闭以避免额外抖动
+        if (section == PAGE_01_DETAIL_SECTION_B) {
+            lv_obj_add_flag(page_01_main_scroll_container, LV_OBJ_FLAG_SCROLL_MOMENTUM);
+            lv_obj_set_style_anim_time(page_01_main_scroll_container, 450, 0); // 1.5x 惯性时长
+        } else {
+            lv_obj_clear_flag(page_01_main_scroll_container, LV_OBJ_FLAG_SCROLL_MOMENTUM);
+            lv_obj_set_style_anim_time(page_01_main_scroll_container, 300, 0);
+        }
     }
     page_01_err_num_refre();
-    page_01_scroll_hint_on_enter(); //主界面数据刷新后同步更新上下遮挡提示
 }
 
 void cleanup_counting_sim(void) {
@@ -713,6 +935,7 @@ void sim_clear_all_sn(counting_sim_t* sim_data)
     sim_data->total_amount = 0;
     sim_data->err_num = 0;
     sim_data->err_expected = 0;
+    page_01_detail_scroll_reset_all();
     ui_refresh_main_page();
     smart_island_refresh_summary();
     int clear_data_cmd;
