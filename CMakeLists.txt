@@ -66,6 +66,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_system/ui_text_page.c
     un260/lv_system/ui_text_widget.c
     un260/lv_system/ui_qr_data.c
+    un260/lv_system/ui_export_data.c
     un260/lv_system/user_cfg.c
     un260/lv_system/machine_time.c
     un260/lv_drivers/lv_drivers.c

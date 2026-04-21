@@ -47,7 +47,7 @@ static const ui_text_item_t g_ui_text_widget_group[UI_TEXT_MAX - UI_TEXT_WIDGET_
 
     //灵动岛动作页
     [UI_TEXT_WIDGET_SMART_ISLAND_ACTION_QR - UI_TEXT_WIDGET_BASE] = {"QR Export", "二维码导出", "QR 내보내기"},
-    [UI_TEXT_WIDGET_SMART_ISLAND_ACTION_TIME - UI_TEXT_WIDGET_BASE] = {"Time Setup", "时间设置", "시간 설정"},
+    [UI_TEXT_WIDGET_SMART_ISLAND_ACTION_TIME - UI_TEXT_WIDGET_BASE] = {"Export Data", "导出当前数据", "데이터 내보내기"},
     [UI_TEXT_WIDGET_SMART_ISLAND_ACTION_REPORT - UI_TEXT_WIDGET_BASE] = {"Report", "报表", "리포트"},
     [UI_TEXT_WIDGET_SMART_ISLAND_ACTION_SELFTEST - UI_TEXT_WIDGET_BASE] = {"Self-test", "自检", "자가 점검"},
     [UI_TEXT_WIDGET_SMART_ISLAND_ACTION_POPUP_ON - UI_TEXT_WIDGET_BASE] = {"Popup: ON", "弹窗: 开", "팝업: 켜짐"},

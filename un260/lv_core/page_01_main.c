@@ -16,6 +16,7 @@
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_system/machine_time.h"
 #include "un260/lv_system/ui_text.h"
+#include "un260/lv_system/ui_export_data.h"
 
 // 添加数组元素计数变量
 int page_01_main_len = 0;
@@ -48,6 +49,13 @@ static lv_obj_t* s_bottom_c_box_cfd = NULL;
 static lv_obj_t* s_bottom_c_label_batch = NULL;
 static lv_obj_t* s_bottom_c_label_speed = NULL;
 static lv_obj_t* s_bottom_c_label_cfd = NULL;
+
+static void page_01_smart_island_action_cb(uint8_t action_id)
+{
+    if (action_id == SMART_ISLAND_ACTION_TIME_SETTING) {
+        ui_export_data_request();
+    }
+}
 
 typedef enum {
     PAGE_01_BOTTOM_TEXT_ANIM_NONE = 0,
@@ -1018,6 +1026,7 @@ void ui_main_create(lv_obj_t* parent)
     ui_state_apply_common_runtime();
     page_01_main_send_init_protocol();
     smart_island_create(main_page); //创建主界面B区灵动岛
+    smart_island_register_action_cb(page_01_smart_island_action_cb);
     smart_island_refresh_time(); //初始化时间显示
 
 }
