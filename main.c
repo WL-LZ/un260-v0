@@ -99,7 +99,9 @@ static void ui_upgrade_popup_poll(uint32_t now)
 
     g_ui_upgrade_detect_tick = now;
     ui_upgrade_service_detect(&detect_info);
-    lv_upgrade_popup_process_detect(detect_info.usb_present, detect_info.package_found);
+    lv_upgrade_popup_process_detect(detect_info.usb_present,
+                                    detect_info.package_found,
+                                    detect_info.package_hash_match);
 }
 
 static void boot_selftest_result_reset(void)

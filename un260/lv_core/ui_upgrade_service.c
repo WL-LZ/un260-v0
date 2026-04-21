@@ -9,11 +9,20 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
+#include <stdint.h>
 
 #define UI_UPGRADE_USB_MNT             "/mnt/usb"
 #define UI_UPGRADE_FILE_PATH           "/mnt/usb/update/test_lvgl"
+#define UI_UPGRADE_RUNNING_FILE_PATH   "/proc/self/exe"
 #define UI_UPGRADE_SCRIPT_PATH         "/usr/bin/ui_update.sh"  
 #define UI_UPGRADE_STATUS_FILE_PATH    "/tmp/ui_update.status"
+
+typedef struct {
+    bool valid;
+    off_t size;
+    time_t mtime;
+    uint64_t hash;
+} ui_upgrade_hash_cache_t;
 
 typedef struct {
     bool running;
@@ -26,6 +35,9 @@ typedef struct {
 } ui_upgrade_service_ctx_t;
 
 static ui_upgrade_service_ctx_t g_ui_upgrade_service;
+static bool g_ui_upgrade_running_hash_ready = false;
+static uint64_t g_ui_upgrade_running_hash = 0;
+static ui_upgrade_hash_cache_t g_ui_upgrade_pkg_hash_cache;
 
 static unsigned long ui_upgrade_service_now_ms(void)
 {
@@ -39,6 +51,97 @@ static bool ui_upgrade_service_file_exists(const char* path)
 {
     struct stat st;
     return (path != NULL) && (stat(path, &st) == 0) && S_ISREG(st.st_mode);
+}
+
+static bool ui_upgrade_service_hash_file_fnv1a64(const char* path, uint64_t* hash_out)
+{
+    FILE* fp;
+    size_t read_len;
+    unsigned char buf[4096];
+    uint64_t hash = 1469598103934665603ULL;
+
+    if (path == NULL || hash_out == NULL) {
+        return false;
+    }
+
+    fp = fopen(path, "rb");
+    if (fp == NULL) {
+        return false;
+    }
+
+    while ((read_len = fread(buf, 1, sizeof(buf), fp)) > 0) {
+        size_t i;
+        for (i = 0; i < read_len; i++) {
+            hash ^= (uint64_t)buf[i];
+            hash *= 1099511628211ULL;
+        }
+    }
+
+    if (ferror(fp) != 0) {
+        fclose(fp);
+        return false;
+    }
+
+    fclose(fp);
+    *hash_out = hash;
+    return true;
+}
+
+static bool ui_upgrade_service_hash_file_cached(const char* path,
+                                                ui_upgrade_hash_cache_t* cache,
+                                                uint64_t* hash_out)
+{
+    struct stat st;
+    uint64_t hash = 0;
+
+    if (path == NULL || cache == NULL || hash_out == NULL) {
+        return false;
+    }
+
+    if (stat(path, &st) != 0 || !S_ISREG(st.st_mode)) {
+        cache->valid = false;
+        return false;
+    }
+
+    if (cache->valid &&
+        cache->size == st.st_size &&
+        cache->mtime == st.st_mtime) {
+        *hash_out = cache->hash;
+        return true;
+    }
+
+    if (!ui_upgrade_service_hash_file_fnv1a64(path, &hash)) {
+        cache->valid = false;
+        return false;
+    }
+
+    cache->valid = true;
+    cache->size = st.st_size;
+    cache->mtime = st.st_mtime;
+    cache->hash = hash;
+    *hash_out = hash;
+    return true;
+}
+
+static bool ui_upgrade_service_package_hash_match_running(void)
+{
+    uint64_t package_hash = 0;
+
+    if (!g_ui_upgrade_running_hash_ready) {
+        if (!ui_upgrade_service_hash_file_fnv1a64(UI_UPGRADE_RUNNING_FILE_PATH,
+                                                  &g_ui_upgrade_running_hash)) {
+            return false;
+        }
+        g_ui_upgrade_running_hash_ready = true;
+    }
+
+    if (!ui_upgrade_service_hash_file_cached(UI_UPGRADE_FILE_PATH,
+                                             &g_ui_upgrade_pkg_hash_cache,
+                                             &package_hash)) {
+        return false;
+    }
+
+    return package_hash == g_ui_upgrade_running_hash;
 }
 
 static bool ui_upgrade_service_usb_device_present(void)
@@ -332,6 +435,11 @@ void ui_upgrade_service_detect(ui_upgrade_detect_info_t* info)
     }
     info->usb_mounted = ui_upgrade_service_usb_mounted();
     info->package_found = ui_upgrade_service_file_exists(UI_UPGRADE_FILE_PATH);
+    info->package_hash_match = false;
+
+    if (info->package_found) {
+        info->package_hash_match = ui_upgrade_service_package_hash_match_running();
+    }
 }
 
 int ui_upgrade_service_start(void)

@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-void lv_upgrade_popup_process_detect(bool usb_present, bool package_found);
+void lv_upgrade_popup_process_detect(bool usb_present, bool package_found, bool package_hash_match);
 void lv_upgrade_popup_show_result(bool success, const char* desc_text);
 bool lv_upgrade_popup_is_showing(void);
 void lv_upgrade_popup_refresh_text(void);

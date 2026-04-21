@@ -16,6 +16,7 @@ typedef struct {
     bool usb_present;
     bool usb_mounted;
     bool package_found;
+    bool package_hash_match;
 } ui_upgrade_detect_info_t;
 
 typedef struct {

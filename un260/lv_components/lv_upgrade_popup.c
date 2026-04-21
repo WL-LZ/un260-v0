@@ -1,5 +1,6 @@
 #include "lv_upgrade_popup.h"
 #include "un260/lv_core/ui_upgrade_service.h"
+#include "un260/lv_components/lv_print_toast.h"
 #include "un260/lv_system/ui_text.h"
 
 #include "lvgl/lvgl.h"
@@ -1308,7 +1309,7 @@ static void upgrade_popup_show_fail(const char* desc_text)
     upgrade_popup_set_state(UPGRADE_POPUP_STATE_FAIL);
 }
 
-void lv_upgrade_popup_process_detect(bool usb_present, bool package_found)
+void lv_upgrade_popup_process_detect(bool usb_present, bool package_found, bool package_hash_match)
 {
     if (!usb_present) {
         g_upgrade_popup_detect_latched = false;
@@ -1320,6 +1321,33 @@ void lv_upgrade_popup_process_detect(bool usb_present, bool package_found)
     }
 
     if (package_found) {
+        if (package_hash_match) {
+            if (!g_upgrade_popup_detect_latched &&
+                (g_upgrade_popup.state == UPGRADE_POPUP_STATE_IDLE || g_upgrade_popup.root == NULL)) {
+                static char toast_text[64];
+                lv_print_toast_config_t toast_cfg = lv_print_toast_get_default_config();
+
+                lv_snprintf(toast_text, sizeof(toast_text),
+                            ui_text_get(UI_TEXT_PAGE16_USB_STATUS_FMT),
+                            ui_text_get(UI_TEXT_PAGE16_USB_INSERTED));
+
+                toast_cfg.w = 320;
+                toast_cfg.h = 101;
+                toast_cfg.text = toast_text;
+                toast_cfg.show_loader = true;
+                toast_cfg.align_center = true;
+                toast_cfg.use_text_area = false;
+                toast_cfg.auto_hide_ms = 2000;
+                lv_print_toast_show_with_config(&toast_cfg);
+            }
+
+            if (g_upgrade_popup.state == UPGRADE_POPUP_STATE_PROMPT) {
+                upgrade_popup_hide();
+            }
+            g_upgrade_popup_detect_latched = true;
+            return;
+        }
+
         if (!g_upgrade_popup_detect_latched &&
             (g_upgrade_popup.state == UPGRADE_POPUP_STATE_IDLE || g_upgrade_popup.root == NULL)) {
             upgrade_popup_show_prompt();
