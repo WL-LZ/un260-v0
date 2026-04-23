@@ -14,6 +14,7 @@
 #include "un260/lv_core/lv_page_declear.h"
 #include "un260/lv_components/lv_components.h"
 #include "un260/lv_components/lv_fault_popup.h"
+#include "un260/lv_components/smart_island.h"
 #include "un260/lv_resources/lv_img_init.h"
 #include <errno.h>
 #include <unistd.h>
@@ -1177,11 +1178,16 @@ typedef struct {
 } common_page_state_t;
 
 typedef struct {
+    int reserved18_enable;
+} page18_state_t;
+
+typedef struct {
     unsigned int magic;
     unsigned int version;
     page07_state_t page07;
     common_page_state_t page05;
     common_page_state_t page06;
+    page18_state_t page18;
 } ui_persist_state_t;
 
 static ui_persist_state_t g_ui_state;
@@ -1252,8 +1258,12 @@ static void page05_state_apply_to_runtime(void);
 
 static void page06_state_pull_from_runtime(void);
 static void page06_state_apply_to_runtime(void);
+static void page18_state_pull_from_runtime(void);
+static void page18_state_apply_to_runtime(void);
 void ui_state_apply_common_runtime(void);
 void ui_state_save_popup_auto_state(void);
+void ui_state_save_pure_count_state(void);
+bool ui_state_pure_count_is_enabled(void);
 
 static void curr_apply_selected_style(void);
 static void curr_style_back_button(void);
@@ -1273,6 +1283,7 @@ static void ui_state_set_defaults(void) //默认掉电配置
     g_ui_state.page07.selected_abs_idx = 0;
     g_ui_state.page07.fav_count = 0;
     g_ui_state.page06.reserved06_enable = 1;
+    g_ui_state.page18.reserved18_enable = 0;
 }
 static void page07_state_pull_from_runtime(void)
 {
@@ -1333,6 +1344,16 @@ static void page06_state_apply_to_runtime(void)
 {
     fault_popup_set_auto_enabled(g_ui_state.page06.reserved06_enable != 0);
 }   //留接口
+
+static void page18_state_pull_from_runtime(void)
+{
+    g_ui_state.page18.reserved18_enable = smart_island_pure_count_is_enabled() ? 1 : 0;
+}
+
+static void page18_state_apply_to_runtime(void)
+{
+    smart_island_set_pure_count_enabled(g_ui_state.page18.reserved18_enable != 0);
+}
 static int ui_state_ensure_store_dir(void)
 {
     const char *slash;
@@ -1437,6 +1458,8 @@ static void ui_state_load_from_file(void)
             g_ui_state.page05.reserved05_enable = atoi(line + 13);
         } else if (strncmp(line, "p06_reserved=", 13) == 0) {
             g_ui_state.page06.reserved06_enable = atoi(line + 13);
+        } else if (strncmp(line, "p18_reserved=", 13) == 0) {
+            g_ui_state.page18.reserved18_enable = atoi(line + 13);
         }
     }
 
@@ -1460,6 +1483,7 @@ void ui_state_apply_common_runtime(void)
 
     page05_state_apply_to_runtime();
     page06_state_apply_to_runtime();
+    page18_state_apply_to_runtime();
 }
 
 void ui_state_save_popup_auto_state(void)
@@ -1470,6 +1494,26 @@ void ui_state_save_popup_auto_state(void)
 
     page06_state_pull_from_runtime();
     ui_state_save_to_file();
+}
+
+void ui_state_save_pure_count_state(void)
+{
+    if (!g_ui_state_loaded) {
+        ui_state_load_from_file();
+    }
+
+    page18_state_pull_from_runtime();
+    ui_state_save_to_file();
+}
+
+bool ui_state_pure_count_is_enabled(void)
+{
+    if (!g_ui_state_loaded) {
+        ui_state_load_from_file();
+    }
+
+    page18_state_apply_to_runtime();
+    return smart_island_pure_count_is_enabled();
 }
 static void ui_state_save_to_file(void)
 {
@@ -1484,6 +1528,7 @@ static void ui_state_save_to_file(void)
     page07_state_pull_from_runtime();
     page05_state_pull_from_runtime();
     page06_state_pull_from_runtime();
+    page18_state_pull_from_runtime();
 
     if (ui_state_ensure_store_dir() != 0) {
         printf("[ui_state] save aborted, store dir not ready\n");
@@ -1523,6 +1568,7 @@ static void ui_state_save_to_file(void)
 
     fprintf(fp, "p05_reserved=%d\n", g_ui_state.page05.reserved05_enable);
     fprintf(fp, "p06_reserved=%d\n", g_ui_state.page06.reserved06_enable);
+    fprintf(fp, "p18_reserved=%d\n", g_ui_state.page18.reserved18_enable);
 
     fflush(fp);
     fsync(fd);

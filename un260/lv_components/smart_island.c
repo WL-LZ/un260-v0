@@ -893,6 +893,7 @@ static void smart_island_action_btn_cb(lv_event_t *e)
     if (action_id == SMART_ISLAND_ACTION_FUNC4) {
         bool enabled = smart_island_pure_count_is_enabled();
         smart_island_set_pure_count_enabled(!enabled);
+        ui_state_save_pure_count_state();
         smart_island_action_item_apply(page_index);
 
         if (!enabled) {

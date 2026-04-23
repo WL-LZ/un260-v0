@@ -512,12 +512,15 @@ void* uart5_thread(void* arg) {
 
 static void boot_selftest_finish_cb(lv_timer_t* timer)
 {
+    bool pure_count_enabled;
+
     boot_selftest_list_finish();     // 自检结束后补全最后一项成功状态
     sim_data_init();                 // 自检结束后初始化一次 sim
     g_count_session_active = false;
     g_wait_start_ack_for_next_session = false;
     g_last_result_pending_valid = false;
-    ui_manager_switch(UI_PAGE_MAIN); // 切到主页面
+    pure_count_enabled = ui_state_pure_count_is_enabled();
+    ui_manager_switch(pure_count_enabled ? UI_PAGE_PURE : UI_PAGE_MAIN); // 按掉电记忆恢复页面
     lv_timer_del(timer);             // 删除定时器
 }
 
