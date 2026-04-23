@@ -60,6 +60,7 @@ void pause_counting_sim(void);
 void resume_counting_sim(void);
 void sim_data_init(void);
 void ui_refresh_main_page(void);
+void ui_count_end_anim_cancel(void);
 void ui_count_end_anim_begin(const char *result_text);
 void ui_count_end_anim_poll(void);
 void page_01_main_detail_refresh_rows_only(void);

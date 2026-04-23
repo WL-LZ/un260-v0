@@ -2468,6 +2468,9 @@ void smart_island_set_scene(smart_island_scene_t scene, const char *title, const
 
 void smart_island_notify_count_start(void)
 {
+    /* 新会话开始前先清掉上一轮残留的结束动画状态 */
+    ui_count_end_anim_cancel();
+
     if (!g_smart_island_count_session_active) {
         g_smart_island_reject_base_expected = sim.err_expected;
         g_smart_island_reject_base_detail = smart_island_get_reject_detail_total();
