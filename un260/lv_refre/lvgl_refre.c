@@ -1178,12 +1178,17 @@ typedef struct {
 } common_page_state_t;
 
 typedef struct {
+    int detail_section;
+} page01_state_t;
+
+typedef struct {
     int reserved18_enable;
 } page18_state_t;
 
 typedef struct {
     unsigned int magic;
     unsigned int version;
+    page01_state_t page01;
     page07_state_t page07;
     common_page_state_t page05;
     common_page_state_t page06;
@@ -1252,6 +1257,8 @@ static void ui_state_save_to_file(void);
 
 static void page07_state_pull_from_runtime(void);
 static void page07_state_apply_to_runtime(void);
+static void page01_state_pull_from_runtime(void);
+static void page01_state_apply_to_runtime(void);
 
 static void page05_state_pull_from_runtime(void);
 static void page05_state_apply_to_runtime(void);
@@ -1264,6 +1271,8 @@ void ui_state_apply_common_runtime(void);
 void ui_state_save_popup_auto_state(void);
 void ui_state_save_pure_count_state(void);
 bool ui_state_pure_count_is_enabled(void);
+int ui_state_page01_detail_section_get(void);
+void ui_state_save_page01_detail_section(void);
 
 static void curr_apply_selected_style(void);
 static void curr_style_back_button(void);
@@ -1278,6 +1287,7 @@ static void ui_state_set_defaults(void) //默认掉电配置
     g_ui_state.magic = UI_STATE_MAGIC;
     g_ui_state.version = UI_STATE_VERSION;
 
+    g_ui_state.page01.detail_section = PAGE_01_DETAIL_SECTION_A;
     g_ui_state.page07.view_mode = CURR_VIEW_MODE_CARD;
     g_ui_state.page07.fav_only = 0;
     g_ui_state.page07.selected_abs_idx = 0;
@@ -1285,6 +1295,23 @@ static void ui_state_set_defaults(void) //默认掉电配置
     g_ui_state.page06.reserved06_enable = 1;
     g_ui_state.page18.reserved18_enable = 0;
 }
+
+static void page01_state_pull_from_runtime(void)
+{
+    g_ui_state.page01.detail_section = (int)page_01_detail_section_get();
+}
+
+static void page01_state_apply_to_runtime(void)
+{
+    int section = g_ui_state.page01.detail_section;
+
+    if (section < PAGE_01_DETAIL_SECTION_A || section > PAGE_01_DETAIL_SECTION_C) {
+        section = PAGE_01_DETAIL_SECTION_A;
+    }
+
+    page_01_detail_section_set((page_01_detail_section_t)section, false);
+}
+
 static void page07_state_pull_from_runtime(void)
 {
     int i;
@@ -1436,6 +1463,8 @@ static void ui_state_load_from_file(void)
             g_ui_state.magic = (unsigned int)strtoul(line + 6, NULL, 0);
         } else if (strncmp(line, "version=", 8) == 0) {
             g_ui_state.version = (unsigned int)strtoul(line + 8, NULL, 0);
+        } else if (strncmp(line, "p01_detail_section=", 19) == 0) {
+            g_ui_state.page01.detail_section = atoi(line + 19);
         } else if (strncmp(line, "p07_view_mode=", 14) == 0) {
             g_ui_state.page07.view_mode = atoi(line + 14);
         } else if (strncmp(line, "p07_fav_only=", 13) == 0) {
@@ -1481,6 +1510,7 @@ void ui_state_apply_common_runtime(void)
         ui_state_load_from_file();
     }
 
+    page01_state_apply_to_runtime();
     page05_state_apply_to_runtime();
     page06_state_apply_to_runtime();
     page18_state_apply_to_runtime();
@@ -1515,6 +1545,26 @@ bool ui_state_pure_count_is_enabled(void)
     page18_state_apply_to_runtime();
     return smart_island_pure_count_is_enabled();
 }
+
+int ui_state_page01_detail_section_get(void)
+{
+    if (!g_ui_state_loaded) {
+        ui_state_load_from_file();
+    }
+
+    return g_ui_state.page01.detail_section;
+}
+
+void ui_state_save_page01_detail_section(void)
+{
+    if (!g_ui_state_loaded) {
+        ui_state_load_from_file();
+    }
+
+    page01_state_pull_from_runtime();
+    ui_state_save_to_file();
+}
+
 static void ui_state_save_to_file(void)
 {
     char tmp_path[128];
@@ -1525,6 +1575,7 @@ static void ui_state_save_to_file(void)
     char dir_path[128];
     int i;
 
+    page01_state_pull_from_runtime();
     page07_state_pull_from_runtime();
     page05_state_pull_from_runtime();
     page06_state_pull_from_runtime();
@@ -1556,6 +1607,7 @@ static void ui_state_save_to_file(void)
 
     fprintf(fp, "magic=%u\n", g_ui_state.magic);
     fprintf(fp, "version=%u\n", g_ui_state.version);
+    fprintf(fp, "p01_detail_section=%d\n", g_ui_state.page01.detail_section);
 
     fprintf(fp, "p07_view_mode=%d\n", g_ui_state.page07.view_mode);
     fprintf(fp, "p07_fav_only=%d\n", g_ui_state.page07.fav_only);

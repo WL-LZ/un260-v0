@@ -65,6 +65,8 @@ extern "C" {
     void ui_state_save_popup_auto_state(void);
     void ui_state_save_pure_count_state(void);
     bool ui_state_pure_count_is_enabled(void);
+    int ui_state_page01_detail_section_get(void);
+    void ui_state_save_page01_detail_section(void);
 
 
 
