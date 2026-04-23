@@ -21,6 +21,9 @@ lv_obj_t* page_01_main_scroll_container = NULL;
 lv_obj_t* page_01_main_page_pcs_label = NULL;
 lv_obj_t* page_01_main_page_amount_label = NULL;
 lv_timer_t* safe_reset_timer = NULL;
+static bool g_count_end_anim_pending = false;
+static bool g_count_end_anim_armed = false;
+static char g_count_end_anim_text[128];
 
 //金额模拟
 const int USD_value[] = { 100,50,20,10,5,2,1 };
@@ -777,8 +780,48 @@ void ui_refresh_main_page(void) {
     page_01_err_num_refre();
 }
 
-void cleanup_counting_sim(void) {
-    // 停止所有计时器
+void ui_count_end_anim_cancel(void)
+{
+    /* 清掉上一轮残留的结束动画请求，避免新会话被误触发 */
+    g_count_end_anim_pending = false;
+    g_count_end_anim_armed = false;
+    g_count_end_anim_text[0] = '\0';
+}
+
+void ui_count_end_anim_begin(const char *result_text)
+{
+    /* 记录结束动画请求，交给下一轮主循环处理 */
+    if (result_text && result_text[0] != '\0') {
+        lv_snprintf(g_count_end_anim_text, sizeof(g_count_end_anim_text), "%s", result_text);
+    } else {
+        g_count_end_anim_text[0] = '\0';
+    }
+
+    g_count_end_anim_pending = true;
+    g_count_end_anim_armed = false;
+}
+
+void ui_count_end_anim_poll(void)
+{
+    if (!g_count_end_anim_pending) {
+        return;
+    }
+
+    if (!g_count_end_anim_armed) {
+        /* 先挂一轮，避开当前这次页面刷新 */
+        g_count_end_anim_armed = true;
+        return;
+    }
+
+    /* 第二轮主循环再真正切到结束态 */
+    g_count_end_anim_pending = false;
+    g_count_end_anim_armed = false;
+    smart_island_notify_count_end(g_count_end_anim_text[0] ? g_count_end_anim_text : NULL);
+    smart_island_refresh_summary();
+}
+
+void cleanup_counting_sim(void)
+{
     if (sim_timer) {
         lv_timer_del(sim_timer);
         sim_timer = NULL;
@@ -789,7 +832,8 @@ void cleanup_counting_sim(void) {
         safe_reset_timer = NULL;
     }
 
-    // 重置标签引用
+    ui_count_end_anim_cancel();
+
     page_01_main_page_amount_label = NULL;
     page_01_main_page_pcs_label = NULL;
     page_01_main_scroll_container = NULL;

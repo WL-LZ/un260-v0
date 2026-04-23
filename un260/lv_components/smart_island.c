@@ -2466,7 +2466,7 @@ void smart_island_set_scene(smart_island_scene_t scene, const char *title, const
     smart_island_apply_scene_style();
 }
 
-void smart_island_notify_count_start(void) 
+void smart_island_notify_count_start(void)
 {
     if (!g_smart_island_count_session_active) {
         g_smart_island_reject_base_expected = sim.err_expected;
@@ -2480,11 +2480,14 @@ void smart_island_notify_count_start(void)
     smart_island_set_visual(SMART_ISLAND_VISUAL_COMPACT, true);
 }
 
-void smart_island_notify_count_end(const char *result_text) 
+void smart_island_notify_count_end(const char *result_text)
 {
     g_smart_island_count_session_active = false;
-    if (result_text && result_text[0] != '\0') lv_snprintf(g_smart_island_result_text, sizeof(g_smart_island_result_text), "%s", result_text);
-    else g_smart_island_result_text[0] = '\0';
+    if (result_text && result_text[0] != '\0') {
+        lv_snprintf(g_smart_island_result_text, sizeof(g_smart_island_result_text), "%s", result_text);
+    } else {
+        g_smart_island_result_text[0] = '\0';
+    }
     smart_island_set_scene(SMART_ISLAND_SCENE_RESULT, NULL, NULL);
     smart_island_set_visual(SMART_ISLAND_VISUAL_COMPACT, true);
     smart_island_stop_result_timer();

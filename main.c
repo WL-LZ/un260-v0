@@ -679,8 +679,6 @@ void PCCmdHandle(void)
                 if (is_main_page_active()) {
                     ui_refresh_main_page();
                 }
-                smart_island_notify_count_end(NULL);
-                smart_island_refresh_summary();
             }
             break;
         }
@@ -1110,31 +1108,33 @@ void PCCmdHandle(void)
 
             int payload_len = len - 4; // buf[4..] 为 payload
             if (payload_len < 2) break;
+            /* 最后 1 字节是校验，不参与开始/结束帧判断 */
+            int payload_end = len - 1;
 
             // start frame: payload 全 0x00
             bool all_zero = true;
-            for (int i = 4; i < len; i++) {
+            for (int i = 4; i < payload_end; i++) {
                 if (buf[i] != 0x00) { all_zero = false; break; }
             }
             if (all_zero) {
                 sim_clear_sn_only(&sim);
-                uart_printf(fd6, "0x0D serial detail receive start\n");
                 break;
             }
 
             // end frame: payload 全 0xFF
             bool all_ff = true;
-            for (int i = 4; i < len; i++) {
+            for (int i = 4; i < payload_end; i++) {
                 if (buf[i] != 0xFF) { all_ff = false; break; }
             }
             if (all_ff) {
-                uart_printf(fd6, "0x0D serial detail receive end, total=%d\n", sim.total_pcs);
                 page_02_report_init();
                 page_02_b_page_refre();
                 page_02_b_page_num_refre();
                 if (is_main_page_active()) {
-                    ui_refresh_main_page(); // A/B/C在点钞结束后统一刷新显示
+                    ui_refresh_main_page();
                 }
+                /* 详情页这次刷新完成后，再放行点钞结束动画 */
+                ui_count_end_anim_begin(NULL);
                 break;
             }
 
@@ -1143,10 +1143,9 @@ void PCCmdHandle(void)
             int idx = (int)seq - 1;
             if (idx < 0 || idx >= 10000) break;
 
-            int data_len = payload_len - 1; // 去掉序号字节
+            int data_len = payload_len - 1;
             if (data_len <= 0) break;
 
-            // 协议末尾 1 字节校验，默认忽略
             int ascii_len = data_len - 1;
             if (ascii_len <= 0) break;
 
@@ -1898,6 +1897,7 @@ int main(void) {
                                 (ui_tv_end.tv_usec - ui_tv_start.tv_usec));
         perf_stats_report_ui_time_us(ui_time_us);
         PCCmdHandle();
+        ui_count_end_anim_poll();
         ui_upgrade_popup_poll(now);
 
         if (g_denom_query_pending &&
