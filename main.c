@@ -35,9 +35,9 @@
 //-------------------- 全局变量 --------------------
  int fd4 = -1, fd5 = -1, fd6 = -1;
 static bool uart_running = false;
-#define MAX_CMD_PER_TICK  8
+#define MAX_CMD_PER_TICK  64   // 每轮处理上限，避免长帧流长时间占用UI
 #define RECV_BUF_SIZE 512
-#define MAX_CMD_QUEUE 32
+#define MAX_CMD_QUEUE     256   // 接收队列容量，避免0x0D明细流被挤掉
 
 typedef struct {
     uint8_t data[RECV_BUF_SIZE];
