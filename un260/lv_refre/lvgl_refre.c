@@ -33,6 +33,12 @@ static int16_t s_page_01_detail_last_render_first_row[PAGE_01_DETAIL_SECTION_C +
 #define PAGE_01_SCROLL_HINT_DOWN_IMG_PATH     "L:/usr/local/share/lvgl_data/main_pol_down.png"
 #define PAGE_01_SCROLL_HINT_UP_IMG_PATH_USB   "L:/mnt/usb/lvgl_data/main_pol_up.png"
 #define PAGE_01_SCROLL_HINT_DOWN_IMG_PATH_USB "L:/mnt/usb/lvgl_data/main_pol_down.png"
+#define PAGE_01_DETAIL_ROW_Y_OFFSET           6
+#define PAGE_01_DETAIL_SCROLL_EDGE_BUFFER     32
+
+static int page_01_detail_row_count_get(page_01_detail_section_t section);
+static uint8_t page_01_detail_visible_row_limit_get(page_01_detail_section_t section);
+int page_01_detail_row_gap_get(int section);
 
 static lv_coord_t page_01_detail_view_h_get(page_01_detail_section_t section)
 {
@@ -44,6 +50,18 @@ static lv_coord_t page_01_detail_view_h_get(page_01_detail_section_t section)
     default:
         return 273; // B/C区容器进一步回收，避免滑动内容超出背景框
     }
+}
+
+static lv_coord_t page_01_detail_content_h_get(page_01_detail_section_t section)
+{
+    int row_count;
+    lv_coord_t row_gap;
+
+    row_count = page_01_detail_row_count_get(section);
+    row_gap = (lv_coord_t)page_01_detail_row_gap_get(section);
+
+    return PAGE_01_DETAIL_ROW_Y_OFFSET + (lv_coord_t)row_count * row_gap
+        + PAGE_01_DETAIL_SCROLL_EDGE_BUFFER;
 }
 
 static bool page_01_set_hint_img_src(lv_obj_t* img_obj, const char* primary_path, const char* fallback_path) //设置遮挡提示图片（带回退路径）
@@ -123,15 +141,24 @@ static int page_01_detail_row_count_get(page_01_detail_section_t section)
 
 static lv_coord_t page_01_detail_max_scroll_y_get(page_01_detail_section_t section)
 {
-    int row_count = page_01_detail_row_count_get(section);
-    int visible_limit = page_01_detail_visible_row_limit_get(section);
-    lv_coord_t row_gap = (lv_coord_t)page_01_detail_row_gap_get(section);
+    int row_count;
+    int visible_limit;
+    lv_coord_t content_h;
+    lv_coord_t view_h;
 
+    row_count = page_01_detail_row_count_get(section);
+    visible_limit = page_01_detail_visible_row_limit_get(section);
     if (row_count <= visible_limit) {
         return 0;
     }
 
-    return (lv_coord_t)((row_count - visible_limit) * row_gap);
+    content_h = page_01_detail_content_h_get(section);
+    view_h = page_01_detail_view_h_get(section);
+    if (content_h <= view_h) {
+        return 0;
+    }
+
+    return content_h - view_h;
 }
 
 int page_01_detail_scroll_first_row_get(int section)
@@ -167,15 +194,11 @@ bool page_01_is_small_denom_mode(void) //当前币种是否为“小面额可见
 
 static void page_01_detail_scroll_spacer_refresh(page_01_detail_section_t section)
 {
-    lv_coord_t max_scroll;
     lv_coord_t spacer_y;
-    lv_coord_t view_h;
 
     if (s_page_01_scroll_spacer == NULL || !lv_obj_is_valid(s_page_01_scroll_spacer)) return;
-    max_scroll = page_01_detail_max_scroll_y_get(section);
-    view_h = page_01_detail_view_h_get(section);
-    spacer_y = view_h + max_scroll;
-    if (spacer_y < view_h + 1) spacer_y = view_h + 1;
+    spacer_y = page_01_detail_content_h_get(section);
+    if (spacer_y < 1) spacer_y = 1;
     lv_obj_set_pos(s_page_01_scroll_spacer, 0, spacer_y);
 }
 
@@ -317,9 +340,10 @@ static void page_01_scroll_hint_event_cb(lv_event_t* e) //详情滚动事件：�
             // 小面额币种允许拖动，但松手后回到顶部
             lv_obj_scroll_to_y(page_01_main_scroll_container, 0, LV_ANIM_ON);
             s_page_01_detail_scroll_y[page_01_detail_section_get()] = 0;
-        } else {
-            page_01_detail_scroll_save_current();
+            page_01_scroll_hint_refresh(false);
+            return;
         }
+        page_01_detail_scroll_save_current();
         page_01_scroll_hint_refresh(false);
     }
 }

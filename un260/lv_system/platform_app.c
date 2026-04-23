@@ -633,8 +633,8 @@ static void page_01_main_detail_rows_refresh(page_01_detail_section_t section, i
         pcs = find_obj_by_name(pcs_buf, page_01_main_obj, page_01_main_len);
         amount = find_obj_by_name(amount_buf, page_01_main_obj, page_01_main_len);
 
-        // 行位置按可见槽位固定，数据内容按data_row映射，避免滚动后错位
-        page_01_main_detail_row_layout_apply(section, denom, pcs, amount, i);
+        // 行位置按真实数据行号布局，滚动时每一行跟着内容一起移动
+        page_01_main_detail_row_layout_apply(section, denom, pcs, amount, data_row);
 
         switch (section) {
         case PAGE_01_DETAIL_SECTION_B:
