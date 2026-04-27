@@ -894,6 +894,7 @@ void PCCmdHandle(void)
             if (status == 0x01)
             {
                 uint8_t mode = Machine_work_code.mode_code;
+                uint8_t requested_mode = Machine_work_code.mode_code;
                 if (mode == 0x03) {
                     Machine_para.mode = MODE_MDC;
                 } else if (mode == 0x04) {
@@ -901,17 +902,20 @@ void PCCmdHandle(void)
                 } else if (mode == 0x05) {
                     Machine_para.mode = MODE_CNT;
                 }
-                Machine_work_code.mode_code = 0;
                 {
                     const char* mode_str = "NONE";
                     if (Machine_para.mode == MODE_MDC) mode_str = "MDC";
                     else if (Machine_para.mode == MODE_SDC) mode_str = "SDC";
                     else if (Machine_para.mode == MODE_CNT) mode_str = "CNT";
 
+                    if (requested_mode != 0) {
+                        icon_feedback_comp("page_01_mode_icon.png", page_01_main_obj, page_01_main_len);
+                    }
                     update_label_by_name(page_01_main_obj, page_01_main_len, "mix_label", "%s", mode_str);
                     update_label_by_name(page_01_main_obj, page_01_main_len, "mode_label", "%s", mode_str);
                     page_01_bottom_a_refresh_mode(true);
                 }
+                Machine_work_code.mode_code = 0;
                 schedule_mode_switch_clear();
                 uart_printf(fd6, "Set work mode success\n");
                 smart_island_refresh_summary();
@@ -1678,6 +1682,7 @@ void PCCmdHandle(void)
                     page_01_add_req_finish(false, NULL);
                 }
                 uart_printf(fd6, "ADD set failed\n");
+                show_start_fault_popup(0x02, 0x06);
                 page_03_update_menu_button_states_refresh();
             } else if (sub == 0x02) { 
                 uint8_t v = buf[5];
@@ -1735,15 +1740,24 @@ void PCCmdHandle(void)
 
             if (type >= 0x01 && type <= 0x03) {
                 if (res == 0x01) {
-                    /* 协议: 0x01=1000,0x02=800,0x03=600 -> UI: 2,1,0 */
-                    Machine_para.speed = (uint8_t)(0x03 - type);
+                    uint8_t target_speed = (uint8_t)(0x03 - type);
+                    if (page_01_speed_req_is_pending()) {
+                        page_01_speed_req_finish(true, &target_speed);
+                    }
+                    Machine_para.speed = target_speed;
                     page_03_update_menu_button_states_refresh();
+                    page_01_bottom_c_refresh_speed(true);
+                    page_01_speed_refre();
                     uart_printf(fd6, "SPEED set SUCCESS: type=0x%02X -> ui=%u\n",
                                 type, Machine_para.speed);
                     smart_island_refresh_summary();
                 } else if (res == 0x02) {
+                    if (page_01_speed_req_is_pending()) {
+                        page_01_speed_req_finish(false, NULL);
+                    }
                     page_03_update_menu_button_states_refresh();
                     uart_printf(fd6, "SPEED set FAIL: type=0x%02X\n", type);
+                    show_start_fault_popup(0x02, 0x06);
                 } else {
                     uart_printf(fd6, "SPEED set UNKNOWN result: type=0x%02X, res=0x%02X\n",
                                 type, res);
@@ -1813,6 +1827,7 @@ void PCCmdHandle(void)
                         page_01_fo_req_finish(false, NULL);
                     }
                     uart_printf(fd6, "FO set FAIL: type=0x%02X\n", type);
+                    show_start_fault_popup(0x02, 0x06);
                     page_03_update_menu_button_states_refresh();
                 } else {
                     uart_printf(fd6, "FO set UNKNOWN result: type=0x%02X, res=0x%02X\n", type, val);
@@ -1876,6 +1891,7 @@ void PCCmdHandle(void)
                     page_01_work_req_finish(false, NULL);
                 }
                 uart_printf(fd6, "0x38 RES=0x%02X\n", res);
+                show_start_fault_popup(0x02, 0x06);
             }
                 break;
             }

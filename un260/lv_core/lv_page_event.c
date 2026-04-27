@@ -11,6 +11,7 @@
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_components/lv_print_toast.h"
 #include "un260/lv_components/lv_qr_popup.h"
+#include "un260/lv_components/lv_fault_popup.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/ui_qr_data.h"
 #include "un260/lv_core/page_01_main.h"
@@ -27,6 +28,8 @@ static bool g_page01_work_req_pending = false;
 static uint8_t g_page01_work_req_target = 0;
 static bool g_page01_fo_req_pending = false;
 static uint8_t g_page01_fo_req_target = 0;
+static bool g_page01_speed_req_pending = false;
+static uint8_t g_page01_speed_req_target = 0;
 
 #define PAGE_01_DETAIL_TAP_THRESHOLD     10
 #define PAGE_01_MODE_REQ_TIMEOUT_MS      800
@@ -280,9 +283,7 @@ static void page_01_mode_send_next(bool show_icon_feedback) //发送主界面模
     uint8_t next_mode = MODE_MDC;
     uint8_t mode_cmd = 0x03;
 
-    if (show_icon_feedback) {
-        icon_feedback_comp("page_01_mode_icon.png", page_01_main_obj, page_01_main_len);
-    }
+    (void)show_icon_feedback;
 
     if (page_01_mode_req_busy()) {
         return;
@@ -375,6 +376,28 @@ void page_01_fo_req_finish(bool success, uint8_t* target_mode) //结束主界面
     g_page01_fo_req_pending = false;
 }
 
+bool page_01_speed_req_start(uint8_t target_speed) //开始主界面速度切换请求
+{
+    if (g_page01_speed_req_pending) return false;
+    g_page01_speed_req_pending = true;
+    g_page01_speed_req_target = target_speed;
+    return true;
+}
+
+bool page_01_speed_req_is_pending(void) //查询主界面速度切换请求是否挂起
+{
+    return g_page01_speed_req_pending;
+}
+
+void page_01_speed_req_finish(bool success, uint8_t* target_speed) //结束主界面速度切换请求
+{
+    if (target_speed) {
+        *target_speed = g_page01_speed_req_target;
+    }
+    (void)success;
+    g_page01_speed_req_pending = false;
+}
+
 void page_01_mode_btn_event_cb(lv_event_t* e)
 {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
@@ -439,22 +462,22 @@ void page_01_bottom_batch_btn_event_cb(lv_event_t* e) //进入主界面底部C�
 void page_01_bottom_speed_btn_event_cb(lv_event_t* e) //切换主界面底部C区速度
 {
     uint8_t speed_cmd = 0x03;
+    uint8_t target_speed;
 
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
 
-    Machine_para.speed = (Machine_para.speed + 1) % 3;
+    target_speed = (uint8_t)((Machine_para.speed + 1) % 3);
+    if (!page_01_speed_req_start(target_speed)) return;
 
-    if (Machine_para.speed == 0) {
+    if (target_speed == 0) {
         speed_cmd = 0x03;
-    } else if (Machine_para.speed == 1) {
+    } else if (target_speed == 1) {
         speed_cmd = 0x02;
     } else {
         speed_cmd = 0x01;
     }
 
     send_command(fd4, 0x16, &speed_cmd, 1);
-    page_01_bottom_c_refresh_speed(true);
-    page_01_speed_refre();
 }
 
 
@@ -844,14 +867,10 @@ void page_03_batch_set_result(uint8_t status)
     if (status == 0x01) {
         if (g_batch_num_pending > 0) {
             Machine_para.batch_num = g_batch_num_pending;
+            set_batch_switch_state(true);
             batch_switch_set_last_on_num((uint8_t)Machine_para.batch_num);
-            if (Machine_para.batch_switch_enable) {
-                update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label",
-                                     "%d", Machine_para.batch_num);
-            } else {
-                update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label",
-                                     "%s", "OFF");
-            }
+            update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label",
+                                 "%d", Machine_para.batch_num);
             page_01_batch_refre();
             page_03_batch_num_edit_reset();
             g_batch_tip_label = lv_label_create(menu_page);

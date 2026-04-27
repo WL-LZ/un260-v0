@@ -54,9 +54,12 @@ bool page_01_work_req_start(uint8_t target_mode);
 void page_01_work_req_finish(bool success, uint8_t* target_mode);
 bool page_01_fo_req_start(uint8_t target_mode);
 void page_01_fo_req_finish(bool success, uint8_t* target_mode);
+bool page_01_speed_req_start(uint8_t target_speed);
+void page_01_speed_req_finish(bool success, uint8_t* target_speed);
 bool page_01_add_req_is_pending(void);
 bool page_01_work_req_is_pending(void);
 bool page_01_fo_req_is_pending(void);
+bool page_01_speed_req_is_pending(void);
 
 void page_01_set_btn_event_cb(lv_event_t* e);
 void page_01_curr_btn_event_cb(lv_event_t* e);
