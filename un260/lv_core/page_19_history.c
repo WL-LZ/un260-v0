@@ -1122,7 +1122,7 @@ static void history_page_build_cards(void)
     if (row_count < 3) {
         row_count = 3;
     }
-    content_h = 83 + (row_count - 1) * HISTORY_CARD_ROW_GAP + 41 + 24;
+    content_h = (row_count - 1) * HISTORY_CARD_ROW_GAP + 41 + 24;
     lv_obj_set_height(g_history_page.list_spacer, (lv_coord_t)content_h);
 
     for (i = 0; i < UI_HISTORY_MAX_RECORDS; i++) {
@@ -1305,7 +1305,7 @@ static lv_obj_t *history_create_card(lv_obj_t *parent, uint8_t index)
     const lv_coord_t row = (index / 2);
     const lv_coord_t col = (index % 2);
     const lv_coord_t x = 30 + col * 552;
-    const lv_coord_t y = 83 + row * HISTORY_CARD_ROW_GAP;
+    const lv_coord_t y = row * HISTORY_CARD_ROW_GAP;
     history_card_ui_t *ui = &g_history_cards[index];
     lv_obj_t *card;
     lv_obj_t *hit_btn;
@@ -1495,8 +1495,8 @@ void ui_page_19_history_create(lv_obj_t *parent)
 
     g_history_page.list_area = lv_obj_create(g_history_page.root);
     lv_obj_remove_style_all(g_history_page.list_area);
-    lv_obj_set_pos(g_history_page.list_area, 213, 52);
-    lv_obj_set_size(g_history_page.list_area, 1067, 296);
+    lv_obj_set_pos(g_history_page.list_area, 213, 106);
+    lv_obj_set_size(g_history_page.list_area, 1067, 242);
     lv_obj_set_style_bg_color(g_history_page.list_area, lv_color_hex(0xFFFFFF), 0);
     lv_obj_set_style_bg_opa(g_history_page.list_area, LV_OPA_TRANSP, 0);
     lv_obj_add_flag(g_history_page.list_area, LV_OBJ_FLAG_SCROLLABLE);
@@ -1511,8 +1511,8 @@ void ui_page_19_history_create(lv_obj_t *parent)
 
     g_history_page.detail_panel = lv_obj_create(g_history_page.root);
     lv_obj_remove_style_all(g_history_page.detail_panel);
-    lv_obj_set_pos(g_history_page.detail_panel, 213, 52);
-    lv_obj_set_size(g_history_page.detail_panel, 1067, 296);
+    lv_obj_set_pos(g_history_page.detail_panel, 213, 106);
+    lv_obj_set_size(g_history_page.detail_panel, 1067, 242);
     lv_obj_set_style_bg_color(g_history_page.detail_panel, lv_color_hex(0xFFFFFF), 0);
     lv_obj_set_style_bg_opa(g_history_page.detail_panel, LV_OPA_TRANSP, 0);
     lv_obj_clear_flag(g_history_page.detail_panel, LV_OBJ_FLAG_SCROLLABLE);
@@ -1532,7 +1532,8 @@ void ui_page_19_history_create(lv_obj_t *parent)
     g_history_page.list_spacer = lv_obj_create(g_history_page.list_area);
     lv_obj_remove_style_all(g_history_page.list_spacer);
     lv_obj_set_pos(g_history_page.list_spacer, 0, 0);
-    lv_obj_set_size(g_history_page.list_spacer, 1, 444);
+    lv_obj_set_size(g_history_page.list_spacer, 1,
+                    (((UI_HISTORY_MAX_RECORDS + 1) / 2) - 1) * HISTORY_CARD_ROW_GAP + 41 + 24);
     lv_obj_set_style_bg_opa(g_history_page.list_spacer, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(g_history_page.list_spacer, 0, 0);
 
