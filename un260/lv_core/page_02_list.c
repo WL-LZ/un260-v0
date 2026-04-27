@@ -243,12 +243,12 @@ ui_element_t page_02_list_obj[] = {
       NULL, 0, 0, NULL,
       UI_BTN_STYLE_NONE },
 
-        { "02_page_curr", LV_OBJ_TYPE_LABEL, NULL,
-          { 1135, 58, 140, 36, 255, 255, 255 },
-          { "USD", 0, 115, 255, &lv_font_montserrat_42, LV_TEXT_ALIGN_CENTER },
-          { 255, 18, 0, false },
-          NULL, 0, 0, NULL,
-          UI_BTN_STYLE_NONE },
+    { "02_history_btn", LV_OBJ_TYPE_BUTTON, NULL,
+      { 1149, 87, 110, 57, 255, 255, 255 },
+      { "HISTORY", 33, 43, 54, &lv_font_montserrat_16, LV_TEXT_ALIGN_CENTER },
+      { 255, 18, 0, true },
+      page_02_history_btn_event_cb, LV_EVENT_CLICKED, NULL, NULL,
+      UI_BTN_STYLE_APPLE },
 
         { "02_a_page_refre", LV_OBJ_TYPE_LABEL, NULL,
           { 151, 371, 99, 27, 121, 150, 0 },

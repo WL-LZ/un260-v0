@@ -35,6 +35,7 @@ void page_switch_btn_event_cb(lv_event_t* e);
 void page_01_back_btn_event_cb(lv_event_t* e);
 void btn_event_cb(lv_event_t* e);
 void page_01_list_btn_event_cb(lv_event_t* e);
+void page_02_history_btn_event_cb(lv_event_t* e);
 void page_01_menu_btn_event_cb(lv_event_t* e);
  void page_06_back_btn_event_cb(lv_event_t* e) ;
 // 跑钞仿真相关函数

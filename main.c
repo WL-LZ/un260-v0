@@ -19,11 +19,13 @@
 #include "un260/lv_core/lv_page_declear.h"
 #include "un260/lv_core/lv_page_event.h"
 #include "un260/lv_core/page_01_main.h"
+#include "un260/lv_core/page_19_history.h"
 #include "un260/lv_components/lv_components.h"
 #include "un260/lv_components/smart_island.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/platform_app.h"
+#include "un260/lv_system/ui_history_data.h"
 #include "un260/lv_core/page_08_boot.h"
 #include "un260/lv_components/lv_fault_popup.h"
 #include "un260/lv_components/lv_print_toast.h"
@@ -86,6 +88,156 @@ static int g_last_result_pending_valid_pcs = 0;
 static int g_last_result_pending_issue_pcs = 0;
 static int g_last_result_pending_suspect_pcs = 0;
 static int g_last_result_pending_damaged_pcs = 0;
+static bool g_history_record_pending_valid = false;
+static bool g_history_record_pending_end_seen = false;
+static uint32_t g_history_record_pending_pcs = 0;
+static uint32_t g_history_record_pending_total_after = 0;
+static float g_history_record_pending_amount = 0.0f;
+static char g_history_last_error_frame_text[160] = {0};
+static char g_history_last_start_frame_text[160] = {0};
+static char g_history_last_end_frame_text[160] = {0};
+static char g_history_session_log_text[4096] = {0};
+static size_t g_history_session_log_len = 0;
+static void frame_to_hex_str(const uint8_t *buf, int len, char *out, int out_len);
+static bool history_copy_sim_snapshot(counting_sim_t *dst, const counting_sim_t *src);
+static void history_free_sim_snapshot(counting_sim_t *sim_data);
+
+static void history_capture_error_frame(const uint8_t *buf, int len)
+{
+    if (buf == NULL || len <= 0) {
+        g_history_last_error_frame_text[0] = '\0';
+        return;
+    }
+
+    frame_to_hex_str(buf, len, g_history_last_error_frame_text,
+                     (int)sizeof(g_history_last_error_frame_text));
+}
+
+static void history_session_reset(void)
+{
+    g_history_last_start_frame_text[0] = '\0';
+    g_history_last_end_frame_text[0] = '\0';
+    g_history_session_log_text[0] = '\0';
+    g_history_session_log_len = 0;
+}
+
+static void history_session_append_line(const char *tag, const uint8_t *buf, int len)
+{
+    char hex[256];
+    int written;
+
+    if (tag == NULL || buf == NULL || len <= 0) {
+        return;
+    }
+
+    frame_to_hex_str(buf, len, hex, (int)sizeof(hex));
+    written = snprintf(g_history_session_log_text + g_history_session_log_len,
+                       sizeof(g_history_session_log_text) - g_history_session_log_len,
+                       "%s %s\n", tag, hex);
+    if (written > 0) {
+        g_history_session_log_len += (size_t)written;
+        if (g_history_session_log_len >= sizeof(g_history_session_log_text)) {
+            g_history_session_log_len = sizeof(g_history_session_log_text) - 1;
+            g_history_session_log_text[g_history_session_log_len] = '\0';
+        }
+    }
+}
+
+static void history_try_commit_pending_record(void)
+{
+    counting_sim_t history_sim_snapshot;
+    uint32_t total_after;
+
+    if (!g_history_record_pending_valid || !g_history_record_pending_end_seen) {
+        return;
+    }
+
+    total_after = g_history_record_pending_total_after;
+    if (history_copy_sim_snapshot(&history_sim_snapshot, &sim)) {
+        history_sim_snapshot.total_pcs = (int)g_history_record_pending_pcs;
+        history_sim_snapshot.total_amount = g_history_record_pending_amount;
+        ui_history_record_append_from_session(&history_sim_snapshot,
+                                              g_history_record_pending_pcs,
+                                              total_after,
+                                              g_history_last_error_frame_text,
+                                              g_history_last_start_frame_text,
+                                              g_history_last_end_frame_text,
+                                              g_history_session_log_text);
+        history_free_sim_snapshot(&history_sim_snapshot);
+    }
+
+    g_history_record_pending_valid = false;
+    g_history_record_pending_end_seen = false;
+    g_history_record_pending_pcs = 0;
+    g_history_record_pending_total_after = 0;
+    g_history_record_pending_amount = 0.0f;
+    g_history_last_error_frame_text[0] = '\0';
+    g_history_last_start_frame_text[0] = '\0';
+    g_history_last_end_frame_text[0] = '\0';
+    history_session_reset();
+
+    if (ui_manager_get_current_page() == UI_PAGE_HISTORY) {
+        ui_page_19_history_refresh();
+    }
+}
+
+static bool history_copy_sim_snapshot(counting_sim_t *dst, const counting_sim_t *src)
+{
+    int i;
+
+    if (dst == NULL || src == NULL) {
+        return false;
+    }
+
+    *dst = *src;
+    dst->sn_str = NULL;
+    dst->sn_capacity = 0;
+
+    if (src->sn_str == NULL || src->sn_capacity <= 0) {
+        return true;
+    }
+
+    dst->sn_str = calloc((size_t)src->sn_capacity, sizeof(char *));
+    if (dst->sn_str == NULL) {
+        return false;
+    }
+
+    dst->sn_capacity = src->sn_capacity;
+    for (i = 0; i < src->sn_capacity; i++) {
+        if (src->sn_str[i] == NULL) {
+            continue;
+        }
+        dst->sn_str[i] = malloc(strlen(src->sn_str[i]) + 1);
+        if (dst->sn_str[i] == NULL) {
+            for (int j = 0; j < i; j++) {
+                free(dst->sn_str[j]);
+            }
+            free(dst->sn_str);
+            dst->sn_str = NULL;
+            dst->sn_capacity = 0;
+            return false;
+        }
+        strcpy(dst->sn_str[i], src->sn_str[i]);
+    }
+
+    return true;
+}
+
+static void history_free_sim_snapshot(counting_sim_t *sim_data)
+{
+    int i;
+
+    if (sim_data == NULL || sim_data->sn_str == NULL) {
+        return;
+    }
+
+    for (i = 0; i < sim_data->sn_capacity; i++) {
+        free(sim_data->sn_str[i]);
+    }
+    free(sim_data->sn_str);
+    sim_data->sn_str = NULL;
+    sim_data->sn_capacity = 0;
+}
 static void ui_upgrade_popup_poll(uint32_t now)
 {
     ui_upgrade_detect_info_t detect_info;
@@ -119,7 +271,7 @@ bool check_aa_header(const char* data, int len) {
 
 uint32_t custom_tick_get(void);
 
-static const char* get_currency_error_desc(uint8_t code)
+const char* get_currency_error_desc(uint8_t code)
 {
     if (code < sizeof(g_currency_error_desc) / sizeof(g_currency_error_desc[0]) &&
         g_currency_error_desc[code] != NULL) {
@@ -646,6 +798,7 @@ void PCCmdHandle(void)
                 sim.total_pcs    = qty;
                 sim.err_expected = ret;
                 ui_refresh_main_compact_fast();
+                history_session_append_line("0x0E", buf, len);
                 if (!( !fault_popup_get_auto_enabled() && fault_popup_has_pending_start_issue())) {
                     smart_island_notify_count_start();
                     smart_island_refresh_summary();
@@ -657,6 +810,9 @@ void PCCmdHandle(void)
                 g_count_session_active = false;
                 g_wait_start_ack_for_next_session = true;
                 g_last_result_pending_valid = true;
+                history_session_append_line("0x0E", buf, len);
+                frame_to_hex_str(buf, len, g_history_last_end_frame_text,
+                                 (int)sizeof(g_history_last_end_frame_text));
 
                 if (sim.total_pcs > 0 || sim.total_amount > 0.0f) {
                     final_pcs = sim.total_pcs;
@@ -675,6 +831,12 @@ void PCCmdHandle(void)
                 if (g_last_result_pending_valid_pcs < 0) {
                     g_last_result_pending_valid_pcs = 0;
                 }
+                g_history_record_pending_valid = (final_pcs > 0);
+                g_history_record_pending_end_seen = false;
+                g_history_record_pending_pcs = (uint32_t)final_pcs;
+                g_history_record_pending_total_after = Machine_para.history_total_notes_counted + (uint32_t)final_pcs;
+                g_history_record_pending_amount = final_amount;
+                history_try_commit_pending_record();
 
                 if (is_main_page_active()) {
                     ui_refresh_main_page();
@@ -869,6 +1031,8 @@ void PCCmdHandle(void)
             }
 
             fault_popup_report_runtime_fault(fault);
+            history_capture_error_frame(buf, len);
+            history_session_append_line("0x0F", buf, len);
             uart_printf(fd6, "0x0F fault=0x%02X %s\n", fault, get_system_error_desc(fault));
             smart_island_notify_warning_level(get_system_error_desc(fault), SMART_ISLAND_WARNING_LEVEL_ERROR);
             break;
@@ -887,6 +1051,13 @@ void PCCmdHandle(void)
                     fault_popup_clear_pending();
                     fault_popup_reset_auto_retry();
                     g_wait_start_ack_for_next_session = false;
+                    g_history_last_error_frame_text[0] = '\0';
+                    g_history_last_start_frame_text[0] = '\0';
+                    g_history_last_end_frame_text[0] = '\0';
+                    history_session_reset();
+                    frame_to_hex_str(buf, len, g_history_last_start_frame_text,
+                                     (int)sizeof(g_history_last_start_frame_text));
+                    history_session_append_line("0x0A", buf, len);
 
                     if (g_data_collect_mode != DATA_COLLECT_MODE_NONE) {
                         snprintf(g_data_collect_status,
@@ -901,6 +1072,8 @@ void PCCmdHandle(void)
                     smart_island_notify_count_start();
                 } else if (val == 0x02) {
                     fault_popup_report_start_no_note();
+                    history_capture_error_frame(buf, len);
+                    history_session_append_line("0x0A", buf, len);
                     uart_printf(fd6, "0x0A start fail (no note)\n");
                     smart_island_notify_warning_level(
                         ui_text_get(UI_TEXT_WIDGET_FAULT_NO_NOTE_MAIN),
@@ -914,6 +1087,8 @@ void PCCmdHandle(void)
                     }
                 } else {
                     fault_popup_report_start_fault(type, val);
+                    history_capture_error_frame(buf, len);
+                    history_session_append_line("0x0A", buf, len);
                     uart_printf(fd6, "0x0A start fail (normal): val=%02X desc=%s\n",
                                 val, get_counting_error_desc(type, val));
                     smart_island_notify_warning_level(get_start_ui_error_desc(val), SMART_ISLAND_WARNING_LEVEL_ERROR);
@@ -928,6 +1103,8 @@ void PCCmdHandle(void)
                 }
             } else if (type == 0x02) {
                 fault_popup_report_start_fault(type, val);
+                history_capture_error_frame(buf, len);
+                history_session_append_line("0x0A", buf, len);
                 uart_printf(fd6, "0x0A start fail (fault): code=%02X desc=%s\n",
                             val, get_counting_error_desc(type, val));
                 smart_island_notify_warning_level(get_start_ui_error_desc(val), SMART_ISLAND_WARNING_LEVEL_ERROR);
@@ -941,6 +1118,8 @@ void PCCmdHandle(void)
                 }
             } else {
                 fault_popup_report_start_fault(type, val);
+                history_capture_error_frame(buf, len);
+                history_session_append_line("0x0A", buf, len);
                 uart_printf(fd6, "0x0A start fail (unknown type): type=%02X val=%02X\n",
                             type, val);
                 smart_island_notify_warning_level(ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_COUNT_ERROR), SMART_ISLAND_WARNING_LEVEL_ERROR);
@@ -962,6 +1141,7 @@ void PCCmdHandle(void)
                 memset(sim.denom, 0, sizeof(sim.denom));
                 sim.denom_number = 0;
                 g_denom_query_got_frame = true;
+                history_session_append_line("0x0B", buf, len);
                 uart_printf(fd6, "0x0B denom detail receive start\n");
                 break;
             }
@@ -975,6 +1155,7 @@ void PCCmdHandle(void)
                 uart_printf(fd6, "0x0B denom detail receive end\n");
                 g_denom_query_got_frame = true;
                 g_denom_query_retry = 0;
+                history_session_append_line("0x0B", buf, len);
 
                 if (g_denom_query_pending) {
                     g_denom_query_pending = false;
@@ -1005,6 +1186,7 @@ void PCCmdHandle(void)
 
             if (denom <= 0) break;
             g_denom_query_got_frame = true;
+            history_session_append_line("0x0B", buf, len);
 
             int found = 0;
             for (int i = 0; i < sim.denom_number; i++) {
@@ -1042,10 +1224,12 @@ void PCCmdHandle(void)
                 sim_clear_err_only(&sim);
                 /* 保留期望数量（来自 0x0E），用于 LIST 立即看到“应有多少条” */
                 //uart_printf(fd6, "0x0C reject detail receive start\n");
+                history_session_append_line("0x0C", buf, len);
                 break;
             }
 
             if (err_code == 0xFF && pcs == 0xFF) {
+                history_session_append_line("0x0C", buf, len);
                 page_02_c_report_status.curent_page = 1;
                 page_02_c_report_status.total_page = (sim.err_num == 0)
                     ? 1
@@ -1077,6 +1261,8 @@ void PCCmdHandle(void)
                 uart_printf(fd6, "0x0C: err capacity fail idx=%u\n", sim.err_num);
                 break;
             }
+
+            history_session_append_line("0x0C", buf, len);
 
             int idx = sim.err_num;
             const char* desc = get_currency_error_desc(err_code);
@@ -1118,6 +1304,7 @@ void PCCmdHandle(void)
             }
             if (all_zero) {
                 sim_clear_sn_only(&sim);
+                history_session_append_line("0x0D", buf, len);
                 break;
             }
 
@@ -1130,6 +1317,9 @@ void PCCmdHandle(void)
                 page_02_report_init();
                 page_02_b_page_refre();
                 page_02_b_page_num_refre();
+                history_session_append_line("0x0D", buf, len);
+                g_history_record_pending_end_seen = true;
+                history_try_commit_pending_record();
                 if (is_main_page_active()) {
                     ui_refresh_main_page();
                 }
@@ -1148,6 +1338,8 @@ void PCCmdHandle(void)
 
             int ascii_len = data_len - 1;
             if (ascii_len <= 0) break;
+
+            history_session_append_line("0x0D", buf, len);
 
             char ascii_buf[32];
             if (ascii_len >= (int)sizeof(ascii_buf)) {
@@ -1852,6 +2044,7 @@ int main(void) {
 
     lv_port_disp_init();
     lv_port_indev_init();
+    ui_history_data_init();
     ui_manager_switch(UI_PAGE_BOOT_ANIM);
     perf_stats_init();
 

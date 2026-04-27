@@ -41,6 +41,7 @@ extern "C" {
         UI_PAGE_UI_UPGRADE,
         UI_PAGE_MOTOR_TEST,
         UI_PAGE_PURE,
+        UI_PAGE_HISTORY,
         UI_PAGE_COUNT
     } ui_page_t;
 

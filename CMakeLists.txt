@@ -56,6 +56,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_core/ui_upgrade_service.c
     un260/lv_core/page_17_motor_test.c
     un260/lv_core/page_18_pure.c
+    un260/lv_core/page_19_history.c
     un260/lv_core/page_00_boot_anim.c
     
     un260/lv_refre/lvgl_refre.c
@@ -67,6 +68,8 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_system/ui_text_widget.c
     un260/lv_system/ui_qr_data.c
     un260/lv_system/ui_export_data.c
+    un260/lv_system/ui_history_data_fs.c
+    un260/lv_system/ui_history_export_data.c
     un260/lv_system/user_cfg.c
     un260/lv_system/machine_time.c
     un260/lv_drivers/lv_drivers.c

@@ -82,6 +82,15 @@ void page_01_list_btn_event_cb(lv_event_t* e) {
     }
 }
 
+void page_02_history_btn_event_cb(lv_event_t* e)
+{
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
+        return;
+    }
+
+    ui_manager_push_page(UI_PAGE_HISTORY);
+}
+
 void page_01_detail_area_event_cb(lv_event_t* e)
 {
     typedef struct {

@@ -62,6 +62,7 @@ static void destroy_current_page(void)
     case UI_PAGE_UI_UPGRADE: ui_page_16_ui_upgrade_destroy(); break;
     case UI_PAGE_MOTOR_TEST: ui_page_17_motor_test_destroy(); break;
     case UI_PAGE_PURE: ui_page_18_pure_destroy(); break;
+    case UI_PAGE_HISTORY: ui_page_19_history_destroy(); break;
     }
 }
 
@@ -112,6 +113,7 @@ static void create_new_page(ui_page_t page)
     case UI_PAGE_UI_UPGRADE: ui_page_16_ui_upgrade_create(lv_scr_act()); break;
     case UI_PAGE_MOTOR_TEST: ui_page_17_motor_test_create(lv_scr_act()); break;
     case UI_PAGE_PURE: ui_page_18_pure_create(lv_scr_act()); break;
+    case UI_PAGE_HISTORY: ui_page_19_history_create(lv_scr_act()); break;
     }
 }
 

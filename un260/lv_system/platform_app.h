@@ -78,4 +78,5 @@ void mode_switch(void);
 void page_02_report_init(void);
 void sim_clear_err_only(counting_sim_t* sim_data);
 bool sim_ensure_err_capacity(counting_sim_t* sim_data, int new_total);
+const char* get_currency_error_desc(uint8_t code);
 #endif // !PLATFORM_APP_H
