@@ -1783,13 +1783,9 @@ void PCCmdHandle(void)
             uint8_t type = buf[4];   
             uint8_t val  = buf[5];   
             if (type == 0x05) {
-                if (val >= 0x01 && val <= 0x04) {
-                    Machine_para.fo_mode = (uint8_t)(val - 1); // 1~4 -> UI 0~3
+                if (val <= 0x03) {
+                    Machine_para.fo_mode = val;
                     uart_printf(fd6, "FO boot sync: mode=0x%02X -> ui=%u\n",
-                                val, Machine_para.fo_mode);
-                } else if (val <= 0x03) {
-                    Machine_para.fo_mode = val; 
-                    uart_printf(fd6, "FO boot sync(legacy): mode=0x%02X -> ui=%u\n",
                                 val, Machine_para.fo_mode);
                 } else {
                     uart_printf(fd6, "FO boot sync: invalid mode=0x%02X\n", val);
@@ -1801,7 +1797,7 @@ void PCCmdHandle(void)
                 smart_island_refresh_summary();
                 break;
             }
-            if (type >= 0x01 && type <= 0x04) {
+            if (type <= 0x03) {
                 if (val == 0x01) {
                     if (page_01_fo_req_is_pending()) {
                         uint8_t target_mode = 0;
@@ -1809,7 +1805,7 @@ void PCCmdHandle(void)
                         Machine_para.fo_mode = target_mode;
                         page_01_bottom_a_refresh_fo(true);
                     } else {
-                        Machine_para.fo_mode = (uint8_t)(type - 1);
+                        Machine_para.fo_mode = type;
                         page_01_bottom_a_refresh_fo(false);
                     }
                     uart_printf(fd6, "FO set SUCCESS: type=0x%02X -> ui=%u\n",

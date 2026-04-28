@@ -448,7 +448,8 @@ void page_01_fo_btn_event_cb(lv_event_t* e) //切换主界面底部F/O开关
     target_mode = (uint8_t)((Machine_para.fo_mode + 1) % 4);
     if (!page_01_fo_req_start(target_mode)) return;
 
-    fo_cmd = (uint8_t)(target_mode + 1);
+    /* 协议第31条：0x00=OFF, 0x01=Face, 0x02=ORT, 0x03=Face&ORT */
+    fo_cmd = target_mode;
     send_command(fd4, 0x3A, &fo_cmd, 1);
 }
 
@@ -1084,7 +1085,8 @@ void page_03_fo_mode_event_cb(lv_event_t* e)
     Machine_para.fo_mode = fo_code;
     uint8_t fo_cmd;
     if (fo_code <= 3) {
-        fo_cmd = (uint8_t)(fo_code + 1);
+        /* 协议第31条：菜单页直接发送 0~3 编码 */
+        fo_cmd = fo_code;
         send_command(fd4, 0x3a, &fo_cmd, 1);
     } 
 #if LV_DEBUG
