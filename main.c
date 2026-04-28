@@ -1393,18 +1393,11 @@ void PCCmdHandle(void)
             sim.denom_mix[idx] = denom;
             if (is_main_page_active() &&
                 page_01_detail_section_get() == PAGE_01_DETAIL_SECTION_B) {
-                int b_valid_count = 0;
-                for (int vi = 0; vi < sim.total_pcs; vi++) {
-                    if (sim.sn_str[vi] != NULL && sim.denom_mix[vi] > 0) b_valid_count++;
-                }
-                // B区自动刷新：前9条实时刷新；超过9条后等结束帧统一刷新，兼顾流畅度
-                if (sim.total_pcs > 9) {
-                    if (b_valid_count <= 9) {
-                        page_01_main_detail_refresh_rows_only();
-                    }
-                } else {
-                    page_01_main_detail_refresh_rows_only();
-                }
+                /*
+                 * B区当前可见行始终跟随 SN 明细刷新。
+                 * 结束帧仍然会走 ui_refresh_main_page() 做一次完整收口。
+                 */
+                page_01_main_detail_refresh_rows_only();
             }
             break;
         }

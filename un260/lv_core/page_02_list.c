@@ -288,32 +288,12 @@ static int page_02_a_valid_count_get(void) // 获取A区有效面额条数
 
 static int page_02_b_valid_count_get(void) // 获取B区有效冠字号条数
 {
-    int valid_count = 0;
-
-    if (sim.sn_str == NULL) return 0;
-
-    for (int i = 0; i < sim.total_pcs; i++) {
-        if (sim.sn_str[i] != NULL && sim.denom_mix[i] > 0) {
-            valid_count++;
-        }
-    }
-
-    return valid_count;
+    return sim_get_sn_valid_count();
 }
 
 static int page_02_b_nth_valid_index_get(int nth) // 获取B区第nth条有效数据索引
 {
-    int valid_count = 0;
-
-    if (nth < 0 || sim.sn_str == NULL) return -1;
-
-    for (int i = 0; i < sim.total_pcs; i++) {
-        if (sim.sn_str[i] == NULL || sim.denom_mix[i] <= 0) continue;
-        if (valid_count == nth) return i;
-        valid_count++;
-    }
-
-    return -1;
+    return sim_get_sn_nth_valid_index(nth);
 }
 
 static page_02_scroll_section_t *page_02_scroll_section_get(page_02_section_id_t section_id) // 获取分区配置

@@ -812,6 +812,9 @@ static void smart_island_enable_gesture_on_obj(lv_obj_t *obj)
 static void smart_island_result_timer_cb(lv_timer_t *timer) 
 {
     LV_UNUSED(timer);
+    ui_count_end_anim_clear_machine();
+    fault_popup_clear_pending();
+    fault_popup_reset_auto_retry();
     smart_island_stop_result_timer();
     smart_island_restore_idle();
 }

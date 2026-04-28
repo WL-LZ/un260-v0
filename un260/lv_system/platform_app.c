@@ -6,6 +6,7 @@
 #include "user_cfg.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/page_01_main.h"
+#include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_refre/lvgl_refre.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_components/smart_island.h"
@@ -133,6 +134,44 @@ void update_label_by_name(ui_element_t* page_cfg_obj, int len,const char* name, 
     lv_vsnprintf(buf, sizeof(buf), fmt, args);
     va_end(args);
     lv_label_set_text(label, buf);
+}
+
+int sim_get_sn_valid_count(void)
+{
+    int valid_count = 0;
+
+    if (sim.sn_str == NULL || sim.sn_capacity <= 0) {
+        return 0;
+    }
+
+    for (int i = 0; i < sim.sn_capacity; i++) {
+        if (sim.sn_str[i] != NULL && sim.denom_mix[i] > 0) {
+            valid_count++;
+        }
+    }
+
+    return valid_count;
+}
+
+int sim_get_sn_nth_valid_index(int nth)
+{
+    int valid_count = 0;
+
+    if (nth < 0 || sim.sn_str == NULL || sim.sn_capacity <= 0) {
+        return -1;
+    }
+
+    for (int i = 0; i < sim.sn_capacity; i++) {
+        if (sim.sn_str[i] == NULL || sim.denom_mix[i] <= 0) {
+            continue;
+        }
+        if (valid_count == nth) {
+            return i;
+        }
+        valid_count++;
+    }
+
+    return -1;
 }
 
 //设置国家curr
@@ -468,32 +507,12 @@ void format_amount_with_comma(char* dest, size_t dest_size, float amount) {
 
 static int page_01_main_b_valid_count_get(void)
 {
-    int valid_count = 0;
-
-    if (sim.sn_str == NULL) return 0;
-
-    for (int i = 0; i < sim.total_pcs; i++) {
-        if (sim.sn_str[i] != NULL && sim.denom_mix[i] > 0) {
-            valid_count++;
-        }
-    }
-
-    return valid_count;
+    return sim_get_sn_valid_count();
 }
 
 static int page_01_main_b_nth_valid_index_get(int nth)
 {
-    int valid_count = 0;
-
-    if (nth < 0 || sim.sn_str == NULL) return -1;
-
-    for (int i = 0; i < sim.total_pcs; i++) {
-        if (sim.sn_str[i] == NULL || sim.denom_mix[i] <= 0) continue;
-        if (valid_count == nth) return i;
-        valid_count++;
-    }
-
-    return -1;
+    return sim_get_sn_nth_valid_index(nth);
 }
 
 static void page_01_main_detail_header_apply(page_01_detail_section_t section)
@@ -820,6 +839,18 @@ void ui_count_end_anim_poll(void)
     smart_island_refresh_summary();
 }
 
+void ui_count_end_anim_clear_machine(void)
+{
+    uint8_t clear_cmd = 0x01;
+
+    if (fd4 < 0) {
+        return;
+    }
+
+    /* 结单动画结束后，做一次协议复位，避免下一把被残留的确认态卡住。 */
+    send_command(fd4, 0x3D, &clear_cmd, 1);
+}
+
 void cleanup_counting_sim(void)
 {
     if (sim_timer) {
@@ -905,21 +936,12 @@ void mode_switch(void)
 
 void page_02_report_init(void)
 {
-    int b_valid_count = 0;
-
     page_02_a_report_status.curent_page = 1;
     page_02_a_report_status.total_page = sim.denom_number == 0 ? 1 : (sim.denom_number + PAGE_02_A_ITEM - 1) / PAGE_02_A_ITEM;
     page_02_b_report_status.curent_page = 1;
-
-    // B区只按有效冠字号详情计页，避免 total_pcs 触发占位显示。 
-    if (sim.sn_str != NULL) {
-        for (int i = 0; i < sim.total_pcs; i++) {
-            if (sim.sn_str[i] != NULL && sim.denom_mix[i] > 0) {
-                b_valid_count++;
-            }
-        }
-    }
-    page_02_b_report_status.total_page = (b_valid_count == 0) ? 1 : ((b_valid_count + PAGE_02_B_ITEM - 1) / PAGE_02_B_ITEM);
+    page_02_b_report_status.total_page = (sim_get_sn_valid_count() == 0)
+        ? 1
+        : ((sim_get_sn_valid_count() + PAGE_02_B_ITEM - 1) / PAGE_02_B_ITEM);
 
     page_02_c_report_status.curent_page = 1;
     page_02_c_report_status.total_page = (sim.err_num == 0) ? 1 : ((sim.err_num + PAGE_02_C_ITEM - 1) / PAGE_02_C_ITEM);
