@@ -3,6 +3,7 @@
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/page_04_set.h"
 #include "un260/lv_system/platform_app.h"
+#include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_refre/lvgl_refre.h"
 #include"lv_page_declear.h"
 
@@ -120,6 +121,33 @@ static void create_new_page(ui_page_t page)
 
 static lv_obj_t* page_objects[UI_PAGE_COUNT] = { NULL };
 
+typedef struct {
+    ui_page_t from;
+    ui_page_t to;
+    uint8_t cmd_g;
+    uint8_t cmd_s;
+} page_switch_notify_rule_t;
+
+static void ui_manager_send_protocol(uint8_t cmd_g, uint8_t cmd_s)
+{
+    send_command(fd4, cmd_g, &cmd_s, 1);
+}
+
+static void ui_manager_notify_page_switch(ui_page_t from, ui_page_t to)
+{
+    static const page_switch_notify_rule_t rules[] = {
+        { UI_PAGE_MAIN, UI_PAGE_LIST, 0x40, 0x01 },
+        { UI_PAGE_LIST, UI_PAGE_MAIN, 0x40, 0x00 },
+    };
+
+    for (size_t i = 0; i < sizeof(rules) / sizeof(rules[0]); i++) {
+        if (rules[i].from == from && rules[i].to == to) {
+            ui_manager_send_protocol(rules[i].cmd_g, rules[i].cmd_s);
+            break;
+        }
+    }
+}
+
 static void hide_current_page(void)
 {
     if (current_page >= 0 && current_page < UI_PAGE_COUNT && page_objects[current_page]) {
@@ -171,8 +199,10 @@ static void hide_current_page(void)
 
 void ui_manager_switch(ui_page_t page)
 {
+    ui_page_t from = current_page;
 
     if (page == current_page) return;
+    ui_manager_notify_page_switch(from, page);
     destroy_current_page();
     create_new_page(page);
     current_page = page;

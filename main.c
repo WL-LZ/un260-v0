@@ -1826,6 +1826,28 @@ void PCCmdHandle(void)
             }
             break;
         }
+
+        /* ================== 0x40 外显界面切换 ================== */
+        case 0x40:
+        {
+            if (len < 6) {
+                uart_printf(fd6, "0x40: frame too short (%d)\n", len);
+                break;
+            }
+
+            uint8_t val = buf[4];
+
+            if (val == 0x00) {
+                uart_printf(fd6, "0x40 switch to main SUCCESS\n");
+            } else if (val == 0x01) {
+                uart_printf(fd6, "0x40 switch to detail SUCCESS\n");
+            } else {
+                uart_printf(fd6, "0x40 unknown result=0x%02X\n", val);
+            }
+
+            break;
+        }
+
         /* ================== 0x38 手动/自动模式 ================== */
 
         case 0x38:
