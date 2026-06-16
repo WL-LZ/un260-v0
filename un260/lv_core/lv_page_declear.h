@@ -17,6 +17,7 @@
 #include "page_17_motor_test.h"
 #include "page_18_pure.h"
 #include "page_19_history.h"
+#include "page_20_set_print.h"
 #include "page_00_boot_anim.h"
 
 #endif // !LV_PAGE_DECLEAR_H

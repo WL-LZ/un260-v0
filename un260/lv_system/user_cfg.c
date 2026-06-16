@@ -37,6 +37,11 @@ Machine_para_t Machine_para = {
     .last_total_pcs = 0,
     .last_total_amount = 0,
     .history_total_notes_counted = 0,
+    .print_space_top = 0,
+    .print_head1 = "",
+    .print_head2 = "",
+    .print_content = PRINT_SETTING_CONTENT_LIST,
+    .print_space_bottom = 0,
 };
 Machine_Statue_t Machine_Statue = { 0 };
 sensor_voltage_t g_sensor_voltage = { 0 };

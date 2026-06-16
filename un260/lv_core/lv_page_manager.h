@@ -20,6 +20,7 @@ extern "C" {
     extern lv_obj_t* page_motor_test;
     extern lv_obj_t* pure_page;
     extern lv_obj_t* boot_anim_page;
+    extern lv_obj_t* print_setting_page;
 
     typedef enum {
         UI_PAGE_BOOT_ANIM = 0,
@@ -42,6 +43,7 @@ extern "C" {
         UI_PAGE_MOTOR_TEST,
         UI_PAGE_PURE,
         UI_PAGE_HISTORY,
+        UI_PAGE_PRINT_SETTING,
         UI_PAGE_COUNT
     } ui_page_t;
 

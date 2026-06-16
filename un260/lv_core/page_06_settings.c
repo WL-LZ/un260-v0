@@ -882,6 +882,8 @@ static void create_system_page_content(lv_obj_t* parent)
                                                               ui_text_get(UI_TEXT_SETTINGS_UPGRADE));
     lv_obj_t* debug_tile = create_tile(parent, 0, 0, ui_text_get(UI_TEXT_SETTINGS_DEBUG), "", true, debug_tile_event_cb, NULL);
     create_debug_switch(debug_tile);
+    create_tile(parent, 1, 0, ui_text_get(UI_TEXT_SETTINGS_PRINT_SETTING), ">", true,
+                enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_PRINT_SETTING);
 
     page_06_settings_create_sub_page_link(parent, 0, 1, ui_text_get(UI_TEXT_SETTINGS_UPGRADE), upgrade_page, true);
     create_tile(parent, 1, 1, ui_text_get(UI_TEXT_SETTINGS_TIME_SETTING), ">", false,

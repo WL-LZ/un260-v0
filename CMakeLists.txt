@@ -58,6 +58,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_core/page_17_motor_test.c
     un260/lv_core/page_18_pure.c
     un260/lv_core/page_19_history.c
+    un260/lv_core/page_20_set_print.c
     un260/lv_core/page_00_boot_anim.c
     
     un260/lv_refre/lvgl_refre.c

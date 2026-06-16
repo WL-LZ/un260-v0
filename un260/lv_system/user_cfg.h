@@ -42,6 +42,13 @@ typedef enum {
 #define PAGE_02_DEBUG 1
 #define PAGE_07_CURRENCIES 4
 #define MAX_CURRENCIES 32
+
+#define PRINT_SETTING_HEAD_MAX_LEN 20
+#define PRINT_SETTING_SPACE_MAX_LINES 99
+#define PRINT_SETTING_CONTENT_LIST 0x01
+#define PRINT_SETTING_CONTENT_SN 0x02
+#define PRINT_SETTING_CONTENT_LIST_SN 0x03
+
 typedef struct {
 
     int mode;
@@ -74,6 +81,11 @@ typedef struct {
     uint16_t last_total_pcs;
     uint32_t last_total_amount;
     uint32_t history_total_notes_counted;
+    uint8_t print_space_top;
+    char print_head1[PRINT_SETTING_HEAD_MAX_LEN + 1];
+    char print_head2[PRINT_SETTING_HEAD_MAX_LEN + 1];
+    uint8_t print_content;
+    uint8_t print_space_bottom;
 }Machine_para_t;
 
 extern Machine_para_t Machine_para;

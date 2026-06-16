@@ -1998,6 +1998,18 @@ void PCCmdHandle(void)
             uart_printf(fd6, "0x3B clear data ack: res=0x%02X\n", buf[4]);
             break;
         }
+        /* ================== 0x41 打印设置应答 ================== */
+        case 0x41:
+        {
+            if (len < 7) {
+                uart_printf(fd6, "0x41 invalid len=%d\n", len);
+                break;
+            }
+
+            uart_printf(fd6, "0x41 print setting ack: sub=0x%02X res=0x%02X\n", buf[4], buf[5]);
+            ui_page_20_set_print_on_reply(buf[4], buf[5]);
+            break;
+        }
         default:
             uart_printf(fd6, "Unknown command 0x%02X\n", cmd);
             break;
