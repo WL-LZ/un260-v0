@@ -1,8 +1,10 @@
 #include "un260/lv_core/page_08_boot.h"
 #include "un260/lv_core/lv_page_manager.h"
+#include "un260/lv_core/settings_detail_ui.h"
 #include "un260/lv_resources/lv_image_declear.h" 
 #include "un260/lv_resources/lv_img_init.h" 
 #include "un260/lv_system/platform_app.h"
+#include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_components/lv_components.h"
 #include "un260/lv_refre/lvgl_refre.h"
@@ -91,47 +93,19 @@ void ui_page_11_timeset_create(lv_obj_t* parent)
     /* 进入设置页时暂停自动走时，避免调节时被跳动 */
     machine_time_pause(true);
 
-    timeset_page = lv_obj_create(lv_scr_act());
-    lv_obj_remove_style_all(timeset_page);
-    lv_obj_set_pos(timeset_page, 0, 0);
-    lv_obj_set_size(timeset_page, 1280, 400);
-    lv_obj_clear_flag(timeset_page, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_bg_color(timeset_page, lv_color_make(250, 250, 250), 0);
-    lv_obj_set_style_bg_opa(timeset_page, LV_OPA_COVER, 0);
-
-    /* 标题 */
-    lv_obj_t* title = lv_label_create(timeset_page);
-    lv_label_set_text(title, "TIME SET");
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_24, 0);
-    lv_obj_set_style_text_color(title, lv_color_make(112, 112, 112), 0);
-    lv_obj_set_pos(title, 30, 18);
-
-    /* ESC按钮(100*60 右上角) */
-    lv_obj_t* esc = lv_btn_create(timeset_page);
-    lv_obj_set_size(esc, 100, 60);
-    lv_obj_set_pos(esc, 1280 - 100 - 20, 15);
-    lv_obj_add_event_cb(esc, esc_btn_cb, LV_EVENT_CLICKED, NULL);
-    lv_obj_set_style_radius(esc, 12, 0);
-    lv_obj_set_style_bg_color(esc, lv_color_hex(0x3ec1f7), 0);
-    lv_obj_set_style_bg_opa(esc, LV_OPA_COVER, 0);
-    lv_obj_t* esc_label = lv_label_create(esc);
-    lv_label_set_text(esc_label, "ESC");
-    lv_obj_center(esc_label);
-    lv_obj_set_style_text_font(esc_label, &lv_font_montserrat_20, 0);
+    lv_obj_t* content = NULL;
+    timeset_page = settings_detail_create_page(parent, ui_text_get(UI_TEXT_SETTINGS_TIME_SET_TITLE),
+                                               esc_btn_cb, &content);
 
     /* 当前时间显示 */
-    lbl_time = lv_label_create(timeset_page);
-    lv_obj_set_pos(lbl_time, 30, 70);
+    lbl_time = settings_detail_create_label(content, "", &lv_font_montserrat_24,
+                                            lv_color_hex(0x08C5D6), 32, 18);
     lv_obj_set_size(lbl_time, 1220, 40);
-    lv_obj_set_style_text_font(lbl_time, &lv_font_montserrat_24, 0);
-    lv_obj_set_style_text_color(lbl_time, lv_color_make(0, 115, 255), 0);
     refresh_time_label();
 
-    lv_obj_t* hint = lv_label_create(timeset_page);
-    lv_label_set_text(hint, "Swipe/roll to set: YYYY/MM/DD/HH/MM/SS");
-    lv_obj_set_style_text_font(hint, &lv_font_montserrat_16, 0);
-    lv_obj_set_style_text_color(hint, lv_color_make(136, 137, 138), 0);
-    lv_obj_set_pos(hint, 30, 118);
+    settings_detail_create_label(content, ui_text_get(UI_TEXT_SETTINGS_TIME_HINT),
+                                 &lv_font_montserrat_16,
+                                 lv_color_hex(0x7686A5), 32, 66);
 
     /* 生成roller选项字符串 */
     static char opt_year[2048];
@@ -171,18 +145,20 @@ void ui_page_11_timeset_create(lv_obj_t* parent)
     uint16_t y; uint8_t mo, d, hh, mm, ss;
     machine_time_get(&y, &mo, &d, &hh, &mm, &ss);
 
-    int base_x = 30;
-    int base_y = 140;
+    lv_obj_t* card = settings_detail_create_card(content, 32, 110, 1028, 205);
+
+    int base_x = 18;
+    int base_y = 12;
     int rw = 150;
     int rh = 200;
     int gap = 20;
 
-    r_year = create_roller(timeset_page, base_x + (rw + gap) * 0, base_y, rw, rh, opt_year, (int)(y - 2000));
-    r_mon = create_roller(timeset_page, base_x + (rw + gap) * 1, base_y, rw, rh, opt_mon, (int)(mo - 1));
-    r_day = create_roller(timeset_page, base_x + (rw + gap) * 2, base_y, rw, rh, opt_day, (int)(d - 1));
-    r_hour = create_roller(timeset_page, base_x + (rw + gap) * 3, base_y, rw, rh, opt_h, (int)(hh));
-    r_min = create_roller(timeset_page, base_x + (rw + gap) * 4, base_y, rw, rh, opt_m, (int)(mm));
-    r_sec = create_roller(timeset_page, base_x + (rw + gap) * 5, base_y, rw, rh, opt_s, (int)(ss));
+    r_year = create_roller(card, base_x + (rw + gap) * 0, base_y, rw, rh, opt_year, (int)(y - 2000));
+    r_mon = create_roller(card, base_x + (rw + gap) * 1, base_y, rw, rh, opt_mon, (int)(mo - 1));
+    r_day = create_roller(card, base_x + (rw + gap) * 2, base_y, rw, rh, opt_day, (int)(d - 1));
+    r_hour = create_roller(card, base_x + (rw + gap) * 3, base_y, rw, rh, opt_h, (int)(hh));
+    r_min = create_roller(card, base_x + (rw + gap) * 4, base_y, rw, rh, opt_m, (int)(mm));
+    r_sec = create_roller(card, base_x + (rw + gap) * 5, base_y, rw, rh, opt_s, (int)(ss));
 }
 
 void ui_page_11_timeset_destroy(void)

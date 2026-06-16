@@ -1,6 +1,8 @@
 #include "page_14_main_upgrade.h"
 #include "un260/lv_core/lv_page_manager.h"
+#include "un260/lv_core/settings_detail_ui.h"
 #include "un260/lv_drivers/lv_drivers.h"
+#include "un260/lv_system/ui_text.h"
 
 #include <stdbool.h>
 
@@ -49,7 +51,7 @@ static void timeout_cb(lv_timer_t* t)
     if (lv_tick_elaps(wait_start_tick) >= MAIN_UPGRADE_TIMEOUT_MS) {
         waiting_upgrade_result = false;
         if (lbl_upgrade && lv_obj_is_valid(lbl_upgrade)) {
-            lv_label_set_text(lbl_upgrade, "Main-board upgrade timeout (20s), upgrade failed");
+            lv_label_set_text(lbl_upgrade, ui_text_get(UI_TEXT_SETTINGS_MAIN_UPGRADE_TIMEOUT));
             lv_obj_set_style_text_color(lbl_upgrade, lv_color_hex(0xC03A2B), 0);
         }
     }
@@ -60,7 +62,7 @@ static void start_cb(lv_event_t* e)
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
 
     if (fd4 < 0) {
-        lv_label_set_text(lbl_upgrade, "UART not ready");
+        lv_label_set_text(lbl_upgrade, ui_text_get(UI_TEXT_SETTINGS_UART_NOT_READY));
         lv_obj_set_style_text_color(lbl_upgrade, lv_color_hex(0xC03A2B), 0);
         return;
     }
@@ -69,7 +71,7 @@ static void start_cb(lv_event_t* e)
     waiting_upgrade_result = true;
     wait_start_tick = lv_tick_get();
 
-    lv_label_set_text(lbl_upgrade, "Main-board upgrade command sent, waiting status...");
+    lv_label_set_text(lbl_upgrade, ui_text_get(UI_TEXT_SETTINGS_MAIN_UPGRADE_SENT));
     lv_obj_set_style_text_color(lbl_upgrade, lv_color_hex(0x2D3A4A), 0);
 }
 
@@ -101,45 +103,21 @@ void ui_page_14_main_upgrade_create(lv_obj_t* parent)
 {
     if (page_14) return;
 
-    lv_obj_t* root = parent ? parent : lv_scr_act();
-    page_14 = lv_obj_create(root);
-    lv_obj_remove_style_all(page_14);
-    lv_obj_set_pos(page_14, 0, 0);
-    lv_obj_set_size(page_14, 1280, 400);
-    lv_obj_clear_flag(page_14, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_bg_color(page_14, lv_color_hex(0xF2F6FB), 0);
-    lv_obj_set_style_bg_opa(page_14, LV_OPA_COVER, 0);
+    lv_obj_t* content = NULL;
+    page_14 = settings_detail_create_page(parent, ui_text_get(UI_TEXT_SETTINGS_MAIN_UPGRADE_TITLE),
+                                          esc_cb, &content);
 
-    lv_obj_t* title = lv_label_create(page_14);
-    lv_label_set_text(title, "MAIN BOARD UPGRADE");
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_28, 0);
-    lv_obj_set_pos(title, 36, 20);
-
-    lv_obj_t* esc_btn = lv_btn_create(page_14);
-    lv_obj_set_size(esc_btn, 100, 60);
-    lv_obj_set_pos(esc_btn, 1160, 14);
-    lv_obj_add_event_cb(esc_btn, esc_cb, LV_EVENT_CLICKED, NULL);
-    lv_obj_t* esc_label = lv_label_create(esc_btn);
-    lv_label_set_text(esc_label, "ESC");
-    lv_obj_center(esc_label);
-
-    lv_obj_t* card = lv_obj_create(page_14);
-    lv_obj_set_size(card, 1200, 260);
-    lv_obj_set_pos(card, 40, 100);
-    lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_t* card = settings_detail_create_card(content, 40, 45, 1200, 260);
 
     lbl_upgrade = lv_label_create(card);
-    lv_label_set_text(lbl_upgrade, "Press START to begin main-board upgrade");
+    lv_label_set_text(lbl_upgrade, ui_text_get(UI_TEXT_SETTINGS_PRESS_START_MAIN_UPGRADE));
     lv_obj_set_style_text_font(lbl_upgrade, &lv_font_montserrat_22, 0);
     lv_obj_set_pos(lbl_upgrade, 36, 60);
 
-    lv_obj_t* btn_start = lv_btn_create(card);
-    lv_obj_set_size(btn_start, 250, 70);
-    lv_obj_set_pos(btn_start, 36, 150);
-    lv_obj_add_event_cb(btn_start, start_cb, LV_EVENT_CLICKED, NULL);
-    lv_obj_t* start_label = lv_label_create(btn_start);
-    lv_label_set_text(start_label, "START UPGRADE");
-    lv_obj_center(start_label);
+    settings_detail_create_button(card, 36, 150, 250, 70,
+                                  ui_text_get(UI_TEXT_SETTINGS_START_UPGRADE),
+                                  lv_color_hex(0x08C5D6),
+                                  start_cb, NULL);
 
     if (has_last_a1) {
         ui_page_14_main_upgrade_on_reply(0xA1, last_a1);

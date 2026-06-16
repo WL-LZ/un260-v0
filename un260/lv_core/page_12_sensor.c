@@ -1,6 +1,8 @@
 #include "page_12_sensor.h"
 #include "un260/lv_core/lv_page_manager.h"
+#include "un260/lv_core/settings_detail_ui.h"
 #include "un260/lv_drivers/lv_drivers.h"
+#include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/user_cfg.h"
 
 #define SENSOR_SCALE_Y_DEFAULT 330
@@ -23,7 +25,7 @@ static float sensor_raw_to_volt(uint8_t raw)
 static void sensor_send_query(void)
 {
     const uint8_t req[2] = { 0x01, 0x01 };
-    send_command(fd4, 0x1D, req, 2);
+    settings_detail_send_command(0x1D, req, 2);
 }
 
 static void sensor_refresh_view(void)
@@ -64,36 +66,13 @@ void ui_page_12_sensor_create(lv_obj_t* parent)
     (void)parent;
     if (sensor_page) return;
 
-    sensor_page = lv_obj_create(lv_scr_act());
-    lv_obj_remove_style_all(sensor_page);
-    lv_obj_set_size(sensor_page, 1280, 400);
-    lv_obj_set_pos(sensor_page, 0, 0);
-    lv_obj_clear_flag(sensor_page, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_bg_color(sensor_page, lv_color_hex(0xEBF3FF), 0);
-    lv_obj_set_style_bg_grad_color(sensor_page, lv_color_hex(0xF9FBFF), 0);
-    lv_obj_set_style_bg_grad_dir(sensor_page, LV_GRAD_DIR_VER, 0);
+    lv_obj_t* content = NULL;
+    sensor_page = settings_detail_create_page(parent, ui_text_get(UI_TEXT_SETTINGS_SENSOR_VOLTAGE),
+                                              sensor_esc_cb, &content);
 
-    lv_obj_t* title = lv_label_create(sensor_page);
-    lv_label_set_text(title, "SENSOR VOLTAGE");
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_24, 0);
-    lv_obj_set_style_text_color(title, lv_color_hex(0x183B61), 0);
-    lv_obj_set_pos(title, 24, 16);
-
-
-    lv_obj_t* esc = lv_btn_create(sensor_page);
-    lv_obj_set_size(esc, 100, 60);
-    lv_obj_set_pos(esc, 1160, 16);
-    lv_obj_set_style_radius(esc, 12, 0);
-    lv_obj_set_style_bg_color(esc, lv_color_hex(0x3EC1F7), 0);
-    lv_obj_add_event_cb(esc, sensor_esc_cb, LV_EVENT_CLICKED, NULL);
-    lv_obj_t* esc_label = lv_label_create(esc);
-    lv_label_set_text(esc_label, "ESC");
-    lv_obj_set_style_text_font(esc_label, &lv_font_montserrat_20, 0);
-    lv_obj_center(esc_label);
-
-    lv_obj_t* grid = lv_obj_create(sensor_page);
-    lv_obj_set_pos(grid, 20, 88);
-    lv_obj_set_size(grid, 1240, 296);
+    lv_obj_t* grid = lv_obj_create(content);
+    lv_obj_set_pos(grid, 20, 20);
+    lv_obj_set_size(grid, 1240, 300);
     lv_obj_clear_flag(grid, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_border_width(grid, 0, 0);
     lv_obj_set_style_bg_opa(grid, LV_OPA_TRANSP, 0);

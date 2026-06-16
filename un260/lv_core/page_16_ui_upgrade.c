@@ -1,5 +1,6 @@
 #include "page_16_ui_upgrade.h"
 #include "un260/lv_core/lv_page_manager.h"
+#include "un260/lv_core/settings_detail_ui.h"
 #include "un260/lv_core/ui_upgrade_service.h"
 #include "un260/lv_components/lv_upgrade_popup.h"
 #include "un260/lv_system/ui_text.h"
@@ -307,39 +308,11 @@ void ui_page_16_ui_upgrade_create(lv_obj_t* parent) //创建升级页面
 {
     if (upgrade_page) return;
 
-    lv_obj_t* root = parent ? parent : lv_scr_act();
+    lv_obj_t* content = NULL;
+    upgrade_page = settings_detail_create_page_ex(parent, page_16_text_get(UI_TEXT_PAGE16_TITLE),
+                                                  upgrade_esc_btn_cb, &content, &g_esc_btn);
 
-    upgrade_page = lv_obj_create(root);
-    lv_obj_remove_style_all(upgrade_page);
-    lv_obj_set_pos(upgrade_page, 0, 0);
-    lv_obj_set_size(upgrade_page, 1280, 400);
-    lv_obj_clear_flag(upgrade_page, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_bg_color(upgrade_page, lv_color_hex(0xF2F6FB), 0);
-    lv_obj_set_style_bg_opa(upgrade_page, LV_OPA_COVER, 0);
-
-    lv_obj_t* title = lv_label_create(upgrade_page);
-    lv_label_set_text(title, page_16_text_get(UI_TEXT_PAGE16_TITLE));
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_28, 0);
-    lv_obj_set_style_text_color(title, lv_color_hex(0x2D3A4A), 0);
-    lv_obj_set_pos(title, 36, 20);
-
-    g_esc_btn = lv_btn_create(upgrade_page);
-    lv_obj_set_size(g_esc_btn, 100, 60);
-    lv_obj_set_pos(g_esc_btn, 1160, 14);
-    lv_obj_add_event_cb(g_esc_btn, upgrade_esc_btn_cb, LV_EVENT_CLICKED, NULL);
-
-    lv_obj_t* esc_label = lv_label_create(g_esc_btn);
-    lv_label_set_text(esc_label, page_16_text_get(UI_TEXT_PAGE16_ESC));
-    lv_obj_center(esc_label);
-
-    lv_obj_t* card = lv_obj_create(upgrade_page);
-    lv_obj_set_size(card, 1200, 260);
-    lv_obj_set_pos(card, 40, 100);
-    lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_radius(card, 16, 0);
-    lv_obj_set_style_bg_color(card, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_border_width(card, 2, 0);
-    lv_obj_set_style_border_color(card, lv_color_hex(0xD7DEE8), 0);
+    lv_obj_t* card = settings_detail_create_card(content, 40, 45, 1200, 260);
 
     upgrade_usb_status_label = lv_label_create(card);
     lv_label_set_text_fmt(upgrade_usb_status_label, page_16_text_get(UI_TEXT_PAGE16_USB_STATUS_FMT),
@@ -360,17 +333,10 @@ void ui_page_16_ui_upgrade_create(lv_obj_t* parent) //创建升级页面
     lv_obj_set_style_text_color(upgrade_hint_label, lv_color_hex(0x5F6E7D), 0);
     lv_obj_set_pos(upgrade_hint_label, 36, 126);
 
-    g_upgrade_btn = lv_btn_create(card);
-    lv_obj_set_size(g_upgrade_btn, 220, 70);
-    lv_obj_set_pos(g_upgrade_btn, 36, 170);
-    lv_obj_set_style_radius(g_upgrade_btn, 14, 0);
-    lv_obj_set_style_bg_color(g_upgrade_btn, lv_color_hex(0x1B86FF), 0);
-    lv_obj_add_event_cb(g_upgrade_btn, upgrade_start_btn_cb, LV_EVENT_CLICKED, NULL);
-
-    lv_obj_t* upgrade_label = lv_label_create(g_upgrade_btn);
-    lv_label_set_text(upgrade_label, page_16_text_get(UI_TEXT_PAGE16_UPGRADE_BTN));
-    lv_obj_set_style_text_font(upgrade_label, &lv_font_montserrat_22, 0);
-    lv_obj_center(upgrade_label);
+    g_upgrade_btn = settings_detail_create_button(card, 36, 170, 220, 70,
+                                                  page_16_text_get(UI_TEXT_PAGE16_UPGRADE_BTN),
+                                                  lv_color_hex(0x08C5D6),
+                                                  upgrade_start_btn_cb, NULL);
 
     g_upgrading = false;
     g_wait_sec = 0;

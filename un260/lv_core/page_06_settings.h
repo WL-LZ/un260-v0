@@ -14,6 +14,11 @@ typedef enum {
     PAGE_06_SETTINGS_MENU_COUNT
 } page_06_settings_menu_t;
 
+typedef enum {
+    PAGE_06_SETTINGS_SUB_NONE = 0,
+    PAGE_06_SETTINGS_SUB_UPGRADE,
+} page_06_settings_sub_page_t;
+
 void ui_page_06_settings_create(lv_obj_t* parent);
 void ui_page_06_settings_destroy(void);
 
@@ -43,8 +48,9 @@ lv_obj_t* page_06_settings_create_page_option(page_06_settings_menu_t menu,
                                               int page,
                                               bool accent);
 
-/* 创建设置页内部子页面；适合 A -> a/b -> a详情 这种多层设置。 */
+/* 创建设置页内部子页面；sub_page 用稳定 ID，不依赖显示文案。 */
 lv_obj_t* page_06_settings_create_sub_page(page_06_settings_menu_t menu,
+                                           page_06_settings_sub_page_t sub_page,
                                            const char* title);
 lv_obj_t* page_06_settings_create_sub_page_link(lv_obj_t* parent,
                                                 int col, int row,
