@@ -137,5 +137,12 @@ const ui_text_item_t g_ui_text_page_group[UI_TEXT_PAGE_MAX] = {
     [UI_TEXT_SETTINGS_FLAP_POSITION] = {"Flap Position", "翻板位置", "Flap Position"},
     [UI_TEXT_SETTINGS_FLAP_UP] = {"Upper", "上方", "Upper"},
     [UI_TEXT_SETTINGS_FLAP_DOWN] = {"Lower", "下方", "Lower"},
-    [UI_TEXT_SETTINGS_FLAP_PREVIEW] = {"Preview", "预览", "Preview"}
+    [UI_TEXT_SETTINGS_FLAP_PREVIEW] = {"Preview", "预览", "Preview"},
+    [UI_TEXT_SETTINGS_REJECT_POCKET_SETTING] = {"Reject Pocket", "拒钞口设置", "Reject Pocket"},
+    [UI_TEXT_SETTINGS_REJECT_POCKET_TITLE] = {"REJECT POCKET", "拒钞口设置", "REJECT POCKET"},
+    [UI_TEXT_SETTINGS_REJECT_POCKET_CAPACITY] = {"Reject Pocket Capacity", "拒钞口容量", "Reject Pocket Capacity"},
+    [UI_TEXT_SETTINGS_REJECT_POCKET_PREVIEW] = {"Preview", "预览", "Preview"},
+    [UI_TEXT_SETTINGS_REJECT_POCKET_LEVEL_FMT] = {"LEVEL %d", "%d级", "LEVEL %d"},
+    [UI_TEXT_SETTINGS_REJECT_POCKET_PCS] = {"pcs", "张", "pcs"},
+    [UI_TEXT_SETTINGS_REJECT_POCKET_RANGE_HINT] = {"Reject pocket range: 30-100 pcs", "拒钞口张数范围：30-100张", "Reject pocket range: 30-100 pcs"}
 };

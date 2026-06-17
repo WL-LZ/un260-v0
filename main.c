@@ -1006,8 +1006,10 @@ void PCCmdHandle(void)
 
             if (res == 0x01) {
                 uart_printf(fd6, "Reject pocket pcs set success\n");
+                ui_page_24_set_reject_pocket_on_reply(res);
             } else if (res == 0x02) {
                 uart_printf(fd6, "Reject pocket pcs set fail\n");
+                ui_page_24_set_reject_pocket_on_reply(res);
             } else if (res == 0x03) {
                 if (len < 8) break;
                 Machine_para.reject_pocket_max = buf[6];

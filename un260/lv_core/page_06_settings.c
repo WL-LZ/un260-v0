@@ -943,6 +943,8 @@ static void create_user_page_content(lv_obj_t* parent)
                 enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_SET_PASSAGE);
     create_tile(parent, 1, 0, ui_text_get(UI_TEXT_SETTINGS_DOUBLE_NOTE_SETTING), ">", true,
                 enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_DOUBLE_NOTE_SETTING);
+    create_tile(parent, 0, 1, ui_text_get(UI_TEXT_SETTINGS_REJECT_POCKET_SETTING), ">", false,
+                enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_REJECT_POCKET_SETTING);
 }
 
 static lv_obj_t* create_version_row(lv_obj_t* parent, int row, const char* title, const char* value)

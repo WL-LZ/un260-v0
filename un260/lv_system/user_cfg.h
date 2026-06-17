@@ -52,6 +52,8 @@ typedef enum {
 #define DOUBLE_NOTE_LEVEL_MAX 3
 #define FLAP_POSITION_UP 0x01
 #define FLAP_POSITION_DOWN 0x02
+#define REJECT_POCKET_MIN_CAPACITY 30
+#define REJECT_POCKET_MAX_CAPACITY 100
 
 typedef struct {
 

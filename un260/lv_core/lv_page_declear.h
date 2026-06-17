@@ -21,6 +21,7 @@
 #include "page_21_set_language.h"
 #include "page_22_set_double_note.h"
 #include "page_23_set_flap.h"
+#include "page_24_set_reject_pocket.h"
 #include "page_00_boot_anim.h"
 
 #endif // !LV_PAGE_DECLEAR_H
