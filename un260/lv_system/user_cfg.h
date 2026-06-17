@@ -54,6 +54,8 @@ typedef enum {
 #define FLAP_POSITION_DOWN 0x02
 #define REJECT_POCKET_MIN_CAPACITY 30
 #define REJECT_POCKET_MAX_CAPACITY 100
+#define SERIAL_NUMBER_LEVEL_OFF 0
+#define SERIAL_NUMBER_LEVEL_MAX 3
 
 typedef struct {
 
@@ -94,6 +96,7 @@ typedef struct {
     uint8_t print_space_bottom;
     uint8_t double_note_level;
     uint8_t flap_position;
+    uint8_t serial_number_level;
 }Machine_para_t;
 
 extern Machine_para_t Machine_para;

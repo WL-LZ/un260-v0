@@ -1593,6 +1593,8 @@ void PCCmdHandle(void)
 
             case 0x07: /* 冠字号 */
                 Machine_para.serial_num_enable = (buf[5] == 0x01);
+                Machine_para.serial_number_level = Machine_para.serial_num_enable ?
+                                                   0x01 : SERIAL_NUMBER_LEVEL_OFF;
                 break;
 
             case 0x08: /* 货币索引 */
@@ -2016,6 +2018,24 @@ void PCCmdHandle(void)
             uart_printf(fd6, "0x31 double note level ack: level=0x%02X res=0x%02X\n",
                         buf[4], buf[5]);
             ui_page_22_set_double_note_on_reply(buf[4], buf[5]);
+            break;
+        }
+        /* ================== 0x32 冠字号档位应答 ================== */
+        case 0x32:
+        {
+            if (len < 7) {
+                uart_printf(fd6, "0x32 invalid len=%d\n", len);
+                break;
+            }
+
+            if (buf[5] == 0x01 && buf[4] <= SERIAL_NUMBER_LEVEL_MAX) {
+                Machine_para.serial_number_level = buf[4];
+                Machine_para.serial_num_enable = (buf[4] != SERIAL_NUMBER_LEVEL_OFF);
+            }
+
+            uart_printf(fd6, "0x32 serial number level ack: level=0x%02X res=0x%02X\n",
+                        buf[4], buf[5]);
+            ui_page_25_set_serial_number_on_reply(buf[4], buf[5]);
             break;
         }
         /* ================== 0x42 翻板控制应答 ================== */

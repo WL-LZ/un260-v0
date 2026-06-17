@@ -25,6 +25,7 @@ extern "C" {
     extern lv_obj_t* double_note_setting_page;
     extern lv_obj_t* flap_setting_page;
     extern lv_obj_t* reject_pocket_setting_page;
+    extern lv_obj_t* serial_number_setting_page;
 
     typedef enum {
         UI_PAGE_BOOT_ANIM = 0,
@@ -52,6 +53,7 @@ extern "C" {
         UI_PAGE_DOUBLE_NOTE_SETTING,
         UI_PAGE_FLAP_SETTING,
         UI_PAGE_REJECT_POCKET_SETTING,
+        UI_PAGE_SERIAL_NUMBER_SETTING,
         UI_PAGE_COUNT
     } ui_page_t;
 

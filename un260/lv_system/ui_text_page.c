@@ -144,5 +144,13 @@ const ui_text_item_t g_ui_text_page_group[UI_TEXT_PAGE_MAX] = {
     [UI_TEXT_SETTINGS_REJECT_POCKET_PREVIEW] = {"Preview", "预览", "Preview"},
     [UI_TEXT_SETTINGS_REJECT_POCKET_LEVEL_FMT] = {"LEVEL %d", "%d级", "LEVEL %d"},
     [UI_TEXT_SETTINGS_REJECT_POCKET_PCS] = {"pcs", "张", "pcs"},
-    [UI_TEXT_SETTINGS_REJECT_POCKET_RANGE_HINT] = {"Reject pocket range: 30-100 pcs", "拒钞口张数范围：30-100张", "Reject pocket range: 30-100 pcs"}
+    [UI_TEXT_SETTINGS_REJECT_POCKET_RANGE_HINT] = {"Reject pocket range: 30-100 pcs", "拒钞口张数范围：30-100张", "Reject pocket range: 30-100 pcs"},
+    [UI_TEXT_SETTINGS_SERIAL_LEVEL_SETTING] = {"Serial Number Level", "冠字号档位设置", "Serial Number Level"},
+    [UI_TEXT_SETTINGS_SERIAL_LEVEL_TITLE] = {"SERIAL NUMBER LEVEL", "冠字号档位设置", "SERIAL NUMBER LEVEL"},
+    [UI_TEXT_SETTINGS_SERIAL_LEVEL_DISPLAY] = {"Serial Number Level", "冠字号档位", "Serial Number Level"},
+    [UI_TEXT_SETTINGS_SERIAL_LEVEL_PREVIEW] = {"Preview", "预览", "Preview"},
+    [UI_TEXT_SETTINGS_SERIAL_LEVEL_OFF] = {"Off", "关闭", "Off"},
+    [UI_TEXT_SETTINGS_SERIAL_LEVEL_1] = {"Level 1", "1档", "Level 1"},
+    [UI_TEXT_SETTINGS_SERIAL_LEVEL_2] = {"Level 2", "2档", "Level 2"},
+    [UI_TEXT_SETTINGS_SERIAL_LEVEL_3] = {"Level 3", "3档", "Level 3"}
 };

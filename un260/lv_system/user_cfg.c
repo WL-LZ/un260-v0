@@ -44,6 +44,7 @@ Machine_para_t Machine_para = {
     .print_space_bottom = 0,
     .double_note_level = DOUBLE_NOTE_LEVEL_MIN,
     .flap_position = FLAP_POSITION_UP,
+    .serial_number_level = SERIAL_NUMBER_LEVEL_OFF,
 };
 Machine_Statue_t Machine_Statue = { 0 };
 sensor_voltage_t g_sensor_voltage = { 0 };

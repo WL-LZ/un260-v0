@@ -63,6 +63,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_core/page_22_set_double_note.c
     un260/lv_core/page_23_set_flap.c
     un260/lv_core/page_24_set_reject_pocket.c
+    un260/lv_core/page_25_set_serial_number.c
     un260/lv_core/page_00_boot_anim.c
     
     un260/lv_refre/lvgl_refre.c
