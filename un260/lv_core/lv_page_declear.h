@@ -18,6 +18,7 @@
 #include "page_18_pure.h"
 #include "page_19_history.h"
 #include "page_20_set_print.h"
+#include "page_21_set_language.h"
 #include "page_00_boot_anim.h"
 
 #endif // !LV_PAGE_DECLEAR_H

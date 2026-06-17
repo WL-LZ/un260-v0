@@ -889,7 +889,9 @@ static void create_system_page_content(lv_obj_t* parent)
     create_tile(parent, 1, 1, ui_text_get(UI_TEXT_SETTINGS_TIME_SETTING), ">", false,
                 enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_TIMESET);
 
-    debug_console_tile = create_tile(parent, 0, 2, ui_text_get(UI_TEXT_SETTINGS_DEBUG_CONSOLE), ">", false,
+    create_tile(parent, 0, 2, ui_text_get(UI_TEXT_SETTINGS_LANGUAGE_SETTING), ">", false,
+                enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_LANGUAGE_SETTING);
+    debug_console_tile = create_tile(parent, 1, 2, ui_text_get(UI_TEXT_SETTINGS_DEBUG_CONSOLE), ">", false,
                                      enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_DEBUG);
 
     if (upgrade_page) {

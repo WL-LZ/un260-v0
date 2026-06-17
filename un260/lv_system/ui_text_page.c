@@ -110,5 +110,14 @@ const ui_text_item_t g_ui_text_page_group[UI_TEXT_PAGE_MAX] = {
     [UI_TEXT_SETTINGS_PRINT_PREVIEW] = {"Preview", "预览", "Preview"},
     [UI_TEXT_SETTINGS_PRINT_READY] = {"READY", "就绪", "READY"},
     [UI_TEXT_SETTINGS_PRINT_SUCCESS] = {"Set success", "设置成功", "Set success"},
-    [UI_TEXT_SETTINGS_PRINT_FAIL] = {"Set failed", "设置失败", "Set failed"}
+    [UI_TEXT_SETTINGS_PRINT_FAIL] = {"Set failed", "设置失败", "Set failed"},
+    [UI_TEXT_SETTINGS_LANGUAGE_SETTING] = {"Language Setting", "语言设置", "Language Setting"},
+    [UI_TEXT_SETTINGS_LANGUAGE_TITLE] = {"LANGUAGE SETTING", "语言设置", "LANGUAGE SETTING"},
+    [UI_TEXT_SETTINGS_LANGUAGE_DISPLAY] = {"Display Language", "显示语言", "Display Language"},
+    [UI_TEXT_SETTINGS_LANGUAGE_SUBTITLE] = {"Choose the display language", "选择显示语言", "Choose the display language"},
+    [UI_TEXT_SETTINGS_LANGUAGE_PREVIEW] = {"Preview", "预览", "Preview"},
+    [UI_TEXT_SETTINGS_LANGUAGE_ACTIVE_FMT] = {"%s is active", "%s 已启用", "%s is active"},
+    [UI_TEXT_SETTINGS_LANGUAGE_ENGLISH] = {"English", "英语", "English"},
+    [UI_TEXT_SETTINGS_LANGUAGE_REGION_US] = {"United States", "美国", "United States"},
+    [UI_TEXT_SETTINGS_LANGUAGE_SAMPLE_READY] = {"Ready to count", "准备点钞", "Ready to count"}
 };
