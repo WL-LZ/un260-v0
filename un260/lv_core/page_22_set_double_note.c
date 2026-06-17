@@ -300,7 +300,11 @@ static void double_note_create_preview(lv_obj_t* parent)
         lv_obj_set_style_bg_color(preview_bars[i], lv_color_hex(0xE9EDF2), 0);
         lv_obj_set_style_bg_opa(preview_bars[i], LV_OPA_COVER, 0);
         lv_obj_set_style_radius(preview_bars[i], 6, 0);
+        lv_obj_set_style_translate_y(preview_bars[i], 0, LV_STATE_PRESSED);
         lv_obj_clear_flag(preview_bars[i], LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_add_flag(preview_bars[i], LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_event_cb(preview_bars[i], double_note_option_cb, LV_EVENT_CLICKED,
+                            (void*)(uintptr_t)g_double_note_options[i].level);
 
         preview_bar_labels[i] = settings_detail_create_label(card, "", &lv_font_montserrat_16,
                                                              lv_color_hex(0x7686A5),
