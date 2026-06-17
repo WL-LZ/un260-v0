@@ -2016,6 +2016,18 @@ void PCCmdHandle(void)
             ui_page_22_set_double_note_on_reply(buf[4], buf[5]);
             break;
         }
+        /* ================== 0x42 翻板控制应答 ================== */
+        case 0x42:
+        {
+            if (len < 6) {
+                uart_printf(fd6, "0x42 invalid len=%d\n", len);
+                break;
+            }
+
+            uart_printf(fd6, "0x42 flap setting ack: res=0x%02X\n", buf[4]);
+            ui_page_23_set_flap_on_reply(buf[4]);
+            break;
+        }
         /* ================== 0x41 打印设置应答 ================== */
         case 0x41:
         {

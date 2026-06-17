@@ -50,6 +50,8 @@ typedef enum {
 #define PRINT_SETTING_CONTENT_LIST_SN 0x03
 #define DOUBLE_NOTE_LEVEL_MIN 1
 #define DOUBLE_NOTE_LEVEL_MAX 3
+#define FLAP_POSITION_UP 0x01
+#define FLAP_POSITION_DOWN 0x02
 
 typedef struct {
 
@@ -89,6 +91,7 @@ typedef struct {
     uint8_t print_content;
     uint8_t print_space_bottom;
     uint8_t double_note_level;
+    uint8_t flap_position;
 }Machine_para_t;
 
 extern Machine_para_t Machine_para;
