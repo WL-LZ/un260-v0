@@ -12,6 +12,7 @@ typedef enum {
 
 typedef void (*settings_detail_keyboard_cb_t)(const char* value, void* user_data);
 typedef void (*settings_detail_keyboard_close_cb_t)(void* user_data);
+typedef void (*settings_detail_dialog_cb_t)(void* user_data);
 
 lv_obj_t* settings_detail_create_page(lv_obj_t* parent, const char* title,
                                       lv_event_cb_t back_cb,
@@ -39,6 +40,14 @@ void settings_detail_set_select_box_active(lv_obj_t* box, bool active);
 void settings_detail_set_focus_box_active(lv_obj_t* box, bool active);
 bool settings_detail_send_command(uint8_t cmd_g, const uint8_t* cmd_s,
                                   uint16_t cmd_s_len);
+bool settings_detail_dialog_show(const char* title,
+                                 const char* content,
+                                 const char* confirm_text,
+                                 const char* cancel_text,
+                                 settings_detail_dialog_cb_t confirm_cb,
+                                 settings_detail_dialog_cb_t cancel_cb,
+                                 void* user_data);
+void settings_detail_dialog_hide(void);
 bool settings_detail_keyboard_show(const char* title,
                                    const char* init_value,
                                    uint16_t max_len,

@@ -29,6 +29,7 @@ lv_obj_t* double_note_setting_page = NULL;
 lv_obj_t* flap_setting_page = NULL;
 lv_obj_t* reject_pocket_setting_page = NULL;
 lv_obj_t* serial_number_setting_page = NULL;
+lv_obj_t* aging_setting_page = NULL;
 
 ui_element_group_t all_ui_groups[] = {
     { page_01_main_obj, 0 },
@@ -76,6 +77,7 @@ static void destroy_current_page(void)
     case UI_PAGE_FLAP_SETTING: ui_page_23_set_flap_destroy(); break;
     case UI_PAGE_REJECT_POCKET_SETTING: ui_page_24_set_reject_pocket_destroy(); break;
     case UI_PAGE_SERIAL_NUMBER_SETTING: ui_page_25_set_serial_number_destroy(); break;
+    case UI_PAGE_AGING_SETTING: ui_page_26_set_aging_destroy(); break;
     }
 }
 
@@ -133,6 +135,7 @@ static void create_new_page(ui_page_t page)
     case UI_PAGE_FLAP_SETTING: ui_page_23_set_flap_create(lv_scr_act()); break;
     case UI_PAGE_REJECT_POCKET_SETTING: ui_page_24_set_reject_pocket_create(lv_scr_act()); break;
     case UI_PAGE_SERIAL_NUMBER_SETTING: ui_page_25_set_serial_number_create(lv_scr_act()); break;
+    case UI_PAGE_AGING_SETTING: ui_page_26_set_aging_create(lv_scr_act()); break;
     }
 }
 

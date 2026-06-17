@@ -97,6 +97,7 @@ typedef struct {
     uint8_t double_note_level;
     uint8_t flap_position;
     uint8_t serial_number_level;
+    bool aging_running;
 }Machine_para_t;
 
 extern Machine_para_t Machine_para;

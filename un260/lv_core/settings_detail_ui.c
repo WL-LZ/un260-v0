@@ -41,6 +41,15 @@ typedef struct {
 
 static settings_keyboard_ctx_t g_settings_keyboard = { 0 };
 
+typedef struct {
+    lv_obj_t* root;
+    settings_detail_dialog_cb_t confirm_cb;
+    settings_detail_dialog_cb_t cancel_cb;
+    void* user_data;
+} settings_dialog_ctx_t;
+
+static settings_dialog_ctx_t g_settings_dialog = { 0 };
+
 static void detail_style_plain(lv_obj_t* obj)
 {
     lv_obj_remove_style_all(obj);
@@ -293,6 +302,138 @@ bool settings_detail_send_command(uint8_t cmd_g, const uint8_t* cmd_s,
 
     send_command(fd4, cmd_g, cmd_s, cmd_s_len);
     return true;
+}
+
+static void settings_detail_dialog_close(bool confirmed)
+{
+    settings_detail_dialog_cb_t cb = confirmed ?
+                                     g_settings_dialog.confirm_cb :
+                                     g_settings_dialog.cancel_cb;
+    void* user_data = g_settings_dialog.user_data;
+
+    settings_detail_dialog_hide();
+
+    if (cb) {
+        cb(user_data);
+    }
+}
+
+static void settings_detail_dialog_confirm_cb(lv_event_t* e)
+{
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+    settings_detail_dialog_close(true);
+}
+
+static void settings_detail_dialog_cancel_cb(lv_event_t* e)
+{
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+    settings_detail_dialog_close(false);
+}
+
+bool settings_detail_dialog_show(const char* title,
+                                 const char* content,
+                                 const char* confirm_text,
+                                 const char* cancel_text,
+                                 settings_detail_dialog_cb_t confirm_cb,
+                                 settings_detail_dialog_cb_t cancel_cb,
+                                 void* user_data)
+{
+    lv_obj_t* parent = lv_scr_act();
+    lv_obj_t* root;
+    lv_obj_t* card;
+    lv_obj_t* accent;
+    lv_obj_t* title_label;
+    lv_obj_t* content_label;
+    lv_obj_t* icon_box;
+    lv_obj_t* icon_label;
+    lv_coord_t confirm_x = cancel_text ? 310 : 205;
+
+    settings_detail_dialog_hide();
+
+    root = lv_obj_create(parent);
+    detail_style_plain(root);
+    lv_obj_set_pos(root, 0, 0);
+    lv_obj_set_size(root, SETTINGS_DETAIL_W, SETTINGS_DETAIL_H);
+    lv_obj_set_style_bg_color(root, lv_color_hex(0x101820), 0);
+    lv_obj_set_style_bg_opa(root, LV_OPA_60, 0);
+    lv_obj_set_style_border_width(root, 0, 0);
+    lv_obj_add_flag(root, LV_OBJ_FLAG_CLICKABLE);
+
+    card = lv_obj_create(root);
+    detail_style_plain(card);
+    lv_obj_set_size(card, 560, 236);
+    lv_obj_center(card);
+    lv_obj_set_style_bg_color(card, detail_panel(), 0);
+    lv_obj_set_style_bg_opa(card, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(card, 1, 0);
+    lv_obj_set_style_border_color(card, lv_color_hex(0xDDE6EF), 0);
+    lv_obj_set_style_radius(card, 8, 0);
+    lv_obj_set_style_shadow_width(card, 24, 0);
+    lv_obj_set_style_shadow_opa(card, LV_OPA_20, 0);
+    lv_obj_set_style_shadow_ofs_y(card, 10, 0);
+
+    accent = lv_obj_create(card);
+    detail_style_plain(accent);
+    lv_obj_set_pos(accent, 28, 20);
+    lv_obj_set_size(accent, 104, 5);
+    lv_obj_set_style_bg_color(accent, detail_primary(), 0);
+    lv_obj_set_style_bg_opa(accent, LV_OPA_COVER, 0);
+    lv_obj_set_style_radius(accent, 3, 0);
+
+    icon_box = lv_obj_create(card);
+    detail_style_plain(icon_box);
+    lv_obj_set_pos(icon_box, 34, 48);
+    lv_obj_set_size(icon_box, 58, 58);
+    lv_obj_set_style_bg_color(icon_box, detail_primary_2(), 0);
+    lv_obj_set_style_bg_opa(icon_box, LV_OPA_COVER, 0);
+    lv_obj_set_style_radius(icon_box, 8, 0);
+
+    icon_label = settings_detail_create_label(icon_box, "!",
+                                              &lv_font_montserrat_20,
+                                              detail_primary(), 0, 0);
+    lv_obj_center(icon_label);
+
+    title_label = settings_detail_create_label(card, title ? title : "",
+                                               &lv_font_montserrat_20,
+                                               detail_text(), 114, 46);
+    lv_obj_set_width(title_label, 400);
+    lv_label_set_long_mode(title_label, LV_LABEL_LONG_CLIP);
+
+    content_label = settings_detail_create_label(card, content ? content : "",
+                                                 &lv_font_montserrat_16,
+                                                 detail_muted(), 114, 82);
+    lv_obj_set_width(content_label, 398);
+    lv_label_set_long_mode(content_label, LV_LABEL_LONG_WRAP);
+
+    if (cancel_text) {
+        settings_detail_create_button(card, 190, 172, 112, 40, cancel_text,
+                                      lv_color_hex(0x6B7A90),
+                                      settings_detail_dialog_cancel_cb, NULL);
+    }
+
+    settings_detail_create_button(card, confirm_x, 172, 154, 40,
+                                  confirm_text ? confirm_text : "",
+                                  detail_primary(),
+                                  settings_detail_dialog_confirm_cb, NULL);
+
+    g_settings_dialog.root = root;
+    g_settings_dialog.confirm_cb = confirm_cb;
+    g_settings_dialog.cancel_cb = cancel_cb;
+    g_settings_dialog.user_data = user_data;
+
+    return true;
+}
+
+void settings_detail_dialog_hide(void)
+{
+    if (g_settings_dialog.root && lv_obj_is_valid(g_settings_dialog.root)) {
+        lv_obj_del(g_settings_dialog.root);
+    }
+
+    g_settings_dialog.root = NULL;
+    g_settings_dialog.confirm_cb = NULL;
+    g_settings_dialog.cancel_cb = NULL;
+    g_settings_dialog.user_data = NULL;
 }
 
 static void settings_keyboard_refresh(void)

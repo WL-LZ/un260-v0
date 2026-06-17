@@ -2050,6 +2050,18 @@ void PCCmdHandle(void)
             ui_page_23_set_flap_on_reply(buf[4]);
             break;
         }
+        /* ================== 0x46 老化设置应答 ================== */
+        case 0x46:
+        {
+            if (len < 6) {
+                uart_printf(fd6, "0x46 invalid len=%d\n", len);
+                break;
+            }
+
+            uart_printf(fd6, "0x46 aging setting reply: sx=0x%02X\n", buf[4]);
+            ui_page_26_set_aging_on_reply(buf[4]);
+            break;
+        }
         /* ================== 0x41 打印设置应答 ================== */
         case 0x41:
         {

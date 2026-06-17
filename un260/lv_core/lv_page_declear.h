@@ -23,6 +23,7 @@
 #include "page_23_set_flap.h"
 #include "page_24_set_reject_pocket.h"
 #include "page_25_set_serial_number.h"
+#include "page_26_set_aging.h"
 #include "page_00_boot_anim.h"
 
 #endif // !LV_PAGE_DECLEAR_H
