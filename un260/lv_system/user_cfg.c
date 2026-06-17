@@ -42,6 +42,7 @@ Machine_para_t Machine_para = {
     .print_head2 = "",
     .print_content = PRINT_SETTING_CONTENT_LIST,
     .print_space_bottom = 0,
+    .double_note_level = DOUBLE_NOTE_LEVEL_MIN,
 };
 Machine_Statue_t Machine_Statue = { 0 };
 sensor_voltage_t g_sensor_voltage = { 0 };

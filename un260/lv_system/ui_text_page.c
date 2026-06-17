@@ -58,6 +58,7 @@ const ui_text_item_t g_ui_text_page_group[UI_TEXT_PAGE_MAX] = {
     [UI_TEXT_PAGE16_POWER_OFF_LONG] = {"Still updating... Do NOT power off.", "仍在升级中，请勿断电。", "계속 업데이트 중입니다. 전원을 끄지 마십시오."},
 
     //SETTINGS
+    [UI_TEXT_SETTINGS_MENU_PREFERENCE] = {"Preference", "偏好设置", "Preference"},
     [UI_TEXT_SETTINGS_ESC] = {"ESC", "返回", "ESC"},
     [UI_TEXT_SETTINGS_DEBUG] = {"Debug", "调试", "Debug"},
     [UI_TEXT_SETTINGS_UPGRADE] = {"Upgrade", "升级", "Upgrade"},
@@ -119,5 +120,16 @@ const ui_text_item_t g_ui_text_page_group[UI_TEXT_PAGE_MAX] = {
     [UI_TEXT_SETTINGS_LANGUAGE_ACTIVE_FMT] = {"%s is active", "%s 已启用", "%s is active"},
     [UI_TEXT_SETTINGS_LANGUAGE_ENGLISH] = {"English", "英语", "English"},
     [UI_TEXT_SETTINGS_LANGUAGE_REGION_US] = {"United States", "美国", "United States"},
-    [UI_TEXT_SETTINGS_LANGUAGE_SAMPLE_READY] = {"Ready to count", "准备点钞", "Ready to count"}
+    [UI_TEXT_SETTINGS_LANGUAGE_SAMPLE_READY] = {"Ready to count", "准备点钞", "Ready to count"},
+    [UI_TEXT_SETTINGS_DOUBLE_NOTE_SETTING] = {"Double Detection Level", "重张检测级别", "Double Detection Level"},
+    [UI_TEXT_SETTINGS_DOUBLE_NOTE_TITLE] = {"DOUBLE DETECTION LEVEL", "重张检测级别", "DOUBLE DETECTION LEVEL"},
+    [UI_TEXT_SETTINGS_DOUBLE_NOTE_DISPLAY] = {"Detection Level", "检测档位", "Detection Level"},
+    [UI_TEXT_SETTINGS_DOUBLE_NOTE_SUBTITLE] = {"Higher level is more sensitive", "档位越高，判断越灵敏", "Higher level is more sensitive"},
+    [UI_TEXT_SETTINGS_DOUBLE_NOTE_LEVEL_1] = {"Level 1", "1档", "Level 1"},
+    [UI_TEXT_SETTINGS_DOUBLE_NOTE_LEVEL_2] = {"Level 2", "2档", "Level 2"},
+    [UI_TEXT_SETTINGS_DOUBLE_NOTE_LEVEL_3] = {"Level 3", "3档", "Level 3"},
+    [UI_TEXT_SETTINGS_DOUBLE_NOTE_LEVEL_LOW] = {"Basic sensitivity", "基础灵敏度", "Basic sensitivity"},
+    [UI_TEXT_SETTINGS_DOUBLE_NOTE_LEVEL_MID] = {"Balanced sensitivity", "均衡灵敏度", "Balanced sensitivity"},
+    [UI_TEXT_SETTINGS_DOUBLE_NOTE_LEVEL_HIGH] = {"High sensitivity", "高灵敏度", "High sensitivity"},
+    [UI_TEXT_SETTINGS_DOUBLE_NOTE_PREVIEW] = {"Preview", "预览", "Preview"}
 };

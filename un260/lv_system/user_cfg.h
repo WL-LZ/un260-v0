@@ -48,6 +48,8 @@ typedef enum {
 #define PRINT_SETTING_CONTENT_LIST 0x01
 #define PRINT_SETTING_CONTENT_SN 0x02
 #define PRINT_SETTING_CONTENT_LIST_SN 0x03
+#define DOUBLE_NOTE_LEVEL_MIN 1
+#define DOUBLE_NOTE_LEVEL_MAX 3
 
 typedef struct {
 
@@ -86,6 +88,7 @@ typedef struct {
     char print_head2[PRINT_SETTING_HEAD_MAX_LEN + 1];
     uint8_t print_content;
     uint8_t print_space_bottom;
+    uint8_t double_note_level;
 }Machine_para_t;
 
 extern Machine_para_t Machine_para;

@@ -1608,8 +1608,8 @@ void PCCmdHandle(void)
             case 0x0A: /* 重张档位 */
             {
                 uint8_t v = buf[5];
-                if (v >= 1 && v <= CFD_MODE) {
-                    Machine_para.cfd_mode = v - 1;
+                if (v >= DOUBLE_NOTE_LEVEL_MIN && v <= DOUBLE_NOTE_LEVEL_MAX) {
+                    Machine_para.double_note_level = v;
                 }
                 break;
             }
@@ -1996,6 +1996,24 @@ void PCCmdHandle(void)
             }
 
             uart_printf(fd6, "0x3B clear data ack: res=0x%02X\n", buf[4]);
+            break;
+        }
+        /* ================== 0x31 重张检测级别应答 ================== */
+        case 0x31:
+        {
+            if (len < 7) {
+                uart_printf(fd6, "0x31 invalid len=%d\n", len);
+                break;
+            }
+
+            if (buf[5] == 0x01 &&
+                buf[4] >= DOUBLE_NOTE_LEVEL_MIN && buf[4] <= DOUBLE_NOTE_LEVEL_MAX) {
+                Machine_para.double_note_level = buf[4];
+            }
+
+            uart_printf(fd6, "0x31 double note level ack: level=0x%02X res=0x%02X\n",
+                        buf[4], buf[5]);
+            ui_page_22_set_double_note_on_reply(buf[4], buf[5]);
             break;
         }
         /* ================== 0x41 打印设置应答 ================== */

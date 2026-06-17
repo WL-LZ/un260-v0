@@ -138,6 +138,7 @@ static void page_06_reset_saved_navigation(void);
 static bool page_06_find_page_info(lv_obj_t* page, settings_nav_item_t* out);
 static lv_obj_t* page_06_find_internal_page(page_06_settings_menu_t menu,
                                             page_06_settings_sub_page_t sub_page);
+static const char* page_06_get_menu_title(page_06_settings_menu_t menu);
 static void page_06_show_content_page(page_06_settings_menu_t menu,
                                       lv_obj_t* page,
                                       page_06_settings_sub_page_t sub_page,
@@ -193,6 +194,19 @@ static bool page_06_is_valid_menu(page_06_settings_menu_t menu)
     return (int)menu >= 0 && menu < PAGE_06_SETTINGS_MENU_COUNT;
 }
 
+static const char* page_06_get_menu_title(page_06_settings_menu_t menu)
+{
+    if (!page_06_is_valid_menu(menu)) {
+        return "";
+    }
+
+    if (menu == PAGE_06_SETTINGS_MENU_USER) {
+        return ui_text_get(UI_TEXT_SETTINGS_MENU_PREFERENCE);
+    }
+
+    return g_menu_info[menu].title;
+}
+
 static void page_06_reset_saved_navigation(void)
 {
     saved_menu_index = PAGE_06_SETTINGS_MENU_SYSTEM;
@@ -223,12 +237,12 @@ static void page_06_set_breadcrumb(page_06_settings_menu_t menu, const char* tit
         return;
     }
 
-    if (!title || title[0] == '\0' || strcmp(title, g_menu_info[menu].title) == 0) {
-        lv_label_set_text(breadcrumb_current, g_menu_info[menu].title);
+    if (!title || title[0] == '\0' || strcmp(title, page_06_get_menu_title(menu)) == 0) {
+        lv_label_set_text(breadcrumb_current, page_06_get_menu_title(menu));
         return;
     }
 
-    lv_snprintf(buf, sizeof(buf), "%s > %s", g_menu_info[menu].title, title);
+    lv_snprintf(buf, sizeof(buf), "%s > %s", page_06_get_menu_title(menu), title);
     lv_label_set_text(breadcrumb_current, buf);
 }
 
@@ -244,7 +258,8 @@ static bool page_06_find_page_info(lv_obj_t* page, settings_nav_item_t* out)
                 out->page = page;
                 out->menu = (page_06_settings_menu_t)i;
                 out->sub_page = PAGE_06_SETTINGS_SUB_NONE;
-                page_06_copy_title(out->title, sizeof(out->title), g_menu_info[i].title);
+                page_06_copy_title(out->title, sizeof(out->title),
+                                   page_06_get_menu_title((page_06_settings_menu_t)i));
             }
             return true;
         }
@@ -583,7 +598,7 @@ static void create_sidebar_button(lv_obj_t* parent, settings_menu_t index, lv_co
     menu_icons[index] = create_label(btn, g_menu_info[index].icon, &lv_font_montserrat_18, color_muted());
     lv_obj_set_pos(menu_icons[index], 15, 16);
 
-    menu_labels[index] = create_label(btn, g_menu_info[index].title, &lv_font_montserrat_14, color_muted());
+    menu_labels[index] = create_label(btn, page_06_get_menu_title(index), &lv_font_montserrat_14, color_muted());
     lv_obj_set_style_text_letter_space(menu_labels[index], 1, 0);
     lv_obj_set_pos(menu_labels[index], 65, 18);
 }
@@ -631,7 +646,7 @@ static void page_06_update_menu_state(int index)
     }
 
     if (breadcrumb_current && index >= 0 && index < SETTINGS_MENU_COUNT) {
-        lv_label_set_text(breadcrumb_current, g_menu_info[index].title);
+        lv_label_set_text(breadcrumb_current, page_06_get_menu_title((page_06_settings_menu_t)index));
     }
 
     current_menu_index = index;
@@ -924,6 +939,8 @@ static void create_user_page_content(lv_obj_t* parent)
 {
     create_tile(parent, 0, 0, ui_text_get(UI_TEXT_SETTINGS_PASSWORD), ">", true,
                 enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_SET_PASSAGE);
+    create_tile(parent, 1, 0, ui_text_get(UI_TEXT_SETTINGS_DOUBLE_NOTE_SETTING), ">", true,
+                enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_DOUBLE_NOTE_SETTING);
 }
 
 static lv_obj_t* create_version_row(lv_obj_t* parent, int row, const char* title, const char* value)
@@ -1289,10 +1306,11 @@ static void page_06_switch_sub_page(int index)
         active_content_menu = (page_06_settings_menu_t)index;
         active_content_sub_page = PAGE_06_SETTINGS_SUB_NONE;
         page_06_copy_title(active_content_title, sizeof(active_content_title),
-                           g_menu_info[index].title);
+                           page_06_get_menu_title((page_06_settings_menu_t)index));
     }
 
-    page_06_set_breadcrumb((page_06_settings_menu_t)index, g_menu_info[index].title);
+    page_06_set_breadcrumb((page_06_settings_menu_t)index,
+                           page_06_get_menu_title((page_06_settings_menu_t)index));
 
     if (index == SETTINGS_MENU_DATA_COLLECTION) {
         if (g_data_collect_mode == DATA_COLLECT_MODE_NONE) {
@@ -1322,7 +1340,7 @@ static bool page_06_restore_saved_content(void)
     nav_stack[nav_stack_depth].sub_page = PAGE_06_SETTINGS_SUB_NONE;
     page_06_copy_title(nav_stack[nav_stack_depth].title,
                        sizeof(nav_stack[nav_stack_depth].title),
-                       g_menu_info[saved_menu_index].title);
+                       page_06_get_menu_title(saved_menu_index));
     nav_stack_depth++;
 
     page_06_show_content_page(saved_menu_index, page, saved_content_sub_page,
