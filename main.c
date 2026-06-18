@@ -2075,6 +2075,17 @@ void PCCmdHandle(void)
             ui_page_26_set_aging_on_reply(buf[4]);
             break;
         }
+        /* ================== 0x47 图像数据获取 ================== */
+        case 0x47:
+        {
+            if (len < 6) {
+                uart_printf(fd6, "0x47 invalid len=%d\n", len);
+                break;
+            }
+
+            ui_page_28_get_image_on_frame(&buf[4], (uint16_t)(len - 5));
+            break;
+        }
         /* ================== 0x41 打印设置应答 ================== */
         case 0x41:
         {
@@ -2160,6 +2171,7 @@ int main(void) {
 
     lv_port_disp_init();
     lv_port_indev_init();
+    user_cfg_password_load();
     ui_history_data_init();
     ui_manager_switch(UI_PAGE_BOOT_ANIM);
     perf_stats_init();

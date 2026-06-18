@@ -1,5 +1,6 @@
 #ifndef USER_CFG_H
 #define USER_CFG_H
+#include <stdbool.h>
 #include <stdint.h>
 #include "un260/lv_drivers/lv_drivers.h"
 #define LV_DEBUG 1
@@ -60,6 +61,7 @@ typedef enum {
 #define CFD_ITEM_COUNT 4
 #define CFD_LEVEL_MIN 1
 #define CFD_LEVEL_MAX 5
+#define USER_PASSWORD_MAX_LEN 31
 
 typedef struct {
 
@@ -69,7 +71,7 @@ typedef struct {
     bool add_enable;
     bool start_auto;
     curr_item_t current_currency;
-    char password[5];
+    char password[USER_PASSWORD_MAX_LEN + 1];
     int batch_mode;
     int32_t batch_num;
     bool batch_switch_enable;
@@ -107,6 +109,9 @@ typedef struct {
 }Machine_para_t;
 
 extern Machine_para_t Machine_para;
+
+bool user_cfg_password_load(void);
+bool user_cfg_password_save(const char* password);
 
 typedef struct {
     // 版本信息

@@ -28,6 +28,8 @@ extern "C" {
     extern lv_obj_t* serial_number_setting_page;
     extern lv_obj_t* aging_setting_page;
     extern lv_obj_t* cfd_level_setting_page;
+    extern lv_obj_t* image_get_page;
+    extern lv_obj_t* password_change_page;
 
     typedef enum {
         UI_PAGE_BOOT_ANIM = 0,
@@ -58,6 +60,8 @@ extern "C" {
         UI_PAGE_SERIAL_NUMBER_SETTING,
         UI_PAGE_AGING_SETTING,
         UI_PAGE_CFD_LEVEL_SETTING,
+        UI_PAGE_IMAGE_GET,
+        UI_PAGE_PASSWORD_CHANGE,
         UI_PAGE_COUNT
     } ui_page_t;
 

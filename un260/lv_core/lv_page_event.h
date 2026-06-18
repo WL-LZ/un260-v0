@@ -8,7 +8,7 @@
 #include <string.h>
 
 extern lv_obj_t* password_display;
-extern char input_password[5];
+extern char input_password[USER_PASSWORD_MAX_LEN + 1];
 extern int password_index;
 //batch num
 extern lv_obj_t* batch_num_display;

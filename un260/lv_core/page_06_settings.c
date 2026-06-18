@@ -2,6 +2,7 @@
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/lv_page_event.h"
 #include "un260/lv_core/page_09_cis_cala.h"
+#include "un260/lv_core/page_27_set_cfd_level.h"
 #include "un260/lv_core/settings_detail_ui.h"
 #include "un260/lv_system/machine_time.h"
 #include "un260/lv_system/platform_app.h"
@@ -937,12 +938,14 @@ static void create_maintenance_page_content(lv_obj_t* parent)
                 enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_DEBUG);
     create_tile(parent, 0, 2, ui_text_get(UI_TEXT_SETTINGS_FLAP_SETTING), ">", false,
                 enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_FLAP_SETTING);
+    create_tile(parent, 1, 2, ui_text_get(UI_TEXT_SETTINGS_IMAGE_GET_SETTING), ">", false,
+                enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_IMAGE_GET);
 }
 
 static void create_user_page_content(lv_obj_t* parent)
 {
     create_tile(parent, 0, 0, ui_text_get(UI_TEXT_SETTINGS_PASSWORD), ">", true,
-                enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_SET_PASSAGE);
+                enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_PASSWORD_CHANGE);
     create_tile(parent, 1, 0, ui_text_get(UI_TEXT_SETTINGS_DOUBLE_NOTE_SETTING), ">", true,
                 enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_DOUBLE_NOTE_SETTING);
     create_tile(parent, 0, 1, ui_text_get(UI_TEXT_SETTINGS_REJECT_POCKET_SETTING), ">", false,
@@ -1377,6 +1380,8 @@ void ui_page_06_settings_create(lv_obj_t* parent)
     if (settings_page) {
         return;
     }
+
+    ui_page_27_set_cfd_level_query();
 
     settings_page = lv_obj_create(lv_scr_act());
     root = settings_page;

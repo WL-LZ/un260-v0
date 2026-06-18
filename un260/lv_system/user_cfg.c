@@ -1,8 +1,12 @@
 #include "lvgl/lvgl.h"
 #include"user_cfg.h"
+#include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #define DEFAULT_CURRENCY_COUNT 14
+#define UI_STATE_DIR "/etc/ui_state"
+#define USER_PASSWORD_PATH UI_STATE_DIR "/password.cfg"
 
 // 定义Machine_para变量
 Machine_para_t Machine_para = {
@@ -12,7 +16,7 @@ Machine_para_t Machine_para = {
     .add_enable = 0,
     .start_auto = 0,
     .current_currency = CURR_CNY_ITEM,
-    .password = "1234",               // 默认密码1234
+    .password = "1111",               // 默认密码1111
     .batch_mode = 0,                  //0 pcs ,1 amount
     .batch_num = 0,
     .batch_switch_enable = 1,
@@ -55,6 +59,72 @@ Machine_para_t Machine_para = {
 };
 Machine_Statue_t Machine_Statue = { 0 };
 sensor_voltage_t g_sensor_voltage = { 0 };
+
+static bool user_cfg_password_is_valid(const char* password)
+{
+    size_t len;
+
+    if (!password) return false;
+
+    len = strlen(password);
+    if (len == 0 || len > USER_PASSWORD_MAX_LEN) return false;
+
+    for (size_t i = 0; i < len; i++) {
+        if (password[i] < '0' || password[i] > '9') {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool user_cfg_password_load(void)
+{
+    FILE* fp;
+    char buf[USER_PASSWORD_MAX_LEN + 4];
+    size_t len;
+
+    fp = fopen(USER_PASSWORD_PATH, "r");
+    if (!fp) return false;
+
+    if (!fgets(buf, sizeof(buf), fp)) {
+        fclose(fp);
+        return false;
+    }
+    fclose(fp);
+
+    len = strlen(buf);
+    while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r')) {
+        buf[--len] = '\0';
+    }
+
+    if (!user_cfg_password_is_valid(buf)) {
+        return false;
+    }
+
+    lv_snprintf(Machine_para.password, sizeof(Machine_para.password), "%s", buf);
+    return true;
+}
+
+bool user_cfg_password_save(const char* password)
+{
+    FILE* fp;
+
+    if (!user_cfg_password_is_valid(password)) {
+        return false;
+    }
+
+    mkdir(UI_STATE_DIR, 0755);
+    fp = fopen(USER_PASSWORD_PATH, "w");
+    if (!fp) {
+        return false;
+    }
+
+    fprintf(fp, "%s\n", password);
+    fclose(fp);
+    lv_snprintf(Machine_para.password, sizeof(Machine_para.password), "%s", password);
+    return true;
+}
 
 //void user_data_init(void) {
 //    memcpy(&Machine_para, &default_para, sizeof(Machine_para_t));

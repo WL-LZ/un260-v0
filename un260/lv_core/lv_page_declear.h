@@ -25,6 +25,8 @@
 #include "page_25_set_serial_number.h"
 #include "page_26_set_aging.h"
 #include "page_27_set_cfd_level.h"
+#include "page_28_get_image.h"
+#include "page_29_set_password.h"
 #include "page_00_boot_anim.h"
 
 #endif // !LV_PAGE_DECLEAR_H
