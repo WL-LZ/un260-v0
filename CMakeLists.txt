@@ -65,6 +65,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_core/page_24_set_reject_pocket.c
     un260/lv_core/page_25_set_serial_number.c
     un260/lv_core/page_26_set_aging.c
+    un260/lv_core/page_27_set_cfd_level.c
     un260/lv_core/page_00_boot_anim.c
     
     un260/lv_refre/lvgl_refre.c

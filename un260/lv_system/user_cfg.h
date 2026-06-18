@@ -56,6 +56,10 @@ typedef enum {
 #define REJECT_POCKET_MAX_CAPACITY 100
 #define SERIAL_NUMBER_LEVEL_OFF 0
 #define SERIAL_NUMBER_LEVEL_MAX 3
+#define CFD_SCENE_COUNT 3
+#define CFD_ITEM_COUNT 4
+#define CFD_LEVEL_MIN 1
+#define CFD_LEVEL_MAX 5
 
 typedef struct {
 
@@ -98,6 +102,8 @@ typedef struct {
     uint8_t flap_position;
     uint8_t serial_number_level;
     bool aging_running;
+    char cfd_setting_currency[4];
+    uint8_t cfd_levels[CFD_SCENE_COUNT][CFD_ITEM_COUNT];
 }Machine_para_t;
 
 extern Machine_para_t Machine_para;

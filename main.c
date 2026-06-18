@@ -2050,6 +2050,19 @@ void PCCmdHandle(void)
             ui_page_23_set_flap_on_reply(buf[4]);
             break;
         }
+        /* ================== 0x45 鉴伪档位信息 ================== */
+        case 0x45:
+        {
+            if (len < 21) {
+                uart_printf(fd6, "0x45 invalid len=%d\n", len);
+                break;
+            }
+
+            uart_printf(fd6, "0x45 cfd level info: currency=%c%c%c\n",
+                        buf[4], buf[5], buf[6]);
+            ui_page_27_set_cfd_level_on_info(&buf[4], (uint16_t)(len - 4));
+            break;
+        }
         /* ================== 0x46 老化设置应答 ================== */
         case 0x46:
         {
