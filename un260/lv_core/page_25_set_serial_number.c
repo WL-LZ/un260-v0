@@ -360,6 +360,17 @@ void ui_page_25_set_serial_number_destroy(void)
     }
 }
 
+void ui_page_25_set_serial_number_on_boot_setting(uint8_t level)
+{
+    Machine_para.serial_number_level = serial_level_normalize(level);
+    Machine_para.serial_num_enable = (Machine_para.serial_number_level != SERIAL_NUMBER_LEVEL_OFF);
+    pending_level = 0xFF;
+
+    if (serial_page) {
+        serial_level_refresh_view();
+    }
+}
+
 void ui_page_25_set_serial_number_on_reply(uint8_t level, uint8_t res)
 {
     uint8_t normalized_level = serial_level_normalize(level);

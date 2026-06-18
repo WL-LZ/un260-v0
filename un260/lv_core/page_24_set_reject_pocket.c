@@ -341,6 +341,16 @@ void ui_page_24_set_reject_pocket_destroy(void)
     }
 }
 
+void ui_page_24_set_reject_pocket_on_boot_setting(uint8_t capacity)
+{
+    Machine_para.reject_pocket_max = reject_normalize_capacity(capacity);
+    pending_capacity = 0;
+
+    if (reject_page) {
+        reject_refresh_view();
+    }
+}
+
 void ui_page_24_set_reject_pocket_on_reply(uint8_t res)
 {
     if (res == 0x01) {

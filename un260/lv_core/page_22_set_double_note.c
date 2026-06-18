@@ -355,6 +355,16 @@ void ui_page_22_set_double_note_destroy(void)
     }
 }
 
+void ui_page_22_set_double_note_on_boot_setting(uint8_t level)
+{
+    Machine_para.double_note_level = double_note_normalize_level(level);
+    pending_level = 0;
+
+    if (double_note_page) {
+        double_note_refresh_view();
+    }
+}
+
 void ui_page_22_set_double_note_on_reply(uint8_t level, uint8_t res)
 {
     uint8_t normalized_level = double_note_normalize_level(level);

@@ -1004,16 +1004,18 @@ void PCCmdHandle(void)
                 break;
             }
 
+            if (len >= 8) {
+                ui_page_24_set_reject_pocket_on_boot_setting(buf[6]);
+                uart_printf(fd6, "Boot reject pocket pcs: %u\n", Machine_para.reject_pocket_max);
+                break;
+            }
+
             if (res == 0x01) {
                 uart_printf(fd6, "Reject pocket pcs set success\n");
                 ui_page_24_set_reject_pocket_on_reply(res);
             } else if (res == 0x02) {
                 uart_printf(fd6, "Reject pocket pcs set fail\n");
                 ui_page_24_set_reject_pocket_on_reply(res);
-            } else if (res == 0x03) {
-                if (len < 8) break;
-                Machine_para.reject_pocket_max = buf[6];
-                uart_printf(fd6, "Boot reject pocket pcs: %u\n", Machine_para.reject_pocket_max);
             } else {
                 uart_printf(fd6, "0x08 unknown res=0x%02X\n", res);
             }
@@ -2005,8 +2007,20 @@ void PCCmdHandle(void)
         /* ================== 0x31 重张检测级别应答 ================== */
         case 0x31:
         {
-            if (len < 7) {
+            if (len < 6) {
                 uart_printf(fd6, "0x31 invalid len=%d\n", len);
+                break;
+            }
+
+            if (len == 6) {
+                ui_page_22_set_double_note_on_boot_setting(buf[4]);
+                uart_printf(fd6, "0x31 boot double note level: level=0x%02X\n", buf[4]);
+                break;
+            }
+
+            if (buf[4] == 0x31) {
+                ui_page_22_set_double_note_on_boot_setting(buf[5]);
+                uart_printf(fd6, "0x31 boot double note level: level=0x%02X\n", buf[5]);
                 break;
             }
 
@@ -2023,8 +2037,14 @@ void PCCmdHandle(void)
         /* ================== 0x32 冠字号档位应答 ================== */
         case 0x32:
         {
-            if (len < 7) {
+            if (len < 6) {
                 uart_printf(fd6, "0x32 invalid len=%d\n", len);
+                break;
+            }
+
+            if (len == 6) {
+                ui_page_25_set_serial_number_on_boot_setting(buf[4]);
+                uart_printf(fd6, "0x32 boot serial number level: level=0x%02X\n", buf[4]);
                 break;
             }
 
@@ -2103,6 +2123,17 @@ void PCCmdHandle(void)
         {
             if (len < 7) {
                 uart_printf(fd6, "0x41 invalid len=%d\n", len);
+                break;
+            }
+
+            if ((buf[4] == 0x01 && buf[5] >= PRINT_SETTING_CONTENT_LIST &&
+                 buf[5] <= PRINT_SETTING_CONTENT_LIST_SN) ||
+                (buf[4] == 0x02 && len >= 27 &&
+                 (buf[5] == 0x01 || buf[5] == 0x02)) ||
+                (buf[4] == 0x03 && len >= 8 &&
+                 (buf[5] == 0x01 || buf[5] == 0x02))) {
+                ui_page_20_set_print_on_boot_setting(&buf[4], (uint16_t)(len - 5));
+                uart_printf(fd6, "0x41 boot print setting: sub=0x%02X\n", buf[4]);
                 break;
             }
 

@@ -480,6 +480,63 @@ void ui_page_20_set_print_destroy(void)
     active_field_valid = false;
 }
 
+void ui_page_20_set_print_on_boot_setting(const uint8_t* data, uint16_t len)
+{
+    uint8_t sub;
+
+    if (!data || len < 2) return;
+
+    sub = data[0];
+    switch (sub) {
+    case 0x01:
+        if (data[1] >= PRINT_SETTING_CONTENT_LIST &&
+            data[1] <= PRINT_SETTING_CONTENT_LIST_SN) {
+            Machine_para.print_content = data[1];
+        }
+        break;
+
+    case 0x02:
+        if (len >= (uint16_t)(2 + PRINT_HEAD_MAX_LEN)) {
+            char text[PRINT_HEAD_MAX_LEN + 1];
+            size_t copy_len = PRINT_HEAD_MAX_LEN;
+
+            memcpy(text, &data[2], PRINT_HEAD_MAX_LEN);
+            while (copy_len > 0 &&
+                   (text[copy_len - 1] == ' ' || text[copy_len - 1] == '\0')) {
+                copy_len--;
+            }
+            text[copy_len] = '\0';
+
+            if (data[1] == 0x01) {
+                lv_snprintf(Machine_para.print_head1, sizeof(Machine_para.print_head1), "%s", text);
+            } else if (data[1] == 0x02) {
+                lv_snprintf(Machine_para.print_head2, sizeof(Machine_para.print_head2), "%s", text);
+            }
+        }
+        break;
+
+    case 0x03:
+        if (len >= 3) {
+            uint8_t lines = data[2];
+            if (lines > PRINT_SPACE_MAX_LINES) lines = PRINT_SPACE_MAX_LINES;
+
+            if (data[1] == 0x01) {
+                Machine_para.print_space_top = lines;
+            } else if (data[1] == 0x02) {
+                Machine_para.print_space_bottom = lines;
+            }
+        }
+        break;
+
+    default:
+        break;
+    }
+
+    if (print_page) {
+        print_refresh_view();
+    }
+}
+
 void ui_page_20_set_print_on_reply(uint8_t sub_cmd, uint8_t res)
 {
     (void)sub_cmd;
