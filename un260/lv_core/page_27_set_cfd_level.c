@@ -123,7 +123,7 @@ static void cfd_refresh_view(void)
     }
 }
 
-static bool cfd_send_query(void)
+bool ui_page_27_set_cfd_level_query(void)
 {
     uint8_t payload[4] = { 0x01, 0, 0, 0 };
     bool sent;
@@ -380,7 +380,6 @@ void ui_page_27_set_cfd_level_create(lv_obj_t* parent)
     cfd_create_left_panel(content);
     cfd_create_detail_panel(content);
     cfd_refresh_view();
-    cfd_send_query();
 }
 
 void ui_page_27_set_cfd_level_destroy(void)
