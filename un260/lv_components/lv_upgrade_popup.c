@@ -1,4 +1,5 @@
 #include "lv_upgrade_popup.h"
+#include "un260/lv_core/settings_detail_ui.h"
 #include "un260/lv_core/ui_upgrade_service.h"
 #include "un260/lv_components/lv_print_toast.h"
 #include "un260/lv_system/ui_text.h"
@@ -426,11 +427,15 @@ static void upgrade_popup_on_reboot_later_click(lv_event_t* e)
 
 static void upgrade_popup_on_reboot_click(lv_event_t* e)
 {
+    uint8_t clear_cmd = 0x01;
+
     (void)e;
 
     if (g_upgrade_popup.success_btn) {
         lv_obj_add_state(g_upgrade_popup.success_btn, LV_STATE_DISABLED);
     }
+
+    (void)settings_detail_send_command(0x3B, &clear_cmd, 1);
 
     if (g_upgrade_popup.reboot_timer) {
         lv_timer_del(g_upgrade_popup.reboot_timer);

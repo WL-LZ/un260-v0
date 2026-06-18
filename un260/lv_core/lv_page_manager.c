@@ -33,6 +33,7 @@ lv_obj_t* aging_setting_page = NULL;
 lv_obj_t* cfd_level_setting_page = NULL;
 lv_obj_t* image_get_page = NULL;
 lv_obj_t* password_change_page = NULL;
+lv_obj_t* factory_setting_page = NULL;
 
 ui_element_group_t all_ui_groups[] = {
     { page_01_main_obj, 0 },
@@ -84,6 +85,7 @@ static void destroy_current_page(void)
     case UI_PAGE_CFD_LEVEL_SETTING: ui_page_27_set_cfd_level_destroy(); break;
     case UI_PAGE_IMAGE_GET: ui_page_28_get_image_destroy(); break;
     case UI_PAGE_PASSWORD_CHANGE: ui_page_29_set_password_destroy(); break;
+    case UI_PAGE_FACTORY_SETTING: ui_page_30_set_factory_destroy(); break;
     }
 }
 
@@ -145,6 +147,7 @@ static void create_new_page(ui_page_t page)
     case UI_PAGE_CFD_LEVEL_SETTING: ui_page_27_set_cfd_level_create(lv_scr_act()); break;
     case UI_PAGE_IMAGE_GET: ui_page_28_get_image_create(lv_scr_act()); break;
     case UI_PAGE_PASSWORD_CHANGE: ui_page_29_set_password_create(lv_scr_act()); break;
+    case UI_PAGE_FACTORY_SETTING: ui_page_30_set_factory_create(lv_scr_act()); break;
     }
 }
 

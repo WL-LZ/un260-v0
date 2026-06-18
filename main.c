@@ -2086,6 +2086,18 @@ void PCCmdHandle(void)
             ui_page_28_get_image_on_frame(&buf[4], (uint16_t)(len - 5));
             break;
         }
+        /* ================== 0x44 出厂设置应答 ================== */
+        case 0x44:
+        {
+            if (len < 6) {
+                uart_printf(fd6, "0x44 invalid len=%d\n", len);
+                break;
+            }
+
+            uart_printf(fd6, "0x44 factory setting reply: res=0x%02X\n", buf[4]);
+            ui_page_30_set_factory_on_reply(buf[4]);
+            break;
+        }
         /* ================== 0x41 打印设置应答 ================== */
         case 0x41:
         {
