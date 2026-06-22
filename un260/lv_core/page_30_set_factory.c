@@ -11,7 +11,6 @@
 
 static lv_obj_t* factory_page = NULL;
 static lv_obj_t* sweep_line = NULL;
-static lv_obj_t* pulse_core = NULL;
 static lv_obj_t* blocks[FACTORY_BLOCK_COUNT] = { NULL };
 static lv_timer_t* factory_anim_timer = NULL;
 static lv_timer_t* factory_reboot_timer = NULL;
@@ -153,13 +152,6 @@ static void factory_anim_timer_cb(lv_timer_t* timer)
         lv_obj_set_style_shadow_opa(sweep_line, phase < 60 ? LV_OPA_50 : LV_OPA_30, 0);
     }
 
-    if (pulse_core && lv_obj_is_valid(pulse_core)) {
-        lv_coord_t size = (lv_coord_t)(52 + (phase % 30));
-        lv_obj_set_size(pulse_core, size, size);
-        lv_obj_align(pulse_core, LV_ALIGN_CENTER, 0, 14);
-        lv_obj_set_style_bg_opa(pulse_core, phase < 60 ? LV_OPA_30 : LV_OPA_50, 0);
-    }
-
     for (uint8_t i = 0; i < FACTORY_BLOCK_COUNT; i++) {
         uint16_t local = (uint16_t)((phase + i * 18) % 120);
         if (!blocks[i] || !lv_obj_is_valid(blocks[i])) continue;
@@ -226,17 +218,6 @@ static void factory_create_preview(lv_obj_t* parent)
         lv_obj_set_style_radius(blocks[i], 4, 0);
     }
 
-    pulse_core = lv_obj_create(scene);
-    lv_obj_remove_style_all(pulse_core);
-    lv_obj_set_size(pulse_core, 58, 58);
-    lv_obj_align(pulse_core, LV_ALIGN_CENTER, 0, 14);
-    lv_obj_set_style_radius(pulse_core, 29, 0);
-    lv_obj_set_style_bg_color(pulse_core, lv_color_hex(0xF4A24C), 0);
-    lv_obj_set_style_bg_opa(pulse_core, LV_OPA_30, 0);
-    lv_obj_set_style_shadow_width(pulse_core, 22, 0);
-    lv_obj_set_style_shadow_color(pulse_core, lv_color_hex(0xF4A24C), 0);
-    lv_obj_clear_flag(pulse_core, LV_OBJ_FLAG_SCROLLABLE);
-
     settings_detail_create_label(scene, LV_SYMBOL_REFRESH,
                                  &lv_font_montserrat_24, lv_color_hex(0xFFFFFF), 138, 100);
 
@@ -286,7 +267,6 @@ void ui_page_30_set_factory_destroy(void)
     factory_page = NULL;
     factory_setting_page = NULL;
     sweep_line = NULL;
-    pulse_core = NULL;
     factory_reboot_timer = NULL;
     anim_tick = 0;
     for (uint8_t i = 0; i < FACTORY_BLOCK_COUNT; i++) {

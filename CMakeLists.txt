@@ -69,6 +69,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_core/page_28_get_image.c
     un260/lv_core/page_29_set_password.c
     un260/lv_core/page_30_set_factory.c
+    un260/lv_core/page_31_get_wave.c
     un260/lv_core/page_00_boot_anim.c
     
     un260/lv_refre/lvgl_refre.c

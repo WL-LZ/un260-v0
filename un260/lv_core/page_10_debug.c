@@ -221,7 +221,8 @@ static void btn_quick_cmd_event_cb(lv_event_t* e) {
 
 void page_10_back_btn_event_cb(lv_event_t* e) {
 
-    ui_manager_switch(UI_PAGE_SETTING);
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+    ui_manager_pop_page();
 
  }
 /* ========== 主创建函数 ========== */

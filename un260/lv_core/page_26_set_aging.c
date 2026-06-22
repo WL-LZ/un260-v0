@@ -17,8 +17,6 @@ static lv_obj_t* start_btn = NULL;
 static lv_obj_t* start_label = NULL;
 static lv_obj_t* status_label = NULL;
 static lv_obj_t* scan_line = NULL;
-static lv_obj_t* core_inner = NULL;
-static lv_obj_t* core_outer = NULL;
 static lv_obj_t* data_dots[AGING_DOT_COUNT] = { NULL };
 static lv_timer_t* aging_anim_timer = NULL;
 static uint16_t anim_tick = 0;
@@ -43,22 +41,6 @@ static void aging_anim_timer_cb(lv_timer_t* timer)
     if (scan_line && lv_obj_is_valid(scan_line)) {
         lv_obj_set_y(scan_line, scan_y);
         lv_obj_set_style_shadow_opa(scan_line, phase < 48 ? LV_OPA_50 : LV_OPA_30, 0);
-    }
-
-    if (core_inner && lv_obj_is_valid(core_inner)) {
-        lv_coord_t size = (lv_coord_t)(34 + (phase % 24));
-        lv_obj_set_size(core_inner, size, size);
-        lv_obj_align(core_inner, LV_ALIGN_CENTER, 0, 16);
-        lv_obj_set_style_bg_color(core_inner,
-                                  phase < 48 ? lv_color_hex(0x8E5CFF) : lv_color_hex(0xFF8A2A),
-                                  0);
-    }
-
-    if (core_outer && lv_obj_is_valid(core_outer)) {
-        lv_coord_t size = (lv_coord_t)(68 + (phase % 24));
-        lv_obj_set_size(core_outer, size, size);
-        lv_obj_align(core_outer, LV_ALIGN_CENTER, 0, 16);
-        lv_obj_set_style_bg_opa(core_outer, phase < 48 ? LV_OPA_20 : LV_OPA_30, 0);
     }
 
     for (uint8_t i = 0; i < AGING_DOT_COUNT; i++) {
@@ -239,28 +221,6 @@ static void aging_create_preview(lv_obj_t* parent)
         lv_obj_clear_flag(data_dots[i], LV_OBJ_FLAG_SCROLLABLE);
     }
 
-    core_outer = lv_obj_create(scene);
-    lv_obj_remove_style_all(core_outer);
-    lv_obj_set_size(core_outer, 72, 72);
-    lv_obj_align(core_outer, LV_ALIGN_CENTER, 0, 16);
-    lv_obj_set_style_bg_color(core_outer, lv_color_hex(0x8E5CFF), 0);
-    lv_obj_set_style_bg_opa(core_outer, LV_OPA_20, 0);
-    lv_obj_set_style_radius(core_outer, 36, 0);
-    lv_obj_set_style_shadow_width(core_outer, 18, 0);
-    lv_obj_set_style_shadow_color(core_outer, lv_color_hex(0x8E5CFF), 0);
-    lv_obj_clear_flag(core_outer, LV_OBJ_FLAG_SCROLLABLE);
-
-    core_inner = lv_obj_create(scene);
-    lv_obj_remove_style_all(core_inner);
-    lv_obj_set_size(core_inner, 38, 38);
-    lv_obj_align(core_inner, LV_ALIGN_CENTER, 0, 16);
-    lv_obj_set_style_bg_color(core_inner, lv_color_hex(0x8E5CFF), 0);
-    lv_obj_set_style_bg_opa(core_inner, LV_OPA_COVER, 0);
-    lv_obj_set_style_radius(core_inner, 20, 0);
-    lv_obj_set_style_shadow_width(core_inner, 20, 0);
-    lv_obj_set_style_shadow_color(core_inner, lv_color_hex(0xFF8A2A), 0);
-    lv_obj_clear_flag(core_inner, LV_OBJ_FLAG_SCROLLABLE);
-
     scan_line = lv_obj_create(card);
     lv_obj_remove_style_all(scan_line);
     lv_obj_set_pos(scan_line, 58, AGING_SCAN_TOP);
@@ -342,8 +302,6 @@ void ui_page_26_set_aging_destroy(void)
     start_label = NULL;
     status_label = NULL;
     scan_line = NULL;
-    core_inner = NULL;
-    core_outer = NULL;
     anim_tick = 0;
 
     for (uint8_t i = 0; i < AGING_DOT_COUNT; i++) {

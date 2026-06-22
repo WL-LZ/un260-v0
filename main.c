@@ -102,6 +102,15 @@ static void frame_to_hex_str(const uint8_t *buf, int len, char *out, int out_len
 static bool history_copy_sim_snapshot(counting_sim_t *dst, const counting_sim_t *src);
 static void history_free_sim_snapshot(counting_sim_t *sim_data);
 
+static bool ui_counting_should_keep_current_page(void)
+{
+    ui_page_t page = ui_manager_get_current_page();
+
+    return page == UI_PAGE_DEBUG ||
+           page == UI_PAGE_IMAGE_GET ||
+           page == UI_PAGE_WAVE_GET;
+}
+
 static void history_capture_error_frame(const uint8_t *buf, int len)
 {
     if (buf == NULL || len <= 0) {
@@ -1074,7 +1083,8 @@ void PCCmdHandle(void)
                         page_06_data_collection_refresh();
                     }
                     else if (!g_cb_running &&
-                             ui_manager_get_current_page() != UI_PAGE_PURE) {
+                             ui_manager_get_current_page() != UI_PAGE_PURE &&
+                             !ui_counting_should_keep_current_page()) {
                         ui_manager_switch(UI_PAGE_MAIN);
                     }
                     smart_island_notify_count_start();
@@ -2104,6 +2114,17 @@ void PCCmdHandle(void)
             }
 
             ui_page_28_get_image_on_frame(&buf[4], (uint16_t)(len - 5));
+            break;
+        }
+        /* ================== 0x48 波形数据采集 ================== */
+        case 0x48:
+        {
+            if (len < 6) {
+                uart_printf(fd6, "0x48 invalid len=%d\n", len);
+                break;
+            }
+
+            ui_page_31_get_wave_on_frame(&buf[4], (uint16_t)(len - 5));
             break;
         }
         /* ================== 0x44 出厂设置应答 ================== */

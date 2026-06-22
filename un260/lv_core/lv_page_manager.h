@@ -31,6 +31,7 @@ extern "C" {
     extern lv_obj_t* image_get_page;
     extern lv_obj_t* password_change_page;
     extern lv_obj_t* factory_setting_page;
+    extern lv_obj_t* wave_get_page;
 
     typedef enum {
         UI_PAGE_BOOT_ANIM = 0,
@@ -64,6 +65,7 @@ extern "C" {
         UI_PAGE_IMAGE_GET,
         UI_PAGE_PASSWORD_CHANGE,
         UI_PAGE_FACTORY_SETTING,
+        UI_PAGE_WAVE_GET,
         UI_PAGE_COUNT
     } ui_page_t;
 

@@ -942,6 +942,8 @@ static void create_maintenance_page_content(lv_obj_t* parent)
                 enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_FLAP_SETTING);
     create_tile(parent, 1, 2, ui_text_get(UI_TEXT_SETTINGS_IMAGE_GET_SETTING), ">", false,
                 enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_IMAGE_GET);
+    create_tile(parent, 0, 3, ui_text_get(UI_TEXT_SETTINGS_WAVE_GET_SETTING), ">", false,
+                enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_WAVE_GET);
 }
 
 static void create_user_page_content(lv_obj_t* parent)
