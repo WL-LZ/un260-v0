@@ -108,7 +108,8 @@ static bool ui_counting_should_keep_current_page(void)
 
     return page == UI_PAGE_DEBUG ||
            page == UI_PAGE_IMAGE_GET ||
-           page == UI_PAGE_WAVE_GET;
+           page == UI_PAGE_WAVE_GET ||
+           page == UI_PAGE_SENSOR;
 }
 
 static void history_capture_error_frame(const uint8_t *buf, int len)
