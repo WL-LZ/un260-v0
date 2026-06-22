@@ -77,13 +77,13 @@ static void qr_popup_create(void) //创建二维码弹窗对象
     lv_obj_set_width(g_qr_popup_title, 280);
     lv_obj_align(g_qr_popup_title, LV_ALIGN_TOP_MID, 0, 18);
     lv_obj_set_style_text_align(g_qr_popup_title, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_font(g_qr_popup_title, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_font(g_qr_popup_title, &lv_font_instrument_sans_semibold_22, 0);
     lv_obj_set_style_text_color(g_qr_popup_title, lv_color_hex(0x111111), 0);
 
     g_qr_popup_desc = lv_label_create(g_qr_popup_root);
     lv_obj_set_width(g_qr_popup_desc, QR_POPUP_CARD_W);
     lv_obj_set_style_text_align(g_qr_popup_desc, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_font(g_qr_popup_desc, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(g_qr_popup_desc, &lv_font_instrument_sans_medium_14, 0);
     lv_obj_set_style_text_color(g_qr_popup_desc, lv_color_hex(0x666666), 0);
 
     g_qr_popup_canvas = lv_canvas_create(g_qr_popup_card);
@@ -99,7 +99,7 @@ static void qr_popup_create(void) //创建二维码弹窗对象
 
     g_qr_popup_close_label = lv_label_create(g_qr_popup_close_btn);
     lv_obj_center(g_qr_popup_close_label);
-    lv_obj_set_style_text_font(g_qr_popup_close_label, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(g_qr_popup_close_label, &lv_font_instrument_sans_bold_16, 0);
     lv_obj_set_style_text_color(g_qr_popup_close_label, lv_color_hex(0xFFFFFF), 0);
 
     lv_obj_align_to(g_qr_popup_desc, g_qr_popup_close_btn, LV_ALIGN_OUT_BOTTOM_MID, 0, 5);

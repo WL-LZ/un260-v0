@@ -153,70 +153,70 @@ ui_element_t page_02_list_obj[] = {
 
     { "02_list_title_label", LV_OBJ_TYPE_LABEL, NULL ,
         { 610, 13, 70, 36, 112, 112, 112 },
-        { "LIST", 112, 112, 112, &lv_font_montserrat_24, LV_TEXT_ALIGN_CENTER },
+        { "LIST", 80, 80, 80, &lv_font_instrument_sans_semibold_24, LV_TEXT_ALIGN_CENTER },
         { 255, 18, 0, false },
          NULL, 0, NULL, NULL ,
          UI_BTN_STYLE_NONE},
 
     { "02_a_denom_title_label", LV_OBJ_TYPE_LABEL, NULL ,
         { 58, 58, 70, 36, 255, 255, 255 },
-        { "DENOM", 255, 255, 255, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
+        { "DENOM", 255, 255, 255, &lv_font_instrument_sans_medium_16, LV_TEXT_ALIGN_LEFT },
         { 255, 18, 0, false },
          NULL, 0, NULL, NULL ,
          UI_BTN_STYLE_NONE},
 
     { "02_a_pcs_title_label", LV_OBJ_TYPE_LABEL, NULL ,
         { 171, 58, 70, 36, 255, 255, 255 },
-        { "PCS", 255, 255, 255, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
+        { "PCS", 255, 255, 255, &lv_font_instrument_sans_medium_16, LV_TEXT_ALIGN_LEFT },
         { 255, 18, 0, false },
          NULL, 0, NULL, NULL ,
          UI_BTN_STYLE_NONE},
 
     { "02_a_amount_title_label", LV_OBJ_TYPE_LABEL, NULL ,
         { 267, 58, 80, 36, 255, 255, 255 },
-        { "AMOUNT", 255, 255, 255, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
+        { "AMOUNT", 255, 255, 255, &lv_font_instrument_sans_medium_16, LV_TEXT_ALIGN_LEFT },
         { 255, 18, 0, false },
          NULL, 0, NULL, NULL ,
          UI_BTN_STYLE_NONE},
 
     { "02_b_no_title_label", LV_OBJ_TYPE_LABEL, NULL ,
         { 444, 58, 70, 36, 255, 255, 255 },
-        { "NO", 255, 255, 255, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
+        { "NO", 255, 255, 255, &lv_font_instrument_sans_medium_16, LV_TEXT_ALIGN_LEFT },
         { 255, 18, 0, false },
          NULL, 0, NULL, NULL ,
          UI_BTN_STYLE_NONE},
 
     { "02_b_sn_title_label", LV_OBJ_TYPE_LABEL, NULL ,
         { 516, 58, 70, 36, 255, 255, 255 },
-        { "SN", 255, 255, 255, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
+        { "SN", 255, 255, 255, &lv_font_instrument_sans_medium_16, LV_TEXT_ALIGN_LEFT },
         { 255, 18, 0, false },
          NULL, 0, NULL, NULL ,
          UI_BTN_STYLE_NONE},
 
     { "02_b_denom_title_label", LV_OBJ_TYPE_LABEL, NULL ,
         { 679, 58, 70, 36, 255, 255, 255 },
-        { "DENOM", 255, 255, 255, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
+        { "DENOM", 255, 255, 255, &lv_font_instrument_sans_medium_16, LV_TEXT_ALIGN_LEFT },
         { 255, 18, 0, false },
          NULL, 0, NULL, NULL ,
          UI_BTN_STYLE_NONE},
 
     { "02_c_no_title_label", LV_OBJ_TYPE_LABEL, NULL ,
         { 834, 58, 70, 36, 255, 255, 255 },
-        { "NO", 255, 255, 255, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
+        { "NO", 255, 255, 255, &lv_font_instrument_sans_medium_16, LV_TEXT_ALIGN_LEFT },
         { 255, 18, 0, false },
          NULL, 0, NULL, NULL ,
          UI_BTN_STYLE_NONE},
 
     { "02_c_denom_title_label", LV_OBJ_TYPE_LABEL, NULL ,
         { 887, 58, 70, 36, 255, 255, 255 },
-        { "PCS", 255, 255, 255, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
+        { "PCS", 255, 255, 255, &lv_font_instrument_sans_medium_16, LV_TEXT_ALIGN_LEFT },
         { 255, 18, 0, false },
          NULL, 0, NULL, NULL ,
          UI_BTN_STYLE_NONE},
 
     { "02_c_reject_title_label", LV_OBJ_TYPE_LABEL, NULL ,
         { 973, 58, 70, 36, 255, 255, 255 },
-        { "REJECT", 255, 255, 255, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
+        { "REJECT", 255, 255, 255, &lv_font_instrument_sans_medium_16, LV_TEXT_ALIGN_LEFT },
         { 255, 18, 0, false },
          NULL, 0, NULL, NULL ,
          UI_BTN_STYLE_NONE},
@@ -224,49 +224,49 @@ ui_element_t page_02_list_obj[] = {
 //************  a_TOTAL ****************//
     { "02_a_denom_total", LV_OBJ_TYPE_LABEL, NULL,
       { 58, 337, 80, 36, 255, 255, 255 },
-      { "TOTAL", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
+      { "TOTAL", 61, 61, 61, &lv_font_instrument_sans_medium_16, LV_TEXT_ALIGN_LEFT },
       { 255, 18, 0, false },
       NULL, 0, 0, NULL,
       UI_BTN_STYLE_NONE },
 
     { "02_a_pcs_amount", LV_OBJ_TYPE_LABEL, NULL,
       { 171, 337, 70, 36, 255, 255, 255 },
-      { "0", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
+      { "0", 61, 61, 61, &lv_font_instrument_sans_medium_16, LV_TEXT_ALIGN_LEFT },
       { 255, 18, 0, false },
       NULL, 0, 0, NULL,
       UI_BTN_STYLE_NONE },
 
     { "02_a_amount_total", LV_OBJ_TYPE_LABEL, NULL,
       { 267, 337, 80, 36, 255, 255, 255 },
-      { "0", 93, 93, 93, &lv_font_montserrat_16, LV_TEXT_ALIGN_LEFT },
+      { "0", 61, 61, 61, &lv_font_instrument_sans_medium_16, LV_TEXT_ALIGN_LEFT },
       { 255, 18, 0, false },
       NULL, 0, 0, NULL,
       UI_BTN_STYLE_NONE },
 
     { "02_history_btn", LV_OBJ_TYPE_BUTTON, NULL,
       { 1149, 87, 110, 57, 255, 255, 255 },
-      { "HISTORY", 33, 43, 54, &lv_font_montserrat_16, LV_TEXT_ALIGN_CENTER },
+      { "HISTORY", 33, 43, 54, &lv_font_instrument_sans_bold_16, LV_TEXT_ALIGN_CENTER },
       { 255, 18, 0, true },
       page_02_history_btn_event_cb, LV_EVENT_CLICKED, NULL, NULL,
       UI_BTN_STYLE_APPLE },
 
         { "02_a_page_refre", LV_OBJ_TYPE_LABEL, NULL,
           { 151, 371, 99, 27, 121, 150, 0 },
-          { "1/2", 255, 255, 255, &lv_font_montserrat_20, LV_TEXT_ALIGN_CENTER },
+          { "1/2", 255, 255, 255, &lv_font_instrument_sans_medium_20, LV_TEXT_ALIGN_CENTER },
           { 255, 18, 0, false },
           NULL, 0, 0, NULL,
           UI_BTN_STYLE_NONE },
                 
         { "02_b_page_refre", LV_OBJ_TYPE_LABEL, NULL,
           { 545, 371, 99, 27, 121, 150, 0 },
-          { "1/2", 255, 255, 255, &lv_font_montserrat_20, LV_TEXT_ALIGN_CENTER },
+          { "1/2", 255, 255, 255, &lv_font_instrument_sans_medium_20, LV_TEXT_ALIGN_CENTER },
           { 255, 18, 0, false },
           NULL, 0, 0, NULL,
           UI_BTN_STYLE_NONE },
                 
         { "02_c_page_refre", LV_OBJ_TYPE_LABEL, NULL,
           { 925, 371, 99, 27, 121, 150, 0 },
-          { "200/200", 255, 255, 255, &lv_font_montserrat_20, LV_TEXT_ALIGN_CENTER },
+          { "200/200", 255, 255, 255, &lv_font_instrument_sans_medium_20, LV_TEXT_ALIGN_CENTER },
           { 255, 18, 0, false },
           NULL, 0, 0, NULL,
           UI_BTN_STYLE_NONE },
@@ -370,7 +370,7 @@ static lv_obj_t *page_02_scroll_cell_create(lv_obj_t *parent, lv_coord_t width) 
 
     lv_obj_set_size(label, width, 36);
     lv_obj_set_style_text_color(label, lv_color_hex(0x5D5D5D), 0);
-    lv_obj_set_style_text_font(label, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(label, &lv_font_instrument_sans_medium_16, 0);
     lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
     lv_label_set_text(label, "");
 
@@ -519,6 +519,7 @@ static void page_02_scroll_section_row_bind(page_02_scroll_section_t *section, u
         lv_obj_clear_flag(section->cell[pool_row][col], LV_OBJ_FLAG_HIDDEN);
         lv_obj_set_pos(section->cell[pool_row][col], section->col_x[col],
             PAGE_02_SCROLL_ROW_Y_OFFSET + data_index * PAGE_02_SCROLL_ROW_GAP);
+        lv_obj_set_style_text_font(section->cell[pool_row][col], &lv_font_instrument_sans_medium_16, 0);
     }
 
     switch (section->section_id) {

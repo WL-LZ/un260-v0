@@ -14,13 +14,11 @@
 #include "un260/lv_system/ui_history_export_data.h"
 #include "un260/lv_system/ui_text.h"
 
-LV_FONT_DECLARE(lv_font_montserrat_14);
-LV_FONT_DECLARE(lv_font_montserrat_16);
-LV_FONT_DECLARE(lv_font_montserrat_18);
-LV_FONT_DECLARE(lv_font_montserrat_20);
-LV_FONT_DECLARE(lv_font_montserrat_24);
-LV_FONT_DECLARE(lv_font_rajdhani_27);
-LV_FONT_DECLARE(MONTSERRAT_EXTRABOLD_35);
+LV_FONT_DECLARE(lv_font_instrument_sans_medium_14);
+LV_FONT_DECLARE(lv_font_instrument_sans_medium_16);
+LV_FONT_DECLARE(lv_font_instrument_sans_medium_18);
+LV_FONT_DECLARE(lv_font_instrument_sans_medium_20);
+LV_FONT_DECLARE(lv_font_instrument_sans_medium_24);
 
 #define HISTORY_DETAIL_SECTION_ROWS 40
 #define HISTORY_CARD_ROW_GAP 65
@@ -292,7 +290,7 @@ static lv_obj_t *history_create_button(lv_obj_t *parent, lv_coord_t x, lv_coord_
         lv_obj_t *label = lv_label_create(btn);
         lv_label_set_text(label, text);
         lv_obj_center(label);
-        history_style_label(label, &lv_font_montserrat_16, lv_color_hex(0xE74D4D));
+        history_style_label(label, &lv_font_instrument_sans_medium_16, lv_color_hex(0xE74D4D));
     }
 
     return btn;
@@ -305,8 +303,8 @@ static void history_nav_refresh(void)
     lv_obj_set_style_bg_opa(g_history_page.user_nav_bg, LV_OPA_TRANSP, 0);
     lv_obj_set_style_bg_color(g_history_page.user_nav_bg, lv_color_hex(0xFFFFFF), 0);
     lv_obj_add_flag(g_history_page.user_nav_bg, LV_OBJ_FLAG_HIDDEN);
-    history_style_label(g_history_page.history_nav_label, &lv_font_montserrat_18, lv_color_hex(0x7A869A));
-    history_style_label(g_history_page.user_nav_label, &lv_font_montserrat_18, lv_color_hex(0x7A869A));
+    history_style_label(g_history_page.history_nav_label, &lv_font_instrument_sans_medium_18, lv_color_hex(0x5A869A));
+    history_style_label(g_history_page.user_nav_label, &lv_font_instrument_sans_medium_18, lv_color_hex(0x5A869A));
     lv_obj_add_flag(g_history_page.user_nav_label, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -335,7 +333,7 @@ static void history_detail_section_create(history_detail_section_ui_t *section, 
 
     section->title = history_create_text_label(section->panel, 18, 10, 24, 20,
                                                "",
-                                               &lv_font_montserrat_16, lv_color_hex(0x00CFE0), LV_TEXT_ALIGN_LEFT);
+                                               &lv_font_instrument_sans_medium_16, lv_color_hex(0x00CFE0), LV_TEXT_ALIGN_LEFT);
     lv_obj_add_flag(section->title, LV_OBJ_FLAG_HIDDEN);
 
     section->body = lv_obj_create(section->panel);
@@ -348,21 +346,21 @@ static void history_detail_section_create(history_detail_section_ui_t *section, 
     lv_obj_set_style_border_width(section->body, 0, 0);
 
     section->col_1_title = history_create_text_label(section->panel, 0, 0, 40, 18, "",
-                                                     &lv_font_montserrat_14, lv_color_hex(0x7A869A), LV_TEXT_ALIGN_LEFT);
+                                                     &lv_font_instrument_sans_medium_14, lv_color_hex(0x5A869A), LV_TEXT_ALIGN_LEFT);
     section->col_2_title = history_create_text_label(section->panel, 0, 0, 60, 18, "",
-                                                     &lv_font_montserrat_14, lv_color_hex(0x7A869A), LV_TEXT_ALIGN_LEFT);
+                                                     &lv_font_instrument_sans_medium_14, lv_color_hex(0x5A869A), LV_TEXT_ALIGN_LEFT);
     section->col_3_title = history_create_text_label(section->panel, 0, 0, 80, 18, "",
-                                                     &lv_font_montserrat_14, lv_color_hex(0x7A869A), LV_TEXT_ALIGN_LEFT);
+                                                     &lv_font_instrument_sans_medium_14, lv_color_hex(0x5A869A), LV_TEXT_ALIGN_LEFT);
 
     for (i = 0; i < HISTORY_DETAIL_SECTION_ROWS; i++) {
         section->row_no[i] = history_create_text_label(section->body, 0, 0, 40, 18, "",
-                                                       &lv_font_montserrat_14,
-                                                       section_id == 2 ? lv_color_hex(0x38495A) : lv_color_hex(0x00CFE0),
+                                                       &lv_font_instrument_sans_medium_14,
+                                                       section_id == 2 ? lv_color_hex(0x18495A) : lv_color_hex(0x00CFE0),
                                                        LV_TEXT_ALIGN_LEFT);
         section->row_col_2[i] = history_create_text_label(section->body, 0, 0, 160, 18, "",
-                                                          &lv_font_montserrat_14, lv_color_hex(0x000000), LV_TEXT_ALIGN_LEFT);
+                                                          &lv_font_instrument_sans_medium_14, lv_color_hex(0x000000), LV_TEXT_ALIGN_LEFT);
         section->row_col_3[i] = history_create_text_label(section->body, 0, 0, 170, 18, "",
-                                                          &lv_font_montserrat_14, lv_color_hex(0x38495A), LV_TEXT_ALIGN_LEFT);
+                                                          &lv_font_instrument_sans_medium_14, lv_color_hex(0x18495A), LV_TEXT_ALIGN_LEFT);
     }
     history_detail_section_set_header(section, section_id);
 }
@@ -630,7 +628,7 @@ static void history_detail_section_apply_layout(history_detail_section_ui_t *sec
 
     if (section->title) {
         lv_obj_set_pos(section->title, 18, 10);
-        history_style_label(section->title, &lv_font_montserrat_16, lv_color_hex(0x00CFE0));
+        history_style_label(section->title, &lv_font_instrument_sans_semibold_16, lv_color_hex(0x00CFE0));
         lv_obj_add_flag(section->title, LV_OBJ_FLAG_HIDDEN);
     }
 
@@ -641,28 +639,34 @@ static void history_detail_section_apply_layout(history_detail_section_ui_t *sec
         lv_obj_set_width(section->col_1_title, col_1_w[section_id]);
         lv_obj_set_width(section->col_2_title, col_2_w[section_id]);
         lv_obj_set_width(section->col_3_title, col_3_w[section_id]);
-        history_style_label(section->col_1_title, &lv_font_montserrat_14, lv_color_hex(0x7A869A));
-        history_style_label(section->col_2_title, &lv_font_montserrat_14, lv_color_hex(0x7A869A));
-        history_style_label(section->col_3_title, &lv_font_montserrat_14, lv_color_hex(0x7A869A));
+        history_style_label(section->col_1_title, &lv_font_instrument_sans_semibold_14, lv_color_hex(0x5A869A));
+        history_style_label(section->col_2_title, &lv_font_instrument_sans_semibold_14, lv_color_hex(0x5A869A));
+        history_style_label(section->col_3_title, &lv_font_instrument_sans_semibold_14, lv_color_hex(0x5A869A));
     }
 
     for (i = 0; i < HISTORY_DETAIL_SECTION_ROWS; i++) {
         row_y = (lv_coord_t)(4 + i * 35);
         if (section->row_no[i]) {
+            const lv_font_t *row_no_font = section_id == 0 ? &lv_font_manrope_bold_14 : &lv_font_instrument_sans_medium_14;
+
             lv_obj_set_pos(section->row_no[i], col_1_x[section_id], row_y);
             lv_obj_set_width(section->row_no[i], col_1_w[section_id]);
-            history_style_label(section->row_no[i], &lv_font_montserrat_14,
-                                section_id == 2 ? lv_color_hex(0x38495A) : lv_color_hex(0x00CFE0));
+            history_style_label(section->row_no[i], row_no_font,
+                                section_id == 2 ? lv_color_hex(0x18495A) : lv_color_hex(0x00CFE0));
         }
         if (section->row_col_2[i]) {
             lv_obj_set_pos(section->row_col_2[i], col_2_x[section_id], row_y);
             lv_obj_set_width(section->row_col_2[i], col_2_w[section_id]);
-            history_style_label(section->row_col_2[i], &lv_font_montserrat_14, lv_color_hex(0x000000));
+            history_style_label(section->row_col_2[i],
+                                (section_id == 0 || section_id == 2) ? &lv_font_manrope_bold_14 : &lv_font_instrument_sans_medium_14,
+                                lv_color_hex(0x000000));
         }
         if (section->row_col_3[i]) {
             lv_obj_set_pos(section->row_col_3[i], col_3_x[section_id], row_y);
             lv_obj_set_width(section->row_col_3[i], col_3_w[section_id]);
-            history_style_label(section->row_col_3[i], &lv_font_montserrat_14, lv_color_hex(0x38495A));
+            history_style_label(section->row_col_3[i],
+                                section_id == 0 ? &lv_font_manrope_extrabold_14 : &lv_font_instrument_sans_medium_14,
+                                lv_color_hex(0x18495A));
             if (section_id == 2) {
                 lv_obj_set_height(section->row_col_3[i], 33);
                 lv_label_set_long_mode(section->row_col_3[i], LV_LABEL_LONG_WRAP);
@@ -1248,14 +1252,14 @@ static void history_page_create_clean_dialog(lv_obj_t *parent)
     title = lv_label_create(card);
     lv_label_set_text(title, "CLEAN HISTORY");
     lv_obj_align(title, LV_ALIGN_TOP_LEFT, 24, 20);
-    history_style_label(title, &lv_font_montserrat_20, lv_color_hex(0x111111));
+    history_style_label(title, &lv_font_instrument_sans_semibold_20, lv_color_hex(0x111111));
 
     text = lv_label_create(card);
     lv_label_set_text(text, "Clear total notes counted?");
     lv_obj_set_size(text, 360, 50);
     lv_obj_align(text, LV_ALIGN_TOP_LEFT, 24, 58);
     lv_label_set_long_mode(text, LV_LABEL_LONG_WRAP);
-    history_style_label(text, &lv_font_montserrat_16, lv_color_hex(0x667085));
+    history_style_label(text, &lv_font_instrument_sans_medium_16, lv_color_hex(0x467085));
 
     cancel_btn = lv_btn_create(card);
     lv_obj_set_size(cancel_btn, 150, 42);
@@ -1272,7 +1276,7 @@ static void history_page_create_clean_dialog(lv_obj_t *parent)
     lv_obj_t *cancel_label = lv_obj_get_child(cancel_btn, 0);
     lv_label_set_text(cancel_label, "CANCEL");
     lv_obj_center(cancel_label);
-    history_style_label(cancel_label, &lv_font_montserrat_16, lv_color_hex(0x475467));
+    history_style_label(cancel_label, &lv_font_instrument_sans_bold_16, lv_color_hex(0x275467));
 
     confirm_btn = lv_btn_create(card);
     lv_obj_set_size(confirm_btn, 150, 42);
@@ -1289,7 +1293,7 @@ static void history_page_create_clean_dialog(lv_obj_t *parent)
     lv_obj_t *confirm_label = lv_obj_get_child(confirm_btn, 0);
     lv_label_set_text(confirm_label, "CONFIRM");
     lv_obj_center(confirm_label);
-    history_style_label(confirm_label, &lv_font_montserrat_16, lv_color_hex(0xE74D4D));
+    history_style_label(confirm_label, &lv_font_instrument_sans_bold_16, lv_color_hex(0xE74D4D));
 
     g_history_page.clean_overlay = overlay;
     g_history_page.clean_dialog = card;
@@ -1372,19 +1376,19 @@ static lv_obj_t *history_create_card(lv_obj_t *parent, uint8_t index)
     no_label = lv_label_create(card);
     lv_label_set_text(no_label, "01");
     lv_obj_set_pos(no_label, 54, 9);
-    history_style_label(no_label, &lv_font_montserrat_18, lv_color_hex(0x00CFE0));
+    history_style_label(no_label, &lv_font_instrument_sans_medium_18, lv_color_hex(0x00CFE0));
 
     currency_label = lv_label_create(card);
     lv_label_set_text(currency_label, "CNY");
     lv_obj_set_pos(currency_label, 112, 9);
-    history_style_label(currency_label, &lv_font_montserrat_18, lv_color_hex(0x000000));
+    history_style_label(currency_label, &lv_font_instrument_sans_medium_18, lv_color_hex(0x000000));
 
     time_label = lv_label_create(card);
     lv_label_set_text(time_label, "2026-04-23 17:36:00");
     lv_obj_set_pos(time_label, 213, 9);
     lv_obj_set_width(time_label, 210);
     lv_obj_set_style_text_align(time_label, LV_TEXT_ALIGN_RIGHT, 0);
-    history_style_label(time_label, &lv_font_montserrat_14, lv_color_hex(0x38495A));
+    history_style_label(time_label, &lv_font_instrument_sans_medium_14, lv_color_hex(0x18495A));
 
     ui->card = card;
     (void)hit_btn;
@@ -1441,7 +1445,7 @@ void ui_page_19_history_create(lv_obj_t *parent)
 
     {
         lv_obj_t *counter_title = history_create_text_label(g_history_page.sidebar, 26, 14, 180, 24,
-                                                            "COUNTER SYSTEM", &lv_font_montserrat_18,
+                                                            "COUNTER SYSTEM", &lv_font_instrument_sans_medium_18,
                                                             lv_color_hex(0x5E697D), LV_TEXT_ALIGN_LEFT);
         lv_label_set_long_mode(counter_title, LV_LABEL_LONG_CLIP);
     }
@@ -1464,34 +1468,34 @@ void ui_page_19_history_create(lv_obj_t *parent)
     lv_obj_add_flag(g_history_page.user_nav_bg, LV_OBJ_FLAG_HIDDEN);
 
     g_history_page.history_nav_label = history_create_text_label(g_history_page.sidebar, 62, 68, 120, 20,
-                                                                 "HISTORY", &lv_font_montserrat_18,
+                                                                 "HISTORY", &lv_font_instrument_sans_bold_18,
                                                                  lv_color_hex(0x00CFE0), LV_TEXT_ALIGN_LEFT);
     g_history_page.user_nav_label = history_create_text_label(g_history_page.sidebar, 62, 117, 120, 20,
-                                                              "USER", &lv_font_montserrat_18,
+                                                              "USER", &lv_font_instrument_sans_medium_18,
                                                               lv_color_hex(0x8A94A8), LV_TEXT_ALIGN_LEFT);
     lv_obj_add_flag(g_history_page.user_nav_label, LV_OBJ_FLAG_HIDDEN);
 
     history_create_text_label(g_history_page.root, 267, 31, 210, 20,
-                              "SYSTEM", &lv_font_montserrat_14,
+                              "SYSTEM", &lv_font_instrument_sans_medium_14,
                               lv_color_hex(0x8893A6), LV_TEXT_ALIGN_LEFT);
     history_create_text_label(g_history_page.root, 335, 31, 12, 20,
-                              ">", &lv_font_montserrat_14, lv_color_hex(0xA5B2C2), LV_TEXT_ALIGN_LEFT);
+                              ">", &lv_font_instrument_sans_medium_14, lv_color_hex(0x85B2C2), LV_TEXT_ALIGN_LEFT);
     g_history_page.breadcrumb_curr = history_create_text_label(g_history_page.root, 353, 31, 120, 20,
-                                                               "HISTORY", &lv_font_montserrat_14,
+                                                               "HISTORY", &lv_font_instrument_sans_bold_14,
                                                                lv_color_hex(0x00CFE0), LV_TEXT_ALIGN_LEFT);
 
     g_history_page.total_label = history_create_text_label(g_history_page.root, 267, 81, 240, 24,
-                                                           "TOTAL NOTES COUNTED", &lv_font_montserrat_16,
+                                                           "TOTAL NOTES COUNTED", &lv_font_instrument_sans_semibold_16,
                                                            lv_color_hex(0x4D5564), LV_TEXT_ALIGN_LEFT);
     g_history_page.total_value = history_create_text_label(g_history_page.root, 700, 73, 360, 38,
-                                                           "0", &lv_font_rajdhani_27,
+                                                           "0", &lv_font_manrope_bold_32,
                                                            lv_color_hex(0x00CFE0), LV_TEXT_ALIGN_RIGHT);
-    lv_obj_set_style_text_font(g_history_page.total_value, &MONTSERRAT_EXTRABOLD_35, 0);
+    lv_obj_set_style_text_font(g_history_page.total_value, &lv_font_manrope_bold_32, 0);
 
     g_history_page.clean_btn = history_create_button(g_history_page.root, 1083, 70, 92, 35,
                                                      lv_color_hex(0xFDF0F0), "CLEAN",
                                                      history_page_clean_btn_cb);
-    history_style_label(lv_obj_get_child(g_history_page.clean_btn, 0), &lv_font_montserrat_16, lv_color_hex(0xE74D4D));
+    history_style_label(lv_obj_get_child(g_history_page.clean_btn, 0), &lv_font_instrument_sans_bold_16, lv_color_hex(0xE74D4D));
 
     g_history_page.list_area = lv_obj_create(g_history_page.root);
     lv_obj_remove_style_all(g_history_page.list_area);
@@ -1504,7 +1508,7 @@ void ui_page_19_history_create(lv_obj_t *parent)
     lv_obj_move_foreground(g_history_page.clean_btn);
 
     g_history_page.empty_label = history_create_text_label(g_history_page.list_area, 0, 0, 200, 24,
-                                                           "NO HISTORY", &lv_font_montserrat_16,
+                                                           "NO HISTORY", &lv_font_instrument_sans_medium_16,
                                                            lv_color_hex(0xA4AEBE), LV_TEXT_ALIGN_CENTER);
     lv_obj_center(g_history_page.empty_label);
     lv_obj_add_flag(g_history_page.empty_label, LV_OBJ_FLAG_HIDDEN);
@@ -1520,7 +1524,7 @@ void ui_page_19_history_create(lv_obj_t *parent)
 
     g_history_page.detail_empty_label = history_create_text_label(g_history_page.detail_panel, 28, 24, 500, 24,
                                                                   "Select a record to view details",
-                                                                  &lv_font_montserrat_16, lv_color_hex(0x98A2B3),
+                                                                  &lv_font_instrument_sans_medium_16, lv_color_hex(0x78A2B3),
                                                                   LV_TEXT_ALIGN_LEFT);
     history_detail_section_create(&g_history_detail_sections[0], g_history_page.detail_panel, 0);
     history_detail_section_create(&g_history_detail_sections[1], g_history_page.detail_panel, 1);
@@ -1544,25 +1548,25 @@ void ui_page_19_history_create(lv_obj_t *parent)
     g_history_page.bottom_export = history_create_button(g_history_page.root, 27, 356, 93, 44,
                                                          lv_color_hex(0x00CFE0), "EXPORT",
                                                          history_page_export_cb);
-    history_style_label(lv_obj_get_child(g_history_page.bottom_export, 0), &lv_font_montserrat_16, lv_color_hex(0xFFFFFF));
+    history_style_label(lv_obj_get_child(g_history_page.bottom_export, 0), &lv_font_instrument_sans_medium_16, lv_color_hex(0xFFFFFF));
 
     g_history_page.bottom_select = history_create_button(g_history_page.root, 157, 356, 93, 44,
                                                          lv_color_hex(0xF4F7FB), "SELECT",
                                                          history_page_select_all_cb);
     g_history_page.bottom_select_label = lv_obj_get_child(g_history_page.bottom_select, 0);
-    history_style_label(g_history_page.bottom_select_label, &lv_font_montserrat_16, lv_color_hex(0x4A5568));
+    history_style_label(g_history_page.bottom_select_label, &lv_font_instrument_sans_bold_16, lv_color_hex(0x2A5568));
 
     g_history_page.bottom_delete = history_create_button(g_history_page.root, 286, 356, 93, 44,
                                                          lv_color_hex(0xFDECEC), "DELETE",
                                                          history_page_delete_cb);
     g_history_page.bottom_delete_label = lv_obj_get_child(g_history_page.bottom_delete, 0);
-    history_style_label(g_history_page.bottom_delete_label, &lv_font_montserrat_16, lv_color_hex(0xE74D4D));
+    history_style_label(g_history_page.bottom_delete_label, &lv_font_instrument_sans_bold_16, lv_color_hex(0xE74D4D));
 
     g_history_page.bottom_back = history_create_button(g_history_page.root, 415, 356, 93, 44,
                                                        lv_color_hex(0x818182), "BACK",
                                                        history_page_back_cb);
     g_history_page.bottom_back_label = lv_obj_get_child(g_history_page.bottom_back, 0);
-    history_style_label(g_history_page.bottom_back_label, &lv_font_montserrat_16, lv_color_hex(0xFFFFFF));
+    history_style_label(g_history_page.bottom_back_label, &lv_font_instrument_sans_bold_16, lv_color_hex(0xFFFFFF));
 
     history_page_create_clean_dialog(g_history_page.root);
     history_page_refresh();

@@ -140,14 +140,14 @@ static void language_create_option(lv_obj_t* parent, size_t index,
     lv_obj_clear_flag(code, LV_OBJ_FLAG_SCROLLABLE);
 
     lv_obj_t* code_label = settings_detail_create_label(code, option->code,
-                                                        &lv_font_montserrat_14,
+                                                        &lv_font_instrument_sans_medium_14,
                                                         lv_color_hex(0x0878C8), 0, 0);
     lv_obj_center(code_label);
 
-    settings_detail_create_label(item, ui_text_get(option->name_text), &lv_font_montserrat_18,
-                                 lv_color_hex(0x2D3440), 82, 15);
-    settings_detail_create_label(item, ui_text_get(option->region_text), &lv_font_montserrat_14,
-                                 lv_color_hex(0x7686A5), 196, 18);
+    settings_detail_create_label(item, ui_text_get(option->name_text), &lv_font_instrument_sans_medium_18,
+                                 lv_color_hex(0x0D3440), 82, 15);
+    settings_detail_create_label(item, ui_text_get(option->region_text), &lv_font_instrument_sans_medium_14,
+                                 lv_color_hex(0x5686A5), 196, 18);
 
     g_language_items[index].card = item;
     g_language_items[index].check = settings_detail_create_select_box(item, 630, 16, 30,
@@ -186,16 +186,16 @@ static void language_create_panel(lv_obj_t* parent)
     lv_obj_set_style_radius(badge, 8, 0);
     lv_obj_clear_flag(badge, LV_OBJ_FLAG_SCROLLABLE);
 
-    summary_code_label = settings_detail_create_label(badge, "", &lv_font_montserrat_18,
+    summary_code_label = settings_detail_create_label(badge, "", &lv_font_instrument_sans_medium_18,
                                                       lv_color_hex(0x0878C8), 0, 0);
     lv_obj_center(summary_code_label);
 
     settings_detail_create_label(card, ui_text_get(UI_TEXT_SETTINGS_LANGUAGE_DISPLAY),
-                                 &lv_font_montserrat_20, lv_color_hex(0x2D3440), 88, 22);
+                                 &lv_font_instrument_sans_medium_20, lv_color_hex(0x0D3440), 88, 22);
     settings_detail_create_label(card, ui_text_get(UI_TEXT_SETTINGS_LANGUAGE_SUBTITLE),
-                                 &lv_font_montserrat_14, lv_color_hex(0x7686A5), 90, 52);
+                                 &lv_font_instrument_sans_medium_14, lv_color_hex(0x5686A5), 90, 52);
 
-    status_label = settings_detail_create_label(card, "", &lv_font_montserrat_14,
+    status_label = settings_detail_create_label(card, "", &lv_font_instrument_sans_medium_14,
                                                 lv_color_hex(0x0878C8), 520, 42);
 
     language_create_list(card);
@@ -215,7 +215,7 @@ static void language_create_preview(lv_obj_t* parent)
     lv_obj_clear_flag(header, LV_OBJ_FLAG_SCROLLABLE);
 
     settings_detail_create_label(header, ui_text_get(UI_TEXT_SETTINGS_LANGUAGE_PREVIEW),
-                                 &lv_font_montserrat_18,
+                                 &lv_font_instrument_sans_medium_18,
                                  lv_color_hex(0xFFFFFF), 150, 12);
 
     lv_obj_t* code_box = lv_obj_create(card);
@@ -227,16 +227,16 @@ static void language_create_preview(lv_obj_t* parent)
     lv_obj_set_style_radius(code_box, 8, 0);
     lv_obj_clear_flag(code_box, LV_OBJ_FLAG_SCROLLABLE);
 
-    preview_code_label = settings_detail_create_label(code_box, "", &lv_font_montserrat_40,
+    preview_code_label = settings_detail_create_label(code_box, "", &lv_font_instrument_sans_medium_40,
                                                       lv_color_hex(0xFFFFFF), 0, 0);
     lv_obj_center(preview_code_label);
 
-    preview_name_label = settings_detail_create_label(card, "", &lv_font_montserrat_24,
-                                                      lv_color_hex(0x2D3440), 0, 190);
+    preview_name_label = settings_detail_create_label(card, "", &lv_font_instrument_sans_medium_24,
+                                                      lv_color_hex(0x0D3440), 0, 190);
     lv_obj_set_width(preview_name_label, 370);
     lv_obj_set_style_text_align(preview_name_label, LV_TEXT_ALIGN_CENTER, 0);
 
-    preview_sample_label = settings_detail_create_label(card, "", &lv_font_montserrat_16,
+    preview_sample_label = settings_detail_create_label(card, "", &lv_font_instrument_sans_medium_16,
                                                         lv_color_hex(0x0878C8), 0, 226);
     lv_obj_set_width(preview_sample_label, 370);
     lv_obj_set_style_text_align(preview_sample_label, LV_TEXT_ALIGN_CENTER, 0);

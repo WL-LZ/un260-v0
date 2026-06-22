@@ -79,13 +79,13 @@ static lv_obj_t* create_motor_card(lv_obj_t* parent, motor_item_t* item, lv_coor
 
     lv_obj_t* title = lv_label_create(card);
     lv_label_set_text(title, item->title);
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(title, &lv_font_instrument_sans_semibold_16, 0);
     lv_obj_set_style_text_color(title, lv_color_hex(0x183B61), 0);
     lv_obj_align(title, LV_ALIGN_TOP_LEFT, 0, 0);
 
     item->status_label = lv_label_create(card);
     lv_label_set_text(item->status_label, ui_text_get(UI_TEXT_SETTINGS_MOTOR_STOP));
-    lv_obj_set_style_text_font(item->status_label, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_font(item->status_label, &lv_font_instrument_sans_medium_22, 0);
     lv_obj_set_style_text_color(item->status_label, lv_color_hex(0x183B61), 0);
     lv_obj_align(item->status_label, LV_ALIGN_TOP_MID, 0, 32);
 

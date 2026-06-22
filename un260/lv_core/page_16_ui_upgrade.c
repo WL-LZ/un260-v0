@@ -317,19 +317,19 @@ void ui_page_16_ui_upgrade_create(lv_obj_t* parent) //创建升级页面
     upgrade_usb_status_label = lv_label_create(card);
     lv_label_set_text_fmt(upgrade_usb_status_label, page_16_text_get(UI_TEXT_PAGE16_USB_STATUS_FMT),
                           page_16_text_get(UI_TEXT_PAGE16_USB_NOT_INSERTED));
-    lv_obj_set_style_text_font(upgrade_usb_status_label, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_font(upgrade_usb_status_label, &lv_font_instrument_sans_medium_24, 0);
     lv_obj_set_pos(upgrade_usb_status_label, 36, 28);
 
     upgrade_file_status_label = lv_label_create(card);
     lv_label_set_text_fmt(upgrade_file_status_label, page_16_text_get(UI_TEXT_PAGE16_FILE_STATUS_FMT),
                           page_16_text_get(UI_TEXT_PAGE16_MOUNT_NOT),
                           page_16_text_get(UI_TEXT_PAGE16_PACKAGE_NOT_FOUND));
-    lv_obj_set_style_text_font(upgrade_file_status_label, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_font(upgrade_file_status_label, &lv_font_instrument_sans_medium_20, 0);
     lv_obj_set_pos(upgrade_file_status_label, 36, 78);
 
     upgrade_hint_label = lv_label_create(card);
     lv_label_set_text(upgrade_hint_label, page_16_text_get(UI_TEXT_PAGE16_HINT_INSERT_USB));
-    lv_obj_set_style_text_font(upgrade_hint_label, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_font(upgrade_hint_label, &lv_font_instrument_sans_medium_18, 0);
     lv_obj_set_style_text_color(upgrade_hint_label, lv_color_hex(0x5F6E7D), 0);
     lv_obj_set_pos(upgrade_hint_label, 36, 126);
 

@@ -283,8 +283,8 @@ static void wave_create_source_item(lv_obj_t* parent, size_t index)
     lv_obj_clear_flag(source_items[index].dot, LV_OBJ_FLAG_SCROLLABLE);
 
     source_items[index].label = settings_detail_create_label(item, ui_text_get(source->text_id),
-                                                             &lv_font_montserrat_14,
-                                                             lv_color_hex(0x2D3440), 40, 8);
+                                                             &lv_font_instrument_sans_medium_14,
+                                                             lv_color_hex(0x0D3440), 40, 8);
     source_items[index].card = item;
 }
 
@@ -293,7 +293,7 @@ static void wave_create_left_panel(lv_obj_t* parent)
     lv_obj_t* card = wave_create_card(parent, 38, 18, 286, 306);
 
     settings_detail_create_label(card, ui_text_get(UI_TEXT_SETTINGS_WAVE_GET_SOURCE),
-                                 &lv_font_montserrat_16, lv_color_hex(0x2D3440), 22, 14);
+                                 &lv_font_instrument_sans_medium_16, lv_color_hex(0x0D3440), 22, 14);
 
     for (size_t i = 0; i < WAVE_SOURCE_COUNT; i++) {
         wave_create_source_item(card, i);
@@ -319,11 +319,11 @@ static void wave_create_preview(lv_obj_t* parent)
     lv_obj_t* accent;
 
     wave_title_label = settings_detail_create_label(card, "",
-                                                    &lv_font_montserrat_18,
-                                                    lv_color_hex(0x2D3440), 32, 18);
+                                                    &lv_font_instrument_sans_medium_18,
+                                                    lv_color_hex(0x0D3440), 32, 18);
     wave_count_label = settings_detail_create_label(card, "0 pts",
-                                                    &lv_font_montserrat_14,
-                                                    lv_color_hex(0x7686A5), 668, 22);
+                                                    &lv_font_instrument_sans_medium_14,
+                                                    lv_color_hex(0x5686A5), 668, 22);
 
     accent = lv_obj_create(card);
     lv_obj_remove_style_all(accent);
@@ -355,7 +355,7 @@ static void wave_create_preview(lv_obj_t* parent)
 
     wave_placeholder = settings_detail_create_label(wave_chart_host,
                                                     ui_text_get(UI_TEXT_SETTINGS_WAVE_GET_IDLE),
-                                                    &lv_font_montserrat_18,
+                                                    &lv_font_instrument_sans_medium_18,
                                                     lv_color_hex(0x94A3B8), 0, 0);
     lv_obj_center(wave_placeholder);
 
@@ -367,8 +367,8 @@ static void wave_create_preview(lv_obj_t* parent)
 
     wave_status_label = settings_detail_create_label(card,
                                                      ui_text_get(UI_TEXT_SETTINGS_WAVE_GET_IDLE),
-                                                     &lv_font_montserrat_14,
-                                                     lv_color_hex(0x7686A5), 40, 270);
+                                                     &lv_font_instrument_sans_medium_14,
+                                                     lv_color_hex(0x5686A5), 40, 270);
 
     settings_detail_create_button(card, 664, 260, 136, 34,
                                   ui_text_get(UI_TEXT_SETTINGS_WAVE_GET_BUTTON),

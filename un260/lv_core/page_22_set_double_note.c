@@ -114,7 +114,7 @@ static void double_note_refresh_view(void)
         if (preview_bar_labels[i]) {
             lv_obj_set_style_text_color(preview_bar_labels[i],
                                         g_double_note_options[i].level == level ?
-                                        active_color : lv_color_hex(0x7686A5),
+                                        active_color : lv_color_hex(0x5686A5),
                                         0);
         }
     }
@@ -209,13 +209,13 @@ static void double_note_create_option(lv_obj_t* parent, size_t index,
     lv_obj_set_style_radius(badge, 6, 0);
     lv_obj_clear_flag(badge, LV_OBJ_FLAG_SCROLLABLE);
 
-    lv_obj_t* badge_label = settings_detail_create_label(badge, "", &lv_font_montserrat_20,
+    lv_obj_t* badge_label = settings_detail_create_label(badge, "", &lv_font_instrument_sans_medium_20,
                                                          item_color, 0, 0);
     lv_label_set_text_fmt(badge_label, "%u", (unsigned)option->level);
     lv_obj_center(badge_label);
 
-    settings_detail_create_label(item, ui_text_get(option->title_text), &lv_font_montserrat_16,
-                                 lv_color_hex(0x2D3440), 86, 24);
+    settings_detail_create_label(item, ui_text_get(option->title_text), &lv_font_instrument_sans_semibold_16,
+                                 lv_color_hex(0x0D3440), 86, 24);
 
     g_double_note_items[index].card = item;
     g_double_note_items[index].check = settings_detail_create_select_box(item, 278, 18, 30,
@@ -246,7 +246,7 @@ static void double_note_create_panel(lv_obj_t* parent)
     lv_obj_t* card = double_note_create_card(parent, 38, 18, 730, 306);
 
     settings_detail_create_label(card, ui_text_get(UI_TEXT_SETTINGS_DOUBLE_NOTE_DISPLAY),
-                                 &lv_font_montserrat_16, lv_color_hex(0x2D3440), 24, 20);
+                                 &lv_font_instrument_sans_medium_16, lv_color_hex(0x0D3440), 24, 20);
 
     lv_obj_t* accent = lv_obj_create(card);
     lv_obj_remove_style_all(accent);
@@ -274,15 +274,15 @@ static void double_note_create_preview(lv_obj_t* parent)
     lv_obj_clear_flag(header, LV_OBJ_FLAG_SCROLLABLE);
 
     settings_detail_create_label(header, ui_text_get(UI_TEXT_SETTINGS_DOUBLE_NOTE_PREVIEW),
-                                 &lv_font_montserrat_18, lv_color_hex(0xFFFFFF), 150, 12);
+                                 &lv_font_instrument_sans_medium_18, lv_color_hex(0xFFFFFF), 150, 12);
 
     settings_detail_create_label(card, ui_text_get(UI_TEXT_SETTINGS_DOUBLE_NOTE_DISPLAY),
-                                 &lv_font_montserrat_16, lv_color_hex(0x7686A5), 34, 62);
+                                 &lv_font_instrument_sans_medium_16, lv_color_hex(0x5686A5), 34, 62);
 
-    preview_level_label = settings_detail_create_label(card, "", &lv_font_montserrat_48,
+    preview_level_label = settings_detail_create_label(card, "", &lv_font_instrument_sans_medium_48,
                                                        lv_color_hex(0x0878C8), 34, 90);
 
-    preview_desc_label = settings_detail_create_label(card, "", &lv_font_montserrat_16,
+    preview_desc_label = settings_detail_create_label(card, "", &lv_font_instrument_sans_bold_16,
                                                       lv_color_hex(0x0878C8), 0, 276);
     lv_obj_set_width(preview_desc_label, 370);
     lv_obj_set_style_text_align(preview_desc_label, LV_TEXT_ALIGN_CENTER, 0);
@@ -306,8 +306,8 @@ static void double_note_create_preview(lv_obj_t* parent)
         lv_obj_add_event_cb(preview_bars[i], double_note_option_cb, LV_EVENT_CLICKED,
                             (void*)(uintptr_t)g_double_note_options[i].level);
 
-        preview_bar_labels[i] = settings_detail_create_label(card, "", &lv_font_montserrat_16,
-                                                             lv_color_hex(0x7686A5),
+        preview_bar_labels[i] = settings_detail_create_label(card, "", &lv_font_instrument_sans_medium_16,
+                                                             lv_color_hex(0x5686A5),
                                                              (lv_coord_t)(x + 20), 238);
         lv_label_set_text_fmt(preview_bar_labels[i], "%u", (unsigned)g_double_note_options[i].level);
     }

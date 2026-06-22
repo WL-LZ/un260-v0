@@ -204,7 +204,7 @@ static void reject_create_panel(lv_obj_t* parent)
     lv_obj_t* card = reject_create_card(parent, 38, 18, 730, 306);
 
     settings_detail_create_label(card, ui_text_get(UI_TEXT_SETTINGS_REJECT_POCKET_CAPACITY),
-                                 &lv_font_montserrat_16, lv_color_hex(0x2D3440), 24, 20);
+                                 &lv_font_instrument_sans_medium_16, lv_color_hex(0x0D3440), 24, 20);
 
     lv_obj_t* accent = lv_obj_create(card);
     lv_obj_remove_style_all(accent);
@@ -229,16 +229,16 @@ static void reject_create_panel(lv_obj_t* parent)
     lv_obj_add_flag(value_box, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(value_box, reject_value_cb, LV_EVENT_CLICKED, NULL);
 
-    value_label = settings_detail_create_label(value_box, "", &lv_font_montserrat_40,
-                                               lv_color_hex(0x2D3440), 0, 0);
+    value_label = settings_detail_create_label(value_box, "", &lv_font_manrope_bold_40,
+                                               lv_color_hex(0x0D3440), 0, 0);
     lv_obj_t* unit = settings_detail_create_label(value_box,
                                                   ui_text_get(UI_TEXT_SETTINGS_REJECT_POCKET_PCS),
-                                                  &lv_font_montserrat_18,
-                                                  lv_color_hex(0x7686A5), 196, 27);
+                                                  &lv_font_instrument_sans_medium_18,
+                                                  lv_color_hex(0x5686A5), 196, 27);
     lv_obj_clear_flag(unit, LV_OBJ_FLAG_CLICKABLE);
 
     settings_detail_create_label(card, ui_text_get(UI_TEXT_SETTINGS_REJECT_POCKET_RANGE_HINT),
-                                 &lv_font_montserrat_14, lv_color_hex(0x7686A5), 232, 210);
+                                 &lv_font_instrument_sans_medium_14, lv_color_hex(0x5686A5), 232, 210);
 }
 
 static void reject_create_preview(lv_obj_t* parent)
@@ -255,12 +255,12 @@ static void reject_create_preview(lv_obj_t* parent)
     lv_obj_clear_flag(header, LV_OBJ_FLAG_SCROLLABLE);
 
     settings_detail_create_label(header, ui_text_get(UI_TEXT_SETTINGS_REJECT_POCKET_PREVIEW),
-                                 &lv_font_montserrat_18, lv_color_hex(0xFFFFFF), 150, 12);
+                                 &lv_font_instrument_sans_medium_18, lv_color_hex(0xFFFFFF), 150, 12);
 
     settings_detail_create_label(card, ui_text_get(UI_TEXT_SETTINGS_REJECT_POCKET_CAPACITY),
-                                 &lv_font_montserrat_14, lv_color_hex(0x7686A5), 30, 62);
+                                 &lv_font_instrument_sans_medium_14, lv_color_hex(0x5686A5), 30, 62);
 
-    preview_level_label = settings_detail_create_label(card, "", &lv_font_montserrat_14,
+    preview_level_label = settings_detail_create_label(card, "", &lv_font_instrument_sans_medium_14,
                                                        lv_color_hex(0xF36B23), 248, 62);
 
     lv_obj_t* stack = lv_obj_create(card);
@@ -292,10 +292,10 @@ static void reject_create_preview(lv_obj_t* parent)
         level_bars[level - 1] = bar;
     }
 
-    preview_value_label = settings_detail_create_label(card, "", &lv_font_montserrat_42,
-                                                       lv_color_hex(0x2D3440), 30, 252);
-    preview_unit_label = settings_detail_create_label(card, "", &lv_font_montserrat_18,
-                                                      lv_color_hex(0x7686A5), 112, 276);
+    preview_value_label = settings_detail_create_label(card, "", &lv_font_manrope_bold_42,
+                                                       lv_color_hex(0x0D3440), 30, 252);
+    preview_unit_label = settings_detail_create_label(card, "", &lv_font_instrument_sans_medium_18,
+                                                      lv_color_hex(0x5686A5), 112, 276);
 }
 
 void ui_page_24_set_reject_pocket_create(lv_obj_t* parent)

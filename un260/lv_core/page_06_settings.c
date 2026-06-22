@@ -63,6 +63,7 @@ typedef struct {
     lv_obj_t* tile;
     lv_obj_t* rail;
     lv_obj_t* title_label;
+    lv_obj_t* no_label;
     page_06_settings_menu_t menu;
     bool context_internal;
     page_06_settings_sub_page_t context_sub_page;
@@ -115,9 +116,6 @@ static lv_obj_t* footer_status_label = NULL;
 static lv_obj_t* footer_time_label = NULL;
 static lv_timer_t* footer_time_timer = NULL;
 
-static lv_obj_t* debug_switch = NULL;
-static lv_obj_t* debug_console_tile = NULL;
-static bool debug_enabled = false;
 static int current_menu_index = -1;
 
 static lv_obj_t* dc_btn_all = NULL;
@@ -156,8 +154,12 @@ static lv_color_t color_line(void)     { return lv_color_hex(0xE9EDF2); }
 static lv_color_t color_grid(void)     { return lv_color_hex(0xECEFF3); }
 static lv_color_t color_primary(void)  { return lv_color_hex(0x08C5D6); }
 static lv_color_t color_primary_2(void){ return lv_color_hex(0xE3FAFD); }
-static lv_color_t color_text(void)     { return lv_color_hex(0x2D3440); }
-static lv_color_t color_muted(void)    { return lv_color_hex(0x7686A5); }
+static lv_color_t color_text(void)     { return lv_color_hex(0x0D3440); }
+static lv_color_t color_muted(void)    { return lv_color_hex(0x5686A5); }
+static lv_color_t color_option_no(void)
+{
+    return lv_color_hex(0x9AB6C2);
+}
 static lv_color_t color_tile_idle(void){ return lv_color_hex(0xF8F9FB); }
 static lv_color_t color_rail_idle(void){ return lv_color_hex(0x5F6E7D); }
 
@@ -387,6 +389,49 @@ static void page_06_refresh_option_state(void)
     }
 }
 
+static bool page_06_option_same_context(const settings_option_item_t* a,
+                                        const settings_option_item_t* b)
+{
+    return a && b &&
+           a->menu == b->menu &&
+           a->context_internal == b->context_internal &&
+           a->context_sub_page == b->context_sub_page;
+}
+
+static void page_06_refresh_option_numbers(void)
+{
+    for (int i = 0; i < option_item_count; i++) {
+        int no = 1;
+        char no_buf[4];
+
+        if (!option_items[i].no_label) {
+            continue;
+        }
+
+        for (int col = 0; col < option_items[i].col; col++) {
+            for (int j = 0; j < option_item_count; j++) {
+                if (option_items[j].no_label &&
+                    page_06_option_same_context(&option_items[i], &option_items[j]) &&
+                    option_items[j].col == col) {
+                    no++;
+                }
+            }
+        }
+
+        for (int j = 0; j < option_item_count; j++) {
+            if (option_items[j].no_label &&
+                page_06_option_same_context(&option_items[i], &option_items[j]) &&
+                option_items[j].col == option_items[i].col &&
+                option_items[j].row < option_items[i].row) {
+                no++;
+            }
+        }
+
+        lv_snprintf(no_buf, sizeof(no_buf), "%02d", no);
+        lv_label_set_text(option_items[i].no_label, no_buf);
+    }
+}
+
 static void page_06_set_selected_option(page_06_settings_menu_t menu,
                                         bool context_internal,
                                         page_06_settings_sub_page_t context_sub_page,
@@ -418,7 +463,8 @@ static void option_select_event_cb(lv_event_t* e)
 }
 
 static void page_06_register_option(lv_obj_t* tile, lv_obj_t* rail,
-                                    lv_obj_t* title_label, lv_obj_t* parent,
+                                    lv_obj_t* title_label, lv_obj_t* no_label,
+                                    lv_obj_t* parent,
                                     int col, int row, bool selectable)
 {
     settings_nav_item_t info;
@@ -431,6 +477,7 @@ static void page_06_register_option(lv_obj_t* tile, lv_obj_t* rail,
     option_items[option_item_count].tile = tile;
     option_items[option_item_count].rail = rail;
     option_items[option_item_count].title_label = title_label;
+    option_items[option_item_count].no_label = no_label;
     option_items[option_item_count].menu = info.menu;
     option_items[option_item_count].context_internal = (pages[info.menu] != parent);
     option_items[option_item_count].context_sub_page =
@@ -444,6 +491,7 @@ static void page_06_register_option(lv_obj_t* tile, lv_obj_t* rail,
         lv_obj_add_event_cb(tile, option_select_event_cb, LV_EVENT_CLICKED, NULL);
     }
 
+    page_06_refresh_option_numbers();
     page_06_refresh_option_state();
 }
 
@@ -530,7 +578,7 @@ static void create_header(lv_obj_t* parent)
     lv_obj_t* gear = create_label(header, LV_SYMBOL_SETTINGS, &lv_font_montserrat_18, color_primary());
     lv_obj_set_pos(gear, 36, 19);
 
-    lv_obj_t* title = create_label(header, "SETTINGS", &lv_font_montserrat_16, color_muted());
+    lv_obj_t* title = create_label(header, "SETTINGS", &lv_font_instrument_sans_semibold_16, color_muted());
     lv_obj_set_style_text_letter_space(title, 1, 0);
     lv_obj_set_pos(title, 65, 20);
 
@@ -541,46 +589,26 @@ static void create_header(lv_obj_t* parent)
     lv_obj_set_style_bg_color(divider, color_line(), 0);
     lv_obj_set_style_bg_opa(divider, LV_OPA_COVER, 0);
 
-    lv_obj_t* crumb_base = create_label(header, "SETTINGS  >  ", &lv_font_montserrat_16, color_muted());
+    lv_obj_t* crumb_base = create_label(header, "SETTINGS  >  ", &lv_font_instrument_sans_medium_16, color_muted());
     lv_obj_set_style_text_letter_space(crumb_base, 1, 0);
     lv_obj_set_pos(crumb_base, 258, 25);
 
-    breadcrumb_current = create_label(header, "SYSTEM", &lv_font_montserrat_16, color_primary());
+    breadcrumb_current = create_label(header, "SYSTEM", &lv_font_instrument_sans_medium_16, color_primary());
     lv_obj_set_style_text_letter_space(breadcrumb_current, 1, 0);
     lv_obj_set_width(breadcrumb_current, 650);
     lv_label_set_long_mode(breadcrumb_current, LV_LABEL_LONG_CLIP);
     lv_obj_set_pos(breadcrumb_current, 398, 25);
 
-    lv_obj_t* dash_1 = create_label(header, "---", &lv_font_montserrat_18, color_muted());
-    lv_obj_set_pos(dash_1, 1081, 20);
-
-    lv_obj_t* vline_1 = lv_obj_create(header);
-    style_plain(vline_1);
-    lv_obj_set_pos(vline_1, 1126, 22);
-    lv_obj_set_size(vline_1, 1, 16);
-    lv_obj_set_style_bg_color(vline_1, color_line(), 0);
-    lv_obj_set_style_bg_opa(vline_1, LV_OPA_COVER, 0);
-
-    lv_obj_t* dash_2 = create_label(header, "---", &lv_font_montserrat_18, color_muted());
-    lv_obj_set_pos(dash_2, 1152, 20);
-
-    lv_obj_t* vline_2 = lv_obj_create(header);
-    style_plain(vline_2);
-    lv_obj_set_pos(vline_2, 1198, 22);
-    lv_obj_set_size(vline_2, 1, 16);
-    lv_obj_set_style_bg_color(vline_2, color_line(), 0);
-    lv_obj_set_style_bg_opa(vline_2, LV_OPA_COVER, 0);
-
     status_dot = lv_obj_create(header);
     style_plain(status_dot);
-    lv_obj_set_pos(status_dot, 1212, 28);
+    lv_obj_set_pos(status_dot, 1146, 28);
     lv_obj_set_size(status_dot, 5, 5);
     lv_obj_set_style_radius(status_dot, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_bg_color(status_dot, lv_color_hex(0x24D6A1), 0);
     lv_obj_set_style_bg_opa(status_dot, LV_OPA_COVER, 0);
 
-    status_label = create_label(header, "READY", &lv_font_montserrat_12, lv_color_hex(0x24D6A1));
-    lv_obj_set_pos(status_label, 1226, 23);
+    status_label = create_label(header, "READY", &lv_font_instrument_sans_medium_12, lv_color_hex(0x24D6A1));
+    lv_obj_set_pos(status_label, 1160, 23);
 }
 
 static void create_sidebar_button(lv_obj_t* parent, settings_menu_t index, lv_coord_t y)
@@ -599,7 +627,7 @@ static void create_sidebar_button(lv_obj_t* parent, settings_menu_t index, lv_co
     menu_icons[index] = create_label(btn, g_menu_info[index].icon, &lv_font_montserrat_18, color_muted());
     lv_obj_set_pos(menu_icons[index], 15, 16);
 
-    menu_labels[index] = create_label(btn, page_06_get_menu_title(index), &lv_font_montserrat_14, color_muted());
+    menu_labels[index] = create_label(btn, page_06_get_menu_title(index), &lv_font_instrument_sans_bold_14, color_muted());
     lv_obj_set_style_text_letter_space(menu_labels[index], 1, 0);
     lv_obj_set_pos(menu_labels[index], 65, 18);
 }
@@ -672,6 +700,8 @@ static lv_obj_t* create_tile(lv_obj_t* parent, int col, int row,
     lv_coord_t y = 18 + row * (SETTINGS_TILE_H + SETTINGS_TILE_GAP_Y);
     lv_obj_t* tile = lv_obj_create(parent);
     lv_obj_t* rail = NULL;
+    lv_obj_t* no_label = NULL;
+    bool show_no = cb != NULL || (value && strcmp(value, ">") == 0);
 
     style_plain(tile);
     lv_obj_set_pos(tile, x, y);
@@ -697,16 +727,25 @@ static lv_obj_t* create_tile(lv_obj_t* parent, int col, int row,
         lv_obj_set_style_bg_opa(rail, LV_OPA_COVER, 0);
     }
 
-    lv_obj_t* title_label = create_label(tile, title, &lv_font_montserrat_14, color_text());
+    lv_obj_t* title_label = create_label(tile, title, &lv_font_instrument_sans_semibold_14, color_text());
+    lv_obj_set_width(title_label, show_no ? 326 : 382);
+    lv_label_set_long_mode(title_label, LV_LABEL_LONG_CLIP);
     lv_obj_set_pos(title_label, cb ? 24 : 28, 14);
 
+    if (show_no) {
+        no_label = create_label(tile, "00", &lv_font_manrope_bold_16, color_option_no());
+        lv_obj_set_width(no_label, 40);
+        lv_obj_set_style_text_align(no_label, LV_TEXT_ALIGN_RIGHT, 0);
+        lv_obj_set_pos(no_label, 368, 12);
+    }
+
     if (value && value[0] != '\0') {
-        lv_obj_t* value_label = create_label(tile, value, &lv_font_montserrat_14, color_muted());
+        lv_obj_t* value_label = create_label(tile, value, &lv_font_instrument_sans_medium_14, color_muted());
         lv_obj_align(value_label, LV_ALIGN_RIGHT_MID, -26, 0);
     }
 
     (void)accent;
-    page_06_register_option(tile, rail, title_label, parent, col, row, cb != NULL);
+    page_06_register_option(tile, rail, title_label, no_label, parent, col, row, cb != NULL);
 
     if (cb) {
         lv_obj_add_event_cb(tile, cb, LV_EVENT_CLICKED, user_data);
@@ -844,60 +883,13 @@ bool page_06_settings_back_sub_page(void)
     return true;
 }
 
-static void debug_switch_apply_state(void)
-{
-    if (!debug_switch) {
-        return;
-    }
-
-    if (debug_enabled) {
-        lv_obj_add_state(debug_switch, LV_STATE_CHECKED);
-        settings_set_status("DEBUG ON", color_primary());
-        if (debug_console_tile) {
-            lv_obj_clear_flag(debug_console_tile, LV_OBJ_FLAG_HIDDEN);
-        }
-    } else {
-        lv_obj_clear_state(debug_switch, LV_STATE_CHECKED);
-        settings_set_status("READY", lv_color_hex(0x24D6A1));
-        if (debug_console_tile) {
-            lv_obj_add_flag(debug_console_tile, LV_OBJ_FLAG_HIDDEN);
-        }
-    }
-}
-
-static void debug_switch_event_cb(lv_event_t* e)
-{
-    lv_obj_t* sw = lv_event_get_target(e);
-    debug_enabled = lv_obj_has_state(sw, LV_STATE_CHECKED);
-    debug_switch_apply_state();
-}
-
-static void debug_tile_event_cb(lv_event_t* e)
-{
-    (void)e;
-    debug_enabled = !debug_enabled;
-    debug_switch_apply_state();
-}
-
-static void create_debug_switch(lv_obj_t* parent)
-{
-    debug_switch = lv_switch_create(parent);
-    lv_obj_set_size(debug_switch, 52, 22);
-    lv_obj_align(debug_switch, LV_ALIGN_RIGHT_MID, -20, 0);
-    lv_obj_set_style_bg_color(debug_switch, lv_color_hex(0xD5DCE5), LV_PART_MAIN);
-    lv_obj_set_style_bg_color(debug_switch, color_primary(), LV_PART_INDICATOR | LV_STATE_CHECKED);
-    lv_obj_set_style_bg_color(debug_switch, color_panel(), LV_PART_KNOB);
-    lv_obj_add_event_cb(debug_switch, debug_switch_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
-    debug_switch_apply_state();
-}
-
 static void create_system_page_content(lv_obj_t* parent)
 {
     lv_obj_t* upgrade_page = page_06_settings_create_sub_page(SETTINGS_MENU_SYSTEM,
                                                               PAGE_06_SETTINGS_SUB_UPGRADE,
                                                               ui_text_get(UI_TEXT_SETTINGS_UPGRADE));
-    lv_obj_t* debug_tile = create_tile(parent, 0, 0, ui_text_get(UI_TEXT_SETTINGS_DEBUG), "", true, debug_tile_event_cb, NULL);
-    create_debug_switch(debug_tile);
+    create_tile(parent, 0, 0, ui_text_get(UI_TEXT_SETTINGS_DEBUG), ">", true,
+                enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_DEBUG);
     create_tile(parent, 1, 0, ui_text_get(UI_TEXT_SETTINGS_PRINT_SETTING), ">", true,
                 enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_PRINT_SETTING);
 
@@ -911,8 +903,6 @@ static void create_system_page_content(lv_obj_t* parent)
                 enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_AGING_SETTING);
     create_tile(parent, 0, 3, ui_text_get(UI_TEXT_SETTINGS_FACTORY_SETTING), ">", false,
                 enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_FACTORY_SETTING);
-    debug_console_tile = create_tile(parent, 1, 3, ui_text_get(UI_TEXT_SETTINGS_DEBUG_CONSOLE), ">", false,
-                                     enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_DEBUG);
 
     if (upgrade_page) {
         page_06_settings_create_option(upgrade_page, 0, 0,
@@ -925,8 +915,6 @@ static void create_system_page_content(lv_obj_t* parent)
                                        ui_text_get(UI_TEXT_SETTINGS_UI_UPGRADE), ">",
                                        true, enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_UI_UPGRADE);
     }
-
-    debug_switch_apply_state();
 }
 
 static void create_maintenance_page_content(lv_obj_t* parent)
@@ -936,13 +924,11 @@ static void create_maintenance_page_content(lv_obj_t* parent)
                 enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_MOTOR_TEST);
     create_tile(parent, 0, 1, ui_text_get(UI_TEXT_SETTINGS_SENSOR_PARAMETERS), ">", false,
                 enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_SENSOR);
-    create_tile(parent, 1, 1, ui_text_get(UI_TEXT_SETTINGS_DEBUG_CONSOLE), ">", false,
-                enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_DEBUG);
     create_tile(parent, 0, 2, ui_text_get(UI_TEXT_SETTINGS_FLAP_SETTING), ">", false,
                 enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_FLAP_SETTING);
-    create_tile(parent, 1, 2, ui_text_get(UI_TEXT_SETTINGS_IMAGE_GET_SETTING), ">", false,
+    create_tile(parent, 1, 1, ui_text_get(UI_TEXT_SETTINGS_IMAGE_GET_SETTING), ">", false,
                 enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_IMAGE_GET);
-    create_tile(parent, 0, 3, ui_text_get(UI_TEXT_SETTINGS_WAVE_GET_SETTING), ">", false,
+    create_tile(parent, 1, 2, ui_text_get(UI_TEXT_SETTINGS_WAVE_GET_SETTING), ">", false,
                 enter_page_event_cb, (void*)(uintptr_t)UI_PAGE_WAVE_GET);
 }
 
@@ -1110,7 +1096,7 @@ static lv_obj_t* create_dc_mode_button(lv_obj_t* parent, lv_coord_t x, lv_coord_
     lv_obj_add_flag(btn, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(btn, data_collect_mode_btn_event_cb, LV_EVENT_CLICKED, (void*)(uintptr_t)sub);
 
-    lv_obj_t* label = create_label(btn, text, &lv_font_montserrat_16, color_text());
+    lv_obj_t* label = create_label(btn, text, &lv_font_instrument_sans_bold_16, color_text());
     lv_obj_set_pos(label, 18, 18);
 
     lv_obj_t* check = create_label(btn, "", &lv_font_montserrat_18, color_primary());
@@ -1145,7 +1131,7 @@ static void create_action_button(lv_obj_t* parent, lv_obj_t** out_btn,
         lv_obj_add_event_cb(btn, cb, LV_EVENT_CLICKED, NULL);
     }
 
-    lv_obj_t* label = create_label(btn, text, &lv_font_montserrat_16, color_panel());
+    lv_obj_t* label = create_label(btn, text, &lv_font_instrument_sans_bold_16, color_panel());
     lv_obj_center(label);
 
     if (out_btn) {
@@ -1177,41 +1163,23 @@ static void create_data_collection_page_content(lv_obj_t* parent)
     lv_obj_set_style_shadow_opa(card, LV_OPA_10, 0);
     lv_obj_set_style_shadow_ofs_y(card, 4, 0);
 
-    lv_obj_t* mode_title = create_label(card, "COLLECTION MODE", &lv_font_montserrat_12, color_primary());
+    lv_obj_t* mode_title = create_label(card, "COLLECTION MODE", &lv_font_instrument_sans_semibold_12, color_primary());
     lv_obj_set_style_text_letter_space(mode_title, 1, 0);
     lv_obj_set_pos(mode_title, 24, 15);
 
-    dc_mode_value_label = create_label(card, "---", &lv_font_montserrat_18, color_text());
+    dc_mode_value_label = create_label(card, "---", &lv_font_instrument_sans_medium_18, color_text());
     lv_obj_set_pos(dc_mode_value_label, 24, 45);
 
-    dc_pcs_label = create_label(card, "PCS:0", &lv_font_montserrat_32, color_primary());
+    dc_pcs_label = create_label(card, "PCS:0", &lv_font_manrope_bold_32, color_primary());
     lv_obj_align(dc_pcs_label, LV_ALIGN_TOP_MID, 0, 18);
 
-    dc_status_label = create_label(card, "Please select a collection mode", &lv_font_montserrat_18, color_text());
+    dc_status_label = create_label(card, "Please select a collection mode", &lv_font_instrument_sans_medium_18, color_text());
     lv_obj_set_width(dc_status_label, 420);
     lv_label_set_long_mode(dc_status_label, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_align(dc_status_label, LV_TEXT_ALIGN_RIGHT, 0);
     lv_obj_align(dc_status_label, LV_ALIGN_RIGHT_MID, -28, 0);
 
     page_06_data_collection_refresh();
-}
-
-static void apply_event_cb(lv_event_t* e)
-{
-    (void)e;
-    settings_set_status("APPLIED", color_primary());
-}
-
-static void default_event_cb(lv_event_t* e)
-{
-    (void)e;
-    debug_enabled = false;
-    g_data_collect_mode = DATA_COLLECT_MODE_NONE;
-    g_data_collect_pcs = 0;
-    lv_snprintf(g_data_collect_status, sizeof(g_data_collect_status), "Please select a collection mode.");
-    debug_switch_apply_state();
-    page_06_data_collection_refresh();
-    settings_set_status("DEFAULT", color_muted());
 }
 
 static void back_event_cb(lv_event_t* e)
@@ -1249,7 +1217,7 @@ static void create_footer_button(lv_obj_t* parent, lv_coord_t x, lv_coord_t w,
     lv_obj_t* icon_label = create_label(btn, icon, &lv_font_montserrat_14, fg);
     lv_obj_set_pos(icon_label, 17, 10);
 
-    lv_obj_t* txt = create_label(btn, text, &lv_font_montserrat_12, fg);
+    lv_obj_t* txt = create_label(btn, text, &lv_font_instrument_sans_bold_12, fg);
     lv_obj_set_style_text_letter_space(txt, 1, 0);
     lv_obj_set_pos(txt, 37, 11);
 }
@@ -1271,35 +1239,11 @@ static void create_footer(lv_obj_t* parent)
     lv_obj_set_style_bg_color(top_line, color_line(), 0);
     lv_obj_set_style_bg_opa(top_line, LV_OPA_COVER, 0);
 
-    create_footer_button(footer, 32, 90, LV_SYMBOL_OK, "APPLY",
-                         color_primary(), color_panel(), apply_event_cb);
-    create_footer_button(footer, 172, 92, LV_SYMBOL_REFRESH, "DEFAULT",
-                         lv_color_hex(0xF8F9FB), lv_color_hex(0x4C5C78), default_event_cb);
-    create_footer_button(footer, 312, 92, LV_SYMBOL_LEFT, "BACK",
+    create_footer_button(footer, 32, 92, LV_SYMBOL_LEFT, "BACK",
                          lv_color_hex(0xFFF0F0), lv_color_hex(0xF04444), back_event_cb);
 
-    footer_status_label = create_label(footer, "READY", &lv_font_montserrat_12, lv_color_hex(0x24D6A1));
-    lv_obj_set_pos(footer_status_label, 1022, 24);
-
-    lv_obj_t* footer_vline_1 = lv_obj_create(footer);
-    style_plain(footer_vline_1);
-    lv_obj_set_pos(footer_vline_1, 1066, 18);
-    lv_obj_set_size(footer_vline_1, 1, 18);
-    lv_obj_set_style_bg_color(footer_vline_1, color_line(), 0);
-    lv_obj_set_style_bg_opa(footer_vline_1, LV_OPA_COVER, 0);
-
-    lv_obj_t* footer_mid = create_label(footer, "---", &lv_font_montserrat_14, color_muted());
-    lv_obj_set_pos(footer_mid, 1094, 24);
-
-    lv_obj_t* footer_vline_2 = lv_obj_create(footer);
-    style_plain(footer_vline_2);
-    lv_obj_set_pos(footer_vline_2, 1138, 18);
-    lv_obj_set_size(footer_vline_2, 1, 18);
-    lv_obj_set_style_bg_color(footer_vline_2, color_line(), 0);
-    lv_obj_set_style_bg_opa(footer_vline_2, LV_OPA_COVER, 0);
-
-    footer_time_label = create_label(footer, "00:00:00", &lv_font_montserrat_20, color_muted());
-    lv_obj_set_pos(footer_time_label, 1168, 16);
+    footer_time_label = create_label(footer, "00:00:00", &lv_font_instrument_sans_medium_20, color_muted());
+    lv_obj_set_pos(footer_time_label, 1158, 16);
 
     update_footer_time();
     footer_time_timer = lv_timer_create(footer_time_timer_cb, 1000, NULL);
@@ -1453,8 +1397,6 @@ void ui_page_06_settings_destroy(void)
     status_label = NULL;
     footer_status_label = NULL;
     footer_time_label = NULL;
-    debug_switch = NULL;
-    debug_console_tile = NULL;
     current_menu_index = -1;
     internal_page_count = 0;
     nav_stack_depth = 0;
@@ -1489,6 +1431,7 @@ void ui_page_06_settings_destroy(void)
         option_items[i].tile = NULL;
         option_items[i].rail = NULL;
         option_items[i].title_label = NULL;
+        option_items[i].no_label = NULL;
         option_items[i].menu = PAGE_06_SETTINGS_MENU_SYSTEM;
         option_items[i].context_internal = false;
         option_items[i].context_sub_page = PAGE_06_SETTINGS_SUB_NONE;

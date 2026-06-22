@@ -86,7 +86,7 @@ void show_boot_selftest_error_popup(const char* msg)
 
     lv_obj_t* title = lv_label_create(g_boot_err_popup);
     lv_label_set_text(title, "SELF-TEST ERROR");
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_font(title, &lv_font_instrument_sans_semibold_28, 0);
     lv_obj_set_style_text_color(title, lv_color_hex(0x2D3A4A), 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 22);
 
@@ -95,7 +95,7 @@ void show_boot_selftest_error_popup(const char* msg)
     lv_obj_set_width(g_boot_err_info_label, 620);
     lv_label_set_long_mode(g_boot_err_info_label, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_align(g_boot_err_info_label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_font(g_boot_err_info_label, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_font(g_boot_err_info_label, &lv_font_instrument_sans_medium_20, 0);
     lv_obj_set_style_text_color(g_boot_err_info_label, lv_color_hex(0x3C4D61), 0);
     lv_obj_align(g_boot_err_info_label, LV_ALIGN_TOP_MID, 0, 84);
 
@@ -107,7 +107,7 @@ void show_boot_selftest_error_popup(const char* msg)
 
     lv_obj_t* ok_label = lv_label_create(ok_btn);
     lv_label_set_text(ok_label, "CONFIRM");
-    lv_obj_set_style_text_font(ok_label, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_font(ok_label, &lv_font_instrument_sans_bold_22, 0);
     lv_obj_center(ok_label);
 }
 
@@ -174,7 +174,7 @@ void show_batch_set_fail_popup(void)
 
     lv_obj_t* title = lv_label_create(g_batch_set_fail_popup);
     lv_label_set_text(title, "BATCH SET FAILED");
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_font(title, &lv_font_instrument_sans_semibold_28, 0);
     lv_obj_set_style_text_color(title, lv_color_hex(0x2D3A4A), 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 22);
 
@@ -183,7 +183,7 @@ void show_batch_set_fail_popup(void)
     lv_obj_set_width(info, 620);
     lv_label_set_long_mode(info, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_align(info, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_font(info, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_font(info, &lv_font_instrument_sans_medium_20, 0);
     lv_obj_set_style_text_color(info, lv_color_hex(0x3C4D61), 0);
     lv_obj_align(info, LV_ALIGN_TOP_MID, 0, 84);
 
@@ -197,7 +197,7 @@ void show_batch_set_fail_popup(void)
 
     lv_obj_t* ok_label = lv_label_create(ok_btn);
     lv_label_set_text(ok_label, "CONFIRM");
-    lv_obj_set_style_text_font(ok_label, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_font(ok_label, &lv_font_instrument_sans_bold_22, 0);
     lv_obj_set_style_text_color(ok_label, lv_color_hex(0xFFFFFF), 0);
     lv_obj_center(ok_label);
 }
@@ -226,7 +226,7 @@ void show_currency_set_fail_popup(void)
 
     lv_obj_t* title = lv_label_create(g_curr_set_fail_popup);
     lv_label_set_text(title, "CURRENCY SET FAILED");
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_font(title, &lv_font_instrument_sans_semibold_28, 0);
     lv_obj_set_style_text_color(title, lv_color_hex(0x2D3A4A), 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 22);
 
@@ -237,7 +237,7 @@ void show_currency_set_fail_popup(void)
     lv_obj_set_width(info, 680);
     lv_label_set_long_mode(info, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_align(info, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_font(info, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_font(info, &lv_font_instrument_sans_medium_20, 0);
     lv_obj_set_style_text_color(info, lv_color_hex(0x3C4D61), 0);
     lv_obj_align(info, LV_ALIGN_TOP_MID, 0, 82);
 
@@ -252,7 +252,7 @@ void show_currency_set_fail_popup(void)
 
     lv_obj_t* ok_label = lv_label_create(ok_btn);
     lv_label_set_text(ok_label, "CONFIRM");
-    lv_obj_set_style_text_font(ok_label, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_font(ok_label, &lv_font_instrument_sans_bold_22, 0);
     lv_obj_set_style_text_color(ok_label, lv_color_hex(0xFFFFFF), 0);
     lv_obj_center(ok_label);
 }
@@ -380,7 +380,7 @@ void batch_switch_on_0x06_result(uint8_t status)
 void create_batch_num_switch(lv_obj_t* parent) {
     // 自适应宽度
     lv_obj_t* tmp = lv_label_create(parent);
-    lv_obj_set_style_text_font(tmp, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_font(tmp, &lv_font_instrument_sans_medium_24, 0);
     lv_label_set_text(tmp, "OFF");
     lv_obj_update_layout(tmp);
     lv_coord_t txt_w = lv_obj_get_width(tmp);
@@ -403,13 +403,13 @@ void create_batch_num_switch(lv_obj_t* parent) {
     // 创建 OFF 标签
     batch_switch.label_off = lv_label_create(batch_switch.switch_container);
     lv_label_set_text(batch_switch.label_off, "OFF");
-    lv_obj_set_style_text_font(batch_switch.label_off, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_font(batch_switch.label_off, &lv_font_instrument_sans_medium_24, 0);
     lv_obj_set_style_text_color(batch_switch.label_off, lv_color_white(), 0);
 
     // 创建 ON 标签
     batch_switch.label_on = lv_label_create(batch_switch.switch_container);
     lv_label_set_text(batch_switch.label_on, "ON");
-    lv_obj_set_style_text_font(batch_switch.label_on, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_font(batch_switch.label_on, &lv_font_instrument_sans_medium_24, 0);
     lv_obj_set_style_text_color(batch_switch.label_on, lv_color_white(), 0);
 
     // 创建滑块
@@ -573,7 +573,7 @@ void show_system_error_popup(uint8_t code)
 
     lv_obj_t* title = lv_label_create(g_sys_err_popup);
     lv_label_set_text(title, "SYSTEM ERROR");
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_font(title, &lv_font_instrument_sans_semibold_28, 0);
     lv_obj_set_style_text_color(title, lv_color_hex(0x2D3A4A), 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 22);
 
@@ -582,7 +582,7 @@ void show_system_error_popup(uint8_t code)
     lv_obj_set_width(g_sys_err_info_label, 560);
     lv_label_set_long_mode(g_sys_err_info_label, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_align(g_sys_err_info_label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_font(g_sys_err_info_label, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_font(g_sys_err_info_label, &lv_font_instrument_sans_medium_22, 0);
     lv_obj_set_style_text_color(g_sys_err_info_label, lv_color_hex(0x3C4D61), 0);
     lv_obj_align(g_sys_err_info_label, LV_ALIGN_TOP_MID, 0, 88);
 
@@ -596,7 +596,7 @@ void show_system_error_popup(uint8_t code)
 
     lv_obj_t* ok_label = lv_label_create(ok_btn);
     lv_label_set_text(ok_label, "CONFIRM");
-    lv_obj_set_style_text_font(ok_label, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_font(ok_label, &lv_font_instrument_sans_bold_22, 0);
     lv_obj_set_style_text_color(ok_label, lv_color_hex(0xFFFFFF), 0);
     lv_obj_center(ok_label);
 
@@ -725,7 +725,7 @@ void show_counting_error_popup(uint8_t type, uint8_t code)
 
     lv_obj_t* title = lv_label_create(g_count_err_popup);
     lv_label_set_text(title, "COUNTING ERROR");
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_font(title, &lv_font_instrument_sans_semibold_28, 0);
     lv_obj_set_style_text_color(title, lv_color_hex(0x2D3A4A), 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 22);
 
@@ -734,7 +734,7 @@ void show_counting_error_popup(uint8_t type, uint8_t code)
     lv_obj_set_width(g_count_err_info_label, 560);
     lv_label_set_long_mode(g_count_err_info_label, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_align(g_count_err_info_label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_font(g_count_err_info_label, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_font(g_count_err_info_label, &lv_font_instrument_sans_medium_22, 0);
     lv_obj_set_style_text_color(g_count_err_info_label, lv_color_hex(0x3C4D61), 0);
     lv_obj_align(g_count_err_info_label, LV_ALIGN_TOP_MID, 0, 88);
 
@@ -748,7 +748,7 @@ void show_counting_error_popup(uint8_t type, uint8_t code)
 
     lv_obj_t* ok_label = lv_label_create(ok_btn);
     lv_label_set_text(ok_label, "CONFIRM");
-    lv_obj_set_style_text_font(ok_label, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_font(ok_label, &lv_font_instrument_sans_bold_22, 0);
     lv_obj_set_style_text_color(ok_label, lv_color_hex(0xFFFFFF), 0);
     lv_obj_center(ok_label);
 

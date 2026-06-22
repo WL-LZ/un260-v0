@@ -98,14 +98,14 @@ void ui_page_11_timeset_create(lv_obj_t* parent)
                                                esc_btn_cb, &content);
 
     /* 当前时间显示 */
-    lbl_time = settings_detail_create_label(content, "", &lv_font_montserrat_24,
+    lbl_time = settings_detail_create_label(content, "", &lv_font_instrument_sans_medium_24,
                                             lv_color_hex(0x08C5D6), 32, 18);
     lv_obj_set_size(lbl_time, 1220, 40);
     refresh_time_label();
 
     settings_detail_create_label(content, ui_text_get(UI_TEXT_SETTINGS_TIME_HINT),
-                                 &lv_font_montserrat_16,
-                                 lv_color_hex(0x7686A5), 32, 66);
+                                 &lv_font_instrument_sans_medium_16,
+                                 lv_color_hex(0x5686A5), 32, 66);
 
     /* 生成roller选项字符串 */
     static char opt_year[2048];

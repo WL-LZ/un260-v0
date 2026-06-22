@@ -681,7 +681,7 @@ void page_03_batch_num_container(void)
     lv_obj_set_scrollbar_mode(batch_num_area, LV_SCROLLBAR_MODE_OFF); // 滚动条关闭
     // 显示num标签
     batch_num_display = lv_label_create(batch_num_area);
-    lv_obj_set_style_text_font(batch_num_display, &lv_font_montserrat_32, 0);
+    lv_obj_set_style_text_font(batch_num_display, &lv_font_manrope_bold_32, 0);
     lv_obj_set_style_text_color(batch_num_display, lv_color_hex(0x000000), 0);
     lv_obj_set_align(batch_num_display, LV_ALIGN_RIGHT_MID);
     lv_label_set_text(batch_num_display, "0");
@@ -2502,12 +2502,12 @@ static void curr_build_card_layer(void)
         g_curr_cards[i].name = lv_label_create(g_curr_cards[i].card);
         lv_label_set_text_fmt(g_curr_cards[i].name, "%s", Machine_para.currencies[abs_idx]);
         lv_obj_set_pos(g_curr_cards[i].name, 21, 174);
-        lv_obj_set_style_text_font(g_curr_cards[i].name, &lv_font_montserrat_30, 0);
+        lv_obj_set_style_text_font(g_curr_cards[i].name, &lv_font_instrument_sans_medium_30, 0);
 
         g_curr_cards[i].no = lv_label_create(g_curr_cards[i].card);
         lv_label_set_text_fmt(g_curr_cards[i].no, "NO.%02d", abs_idx + 1);
         lv_obj_set_pos(g_curr_cards[i].no, 21, 224);
-        lv_obj_set_style_text_font(g_curr_cards[i].no, &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_font(g_curr_cards[i].no, &lv_font_instrument_sans_medium_14, 0);
 
         g_curr_cards[i].fav_btn = lv_obj_create(g_curr_cards[i].card);
         lv_obj_set_size(g_curr_cards[i].fav_btn, CURR_FAV_BTN_IN_CARD_W, CURR_FAV_BTN_IN_CARD_H);
@@ -2636,7 +2636,7 @@ static void curr_build_grid_layer(void)
         lv_label_set_text_fmt(g_curr_grid_items[i].name, "%s", Machine_para.currencies[abs_idx]);
         lv_obj_set_width(g_curr_grid_items[i].name, CURR_GRID_ITEM_W);
         lv_obj_set_style_text_align(g_curr_grid_items[i].name, LV_TEXT_ALIGN_CENTER, 0);
-        lv_obj_set_style_text_font(g_curr_grid_items[i].name, &lv_font_montserrat_20, 0);
+        lv_obj_set_style_text_font(g_curr_grid_items[i].name, &lv_font_instrument_sans_medium_20, 0);
         lv_obj_set_style_text_color(g_curr_grid_items[i].name,
                                     (abs_idx == g_curr_sel_abs_idx) ? lv_color_hex(CURR_TEXT_SEL) : lv_color_hex(0x7E7E7E), 0);
         lv_obj_align(g_curr_grid_items[i].name, LV_ALIGN_BOTTOM_MID, CURR_GRID_GROUP_OFS_X, -CURR_GRID_TEXT_BOTTOM);
@@ -2706,7 +2706,7 @@ static void curr_refresh_right_views(void)
         g_curr_empty_label = lv_label_create(g_curr_right_area);
         lv_label_set_text(g_curr_empty_label, g_curr_fav_only ? "NO FAVORITE CURRENCY" : "NO CURRENCY");
         lv_obj_set_style_text_color(g_curr_empty_label, lv_color_hex(0xB3B3B3), 0);
-        lv_obj_set_style_text_font(g_curr_empty_label, &lv_font_montserrat_20, 0);
+        lv_obj_set_style_text_font(g_curr_empty_label, &lv_font_instrument_sans_medium_20, 0);
         lv_obj_center(g_curr_empty_label);
         return;
     }
@@ -2829,7 +2829,7 @@ void page_07_curr_img_refre(void)
     lv_obj_t* left_title = lv_label_create(g_curr_left_panel);
     lv_label_set_text(left_title, "CURRENCY");
     lv_obj_set_pos(left_title, 105, 14);
-    lv_obj_set_style_text_font(left_title, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_font(left_title, &lv_font_instrument_sans_semibold_24, 0);
     lv_obj_set_style_text_color(left_title, lv_color_hex(0x707070), 0);
 
     g_curr_left_img = lv_img_create(g_curr_left_panel);
@@ -2838,17 +2838,17 @@ void page_07_curr_img_refre(void)
 
     g_curr_left_code_decor = lv_label_create(g_curr_left_panel);
     lv_obj_set_pos(g_curr_left_code_decor, CURR_LEFT_CODE_DECOR_X, CURR_LEFT_CODE_DECOR_Y);
-    lv_obj_set_style_text_font(g_curr_left_code_decor, &lv_font_montserrat_48, 0);
+    lv_obj_set_style_text_font(g_curr_left_code_decor, &lv_font_instrument_sans_medium_48, 0);
     lv_obj_set_style_text_color(g_curr_left_code_decor, lv_color_hex(0xEBEBEB), 0);
 
     g_curr_left_code = lv_label_create(g_curr_left_panel);
     lv_obj_set_pos(g_curr_left_code, CURR_LEFT_CODE_X, CURR_LEFT_CODE_Y);
-    lv_obj_set_style_text_font(g_curr_left_code, &lv_font_montserrat_30, 0);
+    lv_obj_set_style_text_font(g_curr_left_code, &lv_font_instrument_sans_medium_30, 0);
     lv_obj_set_style_text_color(g_curr_left_code, lv_color_hex(0x202020), 0);
 
     g_curr_left_no = lv_label_create(g_curr_left_panel);
     lv_obj_set_pos(g_curr_left_no, CURR_LEFT_NO_X, CURR_LEFT_NO_Y);
-    lv_obj_set_style_text_font(g_curr_left_no, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(g_curr_left_no, &lv_font_instrument_sans_medium_14, 0);
     lv_obj_set_style_text_color(g_curr_left_no, lv_color_hex(0x202020), 0);
 
     g_curr_btn_view = lv_btn_create(g_curr_left_panel);

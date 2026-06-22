@@ -94,13 +94,13 @@ void ui_page_12_sensor_create(lv_obj_t* parent)
 
         lv_obj_t* name = lv_label_create(card);
         lv_label_set_text(name, sensor_names[i]);
-        lv_obj_set_style_text_font(name, &lv_font_montserrat_16, 0);
+        lv_obj_set_style_text_font(name, &lv_font_instrument_sans_medium_16, 0);
         lv_obj_set_style_text_color(name, lv_color_hex(0x355779), 0);
         lv_obj_align(name, LV_ALIGN_TOP_LEFT, 0, 0);
 
         value_labels[i] = lv_label_create(card);
         lv_label_set_text(value_labels[i], "-- V");
-        lv_obj_set_style_text_font(value_labels[i], &lv_font_montserrat_20, 0);
+        lv_obj_set_style_text_font(value_labels[i], &lv_font_instrument_sans_medium_20, 0);
         lv_obj_set_style_text_color(value_labels[i], lv_color_hex(0x8B9AAF), 0);
         lv_obj_align(value_labels[i], LV_ALIGN_BOTTOM_LEFT, 0, 0);
     }

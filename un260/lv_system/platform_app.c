@@ -586,6 +586,9 @@ static void page_01_main_detail_row_layout_apply(page_01_detail_section_t sectio
     lv_obj_t* col_1, lv_obj_t* col_2, lv_obj_t* col_3, int data_row)
 {
     lv_coord_t row_y = 0;
+    const lv_font_t* col_1_font = &lv_font_instrument_sans_medium_16;
+    const lv_font_t* col_2_font = &lv_font_instrument_sans_medium_16;
+    const lv_font_t* col_3_font = &lv_font_instrument_sans_medium_16;
 
     if (col_1 == NULL || col_2 == NULL || col_3 == NULL) return;
 
@@ -628,6 +631,10 @@ static void page_01_main_detail_row_layout_apply(page_01_detail_section_t sectio
         lv_obj_set_style_text_align(col_3, LV_TEXT_ALIGN_CENTER, 0);
         break;
     }
+
+    lv_obj_set_style_text_font(col_1, col_1_font, 0);
+    lv_obj_set_style_text_font(col_2, col_2_font, 0);
+    lv_obj_set_style_text_font(col_3, col_3_font, 0);
 }
 
 static void page_01_main_detail_rows_refresh(page_01_detail_section_t section, int first_row)

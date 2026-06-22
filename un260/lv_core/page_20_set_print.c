@@ -295,8 +295,8 @@ static lv_obj_t* print_create_value_box(lv_obj_t* parent, lv_coord_t x, lv_coord
     lv_obj_add_event_cb(box, print_input_cb, LV_EVENT_CLICKED, (void*)(uintptr_t)field);
     field_boxes[field] = box;
 
-    lv_obj_t* label = settings_detail_create_label(box, text, &lv_font_montserrat_18,
-                                                   lv_color_hex(0x2D3440), 12, 12);
+    lv_obj_t* label = settings_detail_create_label(box, text, &lv_font_instrument_sans_medium_18,
+                                                   lv_color_hex(0x0D3440), 12, 12);
     lv_obj_set_width(label, w - 24);
     lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
     return label;
@@ -306,8 +306,8 @@ static void print_create_field(lv_obj_t* parent, lv_coord_t y,
                                const char* title, lv_obj_t** out_value,
                                print_field_t field)
 {
-    settings_detail_create_label(parent, title, &lv_font_montserrat_16,
-                                 lv_color_hex(0x2D3440), 24, y + 12);
+    settings_detail_create_label(parent, title, &lv_font_instrument_sans_semibold_16,
+                                 lv_color_hex(0x0D3440), 24, y + 12);
     *out_value = print_create_value_box(parent, 250, y, 440, "", field);
 }
 
@@ -327,8 +327,8 @@ static void print_create_content_row(lv_obj_t* parent, int index,
                                                              print_content_cb,
                                                              (void*)(uintptr_t)content);
 
-    lv_obj_t* label = settings_detail_create_label(row, text, &lv_font_montserrat_16,
-                                                   lv_color_hex(0x2D3440), 36, 6);
+    lv_obj_t* label = settings_detail_create_label(row, text, &lv_font_instrument_sans_medium_16,
+                                                   lv_color_hex(0x0D3440), 36, 6);
     lv_obj_set_width(label, w - 42);
     lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
     lv_obj_clear_flag(label, LV_OBJ_FLAG_CLICKABLE);
@@ -393,14 +393,14 @@ static void print_create_preview(lv_obj_t* parent)
     lv_obj_clear_flag(header, LV_OBJ_FLAG_SCROLLABLE);
 
     settings_detail_create_label(header, ui_text_get(UI_TEXT_SETTINGS_PRINT_PREVIEW),
-                                 &lv_font_montserrat_18, lv_color_hex(0xFFFFFF), 128, 12);
+                                 &lv_font_instrument_sans_medium_18, lv_color_hex(0xFFFFFF), 128, 12);
 
-    preview_head1 = settings_detail_create_label(card, "", &lv_font_montserrat_14,
-                                                 lv_color_hex(0x2D3440), 24, 58);
-    preview_head2 = settings_detail_create_label(card, "", &lv_font_montserrat_14,
-                                                 lv_color_hex(0x2D3440), 24, 80);
-    preview_content = settings_detail_create_label(card, "", &lv_font_montserrat_14,
-                                                   lv_color_hex(0x2D3440), 24, 112);
+    preview_head1 = settings_detail_create_label(card, "", &lv_font_instrument_sans_medium_14,
+                                                 lv_color_hex(0x0D3440), 24, 58);
+    preview_head2 = settings_detail_create_label(card, "", &lv_font_instrument_sans_medium_14,
+                                                 lv_color_hex(0x0D3440), 24, 80);
+    preview_content = settings_detail_create_label(card, "", &lv_font_instrument_sans_medium_14,
+                                                   lv_color_hex(0x0D3440), 24, 112);
     lv_obj_set_width(preview_content, 320);
     lv_label_set_long_mode(preview_content, LV_LABEL_LONG_WRAP);
 }
@@ -429,7 +429,7 @@ void ui_page_20_set_print_create(lv_obj_t* parent)
                        &value_head2, PRINT_FIELD_HEAD2);
 
     settings_detail_create_label(card, ui_text_get(UI_TEXT_SETTINGS_PRINT_CONTENT),
-                                 &lv_font_montserrat_16, lv_color_hex(0x7686A5), 24, 168);
+                                 &lv_font_instrument_sans_medium_16, lv_color_hex(0x5686A5), 24, 168);
     print_create_content_row(card, 0, 250, 171, 190,
                              ui_text_get(UI_TEXT_SETTINGS_PRINT_CONTENT_LIST),
                              PRINT_CONTENT_LIST);
@@ -444,7 +444,7 @@ void ui_page_20_set_print_create(lv_obj_t* parent)
                        &value_space_bottom, PRINT_FIELD_SPACE_BOTTOM);
 
     status_label = settings_detail_create_label(content, ui_text_get(UI_TEXT_SETTINGS_PRINT_READY),
-                                                &lv_font_montserrat_14,
+                                                &lv_font_instrument_sans_medium_14,
                                                 lv_color_hex(0x24D6A1), 982, 332);
 
     print_create_preview(content);

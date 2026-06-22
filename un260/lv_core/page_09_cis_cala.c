@@ -72,8 +72,8 @@ void ui_page_cis_calib_create(lv_obj_t* parent)
                                                  cb_start_btn_cb, NULL);
 
     cis_status_label = settings_detail_create_label(card, ui_text_get(UI_TEXT_SETTINGS_CIS_IDLE),
-                                                    &lv_font_montserrat_20,
-                                                    lv_color_hex(0x2D3440), 60, 154);
+                                                    &lv_font_instrument_sans_medium_20,
+                                                    lv_color_hex(0x0D3440), 60, 154);
 }
 void ui_page_cis_calib_destroy(void)
 {

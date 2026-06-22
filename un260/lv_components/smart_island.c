@@ -1931,7 +1931,7 @@ static void smart_island_action_btn_style_apply(uint8_t index)
         if (arrow && lv_obj_is_valid(arrow)) {
             lv_label_set_text(arrow, ">");
             lv_obj_set_style_text_color(arrow, lv_color_hex(SMART_ISLAND_BTN_ARROW), 0);
-            lv_obj_set_style_text_font(arrow, &lv_font_montserrat_18, 0);
+            lv_obj_set_style_text_font(arrow, &lv_font_instrument_sans_medium_18, 0);
             lv_obj_align(arrow, LV_ALIGN_RIGHT_MID, -16, 0);
         }
         return;
@@ -1950,7 +1950,7 @@ static void smart_island_action_btn_style_apply(uint8_t index)
         lv_label_set_text(arrow, enabled ? "ON" : "OFF");
         lv_obj_set_style_text_color(arrow,
             lv_color_hex(enabled ? SMART_ISLAND_BTN_SWITCH_ON_TEXT : SMART_ISLAND_BTN_SWITCH_OFF_TEXT), 0);
-        lv_obj_set_style_text_font(arrow, &lv_font_montserrat_12, 0);
+        lv_obj_set_style_text_font(arrow, &lv_font_instrument_sans_medium_12, 0);
         lv_obj_align(arrow, LV_ALIGN_RIGHT_MID, -12, 0);
     }
 }
@@ -2135,13 +2135,13 @@ static void smart_island_action_btn_create(void)
 
         label = lv_label_create(btn);
         lv_obj_set_style_text_color(label, lv_color_hex(SMART_ISLAND_BTN_TEXT), 0);
-        lv_obj_set_style_text_font(label, &lv_font_montserrat_14, 0); 
+        lv_obj_set_style_text_font(label, &lv_font_instrument_sans_medium_14, 0);
         lv_obj_align(label, LV_ALIGN_LEFT_MID, 16, 0);
 
         arrow = lv_label_create(btn);
         lv_label_set_text(arrow, ">");
         lv_obj_set_style_text_color(arrow, lv_color_hex(0x666666), 0);
-        lv_obj_set_style_text_font(arrow, &lv_font_montserrat_18, 0);
+        lv_obj_set_style_text_font(arrow, &lv_font_instrument_sans_medium_18, 0);
         lv_obj_align(arrow, LV_ALIGN_RIGHT_MID, -16, 0);
 
         g_smart_island_action_btns[i] = btn;
@@ -2213,14 +2213,14 @@ void smart_island_create(lv_obj_t *parent)
     lv_label_set_text(g_smart_island_title, ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_READY_TITLE));
     lv_obj_set_width(g_smart_island_title, SMART_ISLAND_W - 36 - 14);
     lv_obj_set_pos(g_smart_island_title, 36, 13);
-    lv_obj_set_style_text_font(g_smart_island_title, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(g_smart_island_title, &lv_font_instrument_sans_semibold_14, 0);
 
     g_smart_island_subtitle = lv_label_create(g_smart_island);
     lv_obj_add_flag(g_smart_island_subtitle, LV_OBJ_FLAG_HIDDEN); 
 
     g_smart_island_time = lv_label_create(g_smart_island);
     lv_label_set_text(g_smart_island_time, "00:00:00");
-    lv_obj_set_style_text_font(g_smart_island_time, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_font(g_smart_island_time, &lv_font_instrument_sans_medium_18, 0);
     lv_obj_set_style_text_color(g_smart_island_time, lv_color_hex(SMART_ISLAND_TEXT_LIGHT), 0);
     lv_obj_align(g_smart_island_time, LV_ALIGN_RIGHT_MID, -14, 0);
     lv_obj_add_event_cb(g_smart_island_time, smart_island_time_click_cb, LV_EVENT_CLICKED, NULL);
@@ -2253,7 +2253,7 @@ void smart_island_create(lv_obj_t *parent)
     lv_label_set_long_mode(g_smart_island_expand_title, LV_LABEL_LONG_CLIP);
     lv_obj_set_width(g_smart_island_expand_title, SMART_ISLAND_W - 24 - 12);
     lv_obj_set_pos(g_smart_island_expand_title, 20, 18);
-    lv_obj_set_style_text_font(g_smart_island_expand_title, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(g_smart_island_expand_title, &lv_font_instrument_sans_semibold_12, 0);
     lv_obj_set_style_text_color(g_smart_island_expand_title, lv_color_hex(SMART_ISLAND_TEXT_SUB), 0);
     lv_obj_add_flag(g_smart_island_expand_title, LV_OBJ_FLAG_HIDDEN);
 
@@ -2262,7 +2262,7 @@ void smart_island_create(lv_obj_t *parent)
     lv_label_set_long_mode(g_smart_island_expand_subtitle, LV_LABEL_LONG_CLIP);
     lv_obj_set_width(g_smart_island_expand_subtitle, 173);
     lv_obj_set_pos(g_smart_island_expand_subtitle, 68, 36);
-    lv_obj_set_style_text_font(g_smart_island_expand_subtitle, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(g_smart_island_expand_subtitle, &lv_font_instrument_sans_semibold_12, 0);
     lv_obj_set_style_text_color(g_smart_island_expand_subtitle, lv_color_hex(SMART_ISLAND_TEXT_LIGHT), 0);
     lv_obj_set_style_text_align(g_smart_island_expand_subtitle, LV_TEXT_ALIGN_RIGHT, 0);
     lv_label_set_recolor(g_smart_island_expand_subtitle, true);
@@ -2273,7 +2273,7 @@ void smart_island_create(lv_obj_t *parent)
     lv_obj_set_width(g_smart_island_expand_last, 40);
     lv_obj_set_pos(g_smart_island_expand_last, 20, 36);
     lv_obj_set_style_text_align(g_smart_island_expand_last, LV_TEXT_ALIGN_LEFT, 0);
-    lv_obj_set_style_text_font(g_smart_island_expand_last, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(g_smart_island_expand_last, &lv_font_instrument_sans_medium_12, 0);
     lv_obj_set_style_text_color(g_smart_island_expand_last, lv_color_hex(SMART_ISLAND_LAST_TEXT_GRAY), 0);
 
     g_smart_island_expand_divider = lv_obj_create(g_smart_island_page_info);
@@ -2288,7 +2288,7 @@ void smart_island_create(lv_obj_t *parent)
     lv_label_set_long_mode(g_smart_island_expand_footer, LV_LABEL_LONG_CLIP);
     lv_obj_set_width(g_smart_island_expand_footer, 150);
     lv_obj_set_pos(g_smart_island_expand_footer, 20, 62);
-    lv_obj_set_style_text_font(g_smart_island_expand_footer, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(g_smart_island_expand_footer, &lv_font_instrument_sans_medium_12, 0);
     lv_obj_set_style_text_color(g_smart_island_expand_footer, lv_color_hex(SMART_ISLAND_TEXT_SUB), 0);
     lv_obj_add_flag(g_smart_island_expand_footer, LV_OBJ_FLAG_HIDDEN);
 
@@ -2297,7 +2297,7 @@ void smart_island_create(lv_obj_t *parent)
     lv_label_set_long_mode(g_smart_island_expand_extra, LV_LABEL_LONG_CLIP);
     lv_obj_set_width(g_smart_island_expand_extra, 150);
     lv_obj_set_pos(g_smart_island_expand_extra, 20, 80);
-    lv_obj_set_style_text_font(g_smart_island_expand_extra, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(g_smart_island_expand_extra, &lv_font_instrument_sans_medium_12, 0);
     lv_obj_set_style_text_color(g_smart_island_expand_extra, lv_color_hex(SMART_ISLAND_TEXT_SUB), 0);
     lv_obj_add_flag(g_smart_island_expand_extra, LV_OBJ_FLAG_HIDDEN);
 
@@ -2321,7 +2321,7 @@ void smart_island_create(lv_obj_t *parent)
     g_smart_island_quality_percent = lv_label_create(g_smart_island_page_info);
     lv_label_set_text(g_smart_island_quality_percent, "100%");
     lv_obj_set_pos(g_smart_island_quality_percent, 228, 62);
-    lv_obj_set_style_text_font(g_smart_island_quality_percent, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(g_smart_island_quality_percent, &lv_font_instrument_sans_medium_12, 0);
     lv_obj_set_style_text_color(g_smart_island_quality_percent, lv_color_hex(SMART_ISLAND_RESULT_OK_COLOR), 0);
     lv_obj_add_flag(g_smart_island_quality_percent, LV_OBJ_FLAG_HIDDEN);
 

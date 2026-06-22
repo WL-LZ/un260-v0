@@ -16,8 +16,8 @@ static lv_color_t detail_line(void)    { return lv_color_hex(0xE9EDF2); }
 static lv_color_t detail_grid(void)    { return lv_color_hex(0xECEFF3); }
 static lv_color_t detail_primary(void) { return lv_color_hex(0x08C5D6); }
 static lv_color_t detail_primary_2(void){ return lv_color_hex(0xE3FAFD); }
-static lv_color_t detail_text(void)    { return lv_color_hex(0x2D3440); }
-static lv_color_t detail_muted(void)   { return lv_color_hex(0x7686A5); }
+static lv_color_t detail_text(void)    { return lv_color_hex(0x0D3440); }
+static lv_color_t detail_muted(void)   { return lv_color_hex(0x5686A5); }
 static lv_color_t detail_select_border(void) { return lv_color_hex(0x0878C8); }
 
 typedef struct {
@@ -148,7 +148,7 @@ lv_obj_t* settings_detail_create_page_ex(lv_obj_t* parent, const char* title,
                                                   detail_primary(), 0, 0);
     lv_obj_center(gear);
 
-    settings_detail_create_label(header, title, &lv_font_montserrat_20,
+    settings_detail_create_label(header, title, &lv_font_instrument_sans_semibold_20,
                                  detail_text(), 72, 14);
 
     lv_obj_t* title_line = lv_obj_create(header);
@@ -229,7 +229,7 @@ lv_obj_t* settings_detail_create_button(lv_obj_t* parent, lv_coord_t x, lv_coord
         lv_obj_add_event_cb(btn, cb, LV_EVENT_CLICKED, user_data);
     }
 
-    lv_obj_t* label = settings_detail_create_label(btn, text, &lv_font_montserrat_16,
+    lv_obj_t* label = settings_detail_create_label(btn, text, &lv_font_instrument_sans_bold_16,
                                                    detail_panel(), 0, 0);
     lv_obj_center(label);
     return btn;
@@ -389,18 +389,18 @@ bool settings_detail_dialog_show(const char* title,
     lv_obj_set_style_radius(icon_box, 8, 0);
 
     icon_label = settings_detail_create_label(icon_box, "!",
-                                              &lv_font_montserrat_20,
+                                              &lv_font_instrument_sans_medium_20,
                                               detail_primary(), 0, 0);
     lv_obj_center(icon_label);
 
     title_label = settings_detail_create_label(card, title ? title : "",
-                                               &lv_font_montserrat_20,
+                                               &lv_font_instrument_sans_medium_20,
                                                detail_text(), 114, 46);
     lv_obj_set_width(title_label, 400);
     lv_label_set_long_mode(title_label, LV_LABEL_LONG_CLIP);
 
     content_label = settings_detail_create_label(card, content ? content : "",
-                                                 &lv_font_montserrat_16,
+                                                 &lv_font_instrument_sans_medium_16,
                                                  detail_muted(), 114, 82);
     lv_obj_set_width(content_label, 398);
     lv_label_set_long_mode(content_label, LV_LABEL_LONG_WRAP);
@@ -616,7 +616,11 @@ static lv_obj_t* settings_keyboard_create_key(lv_obj_t* parent, int x, int y, in
     detail_add_press_style(btn, lv_color_hex(0xD8F4FF));
     lv_obj_add_event_cb(btn, settings_keyboard_key_cb, LV_EVENT_CLICKED, (void*)key);
 
-    lv_obj_t* label = settings_detail_create_label(btn, text, &lv_font_montserrat_20,
+    const lv_font_t* key_font =
+        (text && (strcmp(text, LV_SYMBOL_BACKSPACE) == 0 || strcmp(text, LV_SYMBOL_UP) == 0))
+            ? &lv_font_montserrat_20
+            : &lv_font_instrument_sans_medium_20;
+    lv_obj_t* label = settings_detail_create_label(btn, text, key_font,
                                                    detail_text(), 0, 0);
     lv_obj_center(label);
     if (key && key[0] >= 'A' && key[0] <= 'Z' && key[1] == '\0') {
@@ -647,7 +651,11 @@ static void settings_keyboard_create_action(lv_obj_t* parent, int x, int y, int 
     detail_add_press_style(btn, lv_color_darken(bg, 28));
     lv_obj_add_event_cb(btn, cb, LV_EVENT_CLICKED, NULL);
 
-    lv_obj_t* label = settings_detail_create_label(btn, text, &lv_font_montserrat_24,
+    const lv_font_t* action_font =
+        (text && strcmp(text, LV_SYMBOL_OK) == 0)
+            ? &lv_font_montserrat_24
+            : &lv_font_instrument_sans_medium_24;
+    lv_obj_t* label = settings_detail_create_label(btn, text, action_font,
                                                    detail_panel(), 0, 0);
     lv_obj_center(label);
 }
@@ -803,7 +811,7 @@ bool settings_detail_keyboard_show_ex(const char* title,
     lv_obj_set_style_bg_opa(accent, LV_OPA_COVER, 0);
     lv_obj_set_style_radius(accent, 2, 0);
 
-    settings_detail_create_label(dialog, title ? title : "", &lv_font_montserrat_18,
+    settings_detail_create_label(dialog, title ? title : "", &lv_font_instrument_sans_semibold_18,
                                  detail_text(), 26, 18);
 
     lv_obj_t* hint = settings_detail_create_label(dialog, LV_SYMBOL_EDIT, &lv_font_montserrat_18,
@@ -820,7 +828,7 @@ bool settings_detail_keyboard_show_ex(const char* title,
     lv_obj_set_style_border_color(input_wrap, detail_select_border(), 0);
     lv_obj_set_style_radius(input_wrap, 6, 0);
 
-    g_settings_keyboard.input_label = settings_detail_create_label(input_wrap, "", &lv_font_montserrat_24,
+    g_settings_keyboard.input_label = settings_detail_create_label(input_wrap, "", &lv_font_instrument_sans_medium_24,
                                                                   detail_text(), 14, 13);
     lv_obj_set_size(g_settings_keyboard.input_label, 640, 32);
 

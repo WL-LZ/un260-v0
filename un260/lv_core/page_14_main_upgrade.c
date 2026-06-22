@@ -111,7 +111,7 @@ void ui_page_14_main_upgrade_create(lv_obj_t* parent)
 
     lbl_upgrade = lv_label_create(card);
     lv_label_set_text(lbl_upgrade, ui_text_get(UI_TEXT_SETTINGS_PRESS_START_MAIN_UPGRADE));
-    lv_obj_set_style_text_font(lbl_upgrade, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_font(lbl_upgrade, &lv_font_instrument_sans_medium_22, 0);
     lv_obj_set_pos(lbl_upgrade, 36, 60);
 
     settings_detail_create_button(card, 36, 150, 250, 70,

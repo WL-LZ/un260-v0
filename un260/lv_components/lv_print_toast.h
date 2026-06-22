@@ -16,7 +16,7 @@
 #define LV_PRINT_TOAST_DEFAULT_TEXT_Y       0
 #define LV_PRINT_TOAST_DEFAULT_TEXT_W       0
 #define LV_PRINT_TOAST_DEFAULT_TEXT_H       0
-#define LV_PRINT_TOAST_DEFAULT_TEXT_FONT    (&lv_font_montserrat_24)
+#define LV_PRINT_TOAST_DEFAULT_TEXT_FONT    (&lv_font_instrument_sans_medium_24)
 #define LV_PRINT_TOAST_DEFAULT_BG_COLOR     lv_color_hex(0xFFFFFF)
 #define LV_PRINT_TOAST_DEFAULT_TEXT_COLOR   lv_color_hex(0x2F3542)
 #define LV_PRINT_TOAST_DEFAULT_LOADER_COLOR lv_color_hex(0x2F7CF6)

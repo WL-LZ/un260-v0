@@ -227,12 +227,12 @@ static void flap_create_option(lv_obj_t* parent, size_t index,
 
     lv_obj_t* badge_label = settings_detail_create_label(badge,
                                                          index == 0 ? "^" : "v",
-                                                         &lv_font_montserrat_18,
+                                                         &lv_font_instrument_sans_medium_18,
                                                          item_color, 0, 0);
     lv_obj_center(badge_label);
 
-    settings_detail_create_label(item, ui_text_get(option->title_text), &lv_font_montserrat_16,
-                                 lv_color_hex(0x2D3440), 86, 24);
+    settings_detail_create_label(item, ui_text_get(option->title_text), &lv_font_instrument_sans_semibold_16,
+                                 lv_color_hex(0x0D3440), 86, 24);
 
     g_flap_items[index].card = item;
     g_flap_items[index].check = settings_detail_create_select_box(item, 278, 18, 30,
@@ -263,7 +263,7 @@ static void flap_create_panel(lv_obj_t* parent)
     lv_obj_t* card = flap_create_card(parent, 38, 18, 730, 306);
 
     settings_detail_create_label(card, ui_text_get(UI_TEXT_SETTINGS_FLAP_POSITION),
-                                 &lv_font_montserrat_16, lv_color_hex(0x2D3440), 24, 20);
+                                 &lv_font_instrument_sans_medium_16, lv_color_hex(0x0D3440), 24, 20);
 
     lv_obj_t* accent = lv_obj_create(card);
     lv_obj_remove_style_all(accent);
@@ -291,7 +291,7 @@ static void flap_create_preview(lv_obj_t* parent)
     lv_obj_clear_flag(header, LV_OBJ_FLAG_SCROLLABLE);
 
     settings_detail_create_label(header, ui_text_get(UI_TEXT_SETTINGS_FLAP_PREVIEW),
-                                 &lv_font_montserrat_18, lv_color_hex(0xFFFFFF), 150, 12);
+                                 &lv_font_instrument_sans_medium_18, lv_color_hex(0xFFFFFF), 150, 12);
 
     lv_obj_t* chamber = lv_obj_create(card);
     lv_obj_remove_style_all(chamber);
@@ -333,7 +333,7 @@ static void flap_create_preview(lv_obj_t* parent)
     lv_obj_add_flag(preview_flap, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(preview_flap, flap_preview_click_cb, LV_EVENT_CLICKED, NULL);
 
-    preview_flap_label = settings_detail_create_label(preview_flap, "", &lv_font_montserrat_16,
+    preview_flap_label = settings_detail_create_label(preview_flap, "", &lv_font_instrument_sans_medium_16,
                                                       lv_color_hex(0xFFFFFF), 0, 0);
     lv_obj_center(preview_flap_label);
 }

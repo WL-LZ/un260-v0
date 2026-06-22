@@ -204,7 +204,7 @@ void lv_print_toast_create(void)
 
     lv_obj_set_style_text_align(g_print_toast_label, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_color(g_print_toast_label, lv_color_hex(0x2F3542), 0);
-    lv_obj_set_style_text_font(g_print_toast_label, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_font(g_print_toast_label, &lv_font_instrument_sans_medium_24, 0);
     lv_obj_set_style_text_opa(g_print_toast_label, LV_OPA_0, 0);
 
     g_print_toast_loader = lv_loading_orbit_create(g_print_toast);

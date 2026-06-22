@@ -772,34 +772,34 @@ void show_fault_popup_ex(const fault_popup_data_t* data)
     g_fault_title_1 = lv_label_create(g_fault_popup);
     lv_label_set_text(g_fault_title_1, data->diagnostics_title);
     lv_obj_set_style_text_color(g_fault_title_1, lv_color_hex(0x7A7A7A), 0);
-    lv_obj_set_style_text_font(g_fault_title_1, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(g_fault_title_1, &lv_font_instrument_sans_semibold_14, 0);
     lv_obj_set_pos(g_fault_title_1, 25, 12);
 
     /* 红框2 */
     g_fault_title_2 = lv_label_create(g_fault_popup);
     lv_label_set_text(g_fault_title_2, data->fault_type_title);
     lv_obj_set_style_text_color(g_fault_title_2, lv_color_hex(0xFF3B30), 0);
-    lv_obj_set_style_text_font(g_fault_title_2, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(g_fault_title_2, &lv_font_instrument_sans_semibold_16, 0);
     lv_obj_set_pos(g_fault_title_2, 650, 20);
 
     /* 时间/机型 */
     g_fault_time_label = lv_label_create(g_fault_popup);
     lv_label_set_text_fmt(g_fault_time_label, ui_text_get(UI_TEXT_WIDGET_FAULT_TIME_FMT), time_buf);
     lv_obj_set_style_text_color(g_fault_time_label, lv_color_hex(0xB0B0B0), 0);
-    lv_obj_set_style_text_font(g_fault_time_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(g_fault_time_label, &lv_font_instrument_sans_medium_14, 0);
     lv_obj_set_pos(g_fault_time_label, 650, 46);
 
     g_fault_model_label = lv_label_create(g_fault_popup);
     lv_label_set_text_fmt(g_fault_model_label, ui_text_get(UI_TEXT_WIDGET_FAULT_MODEL_FMT), MACHINE_MODEL_NAME);
     lv_obj_set_style_text_color(g_fault_model_label, lv_color_hex(0xB0B0B0), 0);
-    lv_obj_set_style_text_font(g_fault_model_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(g_fault_model_label, &lv_font_instrument_sans_medium_14, 0);
     lv_obj_set_pos(g_fault_model_label, 880, 46);
 
     /* 红框3 */
     g_fault_main_desc_label = lv_label_create(g_fault_popup);
     lv_label_set_text(g_fault_main_desc_label, data->fault_main_desc);
     lv_obj_set_style_text_color(g_fault_main_desc_label, lv_color_black(), 0);
-    lv_obj_set_style_text_font(g_fault_main_desc_label, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_font(g_fault_main_desc_label, &lv_font_instrument_sans_bold_24, 0);
     lv_obj_set_pos(g_fault_main_desc_label, 607, 66);
 
     /* 原因框 */
@@ -807,7 +807,7 @@ void show_fault_popup_ex(const fault_popup_data_t* data)
     lv_label_set_text(g_reason_title, ui_text_get(UI_TEXT_WIDGET_FAULT_REASON_TITLE));
     lv_obj_set_width(g_reason_title, 100);
     lv_obj_set_style_text_color(g_reason_title, lv_color_hex(0xff3b30), 0);
-    lv_obj_set_style_text_font(g_reason_title, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(g_reason_title, &lv_font_instrument_sans_semibold_16, 0);
     lv_obj_set_pos(g_reason_title, 629, 105);
 
     g_fault_reason_label = lv_label_create(g_fault_popup);
@@ -815,14 +815,14 @@ void show_fault_popup_ex(const fault_popup_data_t* data)
     lv_obj_set_width(g_fault_reason_label, 680);
     lv_label_set_long_mode(g_fault_reason_label, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_color(g_fault_reason_label, lv_color_hex(0x555555), 0);
-    lv_obj_set_style_text_font(g_fault_reason_label, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(g_fault_reason_label, &lv_font_instrument_sans_medium_16, 0);
     lv_obj_set_pos(g_fault_reason_label, 629, 128   );
 
     g_solution_title = lv_label_create(g_fault_popup);
     lv_label_set_text(g_solution_title, ui_text_get(UI_TEXT_WIDGET_FAULT_SOLUTION_TITLE));
     lv_obj_set_width(g_solution_title, 100);
     lv_obj_set_style_text_color(g_solution_title, lv_color_hex(0x007aff), 0);
-    lv_obj_set_style_text_font(g_solution_title, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(g_solution_title, &lv_font_instrument_sans_semibold_16, 0);
     lv_obj_set_pos(g_solution_title, 629, 219);
 
     g_fault_solution_label = lv_label_create(g_fault_popup);
@@ -831,14 +831,14 @@ void show_fault_popup_ex(const fault_popup_data_t* data)
     lv_label_set_long_mode(g_fault_solution_label, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_align(g_fault_solution_label, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_set_style_text_color(g_fault_solution_label, lv_color_hex(0x555555), 0);
-    lv_obj_set_style_text_font(g_fault_solution_label, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(g_fault_solution_label, &lv_font_instrument_sans_medium_16, 0);
     lv_obj_set_pos(g_fault_solution_label, 629, 243);
 
     /* 版本 */
     g_fault_version_label = lv_label_create(g_fault_popup);
     lv_label_set_text_fmt(g_fault_version_label, " %s", Machine_Statue.main_app);
     lv_obj_set_style_text_color(g_fault_version_label, lv_color_hex(0x999999), 0);
-    lv_obj_set_style_text_font(g_fault_version_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(g_fault_version_label, &lv_font_instrument_sans_medium_14, 0);
     lv_obj_set_pos(g_fault_version_label, 595, 342);
 
     /* confirm */
@@ -853,7 +853,7 @@ void show_fault_popup_ex(const fault_popup_data_t* data)
     lv_obj_t* confirm_label = lv_label_create(confirm_btn);
     lv_label_set_text(confirm_label, ui_text_get(UI_TEXT_WIDGET_FAULT_CONFIRM));
     lv_obj_set_style_text_color(confirm_label, lv_color_white(), 0);
-    lv_obj_set_style_text_font(confirm_label, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_font(confirm_label, &lv_font_instrument_sans_bold_20, 0);
     lv_obj_center(confirm_label);
 }
 

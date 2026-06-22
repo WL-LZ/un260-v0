@@ -128,7 +128,7 @@ static void aging_create_panel(lv_obj_t* parent)
     lv_obj_t* card = aging_create_card(parent, 38, 18, 730, 306);
 
     settings_detail_create_label(card, ui_text_get(UI_TEXT_SETTINGS_AGING_PANEL),
-                                 &lv_font_montserrat_16, lv_color_hex(0x2D3440), 24, 20);
+                                 &lv_font_instrument_sans_medium_16, lv_color_hex(0x0D3440), 24, 20);
 
     lv_obj_t* accent = lv_obj_create(card);
     lv_obj_remove_style_all(accent);
@@ -150,8 +150,8 @@ static void aging_create_panel(lv_obj_t* parent)
 
     lv_obj_t* hint = settings_detail_create_label(card,
                                                   ui_text_get(UI_TEXT_SETTINGS_AGING_CONFIRM_CONTENT),
-                                                  &lv_font_montserrat_14,
-                                                  lv_color_hex(0x7686A5), 182, 220);
+                                                  &lv_font_instrument_sans_medium_14,
+                                                  lv_color_hex(0x5686A5), 182, 220);
     lv_obj_set_width(hint, 370);
     lv_label_set_long_mode(hint, LV_LABEL_LONG_WRAP);
 }
@@ -189,7 +189,7 @@ static void aging_create_preview(lv_obj_t* parent)
     lv_obj_clear_flag(header, LV_OBJ_FLAG_SCROLLABLE);
 
     settings_detail_create_label(header, ui_text_get(UI_TEXT_SETTINGS_AGING_PREVIEW),
-                                 &lv_font_montserrat_18, lv_color_hex(0xFFFFFF), 150, 12);
+                                 &lv_font_instrument_sans_medium_18, lv_color_hex(0xFFFFFF), 150, 12);
 
     scene = lv_obj_create(card);
     lv_obj_remove_style_all(scene);
@@ -232,7 +232,7 @@ static void aging_create_preview(lv_obj_t* parent)
     lv_obj_set_style_shadow_opa(scan_line, LV_OPA_20, 0);
     lv_obj_clear_flag(scan_line, LV_OBJ_FLAG_SCROLLABLE);
 
-    status_label = settings_detail_create_label(card, "", &lv_font_montserrat_16,
+    status_label = settings_detail_create_label(card, "", &lv_font_instrument_sans_medium_16,
                                                 lv_color_hex(0x0878C8), 0, 276);
     lv_obj_set_width(status_label, 370);
     lv_obj_set_style_text_align(status_label, LV_TEXT_ALIGN_CENTER, 0);
@@ -260,7 +260,7 @@ static void aging_refresh_view(void)
                           running ? ui_text_get(UI_TEXT_SETTINGS_AGING_RUNNING) :
                           ui_text_get(UI_TEXT_SETTINGS_AGING_IDLE));
         lv_obj_set_style_text_color(status_label,
-                                    running ? lv_color_hex(0x0878C8) : lv_color_hex(0x7686A5),
+                                    running ? lv_color_hex(0x0878C8) : lv_color_hex(0x5686A5),
                                     0);
     }
 

@@ -92,7 +92,7 @@ static void cfd_refresh_view(void)
 
         if (table_row_labels[scene]) {
             lv_obj_set_style_text_color(table_row_labels[scene],
-                                        selected ? lv_color_hex(0x075E9C) : lv_color_hex(0x2D3440),
+                                        selected ? lv_color_hex(0x075E9C) : lv_color_hex(0x0D3440),
                                         0);
         }
     }
@@ -242,7 +242,7 @@ static void cfd_create_scene_item(lv_obj_t* parent, uint8_t scene,
     lv_obj_set_style_translate_y(scene_items[scene].check, 0, LV_STATE_PRESSED);
 
     settings_detail_create_label(item, ui_text_get(g_cfd_scene_texts[scene]),
-                                 &lv_font_montserrat_18, lv_color_hex(0x2D3440), 70, 16);
+                                 &lv_font_instrument_sans_medium_18, lv_color_hex(0x0D3440), 70, 16);
 
     scene_items[scene].card = item;
 }
@@ -252,9 +252,9 @@ static void cfd_create_left_panel(lv_obj_t* parent)
     lv_obj_t* card = cfd_create_card(parent, 38, 18, 340, 306);
 
     settings_detail_create_label(card, ui_text_get(UI_TEXT_SETTINGS_CFD_LEVEL_CURRENCY),
-                                 &lv_font_montserrat_18, lv_color_hex(0x7686A5), 26, 28);
-    currency_label = settings_detail_create_label(card, "", &lv_font_montserrat_22,
-                                                  lv_color_hex(0x2D3440), 128, 27);
+                                 &lv_font_instrument_sans_medium_18, lv_color_hex(0x5686A5), 26, 28);
+    currency_label = settings_detail_create_label(card, "", &lv_font_instrument_sans_medium_22,
+                                                  lv_color_hex(0x0D3440), 128, 27);
 
     lv_obj_t* accent = lv_obj_create(card);
     lv_obj_remove_style_all(accent);
@@ -274,8 +274,8 @@ static lv_obj_t* cfd_create_table_label(lv_obj_t* parent, const char* text,
                                         lv_coord_t x, lv_coord_t y,
                                         lv_coord_t w)
 {
-    lv_obj_t* label = settings_detail_create_label(parent, text, &lv_font_montserrat_14,
-                                                   lv_color_hex(0x7686A5), x, y);
+    lv_obj_t* label = settings_detail_create_label(parent, text, &lv_font_instrument_sans_medium_14,
+                                                   lv_color_hex(0x5686A5), x, y);
     lv_obj_set_width(label, w);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
     return label;
@@ -301,7 +301,7 @@ static void cfd_create_level_cell(lv_obj_t* parent, uint8_t scene, uint8_t item,
     lv_obj_add_event_cb(cell, cfd_level_cell_cb, LV_EVENT_CLICKED,
                         (void*)(uintptr_t)index);
 
-    level_cell_labels[index] = settings_detail_create_label(cell, "", &lv_font_montserrat_20,
+    level_cell_labels[index] = settings_detail_create_label(cell, "", &lv_font_instrument_sans_medium_20,
                                                             lv_color_hex(0x0878C8), 0, 0);
     lv_obj_center(level_cell_labels[index]);
     level_cells[index] = cell;
@@ -313,7 +313,7 @@ static void cfd_create_detail_panel(lv_obj_t* parent)
     lv_obj_t* line;
 
     settings_detail_create_label(card, ui_text_get(UI_TEXT_SETTINGS_CFD_LEVEL_DETAIL),
-                                 &lv_font_montserrat_18, lv_color_hex(0x2D3440), 30, 20);
+                                 &lv_font_instrument_sans_medium_18, lv_color_hex(0x0D3440), 30, 20);
 
     line = lv_obj_create(card);
     lv_obj_remove_style_all(line);
@@ -344,8 +344,8 @@ static void cfd_create_detail_panel(lv_obj_t* parent)
 
         table_row_labels[scene] = settings_detail_create_label(card,
                                                                ui_text_get(g_cfd_scene_texts[scene]),
-                                                               &lv_font_montserrat_16,
-                                                               lv_color_hex(0x2D3440),
+                                                               &lv_font_instrument_sans_medium_16,
+                                                               lv_color_hex(0x0D3440),
                                                                44, (lv_coord_t)(row_top + 17));
         lv_obj_add_flag(table_row_labels[scene], LV_OBJ_FLAG_CLICKABLE);
         lv_obj_add_event_cb(table_row_labels[scene], cfd_scene_cb, LV_EVENT_CLICKED,

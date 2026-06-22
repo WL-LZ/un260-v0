@@ -291,7 +291,7 @@ void ui_page_10_debug_create(void) {
 
     lv_obj_t* btn_send_label = lv_label_create(btn_send);
     lv_label_set_text(btn_send_label, "Send");
-    lv_obj_set_style_text_font(btn_send_label, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_font(btn_send_label, &lv_font_instrument_sans_bold_20, 0);
     lv_obj_center(btn_send_label);
     // 发送按钮
     lv_obj_t* btn_sec = lv_btn_create(left_panel);
@@ -302,7 +302,7 @@ void ui_page_10_debug_create(void) {
 
     lv_obj_t* btn_esc_label = lv_label_create(btn_sec);
     lv_label_set_text(btn_esc_label, "ESC");
-    lv_obj_set_style_text_font(btn_esc_label, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_font(btn_esc_label, &lv_font_instrument_sans_bold_20, 0);
     lv_obj_center(btn_esc_label);
     
     // 清空输入按钮
@@ -401,7 +401,7 @@ void ui_page_10_debug_create(void) {
     lv_obj_set_width(log_label, 560);
     lv_label_set_long_mode(log_label, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_color(log_label, lv_color_white(), 0);
-    lv_obj_set_style_text_font(log_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(log_label, &lv_font_instrument_sans_medium_14, 0);
 }
 
 void ui_page_10_debug_destroy(void) {

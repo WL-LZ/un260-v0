@@ -11,8 +11,10 @@
 #define UPGRADE_POPUP_BG_COLOR            0xF5F5F7
 #define UPGRADE_POPUP_CARD_COLOR          0xFFFFFF
 #define UPGRADE_POPUP_TEXT_MAIN_COLOR     0x111111
-#define UPGRADE_POPUP_TEXT_DESC_COLOR     0x666666
-#define UPGRADE_POPUP_TEXT_LIGHT_COLOR    0xAAAAAA
+#define UPGRADE_POPUP_TEXT_DESC_COLOR     0x466666
+#define UPGRADE_POPUP_PROMPT_TITLE_COLOR  0x050505
+#define UPGRADE_POPUP_PROMPT_DESC_COLOR   0x263333
+#define UPGRADE_POPUP_TEXT_LIGHT_COLOR    0x8AAAAA
 #define UPGRADE_POPUP_BORDER_COLOR        0xEFEFF1
 #define UPGRADE_POPUP_BTN_GHOST_COLOR     0xF3F4F6
 #define UPGRADE_POPUP_BTN_GHOST_PRS_COLOR 0xEBEDF0
@@ -339,7 +341,7 @@ static lv_obj_t* upgrade_popup_create_btn(lv_obj_t* parent,
 
     lv_obj_t* label = lv_label_create(btn);
     lv_label_set_text(label, text);
-    lv_obj_set_style_text_font(label, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(label, &lv_font_instrument_sans_medium_16, 0);
     lv_obj_center(label);
 
     return btn;
@@ -496,14 +498,14 @@ static void upgrade_popup_create_prompt_card(void)
     lv_label_set_text(g_upgrade_popup.prompt_tag, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_TAG));
     upgrade_popup_apply_text_style(g_upgrade_popup.prompt_tag,
                                    lv_color_hex(UPGRADE_POPUP_TEXT_LIGHT_COLOR),
-                                   &lv_font_montserrat_10);
+                                   &lv_font_instrument_sans_medium_10);
     lv_obj_set_pos(g_upgrade_popup.prompt_tag, 0, 0);
 
     g_upgrade_popup.prompt_title = lv_label_create(g_upgrade_popup.prompt_title_group);
     lv_label_set_text(g_upgrade_popup.prompt_title, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_PROMPT_TITLE));
     upgrade_popup_apply_text_style(g_upgrade_popup.prompt_title,
-                                   lv_color_hex(UPGRADE_POPUP_TEXT_MAIN_COLOR),
-                                   &lv_font_montserrat_18);
+                                   lv_color_hex(UPGRADE_POPUP_PROMPT_TITLE_COLOR),
+                                   &lv_font_instrument_sans_bold_18);
     lv_obj_set_pos(g_upgrade_popup.prompt_title, 0, 22);
 
     g_upgrade_popup.prompt_content_group = lv_obj_create(g_upgrade_popup.prompt_card);
@@ -517,8 +519,8 @@ static void upgrade_popup_create_prompt_card(void)
     lv_label_set_text(g_upgrade_popup.prompt_desc,
                       ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_PROMPT_DESC));
     upgrade_popup_apply_text_style(g_upgrade_popup.prompt_desc,
-                                   lv_color_hex(UPGRADE_POPUP_TEXT_DESC_COLOR),
-                                   &lv_font_montserrat_14);
+                                   lv_color_hex(UPGRADE_POPUP_PROMPT_DESC_COLOR),
+                                   &lv_font_instrument_sans_medium_14);
     lv_obj_set_pos(g_upgrade_popup.prompt_desc, 100, 0);
 
     g_upgrade_popup.prompt_btn_cancel =
@@ -565,7 +567,7 @@ static void upgrade_popup_create_progress_card(void)
     lv_label_set_text(g_upgrade_popup.progress_tag, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_TAG));
     upgrade_popup_apply_text_style(g_upgrade_popup.progress_tag,
                                    lv_color_hex(UPGRADE_POPUP_TEXT_LIGHT_COLOR),
-                                   &lv_font_montserrat_10);
+                                   &lv_font_instrument_sans_medium_10);
     lv_obj_set_style_text_align(g_upgrade_popup.progress_tag, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_set_width(g_upgrade_popup.progress_tag, 300);
     lv_obj_set_pos(g_upgrade_popup.progress_tag, 0, 0);
@@ -574,7 +576,7 @@ static void upgrade_popup_create_progress_card(void)
     lv_label_set_text(g_upgrade_popup.progress_title, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_PROGRESS_TITLE));
     upgrade_popup_apply_text_style(g_upgrade_popup.progress_title,
                                    lv_color_hex(UPGRADE_POPUP_TEXT_MAIN_COLOR),
-                                   &lv_font_montserrat_16);
+                                   &lv_font_instrument_sans_semibold_16);
     lv_obj_set_style_text_align(g_upgrade_popup.progress_title, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_set_width(g_upgrade_popup.progress_title, 300);
     lv_obj_set_pos(g_upgrade_popup.progress_title, 0, 18);
@@ -583,7 +585,7 @@ static void upgrade_popup_create_progress_card(void)
     lv_label_set_text(g_upgrade_popup.progress_subtitle, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_PROGRESS_DESC));
     upgrade_popup_apply_text_style(g_upgrade_popup.progress_subtitle,
                                    lv_color_hex(UPGRADE_POPUP_TEXT_DESC_COLOR),
-                                   &lv_font_montserrat_12);
+                                   &lv_font_instrument_sans_medium_12);
     lv_obj_set_style_text_align(g_upgrade_popup.progress_subtitle, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_width(g_upgrade_popup.progress_subtitle, 320);
     lv_label_set_long_mode(g_upgrade_popup.progress_subtitle, LV_LABEL_LONG_WRAP);
@@ -610,7 +612,7 @@ static void upgrade_popup_create_progress_card(void)
     lv_label_set_text(g_upgrade_popup.progress_percent, "0%");
     upgrade_popup_apply_text_style(g_upgrade_popup.progress_percent,
                                    lv_color_hex(UPGRADE_POPUP_TEXT_MAIN_COLOR),
-                                   &lv_font_montserrat_28);
+                                   &lv_font_instrument_sans_medium_28);
     lv_obj_set_pos(g_upgrade_popup.progress_percent, 0, 22);
 
     g_upgrade_popup.progress_step = lv_label_create(g_upgrade_popup.progress_content_group);
@@ -620,7 +622,7 @@ static void upgrade_popup_create_progress_card(void)
                       ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_PROGRESS_STEP_VERIFY));
     upgrade_popup_apply_text_style(g_upgrade_popup.progress_step,
                                    lv_color_hex(UPGRADE_POPUP_TEXT_DESC_COLOR),
-                                   &lv_font_montserrat_12);
+                                   &lv_font_instrument_sans_medium_12);
     lv_obj_align(g_upgrade_popup.progress_step, LV_ALIGN_TOP_RIGHT, 0, 36);
     lv_label_set_long_mode(g_upgrade_popup.progress_step, LV_LABEL_LONG_WRAP);
 }
@@ -654,7 +656,7 @@ static void upgrade_popup_create_success_card(void)
     lv_label_set_text(g_upgrade_popup.success_tag, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_TAG));
     upgrade_popup_apply_text_style(g_upgrade_popup.success_tag,
                                    lv_color_hex(UPGRADE_POPUP_TEXT_LIGHT_COLOR),
-                                   &lv_font_montserrat_10);
+                                   &lv_font_instrument_sans_medium_10);
     lv_obj_set_style_text_align(g_upgrade_popup.success_tag, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_set_width(g_upgrade_popup.success_tag, 260);
     lv_obj_set_pos(g_upgrade_popup.success_tag, 0, 0);
@@ -663,7 +665,7 @@ static void upgrade_popup_create_success_card(void)
     lv_label_set_text(g_upgrade_popup.success_title, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_SUCCESS_TITLE));
     upgrade_popup_apply_text_style(g_upgrade_popup.success_title,
                                    lv_color_hex(UPGRADE_POPUP_TEXT_MAIN_COLOR),
-                                   &lv_font_montserrat_18);
+                                   &lv_font_instrument_sans_semibold_18);
     lv_obj_set_style_text_align(g_upgrade_popup.success_title, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_set_width(g_upgrade_popup.success_title, 260);
     lv_obj_set_pos(g_upgrade_popup.success_title, 0, 18);
@@ -680,7 +682,7 @@ static void upgrade_popup_create_success_card(void)
                       ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_SUCCESS_DESC));
     upgrade_popup_apply_text_style(g_upgrade_popup.success_desc,
                                    lv_color_hex(UPGRADE_POPUP_TEXT_DESC_COLOR),
-                                   &lv_font_montserrat_14);
+                                   &lv_font_instrument_sans_medium_14);
     lv_label_set_long_mode(g_upgrade_popup.success_desc, LV_LABEL_LONG_WRAP);
     lv_obj_align(g_upgrade_popup.success_desc, LV_ALIGN_TOP_MID, 0, 0);
 
@@ -714,7 +716,7 @@ static void upgrade_popup_create_fail_card(void)
     lv_label_set_text(g_upgrade_popup.fail_icon, "!");
     upgrade_popup_apply_text_style(g_upgrade_popup.fail_icon,
                                    lv_color_hex(UPGRADE_POPUP_FAIL_COLOR),
-                                   &lv_font_montserrat_30);
+                                   &lv_font_instrument_sans_medium_30);
     lv_obj_center(g_upgrade_popup.fail_icon);
 
     g_upgrade_popup.fail_title_group = lv_obj_create(g_upgrade_popup.fail_card);
@@ -726,7 +728,7 @@ static void upgrade_popup_create_fail_card(void)
     lv_label_set_text(g_upgrade_popup.fail_title, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_FAIL_TITLE));
     upgrade_popup_apply_text_style(g_upgrade_popup.fail_title,
                                    lv_color_hex(UPGRADE_POPUP_TEXT_MAIN_COLOR),
-                                   &lv_font_montserrat_18);
+                                   &lv_font_instrument_sans_semibold_18);
     lv_obj_center(g_upgrade_popup.fail_title);
 
     g_upgrade_popup.fail_content_group = lv_obj_create(g_upgrade_popup.fail_card);
@@ -741,7 +743,7 @@ static void upgrade_popup_create_fail_card(void)
                       ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_FAIL_DESC));
     upgrade_popup_apply_text_style(g_upgrade_popup.fail_desc,
                                    lv_color_hex(UPGRADE_POPUP_TEXT_DESC_COLOR),
-                                   &lv_font_montserrat_14);
+                                   &lv_font_instrument_sans_medium_14);
     lv_label_set_long_mode(g_upgrade_popup.fail_desc, LV_LABEL_LONG_WRAP);
     lv_obj_align(g_upgrade_popup.fail_desc, LV_ALIGN_TOP_MID, 0, 0);
 

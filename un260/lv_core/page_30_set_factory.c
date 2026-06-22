@@ -93,7 +93,7 @@ static void factory_create_panel(lv_obj_t* parent)
     lv_obj_t* hint;
 
     settings_detail_create_label(card, ui_text_get(UI_TEXT_SETTINGS_FACTORY_PANEL),
-                                 &lv_font_montserrat_16, lv_color_hex(0x2D3440), 24, 20);
+                                 &lv_font_instrument_sans_medium_16, lv_color_hex(0x0D3440), 24, 20);
 
     accent = lv_obj_create(card);
     lv_obj_remove_style_all(accent);
@@ -114,8 +114,8 @@ static void factory_create_panel(lv_obj_t* parent)
 
     hint = settings_detail_create_label(card,
                                         ui_text_get(UI_TEXT_SETTINGS_FACTORY_CONFIRM_CONTENT),
-                                        &lv_font_montserrat_14,
-                                        lv_color_hex(0x7686A5), 168, 220);
+                                        &lv_font_instrument_sans_medium_14,
+                                        lv_color_hex(0x5686A5), 168, 220);
     lv_obj_set_width(hint, 394);
     lv_label_set_long_mode(hint, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_align(hint, LV_TEXT_ALIGN_CENTER, 0);
@@ -193,7 +193,7 @@ static void factory_create_preview(lv_obj_t* parent)
     lv_obj_clear_flag(header, LV_OBJ_FLAG_SCROLLABLE);
 
     settings_detail_create_label(header, ui_text_get(UI_TEXT_SETTINGS_FACTORY_PREVIEW),
-                                 &lv_font_montserrat_18, lv_color_hex(0xFFFFFF), 150, 12);
+                                 &lv_font_instrument_sans_medium_18, lv_color_hex(0xFFFFFF), 150, 12);
 
     scene = lv_obj_create(card);
     lv_obj_remove_style_all(scene);
@@ -233,8 +233,8 @@ static void factory_create_preview(lv_obj_t* parent)
     lv_obj_clear_flag(sweep_line, LV_OBJ_FLAG_SCROLLABLE);
 
     lv_obj_t* label = settings_detail_create_label(card, ui_text_get(UI_TEXT_SETTINGS_FACTORY_IDLE),
-                                                   &lv_font_montserrat_16,
-                                                   lv_color_hex(0x7686A5), 0, 276);
+                                                   &lv_font_instrument_sans_medium_16,
+                                                   lv_color_hex(0x5686A5), 0, 276);
     lv_obj_set_width(label, 370);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
 }

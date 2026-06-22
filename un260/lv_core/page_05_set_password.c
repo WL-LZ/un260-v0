@@ -174,7 +174,7 @@ static void password_create_login_card(lv_obj_t* parent)
     lv_obj_clear_flag(lock_body, LV_OBJ_FLAG_SCROLLABLE);
 
     settings_detail_create_label(card, ui_text_get(UI_TEXT_PASSWORD_LOGIN_TITLE),
-                                 &lv_font_montserrat_24, lv_color_hex(0x2D3440), 206, 134);
+                                 &lv_font_instrument_sans_medium_24, lv_color_hex(0x0D3440), 206, 134);
 
     password_field = lv_obj_create(card);
     lv_obj_remove_style_all(password_field);
@@ -212,12 +212,12 @@ static void password_create_login_card(lv_obj_t* parent)
 
     password_display = settings_detail_create_label(password_field,
                                                     ui_text_get(UI_TEXT_PASSWORD_PLACEHOLDER),
-                                                    &lv_font_montserrat_16,
-                                                    lv_color_hex(0x7686A5), 0, 0);
+                                                    &lv_font_instrument_sans_medium_16,
+                                                    lv_color_hex(0x5686A5), 0, 0);
     lv_obj_align(password_display, LV_ALIGN_BOTTOM_MID, 0, -6);
 
     password_error_label = settings_detail_create_label(card, "",
-                                                        &lv_font_montserrat_16,
+                                                        &lv_font_instrument_sans_medium_16,
                                                         lv_color_hex(0xC03A2B), 258, 252);
     lv_obj_add_flag(password_error_label, LV_OBJ_FLAG_HIDDEN);
 

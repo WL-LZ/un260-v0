@@ -53,7 +53,7 @@ static void password_setting_refresh_fields(void)
             lv_label_set_text(field_values[i],
                               len > 0 ? masked : ui_text_get(UI_TEXT_PASSWORD_PLACEHOLDER));
             lv_obj_set_style_text_color(field_values[i],
-                                        len > 0 ? lv_color_hex(0x2D3440) : lv_color_hex(0x9AA8B8),
+                                        len > 0 ? lv_color_hex(0x0D3440) : lv_color_hex(0x8AA8B8),
                                         0);
         }
     }
@@ -68,7 +68,7 @@ static void password_setting_show_toast(ui_text_id_t text_id, bool alarm)
     cfg.text = ui_text_get(text_id);
     cfg.show_loader = false;
     cfg.align_center = true;
-    cfg.text_font = &lv_font_montserrat_18;
+    cfg.text_font = &lv_font_instrument_sans_medium_18;
     cfg.loader_color = alarm ? lv_color_hex(0xC03A2B) : lv_color_hex(0x24B47E);
     cfg.auto_hide_ms = 1600;
     lv_print_toast_show_with_config(&cfg);
@@ -172,11 +172,11 @@ static void password_setting_create_field(lv_obj_t* parent, password_field_t fie
                         (void*)(uintptr_t)field);
 
     settings_detail_create_label(item, ui_text_get(field_titles[field]),
-                                 &lv_font_montserrat_16, lv_color_hex(0x2D3440), 22, 22);
+                                 &lv_font_instrument_sans_medium_16, lv_color_hex(0x0D3440), 22, 22);
     field_values[field] = settings_detail_create_label(item,
                                                        ui_text_get(UI_TEXT_PASSWORD_PLACEHOLDER),
-                                                       &lv_font_montserrat_16,
-                                                       lv_color_hex(0x9AA8B8), 430, 22);
+                                                       &lv_font_instrument_sans_medium_16,
+                                                       lv_color_hex(0x8AA8B8), 430, 22);
 
     field_cards[field] = item;
 }
@@ -197,7 +197,7 @@ void ui_page_29_set_password_create(lv_obj_t* parent)
 
     card = password_setting_create_card(content, 276, 18, 730, 306);
     settings_detail_create_label(card, ui_text_get(UI_TEXT_SETTINGS_PASSWORD),
-                                 &lv_font_montserrat_18, lv_color_hex(0x2D3440), 34, 20);
+                                 &lv_font_instrument_sans_medium_18, lv_color_hex(0x0D3440), 34, 20);
 
     accent = lv_obj_create(card);
     lv_obj_remove_style_all(accent);
