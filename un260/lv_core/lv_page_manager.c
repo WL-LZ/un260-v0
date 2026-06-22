@@ -313,6 +313,11 @@ bool ui_manager_pop_page(void)
     return true;
 }
 
+void ui_manager_clear_stack(void)
+{
+    top = -1;
+}
+
 
 // 读取当前页
 ui_page_t ui_manager_get_current_page(void) {

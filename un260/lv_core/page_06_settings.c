@@ -1223,7 +1223,8 @@ static void back_event_cb(lv_event_t* e)
     }
 
     page_06_reset_saved_navigation();
-    ui_manager_pop_page();
+    ui_manager_clear_stack();
+    ui_manager_switch(UI_PAGE_MAIN);
 }
 
 static void create_footer_button(lv_obj_t* parent, lv_coord_t x, lv_coord_t w,

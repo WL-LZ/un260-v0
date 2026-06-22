@@ -73,6 +73,7 @@ extern "C" {
     void ui_manager_switch(ui_page_t page);     //page切换
     void ui_manager_push_page(ui_page_t page);      //页面堆栈：进入新页面
     bool ui_manager_pop_page(void);         //页面堆栈：返回上一页
+    void ui_manager_clear_stack(void);      //清空页面堆栈
     ui_page_t ui_manager_get_current_page(void);   //获取当前页
     typedef struct {
         int count_value;
