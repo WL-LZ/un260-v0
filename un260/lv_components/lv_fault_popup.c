@@ -571,6 +571,36 @@ bool fault_popup_show_pending_now(void)
     return fault_popup_show_pending_internal();
 }
 
+bool fault_popup_get_pending_fault(fault_source_t* source, uint8_t* fault_type, uint8_t* code)
+{
+    if (!g_fault_pending.valid) {
+        return false;
+    }
+
+    if (fault_type) {
+        *fault_type = g_fault_pending.fault_type;
+    }
+    if (code) {
+        *code = g_fault_pending.code;
+    }
+
+    switch (g_fault_pending.type) {
+    case FAULT_PENDING_START_FAULT:
+        if (source) {
+            *source = FAULT_SRC_START_COUNT;
+        }
+        return true;
+    case FAULT_PENDING_RUNTIME_FAULT:
+        if (source) {
+            *source = FAULT_SRC_RUNTIME;
+        }
+        return true;
+    case FAULT_PENDING_NONE:
+    default:
+        return false;
+    }
+}
+
 bool fault_popup_has_pending_start_issue(void)
 {
     if (!g_fault_pending.valid) {

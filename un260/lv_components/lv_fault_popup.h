@@ -45,6 +45,7 @@ void fault_popup_report_start_fault(uint8_t type, uint8_t code);
 void fault_popup_report_start_no_note(void);
 void fault_popup_report_runtime_fault(uint8_t code);
 bool fault_popup_show_pending_now(void);
+bool fault_popup_get_pending_fault(fault_source_t* source, uint8_t* fault_type, uint8_t* code);
 void fault_popup_clear_pending(void);
 bool fault_popup_has_pending_start_issue(void);
 void fault_popup_auto_confirm_pending_if_needed(void);

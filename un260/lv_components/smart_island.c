@@ -30,6 +30,7 @@
 
 /* 功能页按钮 (旗舰拟物排版) */
 #define SMART_ISLAND_ACTION_PAGE_COUNT    4
+#define SMART_ISLAND_ACTION_PAGE_DEFAULT_COUNT 3
 #define SMART_ISLAND_ACTION_BTN_W         221 // 两侧留白 20px
 #define SMART_ISLAND_ACTION_BTN_H         54
 #define SMART_ISLAND_ACTION_BTN_X         20
@@ -131,7 +132,7 @@ static bool g_smart_island_anim_running = false;
 static bool g_smart_island_ignore_click_once = false;
 static bool g_smart_island_ignore_action_click_once = false;
 static bool g_smart_island_pure_count_enabled = false;
-static uint8_t g_smart_island_action_page_count = SMART_ISLAND_ACTION_PAGE_COUNT;
+static uint8_t g_smart_island_action_page_count = SMART_ISLAND_ACTION_PAGE_DEFAULT_COUNT;
 static uint8_t g_smart_island_action_page_index = 0;
 static int8_t g_smart_island_page_slide_dir = 0; // 0:默认 1:向左切页 -1:向右切页
 static uint32_t g_smart_island_bg_cur = SMART_ISLAND_BG_IDLE;
@@ -143,6 +144,12 @@ static struct {
     bool swiped;
     lv_point_t start_pt;
 } g_smart_island_swipe = { false, false, {0, 0} };
+static struct {
+    bool valid;
+    fault_source_t source;
+    uint8_t fault_type;
+    uint8_t code;
+} g_smart_island_warning_fault = { false, FAULT_SRC_START_COUNT, 0, 0 };
 
 /* 文本缓存 */
 static char g_smart_island_warning_text[64];
@@ -223,6 +230,9 @@ static void smart_island_action_btn_touch_anim_cb(lv_event_t *e);
 static void smart_island_action_btn_set_pressed_visual(lv_obj_t *btn, bool pressed);
 static void smart_island_action_btn_style_apply(uint8_t index);
 static void smart_island_time_click_cb(lv_event_t *e);
+static void smart_island_warning_fault_capture(void);
+static bool smart_island_warning_fault_show(void);
+static void smart_island_warning_fault_clear(void);
 
 static void smart_island_anim_w_cb(void *var, int32_t v) { lv_obj_set_width((lv_obj_t *)var, (lv_coord_t)v); }
 static void smart_island_anim_h_cb(void *var, int32_t v) { lv_obj_set_height((lv_obj_t *)var, (lv_coord_t)v); }
@@ -290,6 +300,51 @@ static void smart_island_action_btn_set_pressed_visual(lv_obj_t *btn, bool press
         lv_obj_set_style_text_opa(arrow, pressed ? LV_OPA_70 : LV_OPA_COVER, 0);
     }
 }
+
+static void smart_island_warning_fault_capture(void)
+{
+    fault_source_t source;
+    uint8_t fault_type;
+    uint8_t code;
+
+    if (fault_popup_get_pending_fault(&source, &fault_type, &code)) {
+        g_smart_island_warning_fault.valid = true;
+        g_smart_island_warning_fault.source = source;
+        g_smart_island_warning_fault.fault_type = fault_type;
+        g_smart_island_warning_fault.code = code;
+    } else {
+        smart_island_warning_fault_clear();
+    }
+}
+
+static bool smart_island_warning_fault_show(void)
+{
+    if (!g_smart_island_warning_fault.valid) {
+        return false;
+    }
+
+    switch (g_smart_island_warning_fault.source) {
+    case FAULT_SRC_START_COUNT:
+        show_start_fault_popup(g_smart_island_warning_fault.fault_type,
+                               g_smart_island_warning_fault.code);
+        return true;
+    case FAULT_SRC_RUNTIME:
+        show_runtime_fault_popup(g_smart_island_warning_fault.code);
+        return true;
+    case FAULT_SRC_BOOT:
+    default:
+        return false;
+    }
+}
+
+static void smart_island_warning_fault_clear(void)
+{
+    g_smart_island_warning_fault.valid = false;
+    g_smart_island_warning_fault.source = FAULT_SRC_START_COUNT;
+    g_smart_island_warning_fault.fault_type = 0;
+    g_smart_island_warning_fault.code = 0;
+}
+
 static void smart_island_anim_bg_color_cb(void *var, int32_t v)
 {
     lv_color_t from_c;
@@ -833,7 +888,7 @@ static void smart_island_click_cb(lv_event_t *e)
             g_smart_island_ignore_click_once = false;
             return;
         }
-        if (fault_popup_show_pending_now()) {
+        if (fault_popup_show_pending_now() || smart_island_warning_fault_show()) {
             smart_island_warning_marquee_stop();
         }
         return;
@@ -2100,12 +2155,12 @@ bool smart_island_action_page_set_item(uint8_t index, uint8_t action_id, const c
 static void smart_island_action_btn_create(void) 
 {
     static const uint8_t default_ids[SMART_ISLAND_ACTION_PAGE_COUNT] = {
-        SMART_ISLAND_ACTION_FUNC4, SMART_ISLAND_ACTION_QR,
-        SMART_ISLAND_ACTION_FUNC3, SMART_ISLAND_ACTION_TIME_SETTING
+        SMART_ISLAND_ACTION_FUNC4, SMART_ISLAND_ACTION_FUNC3,
+        SMART_ISLAND_ACTION_TIME_SETTING, SMART_ISLAND_ACTION_QR
     };
     static const ui_text_id_t default_text_ids[SMART_ISLAND_ACTION_PAGE_COUNT] = {
-        UI_TEXT_WIDGET_SMART_ISLAND_ACTION_FUNC4, UI_TEXT_WIDGET_SMART_ISLAND_ACTION_QR,
-        UI_TEXT_WIDGET_SMART_ISLAND_ACTION_FUNC3, UI_TEXT_WIDGET_SMART_ISLAND_ACTION_TIME
+        UI_TEXT_WIDGET_SMART_ISLAND_ACTION_FUNC4, UI_TEXT_WIDGET_SMART_ISLAND_ACTION_FUNC3,
+        UI_TEXT_WIDGET_SMART_ISLAND_ACTION_TIME, UI_TEXT_WIDGET_SMART_ISLAND_ACTION_QR
     };
     lv_obj_t *btn = NULL, *label = NULL, *arrow = NULL;
 
@@ -2152,7 +2207,7 @@ static void smart_island_action_btn_create(void)
         g_smart_island_action_texts[i][0] = '\0';
     }
 
-    smart_island_action_page_set_count(SMART_ISLAND_ACTION_PAGE_COUNT);
+    smart_island_action_page_set_count(SMART_ISLAND_ACTION_PAGE_DEFAULT_COUNT);
     smart_island_action_page_refresh_language_texts();
     smart_island_action_page_set_index(0U, false);
 }
@@ -2397,6 +2452,7 @@ void smart_island_destroy(void)
     g_smart_island_swipe.swiped = false;
     g_smart_island_swipe.start_pt.x = 0;
     g_smart_island_swipe.start_pt.y = 0;
+    smart_island_warning_fault_clear();
     g_smart_island_bg_cur = SMART_ISLAND_BG_IDLE;
     g_smart_island_bg_from = SMART_ISLAND_BG_IDLE;
     g_smart_island_bg_to = SMART_ISLAND_BG_IDLE;
@@ -2480,6 +2536,7 @@ void smart_island_notify_count_start(void)
         g_smart_island_count_session_active = true;
     }
     g_smart_island_warning_level = SMART_ISLAND_WARNING_LEVEL_WARNING;
+    smart_island_warning_fault_clear();
     smart_island_warning_marquee_stop();
     g_smart_island_result_text[0] = '\0';
     smart_island_set_scene(SMART_ISLAND_SCENE_COUNTING, NULL, NULL);
@@ -2525,6 +2582,7 @@ void smart_island_notify_warning_level(const char *warn_text, smart_island_warni
     }
 
     g_smart_island_warning_level = level;
+    smart_island_warning_fault_capture();
 
     lv_snprintf(g_smart_island_warning_text, sizeof(g_smart_island_warning_text), "%s",
         next_warning_text);
@@ -2578,6 +2636,7 @@ void smart_island_restore_idle(void)
     g_smart_island_count_session_active = false;
     smart_island_warning_marquee_stop();
     g_smart_island_warning_level = SMART_ISLAND_WARNING_LEVEL_WARNING;
+    smart_island_warning_fault_clear();
     if (g_smart_island_progress && lv_obj_is_valid(g_smart_island_progress)) {
         lv_obj_add_flag(g_smart_island_progress, LV_OBJ_FLAG_HIDDEN);
         lv_bar_set_value(g_smart_island_progress, 0, LV_ANIM_OFF);
