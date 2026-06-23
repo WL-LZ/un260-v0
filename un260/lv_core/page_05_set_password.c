@@ -130,6 +130,7 @@ static void password_create_login_card(lv_obj_t* parent)
     lv_obj_t* lock_body;
     lv_obj_t* lock_hook;
     lv_obj_t* pin_box;
+    lv_obj_t* password_hit_area;
 
     lv_obj_set_style_shadow_width(card, 22, 0);
     lv_obj_set_style_shadow_opa(card, LV_OPA_20, 0);
@@ -215,6 +216,16 @@ static void password_create_login_card(lv_obj_t* parent)
                                                     &lv_font_instrument_sans_medium_16,
                                                     lv_color_hex(0x5686A5), 0, 0);
     lv_obj_align(password_display, LV_ALIGN_BOTTOM_MID, 0, -6);
+
+    password_hit_area = lv_obj_create(password_field);
+    lv_obj_remove_style_all(password_hit_area);
+    lv_obj_set_pos(password_hit_area, 0, 0);
+    lv_obj_set_size(password_hit_area, lv_pct(100), lv_pct(100));
+    lv_obj_set_style_bg_opa(password_hit_area, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(password_hit_area, 0, 0);
+    lv_obj_add_flag(password_hit_area, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(password_hit_area, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_event_cb(password_hit_area, password_field_cb, LV_EVENT_CLICKED, NULL);
 
     password_error_label = settings_detail_create_label(card, "",
                                                         &lv_font_instrument_sans_medium_16,
