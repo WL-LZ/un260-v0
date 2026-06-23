@@ -81,6 +81,7 @@ static uint8_t g_boot_selftest_first_error_type = 0;
 static uint8_t g_boot_selftest_first_error_result = 0;
 static bool g_count_session_active = false;
 static bool g_wait_start_ack_for_next_session = false;
+static bool g_count_end_anim_wait_detail_end = false;
 static bool g_last_result_pending_valid = false;
 static int g_last_result_pending_pcs = 0;
 static float g_last_result_pending_amount = 0.0f;
@@ -680,6 +681,7 @@ static void boot_selftest_finish_cb(lv_timer_t* timer)
     sim_data_init();                 // 自检结束后初始化一次 sim
     g_count_session_active = false;
     g_wait_start_ack_for_next_session = false;
+    g_count_end_anim_wait_detail_end = false;
     g_last_result_pending_valid = false;
     pure_count_enabled = ui_state_pure_count_is_enabled();
     ui_manager_switch(pure_count_enabled ? UI_PAGE_PURE : UI_PAGE_MAIN); // 按掉电记忆恢复页面
@@ -819,6 +821,7 @@ void PCCmdHandle(void)
                 uart_printf(fd6, "Count finished\n");
                 g_count_session_active = false;
                 g_wait_start_ack_for_next_session = true;
+                g_count_end_anim_wait_detail_end = true;
                 g_last_result_pending_valid = true;
                 history_session_append_line("0x0E", buf, len);
                 frame_to_hex_str(buf, len, g_history_last_end_frame_text,
@@ -866,6 +869,7 @@ void PCCmdHandle(void)
             {
                 page_07_curr_set_pending_result(status);
                 uart_printf(fd6, "Set %s curr success\n", Machine_para.curr_code);
+                g_count_end_anim_wait_detail_end = false;
                 trigger_denom_query();
                 smart_island_refresh_summary();
             }
@@ -1069,6 +1073,7 @@ void PCCmdHandle(void)
                     fault_popup_clear_pending();
                     fault_popup_reset_auto_retry();
                     g_wait_start_ack_for_next_session = false;
+                    g_count_end_anim_wait_detail_end = false;
                     g_history_last_error_frame_text[0] = '\0';
                     g_history_last_start_frame_text[0] = '\0';
                     g_history_last_end_frame_text[0] = '\0';
@@ -1343,7 +1348,10 @@ void PCCmdHandle(void)
                     ui_refresh_main_page();
                 }
                 /* 详情页这次刷新完成后，再放行点钞结束动画 */
-                ui_count_end_anim_begin(NULL);
+                if (g_count_end_anim_wait_detail_end) {
+                    g_count_end_anim_wait_detail_end = false;
+                    ui_count_end_anim_begin(NULL);
+                }
                 break;
             }
 
@@ -1685,6 +1693,7 @@ void PCCmdHandle(void)
                     Machine_para.add_enable = target;
                     page_01_bottom_a_refresh_add(true);
                 }
+                page_03_update_menu_button_states_refresh();
                 uart_printf(fd6, "ADD set success\n");
                 smart_island_refresh_summary();
             } else if (sub == 0x01) { 
@@ -1726,15 +1735,27 @@ void PCCmdHandle(void)
             uint8_t sub = buf[4];
 
             if (sub == 0x01) {
+                if (page_03_beep_req_is_pending()) {
+                    bool target = false;
+                    page_03_beep_req_finish(true, &target);
+                    Machine_para.buzzer_enable = target;
+                }
                 uart_printf(fd6, "BEEP set success\n");
+                page_03_update_menu_button_states_refresh();
             } else if (sub == 0x02) {
                 uart_printf(fd6, "BEEP set failed\n");
-                Machine_para.buzzer_enable = !Machine_para.buzzer_enable;
+                if (page_03_beep_req_is_pending()) {
+                    page_03_beep_req_finish(false, NULL);
+                }
+                show_start_fault_popup(0x02, 0x06);
                 page_03_update_menu_button_states_refresh();
             } else if (sub == 0x03) {
                 if (len < 7) break;
                 uint8_t v = buf[5];
                 Machine_para.buzzer_enable = (v == 0x01);
+                if (page_03_beep_req_is_pending()) {
+                    page_03_beep_req_finish(false, NULL);
+                }
                 uart_printf(fd6, "BEEP boot status: %s\n", Machine_para.buzzer_enable ? "ON" : "OFF");
                 page_03_update_menu_button_states_refresh();
             }
@@ -1751,9 +1772,11 @@ void PCCmdHandle(void)
             if (type >= 0x01 && type <= 0x03) {
                 if (res == 0x01) {
                     uint8_t target_speed = (uint8_t)(0x03 - type);
-                    if (page_01_speed_req_is_pending()) {
-                        page_01_speed_req_finish(true, &target_speed);
+                    if (!page_01_speed_req_is_pending()) {
+                        uart_printf(fd6, "SPEED set SUCCESS ignored: no pending request\n");
+                        break;
                     }
+                    page_01_speed_req_finish(true, &target_speed);
                     Machine_para.speed = target_speed;
                     page_03_update_menu_button_states_refresh();
                     page_01_bottom_c_refresh_speed(true);
@@ -1816,15 +1839,15 @@ void PCCmdHandle(void)
             }
             if (type <= 0x03) {
                 if (val == 0x01) {
-                    if (page_01_fo_req_is_pending()) {
-                        uint8_t target_mode = 0;
-                        page_01_fo_req_finish(true, &target_mode);
-                        Machine_para.fo_mode = target_mode;
-                        page_01_bottom_a_refresh_fo(true);
-                    } else {
-                        Machine_para.fo_mode = type;
-                        page_01_bottom_a_refresh_fo(false);
+                    uint8_t target_mode = 0;
+                    if (!page_01_fo_req_is_pending()) {
+                        uart_printf(fd6, "FO set SUCCESS ignored: no pending request\n");
+                        break;
                     }
+                    page_01_fo_req_finish(true, &target_mode);
+                    Machine_para.fo_mode = target_mode;
+                    page_01_bottom_a_refresh_fo(true);
+                    page_03_update_menu_button_states_refresh();
                     uart_printf(fd6, "FO set SUCCESS: type=0x%02X -> ui=%u\n",
                                 type, Machine_para.fo_mode);
                     smart_island_refresh_summary();
@@ -1889,28 +1912,26 @@ void PCCmdHandle(void)
 
             uint8_t res = buf[4];
             if (res == 0x00) {
-                if (page_01_work_req_is_pending()) {
-                    uint8_t target_mode = 0;
-                    page_01_work_req_finish(true, &target_mode);
-                    Machine_para.work_mode = target_mode;
-                    page_01_bottom_a_refresh_work(true);
-                } else {
-                    Machine_para.work_mode = 1;
-                    page_01_bottom_a_refresh_work(false);
+                uint8_t target_mode = 0;
+                if (!page_01_work_req_is_pending()) {
+                    uart_printf(fd6, "0x38 MANUAL OK ignored: no pending request\n");
+                    break;
                 }
+                page_01_work_req_finish(true, &target_mode);
+                Machine_para.work_mode = target_mode;
+                page_01_bottom_a_refresh_work(true);
                 page_03_update_menu_button_states_refresh();
                 uart_printf(fd6, "0x38 MANUAL OK\n");
                 smart_island_refresh_summary();
             } else if (res == 0x01) {
-                if (page_01_work_req_is_pending()) {
-                    uint8_t target_mode = 0;
-                    page_01_work_req_finish(true, &target_mode);
-                    Machine_para.work_mode = target_mode;
-                    page_01_bottom_a_refresh_work(true);
-                } else {
-                    Machine_para.work_mode = 0;
-                    page_01_bottom_a_refresh_work(false);
+                uint8_t target_mode = 0;
+                if (!page_01_work_req_is_pending()) {
+                    uart_printf(fd6, "0x38 AUTO OK ignored: no pending request\n");
+                    break;
                 }
+                page_01_work_req_finish(true, &target_mode);
+                Machine_para.work_mode = target_mode;
+                page_01_bottom_a_refresh_work(true);
                 page_03_update_menu_button_states_refresh();
                 uart_printf(fd6, "0x38 AUTO OK\n");
                 smart_island_refresh_summary();
@@ -1920,6 +1941,7 @@ void PCCmdHandle(void)
                 }
                 uart_printf(fd6, "0x38 RES=0x%02X\n", res);
                 show_start_fault_popup(0x02, 0x06);
+                page_03_update_menu_button_states_refresh();
             }
                 break;
             }
@@ -2283,6 +2305,7 @@ int main(void) {
                                 (ui_tv_end.tv_usec - ui_tv_start.tv_usec));
         perf_stats_report_ui_time_us(ui_time_us);
         PCCmdHandle();
+        page_setting_req_poll();
         ui_count_end_anim_poll();
         ui_upgrade_popup_poll(now);
 

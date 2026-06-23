@@ -12,8 +12,7 @@
 #define UPGRADE_POPUP_CARD_COLOR          0xFFFFFF
 #define UPGRADE_POPUP_TEXT_MAIN_COLOR     0x111111
 #define UPGRADE_POPUP_TEXT_DESC_COLOR     0x466666
-#define UPGRADE_POPUP_PROMPT_TITLE_COLOR  0x050505
-#define UPGRADE_POPUP_PROMPT_DESC_COLOR   0x263333
+#define UPGRADE_POPUP_TAG_COLOR           0x000000
 #define UPGRADE_POPUP_TEXT_LIGHT_COLOR    0x8AAAAA
 #define UPGRADE_POPUP_BORDER_COLOR        0xEFEFF1
 #define UPGRADE_POPUP_BTN_GHOST_COLOR     0xF3F4F6
@@ -497,15 +496,15 @@ static void upgrade_popup_create_prompt_card(void)
     g_upgrade_popup.prompt_tag = lv_label_create(g_upgrade_popup.prompt_title_group);
     lv_label_set_text(g_upgrade_popup.prompt_tag, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_TAG));
     upgrade_popup_apply_text_style(g_upgrade_popup.prompt_tag,
-                                   lv_color_hex(UPGRADE_POPUP_TEXT_LIGHT_COLOR),
+                                   lv_color_hex(UPGRADE_POPUP_TAG_COLOR),
                                    &lv_font_instrument_sans_medium_10);
     lv_obj_set_pos(g_upgrade_popup.prompt_tag, 0, 0);
 
     g_upgrade_popup.prompt_title = lv_label_create(g_upgrade_popup.prompt_title_group);
     lv_label_set_text(g_upgrade_popup.prompt_title, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_PROMPT_TITLE));
     upgrade_popup_apply_text_style(g_upgrade_popup.prompt_title,
-                                   lv_color_hex(UPGRADE_POPUP_PROMPT_TITLE_COLOR),
-                                   &lv_font_instrument_sans_bold_18);
+                                   lv_color_hex(UPGRADE_POPUP_TEXT_MAIN_COLOR),
+                                   &lv_font_instrument_sans_medium_18);
     lv_obj_set_pos(g_upgrade_popup.prompt_title, 0, 22);
 
     g_upgrade_popup.prompt_content_group = lv_obj_create(g_upgrade_popup.prompt_card);
@@ -519,7 +518,7 @@ static void upgrade_popup_create_prompt_card(void)
     lv_label_set_text(g_upgrade_popup.prompt_desc,
                       ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_PROMPT_DESC));
     upgrade_popup_apply_text_style(g_upgrade_popup.prompt_desc,
-                                   lv_color_hex(UPGRADE_POPUP_PROMPT_DESC_COLOR),
+                                   lv_color_hex(UPGRADE_POPUP_TEXT_DESC_COLOR),
                                    &lv_font_instrument_sans_medium_14);
     lv_obj_set_pos(g_upgrade_popup.prompt_desc, 100, 0);
 
@@ -566,7 +565,7 @@ static void upgrade_popup_create_progress_card(void)
     g_upgrade_popup.progress_tag = lv_label_create(g_upgrade_popup.progress_title_group);
     lv_label_set_text(g_upgrade_popup.progress_tag, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_TAG));
     upgrade_popup_apply_text_style(g_upgrade_popup.progress_tag,
-                                   lv_color_hex(UPGRADE_POPUP_TEXT_LIGHT_COLOR),
+                                   lv_color_hex(UPGRADE_POPUP_TAG_COLOR),
                                    &lv_font_instrument_sans_medium_10);
     lv_obj_set_style_text_align(g_upgrade_popup.progress_tag, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_set_width(g_upgrade_popup.progress_tag, 300);
@@ -655,7 +654,7 @@ static void upgrade_popup_create_success_card(void)
     g_upgrade_popup.success_tag = lv_label_create(g_upgrade_popup.success_title_group);
     lv_label_set_text(g_upgrade_popup.success_tag, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_TAG));
     upgrade_popup_apply_text_style(g_upgrade_popup.success_tag,
-                                   lv_color_hex(UPGRADE_POPUP_TEXT_LIGHT_COLOR),
+                                   lv_color_hex(UPGRADE_POPUP_TAG_COLOR),
                                    &lv_font_instrument_sans_medium_10);
     lv_obj_set_style_text_align(g_upgrade_popup.success_tag, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_set_width(g_upgrade_popup.success_tag, 260);
@@ -665,7 +664,7 @@ static void upgrade_popup_create_success_card(void)
     lv_label_set_text(g_upgrade_popup.success_title, ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_SUCCESS_TITLE));
     upgrade_popup_apply_text_style(g_upgrade_popup.success_title,
                                    lv_color_hex(UPGRADE_POPUP_TEXT_MAIN_COLOR),
-                                   &lv_font_instrument_sans_semibold_18);
+                                   &lv_font_instrument_sans_medium_18);
     lv_obj_set_style_text_align(g_upgrade_popup.success_title, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_set_width(g_upgrade_popup.success_title, 260);
     lv_obj_set_pos(g_upgrade_popup.success_title, 0, 18);

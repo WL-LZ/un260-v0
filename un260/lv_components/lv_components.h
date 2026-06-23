@@ -32,4 +32,6 @@ void show_batch_set_fail_popup(void);
 void hide_batch_set_fail_popup(void);
 void show_currency_set_fail_popup(void);
 void hide_currency_set_fail_popup(void);
+void show_communication_error_popup(void);
+void hide_communication_error_popup(void);
 #endif // !LV_COMPONENTS_H

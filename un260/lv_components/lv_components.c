@@ -35,6 +35,8 @@ static lv_obj_t* g_batch_set_fail_mask = NULL;
 static lv_obj_t* g_batch_set_fail_popup = NULL;
 static lv_obj_t* g_curr_set_fail_mask = NULL;
 static lv_obj_t* g_curr_set_fail_popup = NULL;
+static lv_obj_t* g_comm_err_mask = NULL;
+static lv_obj_t* g_comm_err_popup = NULL;
 
 void hide_boot_selftest_error_popup(void)
 {
@@ -137,6 +139,19 @@ void hide_currency_set_fail_popup(void)
     g_curr_set_fail_mask = NULL;
 }
 
+void hide_communication_error_popup(void)
+{
+    if (g_comm_err_popup && lv_obj_is_valid(g_comm_err_popup)) {
+        lv_obj_del(g_comm_err_popup);
+    }
+    g_comm_err_popup = NULL;
+
+    if (g_comm_err_mask && lv_obj_is_valid(g_comm_err_mask)) {
+        lv_obj_del(g_comm_err_mask);
+    }
+    g_comm_err_mask = NULL;
+}
+
 static void currency_set_fail_confirm_cb(lv_event_t* e)
 {
     if ((lv_event_code_t)lv_event_get_code(e) != LV_EVENT_CLICKED) return;
@@ -148,6 +163,64 @@ static void batch_set_fail_confirm_cb(lv_event_t* e)
 {
     if ((lv_event_code_t)lv_event_get_code(e) != LV_EVENT_CLICKED) return;
     hide_batch_set_fail_popup();
+}
+
+static void communication_error_confirm_cb(lv_event_t* e)
+{
+    if ((lv_event_code_t)lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+    hide_communication_error_popup();
+}
+
+void show_communication_error_popup(void)
+{
+    if (g_comm_err_popup && lv_obj_is_valid(g_comm_err_popup)) {
+        return;
+    }
+
+    lv_obj_t* scr = lv_scr_act();
+    g_comm_err_mask = lv_obj_create(scr);
+    lv_obj_remove_style_all(g_comm_err_mask);
+    lv_obj_set_size(g_comm_err_mask, 1280, 400);
+    lv_obj_set_style_bg_opa(g_comm_err_mask, LV_OPA_40, 0);
+    lv_obj_set_style_bg_color(g_comm_err_mask, lv_color_hex(0x000000), 0);
+
+    g_comm_err_popup = lv_obj_create(scr);
+    lv_obj_set_size(g_comm_err_popup, 740, 260);
+    lv_obj_center(g_comm_err_popup);
+    lv_obj_clear_flag(g_comm_err_popup, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_radius(g_comm_err_popup, 24, 0);
+    lv_obj_set_style_bg_color(g_comm_err_popup, lv_color_hex(0xF4F7FB), 0);
+    lv_obj_set_style_border_width(g_comm_err_popup, 2, 0);
+    lv_obj_set_style_border_color(g_comm_err_popup, lv_color_hex(0xD7DEE8), 0);
+
+    lv_obj_t* title = lv_label_create(g_comm_err_popup);
+    lv_label_set_text(title, "COMMUNICATION ERROR");
+    lv_obj_set_style_text_font(title, &lv_font_instrument_sans_semibold_28, 0);
+    lv_obj_set_style_text_color(title, lv_color_hex(0x2D3A4A), 0);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 22);
+
+    lv_obj_t* info = lv_label_create(g_comm_err_popup);
+    lv_label_set_text(info, "Communication may be abnormal. Please check the UI and controller connection.");
+    lv_obj_set_width(info, 660);
+    lv_label_set_long_mode(info, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_align(info, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_font(info, &lv_font_instrument_sans_medium_20, 0);
+    lv_obj_set_style_text_color(info, lv_color_hex(0x3C4D61), 0);
+    lv_obj_align(info, LV_ALIGN_TOP_MID, 0, 84);
+
+    lv_obj_t* ok_btn = lv_btn_create(g_comm_err_popup);
+    lv_obj_set_size(ok_btn, 180, 58);
+    lv_obj_align(ok_btn, LV_ALIGN_BOTTOM_MID, 0, -20);
+    lv_obj_set_style_radius(ok_btn, 16, 0);
+    lv_obj_set_style_bg_color(ok_btn, lv_color_hex(0x1B86FF), 0);
+    lv_obj_set_style_bg_opa(ok_btn, LV_OPA_COVER, 0);
+    lv_obj_add_event_cb(ok_btn, communication_error_confirm_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t* ok_label = lv_label_create(ok_btn);
+    lv_label_set_text(ok_label, "CONFIRM");
+    lv_obj_set_style_text_font(ok_label, &lv_font_instrument_sans_bold_22, 0);
+    lv_obj_set_style_text_color(ok_label, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_center(ok_label);
 }
 
 void show_batch_set_fail_popup(void)

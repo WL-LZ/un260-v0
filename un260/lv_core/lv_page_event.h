@@ -60,6 +60,9 @@ bool page_01_add_req_is_pending(void);
 bool page_01_work_req_is_pending(void);
 bool page_01_fo_req_is_pending(void);
 bool page_01_speed_req_is_pending(void);
+bool page_03_beep_req_is_pending(void);
+void page_03_beep_req_finish(bool success, bool* target);
+void page_setting_req_poll(void);
 
 void page_01_set_btn_event_cb(lv_event_t* e);
 void page_01_curr_btn_event_cb(lv_event_t* e);

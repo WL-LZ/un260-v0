@@ -690,7 +690,7 @@ static void settings_keyboard_create_number_keys(lv_obj_t* parent)
                                  "BACK", lv_color_hex(0xF8F9FB));
     settings_keyboard_create_action(parent, 706, 151, 190, 39, LV_SYMBOL_OK,
                                     detail_primary(), settings_keyboard_commit_cb);
-    settings_keyboard_create_action(parent, 934, 151, 190, 39, "< back",
+    settings_keyboard_create_action(parent, 934, 151, 190, 39, "< BACK",
                                     lv_color_hex(0x8792A8), settings_keyboard_cancel_cb);
 }
 
@@ -734,7 +734,7 @@ static void settings_keyboard_create_text_keys(lv_obj_t* parent)
                                  "BACK", lv_color_hex(0xF8F9FB));
     settings_keyboard_create_action(parent, 706, 158, 190, 34, LV_SYMBOL_OK,
                                     detail_primary(), settings_keyboard_commit_cb);
-    settings_keyboard_create_action(parent, 934, 158, 190, 34, "< back",
+    settings_keyboard_create_action(parent, 934, 158, 190, 34, "< BACK",
                                     lv_color_hex(0x8792A8), settings_keyboard_cancel_cb);
 }
 
