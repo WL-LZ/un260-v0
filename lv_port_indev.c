@@ -39,6 +39,8 @@ int evdev_root_y;
 int evdev_button;
 
 int evdev_key_val;
+static bool evdev_press_cancelled;
+static lv_obj_t *evdev_pressed_obj;
 
 /**********************
  *      MACROS
@@ -47,6 +49,40 @@ int evdev_key_val;
 /**********************
  *   GLOBAL FUNCTIONS
  **********************/
+
+static void evdev_feedback(lv_indev_drv_t *drv, uint8_t event_code)
+{
+    lv_indev_t *indev = lv_indev_get_act();
+
+    LV_UNUSED(drv);
+    if(indev == NULL || lv_indev_get_type(indev) != LV_INDEV_TYPE_POINTER)
+        return;
+
+    if(event_code == LV_EVENT_PRESSED) {
+        evdev_pressed_obj = lv_indev_get_obj_act();
+        if(evdev_pressed_obj != NULL &&
+           !lv_obj_has_flag(evdev_pressed_obj, LV_OBJ_FLAG_USER_4))
+            lv_obj_clear_flag(evdev_pressed_obj, LV_OBJ_FLAG_PRESS_LOCK);
+    } else if(event_code == LV_EVENT_PRESS_LOST && evdev_pressed_obj != NULL) {
+        // 滑出后取消本次按压，松手前不转移到其他对象
+        evdev_press_cancelled = true;
+        lv_indev_reset(indev, evdev_pressed_obj);
+        evdev_pressed_obj = NULL;
+    } else if(event_code == LV_EVENT_RELEASED) {
+        evdev_pressed_obj = NULL;
+    }
+}
+
+void lv_port_indev_set_drag_obj(lv_obj_t *obj, bool enable)
+{
+    if(obj == NULL)
+        return;
+
+    if(enable)
+        lv_obj_add_flag(obj, LV_OBJ_FLAG_USER_4);
+    else
+        lv_obj_clear_flag(obj, LV_OBJ_FLAG_USER_4);
+}
 
 /**
  * Initialize the evdev interface
@@ -100,6 +136,8 @@ bool evdev_set_file(char* dev_name)
      evdev_root_y = 0;
      evdev_key_val = 0;
      evdev_button = LV_INDEV_STATE_REL;
+     evdev_press_cancelled = false;
+     evdev_pressed_obj = NULL;
 
      return true;
 }
@@ -152,16 +190,20 @@ void evdev_read(lv_indev_drv_t * drv, lv_indev_data_t * data)
                                         evdev_root_y = in.value;
                                 #endif
             else if(in.code == ABS_MT_TRACKING_ID) {
-                                if(in.value == -1)
+                                if(in.value == -1) {
                                     evdev_button = LV_INDEV_STATE_REL;
-                                else if(in.value == 0)
+                                    evdev_press_cancelled = false;
+                                    evdev_pressed_obj = NULL;
+                                } else if(in.value == 0)
                                     evdev_button = LV_INDEV_STATE_PR;
             }
         } else if(in.type == EV_KEY) {
             if(in.code == BTN_MOUSE || in.code == BTN_TOUCH) {
-                if(in.value == 0)
+                if(in.value == 0) {
                     evdev_button = LV_INDEV_STATE_REL;
-                else if(in.value == 1)
+                    evdev_press_cancelled = false;
+                    evdev_pressed_obj = NULL;
+                } else if(in.value == 1)
                     evdev_button = LV_INDEV_STATE_PR;
             } else if(drv->type == LV_INDEV_TYPE_KEYPAD) {
 #if USE_XKB
@@ -230,9 +272,11 @@ void evdev_read(lv_indev_drv_t * drv, lv_indev_data_t * data)
             evdev_root_y = samp.y;
         #endif
 
-        if(samp.pressure == 0)
+        if(samp.pressure == 0) {
             evdev_button = LV_INDEV_STATE_REL;
-        else
+            evdev_press_cancelled = false;
+            evdev_pressed_obj = NULL;
+        } else
             evdev_button = LV_INDEV_STATE_PR;
     }
 
@@ -247,7 +291,13 @@ void evdev_read(lv_indev_drv_t * drv, lv_indev_data_t * data)
     data->point.y = evdev_root_y;
 #endif
 
-    data->state = evdev_button;
+    if(evdev_press_cancelled) {
+        data->state = LV_INDEV_STATE_REL;
+        if(evdev_button == LV_INDEV_STATE_REL)
+            evdev_press_cancelled = false;
+    } else {
+        data->state = evdev_button;
+    }
 
     if(data->point.x < 0)
       data->point.x = 0;
@@ -279,6 +329,7 @@ void lv_port_indev_init(void)
     lv_indev_drv_init(&indev_drv);
     indev_drv.type = LV_INDEV_TYPE_POINTER;
     indev_drv.read_cb = evdev_read;
+    indev_drv.feedback_cb = evdev_feedback;
 
     /* Register the driver in LVGL and save the created input device object */
     lv_indev_drv_register(&indev_drv);

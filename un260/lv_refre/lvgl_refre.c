@@ -16,6 +16,7 @@
 #include "un260/lv_components/lv_fault_popup.h"
 #include "un260/lv_components/smart_island.h"
 #include "un260/lv_resources/lv_img_init.h"
+#include "lv_port_indev.h"
 #include <errno.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -2489,6 +2490,7 @@ static void curr_build_card_layer(void)
         lv_obj_set_scrollbar_mode(g_curr_cards[i].card, LV_SCROLLBAR_MODE_OFF);
         lv_obj_clear_flag(g_curr_cards[i].card, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_add_flag(g_curr_cards[i].card, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_EVENT_BUBBLE);
+        lv_port_indev_set_drag_obj(g_curr_cards[i].card, true);
         lv_obj_add_event_cb(g_curr_cards[i].card, curr_card_click_cb, LV_EVENT_CLICKED, (void*)(intptr_t)i);
         lv_obj_add_event_cb(g_curr_cards[i].card, curr_right_drag_cb, LV_EVENT_PRESSED, NULL);
         lv_obj_add_event_cb(g_curr_cards[i].card, curr_right_drag_cb, LV_EVENT_PRESSING, NULL);
