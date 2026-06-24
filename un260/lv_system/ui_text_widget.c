@@ -120,6 +120,12 @@ static const ui_text_item_t g_ui_text_widget_group[UI_TEXT_MAX - UI_TEXT_WIDGET_
     [UI_TEXT_WIDGET_SMART_ISLAND_SWIPE_ACTIONS - UI_TEXT_WIDGET_BASE] = {"Swipe for actions", "滑动查看功能", "밀어서 기능 보기"},
     [UI_TEXT_WIDGET_SMART_ISLAND_SETTINGS_SAVED - UI_TEXT_WIDGET_BASE] = {"Settings saved", "设置已保存", "설정 저장됨"},
 
+    //截屏功能
+    [UI_TEXT_WIDGET_SCREENSHOT_LABEL - UI_TEXT_WIDGET_BASE] = {"SCREENSHOT", "截屏", "스크린샷"},
+    [UI_TEXT_WIDGET_SCREENSHOT_SAVED - UI_TEXT_WIDGET_BASE] = {"Screenshot saved to USB", "截屏已保存到U盘", "스크린샷이 USB에 저장되었습니다"},
+    [UI_TEXT_WIDGET_SCREENSHOT_INSERT_USB - UI_TEXT_WIDGET_BASE] = {"Please insert USB drive", "请插入U盘", "USB를 삽입해 주세요"},
+    [UI_TEXT_WIDGET_SCREENSHOT_SAVE_FAILED - UI_TEXT_WIDGET_BASE] = {"Screenshot save failed", "截屏保存失败", "스크린샷 저장 실패"},
+
     //pure页面
     [UI_TEXT_WIDGET_PURE_AMOUNT - UI_TEXT_WIDGET_BASE] = {"A M O U N T", "金 额", "금 액"},
     [UI_TEXT_WIDGET_PURE_PCS - UI_TEXT_WIDGET_BASE] = {"P C S", "张 数", "매 수"},

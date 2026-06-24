@@ -17,6 +17,8 @@
 #include <linux/dma-buf.h>
 #include <linux/dma-heap.h>
 #include <errno.h>
+#include <stdint.h>
+#include <string.h>
 #include "lv_fbdev.h"
 #include "mpp_ge.h"
 #include "lvgl/lvgl.h"
@@ -171,6 +173,149 @@ int fbdev_get_bpp(void)
 int fbdev_get_pitch(void)
 {
     return finfo.line_length;
+}
+
+static int bmp_write_u16(FILE *fp, uint16_t value)
+{
+    uint8_t data[2] = {
+        (uint8_t)(value & 0xffU),
+        (uint8_t)((value >> 8) & 0xffU)
+    };
+
+    return fwrite(data, 1, sizeof(data), fp) == sizeof(data) ? 0 : -1;
+}
+
+static int bmp_write_u32(FILE *fp, uint32_t value)
+{
+    uint8_t data[4] = {
+        (uint8_t)(value & 0xffU),
+        (uint8_t)((value >> 8) & 0xffU),
+        (uint8_t)((value >> 16) & 0xffU),
+        (uint8_t)((value >> 24) & 0xffU)
+    };
+
+    return fwrite(data, 1, sizeof(data), fp) == sizeof(data) ? 0 : -1;
+}
+
+static uint8_t fbdev_component_to_u8(uint32_t pixel, struct fb_bitfield field)
+{
+    uint32_t value;
+    uint32_t max_value;
+
+    if (field.length == 0U) {
+        return 0U;
+    }
+
+    value = (pixel >> field.offset) & ((1U << field.length) - 1U);
+    max_value = (1U << field.length) - 1U;
+    return (uint8_t)((value * 255U + max_value / 2U) / max_value);
+}
+
+int fbdev_save_bmp(const char *path)
+{
+    const uint32_t header_size = 14U + 40U;
+    struct fb_var_screeninfo current_vinfo;
+    uint32_t width;
+    uint32_t height;
+    uint32_t src_bytes_per_pixel;
+    uint32_t row_size;
+    uint32_t image_size;
+    uint8_t *row = NULL;
+    const uint8_t *frame;
+    FILE *fp = NULL;
+    uint32_t y;
+    int result = -1;
+
+    if (path == NULL || g_frame_buf[0] == NULL || g_fb < 0) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    if (ioctl(g_fb, FBIOGET_VSCREENINFO, &current_vinfo) == -1) {
+        return -1;
+    }
+
+    width = current_vinfo.xres;
+    height = current_vinfo.yres;
+    src_bytes_per_pixel = current_vinfo.bits_per_pixel / 8U;
+    row_size = (width * 3U + 3U) & ~3U;
+    image_size = row_size * height;
+
+    if (width == 0U || height == 0U ||
+        (current_vinfo.bits_per_pixel != 16U &&
+         current_vinfo.bits_per_pixel != 24U &&
+         current_vinfo.bits_per_pixel != 32U)) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    frame = (const uint8_t *)g_frame_buf[0] +
+            (size_t)current_vinfo.yoffset * finfo.line_length +
+            (size_t)current_vinfo.xoffset * src_bytes_per_pixel;
+    row = calloc(1, row_size);
+    if (row == NULL) {
+        return -1;
+    }
+
+    fp = fopen(path, "wb");
+    if (fp == NULL) {
+        goto done;
+    }
+
+    if (fwrite("BM", 1, 2, fp) != 2 ||
+        bmp_write_u32(fp, header_size + image_size) != 0 ||
+        bmp_write_u16(fp, 0) != 0 ||
+        bmp_write_u16(fp, 0) != 0 ||
+        bmp_write_u32(fp, header_size) != 0 ||
+        bmp_write_u32(fp, 40) != 0 ||
+        bmp_write_u32(fp, width) != 0 ||
+        bmp_write_u32(fp, (uint32_t)(-(int32_t)height)) != 0 ||
+        bmp_write_u16(fp, 1) != 0 ||
+        bmp_write_u16(fp, 24) != 0 ||
+        bmp_write_u32(fp, 0) != 0 ||
+        bmp_write_u32(fp, image_size) != 0 ||
+        bmp_write_u32(fp, 2835) != 0 ||
+        bmp_write_u32(fp, 2835) != 0 ||
+        bmp_write_u32(fp, 0) != 0 ||
+        bmp_write_u32(fp, 0) != 0) {
+        goto done;
+    }
+
+    for (y = 0; y < height; y++) {
+        const uint8_t *src = frame + (size_t)y * finfo.line_length;
+        uint32_t x;
+
+        memset(row, 0, row_size);
+        for (x = 0; x < width; x++) {
+            uint32_t pixel = 0;
+            const uint8_t *src_pixel = src + (size_t)x * src_bytes_per_pixel;
+            uint8_t *dst_pixel = row + x * 3U;
+
+            memcpy(&pixel, src_pixel, src_bytes_per_pixel);
+            dst_pixel[0] = fbdev_component_to_u8(pixel, current_vinfo.blue);
+            dst_pixel[1] = fbdev_component_to_u8(pixel, current_vinfo.green);
+            dst_pixel[2] = fbdev_component_to_u8(pixel, current_vinfo.red);
+        }
+
+        if (fwrite(row, 1, row_size, fp) != row_size) {
+            goto done;
+        }
+    }
+
+    if (fflush(fp) != 0 || fsync(fileno(fp)) != 0) {
+        goto done;
+    }
+    result = 0;
+
+done:
+    if (fp != NULL && fclose(fp) != 0) {
+        result = -1;
+    }
+    if (result != 0) {
+        unlink(path);
+    }
+    free(row);
+    return result;
 }
 
 int draw_buf_size(int *width, int *height)

@@ -19,6 +19,7 @@
 #include "un260/lv_core/lv_page_declear.h"
 #include "un260/lv_core/lv_page_event.h"
 #include "un260/lv_core/page_01_main.h"
+#include "un260/lv_system/ui_screenshot.h"
 #include "un260/lv_core/page_19_history.h"
 #include "un260/lv_components/lv_components.h"
 #include "un260/lv_components/smart_island.h"
@@ -2259,6 +2260,7 @@ int main(void) {
     lv_port_disp_init();
     lv_port_indev_init();
     user_cfg_password_load();
+    user_cfg_screenshot_load();
     ui_history_data_init();
     ui_manager_switch(UI_PAGE_BOOT_ANIM);
     perf_stats_init();
@@ -2306,6 +2308,7 @@ int main(void) {
         perf_stats_report_ui_time_us(ui_time_us);
         PCCmdHandle();
         page_setting_req_poll();
+        ui_screenshot_indicator_poll();
         ui_count_end_anim_poll();
         ui_upgrade_popup_poll(now);
 

@@ -112,6 +112,9 @@ extern Machine_para_t Machine_para;
 
 bool user_cfg_password_load(void);
 bool user_cfg_password_save(const char* password);
+bool user_cfg_screenshot_load(void);
+bool user_cfg_screenshot_save(bool enabled);
+bool user_cfg_screenshot_enabled(void);
 
 typedef struct {
     // 版本信息

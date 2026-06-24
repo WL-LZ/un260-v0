@@ -53,6 +53,8 @@ int fbdev_get_bpp(void);
 
 int fbdev_get_pitch(void);
 
+int fbdev_save_bmp(const char *path);
+
 int draw_buf_size(int *width, int *height);
 
 enum mpp_pixel_format draw_buf_fmt(void);

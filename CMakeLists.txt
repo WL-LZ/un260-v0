@@ -80,6 +80,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_system/ui_text_page.c
     un260/lv_system/ui_text_widget.c
     un260/lv_system/ui_qr_data.c
+    un260/lv_system/ui_screenshot.c
     un260/lv_system/ui_export_data.c
     un260/lv_system/ui_history_data_fs.c
     un260/lv_system/ui_history_export_data.c

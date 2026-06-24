@@ -20,6 +20,7 @@
 
 /* ================= page_10_debug.c ================= */
 #include "page_10_debug.h"
+#include "un260/lv_system/ui_text.h"
 #include <stdio.h>
 #include <string.h>
 #define MAX_LOG_LABELS 200
@@ -214,9 +215,28 @@ static void btn_clear_input_event_cb(lv_event_t* e) {
 
 /* ---------- 快捷命令按钮 ---------- */
 static void btn_quick_cmd_event_cb(lv_event_t* e) {
-    lv_obj_t* btn = lv_event_get_target(e);
     const char* cmd = (const char*)lv_event_get_user_data(e);
     lv_textarea_set_text(ta_input, cmd);
+}
+
+static void screenshot_switch_event_cb(lv_event_t* e)
+{
+    lv_obj_t* sw;
+    bool enabled;
+
+    if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+
+    sw = lv_event_get_target(e);
+    enabled = lv_obj_has_state(sw, LV_STATE_CHECKED);
+    if (!user_cfg_screenshot_save(enabled)) {
+        if (enabled) {
+            lv_obj_clear_state(sw, LV_STATE_CHECKED);
+        } else {
+            lv_obj_add_state(sw, LV_STATE_CHECKED);
+        }
+    }
 }
 
 void page_10_back_btn_event_cb(lv_event_t* e) {
@@ -227,6 +247,8 @@ void page_10_back_btn_event_cb(lv_event_t* e) {
  }
 /* ========== 主创建函数 ========== */
 void ui_page_10_debug_create(void) {
+    lv_obj_t* screenshot_switch;
+
     // page_debug 已存在，清理后重新创建
     if (page_debug && lv_obj_is_valid(page_debug)) {
         lv_obj_clean(page_debug);  // 清理所有子对象
@@ -304,6 +326,26 @@ void ui_page_10_debug_create(void) {
     lv_label_set_text(btn_esc_label, "ESC");
     lv_obj_set_style_text_font(btn_esc_label, &lv_font_instrument_sans_bold_20, 0);
     lv_obj_center(btn_esc_label);
+
+    lv_obj_t* screenshot_label = lv_label_create(left_panel);
+    lv_label_set_text(screenshot_label, ui_text_get(UI_TEXT_WIDGET_SCREENSHOT_LABEL));
+    lv_obj_set_style_text_font(screenshot_label, &lv_font_instrument_sans_medium_12, 0);
+    lv_obj_set_style_text_color(screenshot_label, lv_color_hex(0xB8C1CC), 0);
+    lv_obj_set_pos(screenshot_label, 292, 9);
+
+    screenshot_switch = lv_switch_create(left_panel);
+    lv_obj_set_size(screenshot_switch, 52, 26);
+    lv_obj_set_pos(screenshot_switch, 445, 2);
+    lv_obj_set_style_bg_color(screenshot_switch, lv_color_hex(0x4A4F57), 0);
+    lv_obj_set_style_bg_color(screenshot_switch, lv_color_hex(0x18A66A),
+                              LV_PART_INDICATOR | LV_STATE_CHECKED);
+    lv_obj_set_style_bg_color(screenshot_switch, lv_color_hex(0xFFFFFF),
+                              LV_PART_KNOB);
+    if (user_cfg_screenshot_enabled()) {
+        lv_obj_add_state(screenshot_switch, LV_STATE_CHECKED);
+    }
+    lv_obj_add_event_cb(screenshot_switch, screenshot_switch_event_cb,
+                        LV_EVENT_VALUE_CHANGED, NULL);
     
     // 清空输入按钮
     lv_obj_t* btn_clear_input = lv_btn_create(left_panel);

@@ -1,12 +1,18 @@
 #include "lvgl/lvgl.h"
 #include"user_cfg.h"
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #define DEFAULT_CURRENCY_COUNT 14
 #define UI_STATE_DIR "/etc/ui_state"
 #define USER_PASSWORD_PATH UI_STATE_DIR "/password.cfg"
+#define SCREENSHOT_CFG_PATH UI_STATE_DIR "/screenshot.cfg"
+#define SCREENSHOT_CFG_TMP_PATH UI_STATE_DIR "/screenshot.cfg.tmp"
+
+static bool g_screenshot_enabled = true;
 
 // 定义Machine_para变量
 Machine_para_t Machine_para = {
@@ -124,6 +130,75 @@ bool user_cfg_password_save(const char* password)
     fclose(fp);
     lv_snprintf(Machine_para.password, sizeof(Machine_para.password), "%s", password);
     return true;
+}
+
+bool user_cfg_screenshot_load(void)
+{
+    FILE* fp;
+    int value;
+
+    fp = fopen(SCREENSHOT_CFG_PATH, "r");
+    if (fp == NULL) {
+        g_screenshot_enabled = true;
+        return false;
+    }
+
+    if (fscanf(fp, "%d", &value) != 1 || (value != 0 && value != 1)) {
+        fclose(fp);
+        g_screenshot_enabled = true;
+        return false;
+    }
+
+    fclose(fp);
+    g_screenshot_enabled = value != 0;
+    return true;
+}
+
+bool user_cfg_screenshot_save(bool enabled)
+{
+    FILE* fp;
+    int fd;
+    bool write_ok = true;
+
+    if (mkdir(UI_STATE_DIR, 0755) != 0 && errno != EEXIST) {
+        return false;
+    }
+
+    fp = fopen(SCREENSHOT_CFG_TMP_PATH, "w");
+    if (fp == NULL) {
+        return false;
+    }
+
+    if (fprintf(fp, "%d\n", enabled ? 1 : 0) < 0 || fflush(fp) != 0) {
+        fclose(fp);
+        unlink(SCREENSHOT_CFG_TMP_PATH);
+        return false;
+    }
+
+    fd = fileno(fp);
+    if (fd < 0 || fsync(fd) != 0) {
+        write_ok = false;
+    }
+    if (fclose(fp) != 0) {
+        write_ok = false;
+    }
+    if (!write_ok) {
+        unlink(SCREENSHOT_CFG_TMP_PATH);
+        return false;
+    }
+
+    if (rename(SCREENSHOT_CFG_TMP_PATH, SCREENSHOT_CFG_PATH) != 0) {
+        unlink(SCREENSHOT_CFG_TMP_PATH);
+        return false;
+    }
+
+    g_screenshot_enabled = enabled;
+    return true;
+}
+
+bool user_cfg_screenshot_enabled(void)
+{
+    return g_screenshot_enabled;
 }
 
 //void user_data_init(void) {
