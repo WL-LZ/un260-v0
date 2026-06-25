@@ -90,6 +90,10 @@ static int g_last_result_pending_valid_pcs = 0;
 static int g_last_result_pending_issue_pcs = 0;
 static int g_last_result_pending_suspect_pcs = 0;
 static int g_last_result_pending_damaged_pcs = 0;
+static int g_last_result_pending_expected_issue = 0;
+static int g_current_analysis_valid_pcs = 0;
+static int g_current_count_expected_issue = 0;
+static uint16_t g_reject_pocket_snapshot[0x100] = {0};
 static bool g_history_record_pending_valid = false;
 static bool g_history_record_pending_end_seen = false;
 static uint32_t g_history_record_pending_pcs = 0;
@@ -292,18 +296,6 @@ const char* get_currency_error_desc(uint8_t code)
     return "Unknown Error";
 }
 
-static bool currency_error_is_suspect(uint8_t code)
-{
-    if (code >= 0x01 && code <= 0x0F) return true; /* IMG F1~F15 */
-    if (code == 0x11 || code == 0x12 || code == 0x13 || code == 0x14) return true; /* MG/MT */
-    if (code == 0x15 || code == 0x22 || code == 0x23) return true; /* UV/IR */
-    if (code == 0x16 || code == 0x17 || code == 0x31) return true; /* Double */
-    if (code == 0x1D || code == 0x1E || code == 0x1F || code == 0x20 || code == 0x21) return true; /* Version/Face/Ort/Angle */
-    if (code == 0x2D || code == 0x2E || code == 0x2F || code == 0x30) return true; /* IMG F&O / OCR */
-    if (code == 0x1C) return true; /* Size Unknow */
-    return false;
-}
-
 static bool currency_error_is_damaged(uint8_t code)
 {
     if (code == 0x18 || code == 0x19 || code == 0x1A || code == 0x2C) return true; /* Long/Short/GAP/Limpness */
@@ -314,10 +306,16 @@ static bool currency_error_is_damaged(uint8_t code)
 
 static void pending_result_recalc_issue_from_reject_detail(void)
 {
+    uint16_t current_by_code[0x100] = {0};
+    uint16_t delta_by_code[0x100] = {0};
+    const uint16_t *selected_by_code;
     int suspect = 0;
     int damaged = 0;
     int issue = 0;
-    int valid = 0;
+    int current_total = 0;
+    int delta_total = 0;
+    int expected_issue;
+    bool use_delta = false;
 
     if (!g_last_result_pending_valid) {
         return;
@@ -331,33 +329,74 @@ static void pending_result_recalc_issue_from_reject_detail(void)
         int pcs = sim.err_pcs[i];
         uint8_t code = sim.err_code[i];
 
-        if (pcs <= 0) {
-            continue;
+        if (pcs > 0) {
+            current_by_code[code] += (uint16_t)pcs;
         }
+    }
 
-        if (currency_error_is_damaged(code)) {
+    for (int code = 0; code < 0x100; code++) {
+        current_total += current_by_code[code];
+        if (current_by_code[code] > g_reject_pocket_snapshot[code]) {
+            delta_by_code[code] = current_by_code[code] - g_reject_pocket_snapshot[code];
+            delta_total += delta_by_code[code];
+        }
+    }
+
+    expected_issue = g_last_result_pending_expected_issue;
+    if (expected_issue <= 0 && delta_total > 0) {
+        expected_issue = delta_total;
+        g_last_result_pending_expected_issue = expected_issue;
+    }
+    if (current_total == expected_issue) {
+        selected_by_code = current_by_code;
+    } else if (delta_total == expected_issue) {
+        selected_by_code = delta_by_code;
+        use_delta = true;
+    } else if (delta_total > 0 && delta_total <= expected_issue) {
+        selected_by_code = delta_by_code;
+        use_delta = true;
+    } else {
+        selected_by_code = current_by_code;
+    }
+
+    for (int code = 0; code < 0x100; code++) {
+        int pcs = selected_by_code[code];
+
+        if (pcs <= 0) continue;
+        if (currency_error_is_damaged((uint8_t)code)) {
             damaged += pcs;
-        } else if (currency_error_is_suspect(code)) {
-            suspect += pcs;
         } else {
-            /* 未归类的退钞原因，默认归入 suspect */
             suspect += pcs;
         }
     }
 
     issue = suspect + damaged;
-    if (issue > g_last_result_pending_pcs) {
-        issue = g_last_result_pending_pcs;
-    }
-    valid = g_last_result_pending_pcs - issue;
-    if (valid < 0) {
-        valid = 0;
+    if (issue < expected_issue) {
+        suspect += expected_issue - issue;
+        issue = expected_issue;
+    } else if (issue > expected_issue) {
+        int overflow = issue - expected_issue;
+        int reduce = suspect < overflow ? suspect : overflow;
+        suspect -= reduce;
+        overflow -= reduce;
+        if (overflow > 0) {
+            damaged = damaged > overflow ? damaged - overflow : 0;
+        }
+        issue = expected_issue;
     }
 
     g_last_result_pending_issue_pcs = issue;
     g_last_result_pending_suspect_pcs = suspect;
     g_last_result_pending_damaged_pcs = damaged;
-    g_last_result_pending_valid_pcs = valid;
+    g_last_result_pending_valid_pcs = g_last_result_pending_pcs - issue;
+    if (g_last_result_pending_valid_pcs < 0) {
+        g_last_result_pending_valid_pcs = 0;
+    }
+    memcpy(g_reject_pocket_snapshot, current_by_code, sizeof(g_reject_pocket_snapshot));
+    smart_island_set_count_analysis(g_current_analysis_valid_pcs, suspect, damaged);
+    uart_printf(fd6, "count analysis valid=%d expected=%d current=%d delta=%d source=%s suspect=%d damaged=%d\n",
+                g_current_analysis_valid_pcs, expected_issue, current_total, delta_total,
+                use_delta ? "delta" : "current", suspect, damaged);
 }
 
 /* UI显示使用协议错误类型（短文本），不使用调试长文案 */
@@ -805,11 +844,15 @@ void PCCmdHandle(void)
                         g_last_result_pending_valid = false;
                     }
                     g_count_session_active = true;
+                    g_current_count_expected_issue = 0;
                 }
 
                 sim.total_amount = amount;
                 sim.total_pcs    = qty;
-                sim.err_expected = ret;
+                if ((int)ret > g_current_count_expected_issue) {
+                    g_current_count_expected_issue = (int)ret;
+                }
+                sim.err_expected = g_current_count_expected_issue;
                 ui_refresh_main_compact_fast();
                 history_session_append_line("0x0E", buf, len);
                 if (!( !fault_popup_get_auto_enabled() && fault_popup_has_pending_start_issue())) {
@@ -818,6 +861,7 @@ void PCCmdHandle(void)
                 }
             } else if (status == 0x02) {
                 int final_pcs = 0;
+                int final_issue = 0;
                 float final_amount = 0.0f;
                 uart_printf(fd6, "Count finished\n");
                 g_count_session_active = false;
@@ -835,16 +879,22 @@ void PCCmdHandle(void)
                     final_pcs = (int)qty;
                     final_amount = (float)amount;
                 }
+                final_issue = (int)ret > g_current_count_expected_issue
+                    ? (int)ret : g_current_count_expected_issue;
+                sim.err_expected = final_issue;
 
                 g_last_result_pending_pcs = final_pcs;
                 g_last_result_pending_amount = final_amount;
-                g_last_result_pending_issue_pcs = (int)ret;
-                g_last_result_pending_suspect_pcs = (int)ret;
+                g_last_result_pending_issue_pcs = final_issue;
+                g_last_result_pending_suspect_pcs = final_issue;
                 g_last_result_pending_damaged_pcs = 0;
-                g_last_result_pending_valid_pcs = final_pcs - (int)ret;
+                g_last_result_pending_valid_pcs = final_pcs - final_issue;
                 if (g_last_result_pending_valid_pcs < 0) {
                     g_last_result_pending_valid_pcs = 0;
                 }
+                g_last_result_pending_expected_issue = final_issue;
+                g_current_analysis_valid_pcs = (int)qty;
+                smart_island_set_count_analysis(g_current_analysis_valid_pcs, final_issue, 0);
                 g_history_record_pending_valid = (final_pcs > 0);
                 g_history_record_pending_end_seen = false;
                 g_history_record_pending_pcs = (uint32_t)final_pcs;

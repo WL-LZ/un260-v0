@@ -20,6 +20,8 @@
 
 /* ================= page_10_debug.c ================= */
 #include "page_10_debug.h"
+#include "un260/lv_components/lv_print_toast.h"
+#include "un260/lv_system/ui_export_data.h"
 #include "un260/lv_system/ui_text.h"
 #include <stdio.h>
 #include <string.h>
@@ -205,6 +207,46 @@ static void btn_clear_log_event_cb(lv_event_t* e) {
     rx_count = 0;
     lv_label_set_text(label_tx_count, "TX: 0");
     lv_label_set_text(label_rx_count, "RX: 0");
+}
+
+static void debug_log_show_toast(const char* text, bool alarm)
+{
+    lv_print_toast_config_t toast_cfg = lv_print_toast_get_default_config();
+
+    toast_cfg.w = 380;
+    toast_cfg.h = 101;
+    toast_cfg.text = text;
+    toast_cfg.show_loader = false;
+    toast_cfg.align_center = true;
+    toast_cfg.use_text_area = false;
+    toast_cfg.loader_color = alarm ? lv_color_hex(0xC0392B) : lv_color_hex(0x18A66A);
+    toast_cfg.auto_hide_ms = 1800;
+    lv_print_toast_show_with_config(&toast_cfg);
+}
+
+static void btn_download_log_event_cb(lv_event_t* e)
+{
+    const char* lines[MAX_LOG_LABELS];
+    ui_export_text_result_t result;
+    size_t line_count = 0;
+
+    LV_UNUSED(e);
+    for (int i = 0; i < log_label_count; i++) {
+        if (log_labels[i] != NULL && lv_obj_is_valid(log_labels[i])) {
+            lines[line_count++] = lv_label_get_text(log_labels[i]);
+        }
+    }
+
+    result = ui_export_text_lines("comm_log", lines, line_count);
+    if (result == UI_EXPORT_TEXT_OK) {
+        debug_log_show_toast(ui_text_get(UI_TEXT_DEBUG_DOWNLOAD_SUCCESS), false);
+    } else if (result == UI_EXPORT_TEXT_EMPTY) {
+        debug_log_show_toast(ui_text_get(UI_TEXT_DEBUG_NO_LOG), true);
+    } else if (result == UI_EXPORT_TEXT_USB_NOT_READY) {
+        debug_log_show_toast(ui_text_get(UI_TEXT_WIDGET_SCREENSHOT_INSERT_USB), true);
+    } else {
+        debug_log_show_toast(ui_text_get(UI_TEXT_DEBUG_DOWNLOAD_FAILED), true);
+    }
 }
 
 
@@ -411,13 +453,24 @@ void ui_page_10_debug_create(void) {
     lv_obj_set_style_text_color(label_tx_count, lv_color_hex(0x00FF00), 0);
     lv_coord_t b_parent_h = lv_obj_get_height(top_bar);
     lv_coord_t b_label_h = lv_obj_get_height(label_log);
-    lv_obj_set_pos(label_tx_count, 300, (b_parent_h - b_label_h) / 2);
+    lv_obj_set_pos(label_tx_count, 245, (b_parent_h - b_label_h) / 2);
     label_rx_count = lv_label_create(top_bar);
     lv_label_set_text(label_rx_count, "RX: 0");
     lv_obj_set_style_text_color(label_rx_count, lv_color_hex(0x4A9EFF), 0);
     lv_coord_t c_parent_h = lv_obj_get_height(top_bar);
     lv_coord_t c_label_h = lv_obj_get_height(label_log);
-    lv_obj_set_pos(label_rx_count, 380, (c_parent_h - c_label_h) / 2);
+    lv_obj_set_pos(label_rx_count, 315, (c_parent_h - c_label_h) / 2);
+    // 下载日志按钮
+    lv_obj_t* btn_download_log = lv_btn_create(top_bar);
+    lv_obj_set_size(btn_download_log, 100, 30);
+    lv_obj_set_pos(btn_download_log, 400, 5);
+    lv_obj_set_style_bg_color(btn_download_log, lv_color_hex(0x0066CC), 0);
+    lv_obj_add_event_cb(btn_download_log, btn_download_log_event_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t* lbl_download_log = lv_label_create(btn_download_log);
+    lv_label_set_text(lbl_download_log, ui_text_get(UI_TEXT_DEBUG_DOWNLOAD));
+    lv_obj_center(lbl_download_log);
+
     // 清空日志按钮
     lv_obj_t* btn_clear_log = lv_btn_create(top_bar);
     lv_obj_set_size(btn_clear_log, 80, 30);

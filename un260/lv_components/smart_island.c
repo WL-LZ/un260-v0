@@ -9,6 +9,7 @@
 #include "un260/lv_refre/lvgl_refre.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/page_18_pure.h"
+#include "un260/lv_drivers/lv_drivers.h"
 #include <stdio.h>
 #include <string.h>
 #include "un260/lv_components/lv_capsule_pagination.h"
@@ -167,8 +168,10 @@ static bool g_smart_island_idle_has_issue = false;
 static bool g_smart_island_idle_has_data = false;
 static bool g_smart_island_idle_no_count = false;
 static bool g_smart_island_count_session_active = false;
-static int g_smart_island_reject_base_expected = 0;
-static int g_smart_island_reject_base_detail = 0;
+static bool g_smart_island_analysis_valid = false;
+static int g_smart_island_analysis_valid_pcs = 0;
+static int g_smart_island_analysis_suspect_pcs = 0;
+static int g_smart_island_analysis_damaged_pcs = 0;
 
 /* 内部函数声明 */
 static void smart_island_enable_gesture_on_obj(lv_obj_t *obj); 
@@ -180,7 +183,6 @@ static void smart_island_update_idle_time(void);
 static void smart_island_get_currency_code(char *buf, size_t size);
 static const char *smart_island_get_work_mode_text(void);
 static bool smart_island_batch_enabled(void);
-static uint16_t smart_island_get_reject_count(void);
 static void smart_island_stop_result_timer(void); 
 static void smart_island_stop_warning_timer(void); 
 static void smart_island_update_pages_visible(void); 
@@ -222,15 +224,13 @@ static void smart_island_bg_color_apply_anim(uint32_t dst_hex);
 static void smart_island_bg_color_anim_ready_cb(lv_anim_t *a);
 static void smart_island_apply_idle_line_text(char *dst, size_t dst_size, const char *text);
 static void smart_island_apply_quality_indicator(void);
-static bool smart_island_currency_error_is_suspect(uint8_t code);
-static bool smart_island_currency_error_is_damaged(uint8_t code);
-static int smart_island_get_reject_detail_total(void);
 static void smart_island_action_btn_touch_anim_cb(lv_event_t *e);
 static void smart_island_action_btn_set_pressed_visual(lv_obj_t *btn, bool pressed);
 static void smart_island_action_btn_style_apply(uint8_t index);
 static void smart_island_warning_fault_capture(void);
 static bool smart_island_warning_fault_show(void);
 static void smart_island_warning_fault_clear(void);
+static bool smart_island_warning_pocket_confirm(void);
 
 static void smart_island_anim_w_cb(void *var, int32_t v) { lv_obj_set_width((lv_obj_t *)var, (lv_coord_t)v); }
 static void smart_island_anim_h_cb(void *var, int32_t v) { lv_obj_set_height((lv_obj_t *)var, (lv_coord_t)v); }
@@ -341,6 +341,25 @@ static void smart_island_warning_fault_clear(void)
     g_smart_island_warning_fault.source = FAULT_SRC_START_COUNT;
     g_smart_island_warning_fault.fault_type = 0;
     g_smart_island_warning_fault.code = 0;
+}
+
+static bool smart_island_warning_pocket_confirm(void)
+{
+    uint8_t clear_cmd = 0x01;
+    uint8_t code;
+
+    if (!g_smart_island_warning_fault.valid ||
+        g_smart_island_warning_fault.source != FAULT_SRC_START_COUNT) {
+        return false;
+    }
+
+    code = g_smart_island_warning_fault.code;
+    if (code != 0x05 && code != 0x07 && code != 0x08) {
+        return false;
+    }
+
+    send_command(fd4, 0x3D, &clear_cmd, 1);
+    return true;
 }
 
 static void smart_island_anim_bg_color_cb(void *var, int32_t v)
@@ -466,21 +485,31 @@ static void smart_island_warning_marquee_finish_cb(lv_anim_t *a)
 
 static void smart_island_warning_marquee_timeout_cb(lv_timer_t *timer)
 {
+    bool pocket_confirmed;
+
     LV_UNUSED(timer);
     smart_island_stop_warning_timer();
+    pocket_confirmed = smart_island_warning_pocket_confirm();
     if (!fault_popup_is_showing()) {
         smart_island_restore_idle();
-        fault_popup_schedule_auto_confirm();
+        if (!pocket_confirmed) {
+            fault_popup_schedule_auto_confirm();
+        }
     }
 }
 
 static void smart_island_warning_flash_finish_cb(lv_anim_t *a)
 {
+    bool pocket_confirmed;
+
     LV_UNUSED(a);
     smart_island_warning_marquee_stop();
+    pocket_confirmed = smart_island_warning_pocket_confirm();
     if (!fault_popup_is_showing()) {
         smart_island_restore_idle();
-        fault_popup_schedule_auto_confirm();
+        if (!pocket_confirmed) {
+            fault_popup_schedule_auto_confirm();
+        }
     }
 }
 
@@ -504,6 +533,7 @@ static void smart_island_warning_marquee_start(void)
         return;
     }
 
+    smart_island_warning_pocket_confirm();
     smart_island_warning_marquee_stop();
     title_text = lv_label_get_text(g_smart_island_title);
     title_font = lv_obj_get_style_text_font(g_smart_island_title, LV_PART_MAIN);
@@ -598,10 +628,15 @@ static void smart_island_warning_marquee_run_step(void)
     if (!g_smart_island_warning_marquee_running) return;
 
     if (g_smart_island_warning_marquee_step >= (uint8_t)(SMART_ISLAND_WARNING_MARQUEE_CYCLES * 2U)) {
+        bool pocket_confirmed;
+
         smart_island_warning_marquee_stop();
+        pocket_confirmed = smart_island_warning_pocket_confirm();
         if (!fault_popup_is_showing()) {
             smart_island_restore_idle();
-            fault_popup_schedule_auto_confirm();
+            if (!pocket_confirmed) {
+                fault_popup_schedule_auto_confirm();
+            }
         }
         return;
     }
@@ -1057,11 +1092,6 @@ static bool smart_island_batch_enabled(void)
     return Machine_para.batch_switch_enable && Machine_para.batch_num > 0 && Machine_para.batch_num != 200;
 }
 
-static uint16_t smart_island_get_reject_count(void)
-{
-    return sim.err_num > 0 ? sim.err_num : sim.err_expected;
-}
-
 static void smart_island_apply_idle_line_text(char *dst, size_t dst_size, const char *text)
 {
     if (dst == NULL || dst_size == 0U) {
@@ -1073,40 +1103,6 @@ static void smart_island_apply_idle_line_text(char *dst, size_t dst_size, const 
     } else {
         dst[0] = '\0';
     }
-}
-
-static bool smart_island_currency_error_is_suspect(uint8_t code)
-{
-    if (code >= 0x01 && code <= 0x0F) return true; /* IMG F1~F15 */
-    if (code == 0x11 || code == 0x12 || code == 0x13 || code == 0x14) return true; /* MG/MT */
-    if (code == 0x15 || code == 0x22 || code == 0x23) return true; /* UV/IR */
-    if (code == 0x16 || code == 0x17 || code == 0x31) return true; /* Double */
-    if (code == 0x1D || code == 0x1E || code == 0x1F || code == 0x20 || code == 0x21) return true; /* Version/Face/Ort/Angle */
-    if (code == 0x2D || code == 0x2E || code == 0x2F || code == 0x30) return true; /* IMG F&O / OCR */
-    if (code == 0x1C) return true; /* Size Unknow */
-    return false;
-}
-
-static bool smart_island_currency_error_is_damaged(uint8_t code)
-{
-    if (code == 0x18 || code == 0x19 || code == 0x1A || code == 0x2C) return true; /* Long/Short/GAP/Limpness */
-    if (code == 0x24 || code == 0x25 || code == 0x27 || code == 0x28 || code == 0x29) return true; /* Hole/DogEar/Tape/Tears/Crumples */
-    if (code == 0x26 || code == 0x2A || code == 0x2B) return true; /* DIRT/De_ink/Soiling */
-    return false;
-}
-
-static int smart_island_get_reject_detail_total(void)
-{
-    int total = 0;
-
-    if (sim.err_num == 0 || sim.err_pcs == NULL) {
-        return 0;
-    }
-
-    for (int i = 0; i < sim.err_num; i++) {
-        total += sim.err_pcs[i];
-    }
-    return total;
 }
 
 static void smart_island_apply_quality_indicator(void)
@@ -1191,8 +1187,6 @@ static void smart_island_rebuild_scene_texts(void)
     char curr[8] = {0};
     char detail_line[96] = {0};
     const char *work_text = smart_island_get_work_mode_text();
-    uint16_t reject_count = smart_island_get_reject_count();
-
     memset(g_smart_island_compact_text, 0, sizeof(g_smart_island_compact_text));
     memset(g_smart_island_info_title_text, 0, sizeof(g_smart_island_info_title_text));
     memset(g_smart_island_info_summary_text, 0, sizeof(g_smart_island_info_summary_text));
@@ -1275,74 +1269,21 @@ static void smart_island_rebuild_scene_texts(void)
     case SMART_ISLAND_SCENE_IDLE:
     default:
     {
-        int current_valid = sim.total_pcs;
+        int current_valid = g_smart_island_analysis_valid ? g_smart_island_analysis_valid_pcs : 0;
         int current_total = 0;
-        int current_issue = 0;
-        int current_suspect = 0;
-        int current_damaged = 0;
-        int issue_baseline = 0;
+        int current_suspect = g_smart_island_analysis_valid ? g_smart_island_analysis_suspect_pcs : 0;
+        int current_damaged = g_smart_island_analysis_valid ? g_smart_island_analysis_damaged_pcs : 0;
+        int current_issue = current_suspect + current_damaged;
 
         lv_snprintf(g_smart_island_compact_text, sizeof(g_smart_island_compact_text),
             ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_READY_CUR_FMT), curr);
 
         g_smart_island_info_title_text[0] = '\0';
 
-        issue_baseline = Machine_para.add_enable ? 0 : g_smart_island_reject_base_detail;
-
-        if (sim.err_num > 0 && sim.err_pcs != NULL && sim.err_code != NULL) {
-            for (int i = 0; i < sim.err_num; i++) {
-                int pcs = sim.err_pcs[i];
-                uint8_t code = sim.err_code[i];
-
-                if (pcs <= 0) {
-                    continue;
-                }
-
-                if (!Machine_para.add_enable && issue_baseline > 0) {
-                    if (pcs <= issue_baseline) {
-                        issue_baseline -= pcs;
-                        continue;
-                    }
-                    pcs -= issue_baseline;
-                    issue_baseline = 0;
-                }
-
-                if (smart_island_currency_error_is_damaged(code)) {
-                    current_damaged += pcs;
-                } else if (smart_island_currency_error_is_suspect(code)) {
-                    current_suspect += pcs;
-                } else {
-                    current_suspect += pcs;
-                }
-            }
-            current_issue = current_suspect + current_damaged;
-        } else if (sim.err_expected > 0) {
-            int expected_issue = sim.err_expected;
-            int expected_baseline = Machine_para.add_enable ? 0 : g_smart_island_reject_base_expected;
-            if (!Machine_para.add_enable) {
-                if (expected_issue > expected_baseline) {
-                    expected_issue -= expected_baseline;
-                } else {
-                    expected_issue = 0;
-                }
-            }
-            current_issue = expected_issue;
-            current_suspect = expected_issue;
-            current_damaged = 0;
-        }
-
-        if (current_issue < 0) {
-            current_issue = 0;
-        }
-
-        if (current_valid < 0) {
-            current_valid = 0;
-        }
-
         current_total = current_valid + current_issue;
         g_smart_island_idle_has_issue = (current_issue > 0);
-        g_smart_island_idle_has_data = (current_total > 0);
-        g_smart_island_idle_no_count = (sim.total_pcs == 0 && sim.total_amount <= 0.0f && reject_count == 0);
+        g_smart_island_idle_has_data = g_smart_island_analysis_valid && current_total > 0;
+        g_smart_island_idle_no_count = !g_smart_island_analysis_valid;
 
         if (g_smart_island_idle_custom_line1[0] != '\0') {
             lv_snprintf(g_smart_island_info_summary_text, sizeof(g_smart_island_info_summary_text), "%s",
@@ -2358,8 +2299,6 @@ void smart_island_create(lv_obj_t *parent)
     g_smart_island_idle_has_data = false;
     g_smart_island_idle_no_count = true;
     g_smart_island_count_session_active = false;
-    g_smart_island_reject_base_expected = 0;
-    g_smart_island_reject_base_detail = 0;
     g_smart_island_bg_cur = SMART_ISLAND_BG_IDLE;
     g_smart_island_bg_from = SMART_ISLAND_BG_IDLE;
     g_smart_island_bg_to = SMART_ISLAND_BG_IDLE;
@@ -2423,8 +2362,6 @@ void smart_island_destroy(void)
     g_smart_island_idle_has_data = false;
     g_smart_island_idle_no_count = true;
     g_smart_island_count_session_active = false;
-    g_smart_island_reject_base_expected = 0;
-    g_smart_island_reject_base_detail = 0;
 
     g_smart_island_created = false;
 }
@@ -2487,11 +2424,7 @@ void smart_island_notify_count_start(void)
     /* 新会话开始前先清掉上一轮残留的结束动画状态 */
     ui_count_end_anim_cancel();
 
-    if (!g_smart_island_count_session_active) {
-        g_smart_island_reject_base_expected = sim.err_expected;
-        g_smart_island_reject_base_detail = smart_island_get_reject_detail_total();
-        g_smart_island_count_session_active = true;
-    }
+    g_smart_island_count_session_active = true;
     g_smart_island_warning_level = SMART_ISLAND_WARNING_LEVEL_WARNING;
     smart_island_warning_fault_clear();
     smart_island_warning_marquee_stop();
@@ -2512,6 +2445,23 @@ void smart_island_notify_count_end(const char *result_text)
     smart_island_set_visual(SMART_ISLAND_VISUAL_COMPACT, true);
     smart_island_stop_result_timer();
     g_smart_island_result_timer = lv_timer_create(smart_island_result_timer_cb, SMART_ISLAND_RESULT_HOLD_MS, NULL);
+}
+
+void smart_island_set_count_analysis(int valid_pcs, int suspect_pcs, int damaged_pcs)
+{
+    g_smart_island_analysis_valid_pcs = valid_pcs > 0 ? valid_pcs : 0;
+    g_smart_island_analysis_suspect_pcs = suspect_pcs > 0 ? suspect_pcs : 0;
+    g_smart_island_analysis_damaged_pcs = damaged_pcs > 0 ? damaged_pcs : 0;
+    g_smart_island_analysis_valid = true;
+    smart_island_refresh_summary();
+}
+
+void smart_island_clear_count_analysis(void)
+{
+    g_smart_island_analysis_valid = false;
+    g_smart_island_analysis_valid_pcs = 0;
+    g_smart_island_analysis_suspect_pcs = 0;
+    g_smart_island_analysis_damaged_pcs = 0;
 }
 
 void smart_island_notify_warning_level(const char *warn_text, smart_island_warning_level_t level)

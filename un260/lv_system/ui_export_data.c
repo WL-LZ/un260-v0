@@ -3,9 +3,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
 #include <ctype.h>
 #include "un260/lv_components/lv_print_toast.h"
+#include "un260/lv_core/ui_upgrade_service.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/user_cfg.h"
 
@@ -693,4 +695,85 @@ bool ui_export_data_request(void)
     }
 
     return true;
+}
+
+ui_export_text_result_t ui_export_text_lines(const char *file_prefix,
+                                             const char *const *lines,
+                                             size_t line_count)
+{
+    ui_upgrade_detect_info_t detect_info;
+    char safe_prefix[48];
+    char timestamp[32];
+    char file_path[256];
+    struct tm local_tm;
+    time_t now;
+    FILE *fp;
+    size_t prefix_pos = 0;
+    int suffix = 0;
+
+    if (lines == NULL || line_count == 0U) {
+        return UI_EXPORT_TEXT_EMPTY;
+    }
+
+    ui_upgrade_service_detect(&detect_info);
+    if (!detect_info.usb_present || !detect_info.usb_mounted ||
+        !ui_export_data_usb_mount_ready()) {
+        return UI_EXPORT_TEXT_USB_NOT_READY;
+    }
+
+    if (file_prefix != NULL) {
+        for (size_t i = 0; file_prefix[i] != '\0' &&
+             prefix_pos + 1U < sizeof(safe_prefix); i++) {
+            unsigned char ch = (unsigned char)file_prefix[i];
+            if (isalnum(ch) || ch == '_' || ch == '-') {
+                safe_prefix[prefix_pos++] = (char)ch;
+            }
+        }
+    }
+    if (prefix_pos == 0U) {
+        lv_snprintf(safe_prefix, sizeof(safe_prefix), "%s", "text");
+    } else {
+        safe_prefix[prefix_pos] = '\0';
+    }
+
+    now = time(NULL);
+    if (localtime_r(&now, &local_tm) == NULL ||
+        strftime(timestamp, sizeof(timestamp), "%Y%m%d_%H%M%S", &local_tm) == 0U) {
+        return UI_EXPORT_TEXT_FAILED;
+    }
+
+    do {
+        if (suffix == 0) {
+            lv_snprintf(file_path, sizeof(file_path), "%s/%s_%s.txt",
+                        UI_EXPORT_USB_DIR, safe_prefix, timestamp);
+        } else {
+            lv_snprintf(file_path, sizeof(file_path), "%s/%s_%s_%02d.txt",
+                        UI_EXPORT_USB_DIR, safe_prefix, timestamp, suffix);
+        }
+        suffix++;
+    } while (suffix <= 99 && access(file_path, F_OK) == 0);
+
+    if (suffix > 99) {
+        return UI_EXPORT_TEXT_FAILED;
+    }
+
+    fp = fopen(file_path, "w");
+    if (fp == NULL) {
+        return UI_EXPORT_TEXT_FAILED;
+    }
+
+    for (size_t i = 0; i < line_count; i++) {
+        if (lines[i] != NULL && fprintf(fp, "%s\n", lines[i]) < 0) {
+            fclose(fp);
+            unlink(file_path);
+            return UI_EXPORT_TEXT_FAILED;
+        }
+    }
+
+    if (!ui_export_data_flush_and_verify(fp, file_path)) {
+        unlink(file_path);
+        return UI_EXPORT_TEXT_FAILED;
+    }
+
+    return UI_EXPORT_TEXT_OK;
 }

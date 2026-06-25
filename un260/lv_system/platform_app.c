@@ -1008,6 +1008,7 @@ void sim_clear_all_sn(counting_sim_t* sim_data)
     sim_data->total_amount = 0;
     sim_data->err_num = 0;
     sim_data->err_expected = 0;
+    smart_island_clear_count_analysis();
     page_01_detail_scroll_reset_all();
     ui_refresh_main_page();
     smart_island_refresh_summary();
