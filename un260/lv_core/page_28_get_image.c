@@ -46,7 +46,6 @@ static lv_obj_t* image_page = NULL;
 static lv_obj_t* image_canvas = NULL;
 static lv_obj_t* image_placeholder = NULL;
 static lv_obj_t* image_status_label = NULL;
-static lv_obj_t* image_size_label = NULL;
 static lv_obj_t* image_title_label = NULL;
 static image_source_item_t source_items[IMAGE_SOURCE_COUNT] = { 0 };
 static image_buffer_t image_buffers[IMAGE_SOURCE_COUNT] = { 0 };
@@ -100,22 +99,6 @@ static void image_set_status(const char* text, lv_color_t color)
     lv_obj_set_style_text_color(image_status_label, color, 0);
 }
 
-static void image_refresh_size_label(void)
-{
-    image_buffer_t* current;
-
-    if (!image_size_label || !lv_obj_is_valid(image_size_label)) return;
-
-    current = &image_buffers[image_source_index(selected_image_id)];
-    if (current->width == 0 || current->height == 0) {
-        lv_label_set_text(image_size_label, "-- x --");
-        return;
-    }
-
-    lv_label_set_text_fmt(image_size_label, "%u x %u",
-                          current->width, current->height);
-}
-
 static void image_refresh_sources(void)
 {
     size_t selected_index = image_source_index(selected_image_id);
@@ -150,7 +133,6 @@ static void image_refresh_sources(void)
         lv_label_set_text(image_title_label, ui_text_get(source->text_id));
     }
 
-    image_refresh_size_label();
 }
 
 static void image_free_one_buffer(image_buffer_t* item)
@@ -190,7 +172,6 @@ static void image_show_selected_buffer(void)
 
     if (!current->buffer || current->width == 0 || current->height == 0) {
         image_hide_canvas();
-        image_refresh_size_label();
         return;
     }
 
@@ -201,7 +182,6 @@ static void image_show_selected_buffer(void)
     lv_obj_center(image_canvas);
     lv_obj_clear_flag(image_canvas, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(image_placeholder, LV_OBJ_FLAG_HIDDEN);
-    image_refresh_size_label();
 }
 
 static void image_clear_buffer(void)
@@ -213,7 +193,6 @@ static void image_clear_buffer(void)
     reported_image_length = 0;
 
     image_hide_canvas();
-    image_refresh_size_label();
 }
 
 static bool image_prepare_one_buffer(uint8_t image_id, uint16_t width, uint16_t height)
@@ -389,7 +368,7 @@ static void image_create_source_item(lv_obj_t* parent, size_t index)
 {
     const image_source_t* source = &g_image_sources[index];
     lv_obj_t* item = lv_obj_create(parent);
-    lv_coord_t y = (lv_coord_t)(26 + index * 43);
+    lv_coord_t y = (lv_coord_t)(44 + index * 41);
 
     lv_obj_remove_style_all(item);
     lv_obj_set_pos(item, 18, y);
@@ -441,9 +420,12 @@ static void image_create_preview(lv_obj_t* parent)
     image_title_label = settings_detail_create_label(card, "",
                                                      &lv_font_instrument_sans_medium_18,
                                                      lv_color_hex(0x0D3440), 32, 18);
-    image_size_label = settings_detail_create_label(card, "-- x --",
-                                                    &lv_font_instrument_sans_medium_14,
-                                                    lv_color_hex(0x5686A5), 644, 22);
+    image_status_label = settings_detail_create_label(card,
+                                                      ui_text_get(UI_TEXT_SETTINGS_IMAGE_GET_IDLE),
+                                                      &lv_font_instrument_sans_medium_14,
+                                                      lv_color_hex(0x5686A5), 520, 20);
+    lv_obj_set_width(image_status_label, 280);
+    lv_obj_set_style_text_align(image_status_label, LV_TEXT_ALIGN_RIGHT, 0);
 
     accent = lv_obj_create(card);
     lv_obj_remove_style_all(accent);
@@ -473,14 +455,6 @@ static void image_create_preview(lv_obj_t* parent)
     image_canvas = lv_canvas_create(film);
     lv_obj_add_flag(image_canvas, LV_OBJ_FLAG_HIDDEN);
 
-    image_status_label = settings_detail_create_label(card,
-                                                      ui_text_get(UI_TEXT_SETTINGS_IMAGE_GET_IDLE),
-                                                      &lv_font_instrument_sans_medium_14,
-                                                      lv_color_hex(0x5686A5), 40, 270);
-
-    settings_detail_create_button(card, 664, 260, 136, 34,
-                                  ui_text_get(UI_TEXT_SETTINGS_IMAGE_GET_BUTTON),
-                                  lv_color_hex(0x0878C8), image_request_cb, NULL);
 }
 
 void ui_page_28_get_image_create(lv_obj_t* parent)
@@ -496,8 +470,10 @@ void ui_page_28_get_image_create(lv_obj_t* parent)
 
     image_create_left_panel(content);
     image_create_preview(content);
+    settings_detail_create_button(image_page, 1004, 10, 136, 35,
+                                  ui_text_get(UI_TEXT_SETTINGS_IMAGE_GET_BUTTON),
+                                  lv_color_hex(0x0878C8), image_request_cb, NULL);
     image_refresh_sources();
-    image_refresh_size_label();
 }
 
 void ui_page_28_get_image_destroy(void)
@@ -513,7 +489,6 @@ void ui_page_28_get_image_destroy(void)
     image_canvas = NULL;
     image_placeholder = NULL;
     image_status_label = NULL;
-    image_size_label = NULL;
     image_title_label = NULL;
     selected_image_id = 1;
 

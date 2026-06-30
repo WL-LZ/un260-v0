@@ -83,6 +83,7 @@ static uint8_t g_boot_selftest_first_error_result = 0;
 static bool g_count_session_active = false;
 static bool g_wait_start_ack_for_next_session = false;
 static bool g_count_end_anim_wait_detail_end = false;
+static bool g_auto_wave_pending = false;
 static bool g_last_result_pending_valid = false;
 static int g_last_result_pending_pcs = 0;
 static float g_last_result_pending_amount = 0.0f;
@@ -515,6 +516,36 @@ static bool is_main_page_active(void)
            main_page && lv_obj_is_valid(main_page);
 }
 
+static void schedule_auto_wave_after_count(void)
+{
+    ui_page_t page = ui_manager_get_current_page();
+
+    g_auto_wave_pending = false;
+
+    if (Machine_para.work_mode != 0) return;
+    if (page != UI_PAGE_WAVE_GET) return;
+
+    g_auto_wave_pending = true;
+    uart_printf(fd6, "auto wave scheduled after count\n");
+}
+
+static void trigger_auto_wave_after_detail(void)
+{
+    bool sent = false;
+
+    if (!g_auto_wave_pending) return;
+    g_auto_wave_pending = false;
+
+    if (Machine_para.work_mode != 0 ||
+        ui_manager_get_current_page() != UI_PAGE_WAVE_GET) {
+        return;
+    }
+
+    sent = ui_page_31_get_wave_request();
+
+    uart_printf(fd6, "auto wave after count: sent=%d\n", sent ? 1 : 0);
+}
+
 // Clear cached denomination rows; next view refresh will wait for master 0x0B data.
 static void clear_master_denom_cache(void)
 {
@@ -843,6 +874,7 @@ void PCCmdHandle(void)
                         Machine_para.last_total_amount = (uint32_t)g_last_result_pending_amount;
                         g_last_result_pending_valid = false;
                     }
+                    g_auto_wave_pending = false;
                     g_count_session_active = true;
                     g_current_count_expected_issue = 0;
                 }
@@ -905,6 +937,7 @@ void PCCmdHandle(void)
                 if (is_main_page_active()) {
                     ui_refresh_main_page();
                 }
+                schedule_auto_wave_after_count();
             }
             break;
         }
@@ -1403,6 +1436,7 @@ void PCCmdHandle(void)
                     g_count_end_anim_wait_detail_end = false;
                     ui_count_end_anim_begin(NULL);
                 }
+                trigger_auto_wave_after_detail();
                 break;
             }
 

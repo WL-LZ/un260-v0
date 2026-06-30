@@ -40,7 +40,6 @@ static lv_obj_t* wave_line = NULL;
 static lv_obj_t* wave_placeholder = NULL;
 static lv_obj_t* wave_status_label = NULL;
 static lv_obj_t* wave_title_label = NULL;
-static lv_obj_t* wave_count_label = NULL;
 static wave_source_item_t source_items[WAVE_SOURCE_COUNT] = { 0 };
 static lv_point_t wave_points[WAVE_POINT_MAX];
 static uint8_t wave_values[WAVE_SOURCE_COUNT][WAVE_POINT_MAX];
@@ -76,13 +75,6 @@ static void wave_set_status(const char* text, lv_color_t color)
 
     lv_label_set_text(wave_status_label, text);
     lv_obj_set_style_text_color(wave_status_label, color, 0);
-}
-
-static void wave_refresh_count(void)
-{
-    if (!wave_count_label || !lv_obj_is_valid(wave_count_label)) return;
-
-    lv_label_set_text_fmt(wave_count_label, "%u pts", (unsigned)wave_current_count);
 }
 
 static void wave_refresh_sources(void)
@@ -132,7 +124,6 @@ static void wave_clear_data(void)
     if (wave_placeholder && lv_obj_is_valid(wave_placeholder)) {
         lv_obj_clear_flag(wave_placeholder, LV_OBJ_FLAG_HIDDEN);
     }
-    wave_refresh_count();
 }
 
 static void wave_draw_values(void)
@@ -159,7 +150,6 @@ static void wave_draw_values(void)
         lv_obj_add_flag(wave_placeholder, LV_OBJ_FLAG_HIDDEN);
     }
     lv_obj_invalidate(wave_chart_host);
-    wave_refresh_count();
 }
 
 static void wave_show_selected_values(void)
@@ -199,8 +189,10 @@ static void wave_store_values(uint8_t wave_id, const uint8_t* values, uint16_t l
         wave_current_count = count;
         wave_draw_values();
     }
-    wave_set_status(ui_text_get(UI_TEXT_SETTINGS_WAVE_GET_DONE),
-                    lv_color_hex(0x24B47E));
+    if (wave_id == WAVE_SOURCE_COUNT) {
+        wave_set_status(ui_text_get(UI_TEXT_SETTINGS_WAVE_GET_DONE),
+                        lv_color_hex(0x24B47E));
+    }
 }
 
 static bool wave_send_request(void)
@@ -214,6 +206,13 @@ static void wave_request_cb(lv_event_t* e)
 {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
 
+    ui_page_31_get_wave_request();
+}
+
+bool ui_page_31_get_wave_request(void)
+{
+    if (!wave_page || !lv_obj_is_valid(wave_page)) return false;
+
     wave_clear_data();
     if (wave_send_request()) {
         for (size_t i = 0; i < WAVE_SOURCE_COUNT; i++) {
@@ -221,7 +220,10 @@ static void wave_request_cb(lv_event_t* e)
         }
         wave_set_status(ui_text_get(UI_TEXT_SETTINGS_WAVE_GET_WAITING),
                         lv_color_hex(0x0878C8));
+        return true;
     }
+
+    return false;
 }
 
 static void wave_source_cb(lv_event_t* e)
@@ -257,7 +259,7 @@ static void wave_create_source_item(lv_obj_t* parent, size_t index)
 {
     const wave_source_t* source = &g_wave_sources[index];
     lv_obj_t* item = lv_obj_create(parent);
-    lv_coord_t y = (lv_coord_t)(24 + index * 38);
+    lv_coord_t y = (lv_coord_t)(42 + index * 36);
 
     lv_obj_remove_style_all(item);
     lv_obj_set_pos(item, 18, y);
@@ -321,9 +323,12 @@ static void wave_create_preview(lv_obj_t* parent)
     wave_title_label = settings_detail_create_label(card, "",
                                                     &lv_font_instrument_sans_medium_18,
                                                     lv_color_hex(0x0D3440), 32, 18);
-    wave_count_label = settings_detail_create_label(card, "0 pts",
-                                                    &lv_font_instrument_sans_medium_14,
-                                                    lv_color_hex(0x5686A5), 668, 22);
+    wave_status_label = settings_detail_create_label(card,
+                                                     ui_text_get(UI_TEXT_SETTINGS_WAVE_GET_IDLE),
+                                                     &lv_font_instrument_sans_medium_14,
+                                                     lv_color_hex(0x5686A5), 500, 20);
+    lv_obj_set_width(wave_status_label, 300);
+    lv_obj_set_style_text_align(wave_status_label, LV_TEXT_ALIGN_RIGHT, 0);
 
     accent = lv_obj_create(card);
     lv_obj_remove_style_all(accent);
@@ -360,19 +365,11 @@ static void wave_create_preview(lv_obj_t* parent)
     lv_obj_center(wave_placeholder);
 
     wave_line = lv_line_create(wave_chart_host);
-    lv_obj_set_style_line_width(wave_line, 3, 0);
+    lv_obj_set_style_line_width(wave_line, 2, 0);
     lv_obj_set_style_line_rounded(wave_line, true, 0);
     lv_obj_set_style_line_color(wave_line, lv_color_hex(0x38BDF8), 0);
     lv_obj_add_flag(wave_line, LV_OBJ_FLAG_HIDDEN);
 
-    wave_status_label = settings_detail_create_label(card,
-                                                     ui_text_get(UI_TEXT_SETTINGS_WAVE_GET_IDLE),
-                                                     &lv_font_instrument_sans_medium_14,
-                                                     lv_color_hex(0x5686A5), 40, 270);
-
-    settings_detail_create_button(card, 664, 260, 136, 34,
-                                  ui_text_get(UI_TEXT_SETTINGS_WAVE_GET_BUTTON),
-                                  lv_color_hex(0x0878C8), wave_request_cb, NULL);
 }
 
 void ui_page_31_get_wave_create(lv_obj_t* parent)
@@ -388,8 +385,10 @@ void ui_page_31_get_wave_create(lv_obj_t* parent)
 
     wave_create_left_panel(content);
     wave_create_preview(content);
+    settings_detail_create_button(wave_page, 1004, 10, 136, 35,
+                                  ui_text_get(UI_TEXT_SETTINGS_WAVE_GET_BUTTON),
+                                  lv_color_hex(0x0878C8), wave_request_cb, NULL);
     wave_refresh_sources();
-    wave_refresh_count();
 }
 
 void ui_page_31_get_wave_destroy(void)
@@ -405,7 +404,6 @@ void ui_page_31_get_wave_destroy(void)
     wave_placeholder = NULL;
     wave_status_label = NULL;
     wave_title_label = NULL;
-    wave_count_label = NULL;
     selected_wave_id = 1;
     wave_current_count = 0;
     for (size_t i = 0; i < WAVE_SOURCE_COUNT; i++) {
