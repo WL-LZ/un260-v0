@@ -948,8 +948,11 @@ void page_03_batch_set_result(uint8_t status)
             page_01_batch_refre();
             page_03_batch_num_edit_reset();
             g_batch_tip_label = lv_label_create(menu_page);
-            lv_obj_set_pos(g_batch_tip_label, 160, 207);
-            lv_obj_set_style_text_color(g_batch_tip_label, lv_color_make(150,150,150), 0);
+            lv_obj_set_pos(g_batch_tip_label, 90, 182);
+            lv_obj_set_size(g_batch_tip_label, 400, 18);
+            lv_obj_set_style_text_font(g_batch_tip_label, &lv_font_instrument_sans_semibold_12, 0);
+            lv_obj_set_style_text_color(g_batch_tip_label, lv_color_hex(0x28A95B), 0);
+            lv_obj_set_style_text_align(g_batch_tip_label, LV_TEXT_ALIGN_CENTER, 0);
             lv_label_set_text(g_batch_tip_label, "Batch num saved successfully!");
             page_03_batch_num_del_timer = lv_timer_create(page_03_delete_tip_label_cb, 2000, g_batch_tip_label);
         }
@@ -971,34 +974,41 @@ void page_03_update_menu_button_states_refresh(void)
     const char* page_03_add_mode_obj[] = {"03_add_on_btn","03_add_off_btn"};
     const char* page_03_fo_mode_obj[] = {"03_fo_OFF_btn","03_fo_F_btn","03_fo_O_btn","03_fo_FO_btn"};
     const char* page_03_work_mode_obj[] = { "03_work_auto_btn", "03_work_manaul_btn"};
-    lv_color_t selected_color = lv_color_make(72, 172, 80);
-    lv_color_t unselected_color = lv_color_make(248,252,248);
+    lv_color_t selected_blue_color = lv_color_hex(0x0B69FF);
+    lv_color_t selected_off_color = lv_color_hex(0x9AA6B2);
+    lv_color_t unselected_color = lv_color_hex(0xEEF2F7);
     lv_color_t selected_text_color = lv_color_make(255, 255, 255);
-    lv_color_t unselected_text_color = lv_color_make(96, 100, 96);
-    lv_color_t enable_color = lv_color_make(214, 45, 45);
+    lv_color_t unselected_text_color = lv_color_hex(0x747B84);
+    lv_color_t pressed_blue_color = lv_color_hex(0x0857D9);
+    lv_color_t pressed_off_color = lv_color_hex(0x7F8B98);
+    lv_color_t pressed_unselected_color = lv_color_hex(0xDCE8F8);
+
+    #define PAGE_03_APPLY_FUNCTION_BTN(_obj, _sel, _off_selected) do {                  \
+        bool _selected = (_sel);                                                        \
+        bool _off = (_off_selected);                                                    \
+        lv_obj_t* _btn = (_obj);                                                        \
+        lv_color_t _bg = _selected ? (_off ? selected_off_color : selected_blue_color)   \
+                                   : unselected_color;                                  \
+        lv_color_t _pressed = _selected ? (_off ? pressed_off_color : pressed_blue_color)\
+                                        : pressed_unselected_color;                     \
+        if (_btn) {                                                                     \
+            lv_obj_set_style_bg_color(_btn, _bg, 0);                                    \
+            lv_obj_set_style_bg_color(_btn, _pressed, LV_STATE_PRESSED);                \
+            lv_obj_t* _label = lv_obj_get_child(_btn, 0);                               \
+            if (_label) {                                                               \
+                lv_obj_set_style_text_color(_label,                                    \
+                    _selected ? selected_text_color : unselected_text_color, 0);        \
+            }                                                                           \
+        }                                                                               \
+    } while (0)
 
     // BEEP 处理（配色与 ADD 一致）
     lv_obj_t* tmp_beep_on_obj = find_obj_by_name(page_03_beep_mode_obj[0], page_03_menu_obj, page_03_menu_len);
     lv_obj_t* tmp_beep_off_obj = find_obj_by_name(page_03_beep_mode_obj[1], page_03_menu_obj, page_03_menu_len);
     bool beep_on = Machine_para.buzzer_enable;
     if (tmp_beep_on_obj && tmp_beep_off_obj) {
-        if (beep_on) {
-            lv_obj_set_style_bg_color(tmp_beep_on_obj, selected_color, 0);
-            lv_obj_set_style_bg_color(tmp_beep_off_obj, unselected_color, 0);
-        } else {
-            lv_obj_set_style_bg_color(tmp_beep_off_obj, enable_color, 0);
-            lv_obj_set_style_bg_color(tmp_beep_on_obj, unselected_color, 0);
-        }
-        lv_obj_t* label_beep_on = lv_obj_get_child(tmp_beep_on_obj, 0);
-        if (label_beep_on) {
-            lv_obj_set_style_text_color(label_beep_on,
-                beep_on ? selected_text_color : unselected_text_color, 0);
-        }
-        lv_obj_t* label_beep_off = lv_obj_get_child(tmp_beep_off_obj, 0);
-        if (label_beep_off) {
-            lv_obj_set_style_text_color(label_beep_off,
-                !beep_on ? selected_text_color : unselected_text_color, 0);
-        }
+        PAGE_03_APPLY_FUNCTION_BTN(tmp_beep_on_obj, beep_on, false);
+        PAGE_03_APPLY_FUNCTION_BTN(tmp_beep_off_obj, !beep_on, true);
     }
     //speed 处理
     for (int i = 0; i < SPEED_MODE; i++)
@@ -1006,14 +1016,7 @@ void page_03_update_menu_button_states_refresh(void)
         lv_obj_t* tmp_speed_obj = find_obj_by_name(page_03_speed_mode_obj[i], page_03_menu_obj, page_03_menu_len);
         bool sel = (i == Machine_para.speed);
         if (!tmp_speed_obj) continue;
-        lv_obj_set_style_bg_color(tmp_speed_obj, sel ? selected_color : unselected_color, 0);
-        lv_obj_t* label_speed = lv_obj_get_child(tmp_speed_obj, 0);
-        if (!label_speed) continue;
-        lv_obj_set_style_text_color(
-            label_speed,
-            sel ? selected_text_color : unselected_text_color,
-            0 
-        );
+        PAGE_03_APPLY_FUNCTION_BTN(tmp_speed_obj, sel, false);
     }
     //FO处理
     for (int i = 0; i < FO_MODE; i++)
@@ -1021,23 +1024,7 @@ void page_03_update_menu_button_states_refresh(void)
         lv_obj_t* tmp_fo_obj = find_obj_by_name(page_03_fo_mode_obj[i], page_03_menu_obj, page_03_menu_len);
         bool sel = (i == Machine_para.fo_mode);
         if (!tmp_fo_obj) continue;
-        if (i == 0)
-        {
-            lv_obj_set_style_bg_color(tmp_fo_obj,
-                sel ? enable_color : unselected_color, 0);
-        }
-        else
-        {
-            lv_obj_set_style_bg_color(tmp_fo_obj,
-                sel ? selected_color : unselected_color, 0);
-        }
-        lv_obj_t* label_fo = lv_obj_get_child(tmp_fo_obj, 0);
-        if (!label_fo) continue;
-        lv_obj_set_style_text_color(
-            label_fo,
-            sel ? selected_text_color : unselected_text_color,
-            0  
-        );
+        PAGE_03_APPLY_FUNCTION_BTN(tmp_fo_obj, sel, i == 0);
     }
     //work处理
     for (int i = 0; i < WORK_MODE; i++)
@@ -1045,49 +1032,19 @@ void page_03_update_menu_button_states_refresh(void)
         lv_obj_t* tmp_work_obj = find_obj_by_name(page_03_work_mode_obj[i], page_03_menu_obj, page_03_menu_len);
         bool sel = (i == Machine_para.work_mode);
         if (!tmp_work_obj) continue;
-        lv_obj_set_style_bg_color(tmp_work_obj, sel ? selected_color : unselected_color, 0);
-        lv_obj_t* label_work = lv_obj_get_child(tmp_work_obj, 0);
-        if (!label_work) continue;
-        lv_obj_set_style_text_color(
-            label_work,
-            sel ? selected_text_color : unselected_text_color,
-            0  
-        );
+        PAGE_03_APPLY_FUNCTION_BTN(tmp_work_obj, sel, false);
     }
     //ADD 处理
         lv_obj_t* tmp_add_on_obj = find_obj_by_name(page_03_add_mode_obj[0], page_03_menu_obj, page_03_menu_len);
         lv_obj_t* tmp_add_off_obj = find_obj_by_name(page_03_add_mode_obj[1], page_03_menu_obj, page_03_menu_len);
         bool sel =  Machine_para.add_enable;
         if (!tmp_add_on_obj || !tmp_add_off_obj) return;
-        if (sel)
-        {
-            lv_obj_set_style_bg_color(tmp_add_on_obj,selected_color , 0);
-            lv_obj_set_style_bg_color(tmp_add_off_obj, unselected_color, 0);
+        PAGE_03_APPLY_FUNCTION_BTN(tmp_add_on_obj, sel, false);
+        PAGE_03_APPLY_FUNCTION_BTN(tmp_add_off_obj, !sel, true);
 
-        }
-        else
-        {
-            lv_obj_set_style_bg_color(tmp_add_off_obj, enable_color, 0);
-            lv_obj_set_style_bg_color(tmp_add_on_obj, unselected_color, 0);
+    #undef PAGE_03_APPLY_FUNCTION_BTN
 
-        }
-        lv_obj_t* label_add_on = lv_obj_get_child(tmp_add_on_obj, 0);
-        if (label_add_on) {
-        lv_obj_set_style_text_color(
-            label_add_on,
-            sel ? selected_text_color : unselected_text_color,
-            0 
-        );
-        }
-        lv_obj_t* label_add_off = lv_obj_get_child(tmp_add_off_obj, 0);
-        if (label_add_off) {
-        lv_obj_set_style_text_color(
-            label_add_off,
-            !sel ? selected_text_color : unselected_text_color,
-            0  
-        );
-        }
-
+    page_03_menu_preview_refresh();
 }
 
 // BEEP 模式（复用原 CFD 回调）
@@ -1098,6 +1055,7 @@ void page_03_cfd_mode_event_cb(lv_event_t* e)
     uint8_t beep_code = atoi(beep_str);
     bool target = (beep_code > 0) ? true : false;
     uint8_t beep_cmd = target ? 0x01 : 0x02;
+    page_03_menu_function_feedback(0, target);
 
     if (g_page03_beep_req_pending || target == Machine_para.buzzer_enable) {
         return;
@@ -1118,6 +1076,7 @@ void page_03_speed_mode_event_cb(lv_event_t* e)
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
     const char* speed_str = lv_event_get_user_data(e);
     uint8_t speed_code = atoi(speed_str);
+    page_03_menu_function_feedback(1, speed_code);
     if (speed_code >= SPEED_MODE || speed_code == Machine_para.speed) return;
     if (!page_01_speed_req_start(speed_code)) return;
 
@@ -1146,6 +1105,7 @@ void page_03_add_mode_event_cb(lv_event_t* e)
     uint8_t add_code = atoi(add_str);
     bool target = (add_code > 0) ? true : false;
     uint8_t add_cmd = target ? 0x01 : 0x00;
+    page_03_menu_function_feedback(2, target);
 
     if (target == Machine_para.add_enable) return;
     if (!page_01_add_req_start(target)) return;
@@ -1162,6 +1122,7 @@ void page_03_fo_mode_event_cb(lv_event_t* e)
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
     const char* fo_str = lv_event_get_user_data(e);
     uint8_t fo_code = atoi(fo_str);
+    page_03_menu_function_feedback(3, fo_code);
     if (fo_code >= FO_MODE || fo_code == Machine_para.fo_mode) return;
     if (!page_01_fo_req_start(fo_code)) return;
 
@@ -1186,6 +1147,7 @@ void page_03_work_mode_event_cb(lv_event_t* e)
     if (lv_event_get_code(e) != LV_EVENT_CLICKED)return;
     const char* word_str = lv_event_get_user_data(e);
     uint8_t word_code = atoi(word_str);
+    page_03_menu_function_feedback(4, word_code);
     if (word_code >= WORK_MODE || word_code == Machine_para.work_mode) return;
     if (!page_01_work_req_start(word_code)) return;
 

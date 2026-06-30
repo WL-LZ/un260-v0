@@ -846,18 +846,6 @@ void ui_count_end_anim_poll(void)
     smart_island_refresh_summary();
 }
 
-void ui_count_end_anim_clear_machine(void)
-{
-    uint8_t clear_cmd = 0x01;
-
-    if (fd4 < 0) {
-        return;
-    }
-
-    /* 结单动画结束后，做一次协议复位，避免下一把被残留的确认态卡住。 */
-    send_command(fd4, 0x3D, &clear_cmd, 1);
-}
-
 void cleanup_counting_sim(void)
 {
     if (sim_timer) {

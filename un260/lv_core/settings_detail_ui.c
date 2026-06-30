@@ -1,9 +1,77 @@
+#define SETTINGS_THEME_DISABLE_COLOR_REMAP
 #include "un260/lv_core/settings_detail_ui.h"
 #include "un260/lv_core/page_06_settings.h"
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_system/ui_text.h"
 
 #include <string.h>
+
+lv_color_t settings_theme_color_hex(uint32_t color)
+{
+    switch (color) {
+    /* Primary accents -> #2e85ff and its darker/lighter variants. */
+    case 0x08C5D6: return lv_color_hex(0x2E85FF);
+    case 0x0878C8: return lv_color_hex(0x1F6FE5);
+    case 0x075E9C:
+    case 0x0466AD: return lv_color_hex(0x185BC2);
+    case 0x0EA5E9:
+    case 0x38BDF8: return lv_color_hex(0x62A4FF);
+    case 0x11BFE0:
+    case 0x12C8DD: return lv_color_hex(0x4795FF);
+    case 0x62E6FF: return lv_color_hex(0x94C1FF);
+    case 0x6366F1:
+    case 0x8B5CF6: return lv_color_hex(0x62A4FF);
+
+    /* Selected and pressed surfaces use pale primary-blue variants. */
+    case 0xB9EEF6:
+    case 0xBCE9F7: return lv_color_hex(0xC9E0FF);
+    case 0xD3F2F8: return lv_color_hex(0xDCEBFF);
+    case 0xD8F4FF: return lv_color_hex(0xE1EDFF);
+    case 0xDDEBFF: return lv_color_hex(0xD9E9FF);
+    case 0xE3F4FF: return lv_color_hex(0xE6F0FF);
+    case 0xE3FAFD: return lv_color_hex(0xEAF3FF);
+    case 0xEAF8FF: return lv_color_hex(0xF0F6FF);
+    case 0xF2FBFF: return lv_color_hex(0xF4F8FF);
+    case 0xF6FBFF: return lv_color_hex(0xF7FAFF);
+
+    /* Borders, grids and secondary copy use low-saturation blue-gray. */
+    case 0xCFE0EE: return lv_color_hex(0xC9DAF2);
+    case 0xD6E6F5:
+    case 0xDDE6EF: return lv_color_hex(0xD5E2F3);
+    case 0xE9EDF2: return lv_color_hex(0xE4EBF5);
+    case 0xECEFF3: return lv_color_hex(0xE8EEF6);
+    case 0xECF4FA:
+    case 0xEDF2F6: return lv_color_hex(0xEAF1FA);
+    case 0xEFF4F8: return lv_color_hex(0xF0F4FA);
+    case 0x5686A5: return lv_color_hex(0x5F779B);
+    case 0x5F6E7D: return lv_color_hex(0x5B6A80);
+    case 0x6B7A90: return lv_color_hex(0x6D7B90);
+    case 0x8792A8: return lv_color_hex(0x808FA8);
+    case 0x8AA8B8:
+    case 0x8B9AAF:
+    case 0x94A3B8: return lv_color_hex(0x889AB5);
+    case 0x9AA6B2:
+    case 0x9AB6C2: return lv_color_hex(0x97A8BF);
+
+    /* Main copy and technology preview panels use deep navy variants. */
+    case 0x0D3440: return lv_color_hex(0x17223B);
+    case 0x101820: return lv_color_hex(0x111827);
+    case 0x102233: return lv_color_hex(0x12203A);
+    case 0x111827: return lv_color_hex(0x172036);
+    case 0x142332: return lv_color_hex(0x17263F);
+    case 0x164865: return lv_color_hex(0x23528A);
+    case 0x183B61: return lv_color_hex(0x234578);
+    case 0x1F2937: return lv_color_hex(0x253149);
+    case 0x233249:
+    case 0x243047: return lv_color_hex(0x293957);
+    case 0x24465C: return lv_color_hex(0x315E96);
+    case 0x2D3A4A: return lv_color_hex(0x34425E);
+    case 0x355779: return lv_color_hex(0x4874A8);
+    default: return lv_color_hex(color);
+    }
+}
+
+#define lv_color_hex settings_theme_color_hex
 
 #define SETTINGS_DETAIL_W             1280
 #define SETTINGS_DETAIL_H             400

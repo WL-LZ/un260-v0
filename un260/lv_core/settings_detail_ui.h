@@ -64,4 +64,15 @@ bool settings_detail_keyboard_show_ex(const char* title,
                                       void* close_user_data);
 void settings_detail_keyboard_hide(void);
 
+/*
+ * Keep the complete settings flow on one #2e85ff-based blue palette. Settings pages
+ * include this header, so existing LVGL colors are translated consistently
+ * without duplicating theme constants in every sub-page.
+ */
+lv_color_t settings_theme_color_hex(uint32_t color);
+
+#ifndef SETTINGS_THEME_DISABLE_COLOR_REMAP
+#define lv_color_hex settings_theme_color_hex
+#endif
+
 #endif

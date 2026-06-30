@@ -25,6 +25,14 @@ typedef struct {
     lv_obj_t* label;
 } image_source_item_t;
 
+typedef struct {
+    lv_color_t* buffer;
+    uint16_t width;
+    uint16_t height;
+    uint16_t rows_received;
+    bool receiving;
+} image_buffer_t;
+
 static const image_source_t g_image_sources[IMAGE_SOURCE_COUNT] = {
     { 0x01, UI_TEXT_SETTINGS_IMAGE_GET_UP_WHITE, 0x38BDF8 },
     { 0x02, UI_TEXT_SETTINGS_IMAGE_GET_DOWN_WHITE, 0x0EA5E9 },
@@ -40,13 +48,10 @@ static lv_obj_t* image_placeholder = NULL;
 static lv_obj_t* image_status_label = NULL;
 static lv_obj_t* image_size_label = NULL;
 static lv_obj_t* image_title_label = NULL;
-static lv_color_t* image_buffer = NULL;
 static image_source_item_t source_items[IMAGE_SOURCE_COUNT] = { 0 };
-static uint16_t image_width = 0;
-static uint16_t image_height = 0;
-static uint16_t rows_received = 0;
+static image_buffer_t image_buffers[IMAGE_SOURCE_COUNT] = { 0 };
+static uint16_t reported_image_length = 0;
 static uint8_t selected_image_id = 1;
-static bool image_receiving = false;
 
 static const image_source_t* image_find_source(uint8_t id)
 {
@@ -97,14 +102,18 @@ static void image_set_status(const char* text, lv_color_t color)
 
 static void image_refresh_size_label(void)
 {
+    image_buffer_t* current;
+
     if (!image_size_label || !lv_obj_is_valid(image_size_label)) return;
 
-    if (image_width == 0 || image_height == 0) {
+    current = &image_buffers[image_source_index(selected_image_id)];
+    if (current->width == 0 || current->height == 0) {
         lv_label_set_text(image_size_label, "-- x --");
         return;
     }
 
-    lv_label_set_text_fmt(image_size_label, "%u x %u", image_width, image_height);
+    lv_label_set_text_fmt(image_size_label, "%u x %u",
+                          current->width, current->height);
 }
 
 static void image_refresh_sources(void)
@@ -140,34 +149,79 @@ static void image_refresh_sources(void)
         const image_source_t* source = image_find_source(selected_image_id);
         lv_label_set_text(image_title_label, ui_text_get(source->text_id));
     }
+
+    image_refresh_size_label();
+}
+
+static void image_free_one_buffer(image_buffer_t* item)
+{
+    if (!item) return;
+
+    if (item->buffer) {
+        lv_mem_free(item->buffer);
+    }
+
+    item->buffer = NULL;
+    item->width = 0;
+    item->height = 0;
+    item->rows_received = 0;
+    item->receiving = false;
+}
+
+static void image_hide_canvas(void)
+{
+    if (image_canvas && lv_obj_is_valid(image_canvas)) {
+        lv_obj_add_flag(image_canvas, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    if (image_placeholder && lv_obj_is_valid(image_placeholder)) {
+        lv_obj_clear_flag(image_placeholder, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+static void image_show_selected_buffer(void)
+{
+    image_buffer_t* current = &image_buffers[image_source_index(selected_image_id)];
+
+    if (!image_canvas || !lv_obj_is_valid(image_canvas) ||
+        !image_placeholder || !lv_obj_is_valid(image_placeholder)) {
+        return;
+    }
+
+    if (!current->buffer || current->width == 0 || current->height == 0) {
+        image_hide_canvas();
+        image_refresh_size_label();
+        return;
+    }
+
+    lv_canvas_set_buffer(image_canvas, current->buffer,
+                         current->width, current->height,
+                         LV_IMG_CF_TRUE_COLOR);
+    lv_img_set_zoom(image_canvas, image_zoom_for_size(current->width, current->height));
+    lv_obj_center(image_canvas);
+    lv_obj_clear_flag(image_canvas, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(image_placeholder, LV_OBJ_FLAG_HIDDEN);
+    image_refresh_size_label();
 }
 
 static void image_clear_buffer(void)
 {
-    if (image_buffer) {
-        lv_mem_free(image_buffer);
-        image_buffer = NULL;
+    for (size_t i = 0; i < IMAGE_SOURCE_COUNT; i++) {
+        image_free_one_buffer(&image_buffers[i]);
     }
 
-    image_width = 0;
-    image_height = 0;
-    rows_received = 0;
-    image_receiving = false;
+    reported_image_length = 0;
 
-    if (image_canvas && lv_obj_is_valid(image_canvas)) {
-        lv_obj_add_flag(image_canvas, LV_OBJ_FLAG_HIDDEN);
-    }
-    if (image_placeholder && lv_obj_is_valid(image_placeholder)) {
-        lv_obj_clear_flag(image_placeholder, LV_OBJ_FLAG_HIDDEN);
-    }
+    image_hide_canvas();
     image_refresh_size_label();
 }
 
-static bool image_prepare_buffer(uint16_t width, uint16_t height)
+static bool image_prepare_one_buffer(uint8_t image_id, uint16_t width, uint16_t height)
 {
+    image_buffer_t* item;
     size_t pixel_count;
 
-    image_clear_buffer();
+    if (image_id < 1 || image_id > IMAGE_SOURCE_COUNT) return false;
     if (width == 0 || height == 0 ||
         width > IMAGE_MAX_WIDTH || height > IMAGE_MAX_HEIGHT) {
         image_set_status(ui_text_get(UI_TEXT_SETTINGS_IMAGE_GET_SIZE_ERROR),
@@ -175,65 +229,113 @@ static bool image_prepare_buffer(uint16_t width, uint16_t height)
         return false;
     }
 
-    pixel_count = (size_t)width * height;
-    if (!image_canvas || !lv_obj_is_valid(image_canvas)) {
-        return false;
+    item = &image_buffers[image_source_index(image_id)];
+    if (item->buffer && item->width == width && item->height == height) {
+        item->receiving = true;
+        return true;
     }
 
-    image_buffer = (lv_color_t*)lv_mem_alloc(pixel_count * sizeof(lv_color_t));
-    if (!image_buffer) {
+    image_free_one_buffer(item);
+
+    pixel_count = (size_t)width * height;
+    item->buffer = (lv_color_t*)lv_mem_alloc(pixel_count * sizeof(lv_color_t));
+    if (!item->buffer) {
         image_set_status(ui_text_get(UI_TEXT_SETTINGS_IMAGE_GET_MEMORY_ERROR),
                          lv_color_hex(0xC03A2B));
         return false;
     }
 
-    image_width = width;
-    image_height = height;
-    image_receiving = true;
+    item->width = width;
+    item->height = height;
+    item->rows_received = 0;
+    item->receiving = true;
 
     for (size_t i = 0; i < pixel_count; i++) {
-        image_buffer[i] = lv_color_hex(0xEFF4F8);
+        item->buffer[i] = lv_color_hex(0xEFF4F8);
     }
 
-    lv_canvas_set_buffer(image_canvas, image_buffer, image_width, image_height,
-                         LV_IMG_CF_TRUE_COLOR);
-    lv_img_set_zoom(image_canvas, image_zoom_for_size(image_width, image_height));
-    lv_obj_center(image_canvas);
-    lv_obj_clear_flag(image_canvas, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(image_placeholder, LV_OBJ_FLAG_HIDDEN);
-    image_refresh_size_label();
-    image_set_status(ui_text_get(UI_TEXT_SETTINGS_IMAGE_GET_RECEIVING),
-                     lv_color_hex(0x0878C8));
+    if (image_id == selected_image_id) {
+        image_show_selected_buffer();
+        image_set_status(ui_text_get(UI_TEXT_SETTINGS_IMAGE_GET_RECEIVING),
+                         lv_color_hex(0x0878C8));
+    }
+
     return true;
 }
 
-static void image_draw_row(uint16_t row, const uint8_t* pixels, uint16_t pixel_len)
+static lv_color_t image_rgb565_to_color(uint8_t high, uint8_t low)
 {
-    uint16_t y;
-    uint16_t copy_len;
+    uint16_t rgb = (uint16_t)(((uint16_t)high << 8) | low);
+    uint8_t r = (uint8_t)((((rgb >> 11) & 0x1F) * 255U) / 31U);
+    uint8_t g = (uint8_t)((((rgb >> 5) & 0x3F) * 255U) / 63U);
+    uint8_t b = (uint8_t)(((rgb & 0x1F) * 255U) / 31U);
 
-    if (!image_buffer || !image_receiving || image_width == 0 || image_height == 0) return;
-    if (row == 0) return;
+    return lv_color_make(r, g, b);
+}
 
-    y = (uint16_t)(row - 1);
-    if (y >= image_height) return;
+static bool image_prepare_for_row(uint8_t image_id, uint16_t row, uint16_t pixel_len)
+{
+    uint16_t width;
+    uint16_t height;
 
-    copy_len = pixel_len < image_width ? pixel_len : image_width;
-    for (uint16_t x = 0; x < copy_len; x++) {
-        uint8_t gray = pixels[x];
-        image_buffer[(size_t)y * image_width + x] = lv_color_make(gray, gray, gray);
-    }
+    if (image_id < 1 || image_id > IMAGE_SOURCE_COUNT) return false;
+    if (pixel_len < 2 || (pixel_len & 0x01U) != 0) return false;
 
-    if (row > rows_received) {
-        rows_received = row;
-    }
+    width = reported_image_length ? reported_image_length : row;
+    height = (uint16_t)(pixel_len / 2U);
 
-    lv_obj_invalidate(image_canvas);
-    if (image_status_label && lv_obj_is_valid(image_status_label)) {
+    return image_prepare_one_buffer(image_id, width, height);
+}
+
+static void image_update_status(uint8_t image_id)
+{
+    image_buffer_t* item;
+
+    if (image_id != selected_image_id) return;
+    if (!image_status_label || !lv_obj_is_valid(image_status_label)) return;
+
+    item = &image_buffers[image_source_index(image_id)];
+    if (item->receiving && item->width > 0) {
         lv_label_set_text_fmt(image_status_label, "%s %u/%u",
                               ui_text_get(UI_TEXT_SETTINGS_IMAGE_GET_RECEIVING),
-                              rows_received, image_height);
+                              item->rows_received, item->width);
     }
+}
+
+static void image_draw_row(uint8_t image_id, uint16_t row,
+                           const uint8_t* pixels, uint16_t pixel_len)
+{
+    image_buffer_t* item;
+    uint16_t x;
+    uint16_t copy_len;
+
+    if (!pixels || image_id < 1 || image_id > IMAGE_SOURCE_COUNT) return;
+    if (row == 0) return;
+    if (!image_prepare_for_row(image_id, row, pixel_len)) return;
+
+    item = &image_buffers[image_source_index(image_id)];
+    if (!item->buffer || item->width == 0 || item->height == 0) return;
+
+    x = (uint16_t)(row - 1);
+    if (x >= item->width) return;
+
+    copy_len = (uint16_t)(pixel_len / 2U);
+    if (copy_len > item->height) copy_len = item->height;
+
+    for (uint16_t y = 0; y < copy_len; y++) {
+        item->buffer[(size_t)y * item->width + x] =
+            image_rgb565_to_color(pixels[y * 2U], pixels[y * 2U + 1U]);
+    }
+
+    if (row > item->rows_received) {
+        item->rows_received = row;
+    }
+
+    if (image_id == selected_image_id) {
+        image_show_selected_buffer();
+        lv_obj_invalidate(image_canvas);
+    }
+    image_update_status(image_id);
 }
 
 static bool image_send_request(void)
@@ -265,6 +367,7 @@ static void image_source_cb(lv_event_t* e)
 
     selected_image_id = image_id;
     image_refresh_sources();
+    image_show_selected_buffer();
 }
 
 static void image_esc_cb(lv_event_t* e)
@@ -431,21 +534,24 @@ void ui_page_28_get_image_on_frame(const uint8_t* data, uint16_t len)
     sub = data[0];
     if (sub == 0x00) {
         uint8_t image_id;
-        uint16_t width;
-        uint16_t height;
+        uint16_t length;
 
         if (len < 6) return;
         image_id = data[1];
-        width = (uint16_t)(((uint16_t)data[2] << 8) | data[3]);
-        height = (uint16_t)(((uint16_t)data[4] << 8) | data[5]);
+        length = (uint16_t)(((uint16_t)data[2] << 8) | data[3]);
+        image_clear_buffer();
+        reported_image_length = length;
         selected_image_id = image_id;
         image_refresh_sources();
-        image_prepare_buffer(width, height);
+        image_set_status(ui_text_get(UI_TEXT_SETTINGS_IMAGE_GET_RECEIVING),
+                         lv_color_hex(0x0878C8));
         return;
     }
 
     if (sub == 0xFF) {
-        image_receiving = false;
+        for (size_t i = 0; i < IMAGE_SOURCE_COUNT; i++) {
+            image_buffers[i].receiving = false;
+        }
         if (image_canvas && lv_obj_is_valid(image_canvas)) {
             lv_obj_invalidate(image_canvas);
         }
@@ -459,6 +565,6 @@ void ui_page_28_get_image_on_frame(const uint8_t* data, uint16_t len)
 
         if (len < 4) return;
         row = (uint16_t)(((uint16_t)data[1] << 8) | data[2]);
-        image_draw_row(row, &data[3], (uint16_t)(len - 3));
+        image_draw_row(sub, row, &data[3], (uint16_t)(len - 3));
     }
 }

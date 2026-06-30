@@ -330,21 +330,32 @@ void show_currency_set_fail_popup(void)
     lv_obj_center(ok_label);
 }
 
+static void batch_switch_center_knob_y(void)
+{
+    if (!batch_switch.switch_container || !batch_switch.switch_knob) return;
+    lv_obj_update_layout(batch_switch.switch_container);
+    lv_obj_update_layout(batch_switch.switch_knob);
+    lv_obj_set_y(batch_switch.switch_knob,
+        (lv_obj_get_height(batch_switch.switch_container) - lv_obj_get_height(batch_switch.switch_knob)) / 2);
+}
+
 static void update_switch_visual(bool enable, bool animate) {
     lv_coord_t cont_w = lv_obj_get_width(batch_switch.switch_container);
     lv_coord_t knob_w = lv_obj_get_width(batch_switch.switch_knob);
+    batch_switch_center_knob_y();
 
     if (enable) {
         //  ON 标签
-        lv_obj_set_style_bg_color(batch_switch.switch_container, lv_palette_main(LV_PALETTE_GREEN), 0);
+        lv_obj_set_style_bg_color(batch_switch.switch_container, lv_color_hex(0x0A66F6), 0);
 
         lv_label_set_text(batch_switch.label_on, "ON");
-        lv_obj_align(batch_switch.label_on, LV_ALIGN_LEFT_MID, 3, 0);
+        lv_obj_set_style_text_color(batch_switch.label_on, lv_color_white(), 0);
+        lv_obj_align(batch_switch.label_on, LV_ALIGN_LEFT_MID, 9, 0);
         lv_obj_clear_flag(batch_switch.label_on, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(batch_switch.label_off, LV_OBJ_FLAG_HIDDEN);
 
         // 滑块动画
-        lv_coord_t target_x = cont_w - knob_w - 8;
+        lv_coord_t target_x = cont_w - knob_w - 4;
         if (animate && lv_obj_get_x(batch_switch.switch_knob) != target_x) {
             // 执行动画
             lv_anim_t a;
@@ -363,10 +374,11 @@ static void update_switch_visual(bool enable, bool animate) {
     }
     else {
         // OFF 标签
-        lv_obj_set_style_bg_color(batch_switch.switch_container, lv_palette_main(LV_PALETTE_GREY), 0);
+        lv_obj_set_style_bg_color(batch_switch.switch_container, lv_color_hex(0xE9EEF5), 0);
 
         lv_label_set_text(batch_switch.label_off, "OFF");
-        lv_obj_align(batch_switch.label_off, LV_ALIGN_RIGHT_MID, -3, 0);
+        lv_obj_set_style_text_color(batch_switch.label_off, lv_color_hex(0x697589), 0);
+        lv_obj_align(batch_switch.label_off, LV_ALIGN_RIGHT_MID, -9, 0);
         lv_obj_clear_flag(batch_switch.label_off, LV_OBJ_FLAG_HIDDEN);
 
         lv_obj_add_flag(batch_switch.label_on, LV_OBJ_FLAG_HIDDEN);
@@ -451,23 +463,23 @@ void batch_switch_on_0x06_result(uint8_t status)
 
 // 创建批次开关组件
 void create_batch_num_switch(lv_obj_t* parent) {
-    // 自适应宽度
-    lv_obj_t* tmp = lv_label_create(parent);
-    lv_obj_set_style_text_font(tmp, &lv_font_instrument_sans_medium_24, 0);
-    lv_label_set_text(tmp, "OFF");
-    lv_obj_update_layout(tmp);
-    lv_coord_t txt_w = lv_obj_get_width(tmp);
-    lv_obj_del(tmp);
-
     // 创建容器
     batch_switch.switch_container = lv_obj_create(parent);
-    lv_obj_set_size(batch_switch.switch_container, txt_w + 44, 40);
-    lv_obj_set_style_radius(batch_switch.switch_container, 20, 0);
+    lv_obj_set_size(batch_switch.switch_container, 78, 36);
+    lv_obj_set_style_radius(batch_switch.switch_container, 18, 0);
     lv_obj_set_style_pad_all(batch_switch.switch_container, 0, 0);
     lv_obj_set_style_bg_color(batch_switch.switch_container,
         Machine_para.batch_switch_enable ?
-        lv_palette_main(LV_PALETTE_GREEN) :
-        lv_palette_main(LV_PALETTE_GREY), 0);
+        lv_color_hex(0x0A66F6) :
+        lv_color_hex(0xE9EEF5), 0);
+    lv_obj_set_style_bg_opa(batch_switch.switch_container, LV_OPA_COVER, LV_STATE_PRESSED);
+    lv_obj_set_style_border_width(batch_switch.switch_container, 1, 0);
+    lv_obj_set_style_border_color(batch_switch.switch_container, lv_color_hex(0xDDE5EF), 0);
+    lv_obj_set_style_shadow_color(batch_switch.switch_container, lv_color_hex(0x8795A8), 0);
+    lv_obj_set_style_shadow_opa(batch_switch.switch_container, LV_OPA_10, 0);
+    lv_obj_set_style_shadow_width(batch_switch.switch_container, 8, 0);
+    lv_obj_set_style_shadow_ofs_y(batch_switch.switch_container, 2, 0);
+    lv_obj_set_style_bg_color(batch_switch.switch_container, lv_color_hex(0xDDE8F8), LV_STATE_PRESSED);
 
     lv_obj_add_flag(batch_switch.switch_container, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_clear_flag(batch_switch.switch_container, LV_OBJ_FLAG_SCROLLABLE);
@@ -476,33 +488,32 @@ void create_batch_num_switch(lv_obj_t* parent) {
     // 创建 OFF 标签
     batch_switch.label_off = lv_label_create(batch_switch.switch_container);
     lv_label_set_text(batch_switch.label_off, "OFF");
-    lv_obj_set_style_text_font(batch_switch.label_off, &lv_font_instrument_sans_medium_24, 0);
-    lv_obj_set_style_text_color(batch_switch.label_off, lv_color_white(), 0);
+    lv_obj_set_style_text_font(batch_switch.label_off, &lv_font_instrument_sans_semibold_12, 0);
+    lv_obj_set_style_text_color(batch_switch.label_off, lv_color_hex(0x697589), 0);
 
     // 创建 ON 标签
     batch_switch.label_on = lv_label_create(batch_switch.switch_container);
     lv_label_set_text(batch_switch.label_on, "ON");
-    lv_obj_set_style_text_font(batch_switch.label_on, &lv_font_instrument_sans_medium_24, 0);
+    lv_obj_set_style_text_font(batch_switch.label_on, &lv_font_instrument_sans_semibold_12, 0);
     lv_obj_set_style_text_color(batch_switch.label_on, lv_color_white(), 0);
 
     // 创建滑块
     batch_switch.switch_knob = lv_obj_create(batch_switch.switch_container);
-    lv_obj_set_size(batch_switch.switch_knob, 30, 30);
+    lv_obj_set_size(batch_switch.switch_knob, 28, 28);
     lv_obj_set_style_radius(batch_switch.switch_knob, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_bg_color(batch_switch.switch_knob, lv_color_white(), 0);
-    lv_obj_set_style_shadow_width(batch_switch.switch_knob, 5, 0);
+    lv_obj_set_style_border_width(batch_switch.switch_knob, 1, 0);
+    lv_obj_set_style_border_color(batch_switch.switch_knob, lv_color_hex(0xEFF3F8), 0);
+    lv_obj_set_style_shadow_width(batch_switch.switch_knob, 6, 0);
     lv_obj_set_style_shadow_color(batch_switch.switch_knob, lv_color_black(), 0);
     lv_obj_set_style_shadow_opa(batch_switch.switch_knob, LV_OPA_20, 0);
-    lv_obj_add_flag(batch_switch.switch_knob, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(batch_switch.switch_knob, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_clear_flag(batch_switch.switch_knob, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_add_event_cb(batch_switch.switch_knob, switch_event_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_update_layout(batch_switch.switch_container);
     lv_obj_update_layout(batch_switch.switch_knob);
 
     // 居中Y
-    lv_obj_set_y(batch_switch.switch_knob,
-        (lv_obj_get_height(batch_switch.switch_container) - lv_obj_get_height(batch_switch.switch_knob)) / 2 - 2
-    );
+    batch_switch_center_knob_y();
 
     // 设置初始状态，无动画
     update_switch_visual(Machine_para.batch_switch_enable, false);

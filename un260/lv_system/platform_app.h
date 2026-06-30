@@ -63,7 +63,6 @@ void ui_refresh_main_page(void);
 void ui_count_end_anim_cancel(void);
 void ui_count_end_anim_begin(const char *result_text);
 void ui_count_end_anim_poll(void);
-void ui_count_end_anim_clear_machine(void);
 int sim_get_sn_valid_count(void);
 int sim_get_sn_nth_valid_index(int nth);
 void page_01_main_detail_refresh_rows_only(void);
