@@ -8,6 +8,7 @@
 #include"page_06_settings.h"
 #include"page_07_curr.h"
 #include"page_08_boot.h"
+#include"page_09_cis_cala.h"
 #include"page_11_timeset.h"
 #include"page_12_sensor.h"
 #include"page_13_upgrade.h"
