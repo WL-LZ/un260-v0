@@ -381,7 +381,7 @@ void page_01_work_btn_event_cb(lv_event_t* e) //切换主界面底部工作模�
 
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
 
-    target_mode = Machine_para.work_mode ? 0 : 1;
+    target_mode = machine_state_work_mode() ? 0 : 1;
     if (!setting_service_request_work_mode(target_mode, lv_tick_get())) return;
 }
 
@@ -409,7 +409,7 @@ void page_01_bottom_speed_btn_event_cb(lv_event_t* e) //切换主界面底部C�
 
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
 
-    target_speed = (uint8_t)((Machine_para.speed + 1) % 3);
+    target_speed = (uint8_t)((machine_state_speed() + 1) % 3);
     if (!setting_service_request_speed(target_speed, lv_tick_get())) return;
 }
 
@@ -932,7 +932,7 @@ void page_03_speed_mode_event_cb(lv_event_t* e)
     const char* speed_str = lv_event_get_user_data(e);
     uint8_t speed_code = atoi(speed_str);
     page_03_menu_function_feedback(1, speed_code);
-    if (speed_code >= SPEED_MODE || speed_code == Machine_para.speed) return;
+    if (speed_code >= SPEED_MODE || speed_code == machine_state_speed()) return;
     /* ================== 0x16 设置清分机点钞速度 ================== */
     /* 协议定义：0x01=1000张/分钟, 0x02=800张/分钟, 0x03=600张/分钟 */
     if (!setting_service_request_speed(speed_code, lv_tick_get())) return;
@@ -986,7 +986,7 @@ void page_03_work_mode_event_cb(lv_event_t* e)
     const char* word_str = lv_event_get_user_data(e);
     uint8_t word_code = atoi(word_str);
     page_03_menu_function_feedback(4, word_code);
-    if (word_code >= WORK_MODE || word_code == Machine_para.work_mode) return;
+    if (word_code >= WORK_MODE || word_code == machine_state_work_mode()) return;
     if (!setting_service_request_work_mode(word_code, lv_tick_get())) return;
 #if LV_DEBUG
     printf("工作模式请求切换为：%s\n", (word_code > 0) ? "MANUAL" : "AUTO");

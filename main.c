@@ -1072,7 +1072,7 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
                 }
                 target_speed = setting_service_speed_target();
                 setting_service_speed_finish();
-                Machine_para.speed = target_speed;
+                machine_state_confirm_speed(target_speed);
                 page_03_update_menu_button_states_refresh();
                 page_01_bottom_c_refresh_speed(true);
                 page_01_speed_refre();
@@ -1093,7 +1093,7 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
         } else if (type == 0x04) {
             /* 开机同步: 0x00=1000,0x01=800,0x02=600 -> UI: 2,1,0 */
             if (res <= 0x02) {
-                Machine_para.speed = (uint8_t)(0x02 - res);
+                machine_state_confirm_speed((uint8_t)(0x02 - res));
                 page_03_update_menu_button_states_refresh();
                 uart_printf(fd6, "SPEED boot sync: mode=0x%02X -> ui=%u\n",
                             res, Machine_para.speed);
@@ -1172,9 +1172,9 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
         if (len == 7 && buf[4] == 0x02) {
             uint8_t mode = buf[5];
             if (mode == 0x00) {
-                Machine_para.work_mode = 1;
+                machine_state_confirm_work_mode(1);
             } else if (mode == 0x01) {
-                Machine_para.work_mode = 0;
+                machine_state_confirm_work_mode(0);
             }
             if (setting_service_work_mode_is_pending()) {
                 setting_service_work_mode_finish();
@@ -1194,7 +1194,7 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
             }
             target_mode = setting_service_work_mode_target();
             setting_service_work_mode_finish();
-            Machine_para.work_mode = target_mode;
+            machine_state_confirm_work_mode(target_mode);
             page_01_bottom_a_refresh_work(true);
             page_03_update_menu_button_states_refresh();
             uart_printf(fd6, "0x38 MANUAL OK\n");
@@ -1207,7 +1207,7 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
             }
             target_mode = setting_service_work_mode_target();
             setting_service_work_mode_finish();
-            Machine_para.work_mode = target_mode;
+            machine_state_confirm_work_mode(target_mode);
             page_01_bottom_a_refresh_work(true);
             page_03_update_menu_button_states_refresh();
             uart_printf(fd6, "0x38 AUTO OK\n");
@@ -2122,7 +2122,7 @@ void PCCmdHandle(void)
             {
                 uint8_t v = buf[5];
                 if (v >= 1 && v <= SPEED_MODE) {
-                    Machine_para.speed = v - 1;
+                    machine_state_confirm_speed(v - 1);
                 }
                 break;
             }
