@@ -19,6 +19,7 @@
 #include "un260/lv_core/lv_page_declear.h"
 #include "un260/lv_core/lv_page_event.h"
 #include "un260/app_service/setting_service.h"
+#include "un260/machine_state/machine_state.h"
 #include "un260/lv_core/page_01_main.h"
 #include "un260/lv_system/ui_screenshot.h"
 #include "un260/lv_core/page_19_history.h"
@@ -983,7 +984,7 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
             if (setting_service_add_is_pending()) {
                 bool target = setting_service_add_target();
                 setting_service_add_finish();
-                Machine_para.add_enable = target;
+                machine_state_confirm_add(target);
                 page_01_bottom_a_refresh_add(true);
             }
             page_03_update_menu_button_states_refresh();
@@ -1000,9 +1001,9 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
             uint8_t v = buf[5];
             /* 0x39 状态字与设置命令一致：0x00=OFF, 0x01=ON */
             if (v == 0x00) {
-                Machine_para.add_enable = false;
+                machine_state_confirm_add(false);
             } else if (v == 0x01) {
-                Machine_para.add_enable = true;
+                machine_state_confirm_add(true);
             } else {
                 uart_printf(fd6, "ADD boot status: unexpected raw=0x%02X, keep %s\n",
                             v,
@@ -1031,7 +1032,7 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
             if (setting_service_beep_is_pending()) {
                 bool target = setting_service_beep_target();
                 setting_service_beep_finish();
-                Machine_para.buzzer_enable = target;
+                machine_state_confirm_buzzer(target);
             }
             uart_printf(fd6, "BEEP set success\n");
             page_03_update_menu_button_states_refresh();
@@ -1045,7 +1046,7 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
         } else if (sub == 0x03) {
             if (len < 7) break;
             uint8_t v = buf[5];
-            Machine_para.buzzer_enable = (v == 0x01);
+            machine_state_confirm_buzzer(v == 0x01);
             if (setting_service_beep_is_pending()) {
                 setting_service_beep_finish();
             }
@@ -1118,7 +1119,7 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
         uint8_t val  = buf[5];
         if (type == 0x05) {
             if (val <= 0x03) {
-                Machine_para.fo_mode = val;
+                machine_state_confirm_fo_mode(val);
                 uart_printf(fd6, "FO boot sync: mode=0x%02X -> ui=%u\n",
                             val, Machine_para.fo_mode);
             } else {
@@ -1140,7 +1141,7 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
                 }
                 target_mode = setting_service_fo_mode_target();
                 setting_service_fo_mode_finish();
-                Machine_para.fo_mode = target_mode;
+                machine_state_confirm_fo_mode(target_mode);
                 page_01_bottom_a_refresh_fo(true);
                 page_03_update_menu_button_states_refresh();
                 uart_printf(fd6, "FO set SUCCESS: type=0x%02X -> ui=%u\n",
@@ -2114,7 +2115,7 @@ void PCCmdHandle(void)
                 break;
 
             case 0x05: /* 蜂鸣器 */
-                Machine_para.buzzer_enable = (buf[5] == 0x01);
+                machine_state_confirm_buzzer(buf[5] == 0x01);
                 break;
 
             case 0x06: /* 点钞速度 */

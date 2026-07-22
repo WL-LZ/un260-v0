@@ -18,6 +18,7 @@
 #include "un260/lv_core/page_01_main.h"
 #include "un260/lv_core/page_02_list.h"
 #include "un260/app_service/setting_service.h"
+#include "un260/machine_state/machine_state.h"
 
 lv_timer_t* page_03_batch_num_del_timer = NULL;
 lv_timer_t* page_05_password_del_timer = NULL;
@@ -370,7 +371,7 @@ void page_01_add_btn_event_cb(lv_event_t* e) //切换主界面底部ADD开关
 
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
 
-    target = !Machine_para.add_enable;
+    target = !machine_state_add_enabled();
     if (!setting_service_request_add(target, lv_tick_get())) return;
 }
 
@@ -390,7 +391,7 @@ void page_01_fo_btn_event_cb(lv_event_t* e) //切换主界面底部F/O开关
 
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
 
-    target_mode = (uint8_t)((Machine_para.fo_mode + 1) % 4);
+    target_mode = (uint8_t)((machine_state_fo_mode() + 1) % 4);
     /* 协议第31条：0x00=OFF, 0x01=Face, 0x02=ORT, 0x03=Face&ORT */
     if (!setting_service_request_fo_mode(target_mode, lv_tick_get())) return;
 }
@@ -914,7 +915,7 @@ void page_03_cfd_mode_event_cb(lv_event_t* e)
     bool target = (beep_code > 0) ? true : false;
     page_03_menu_function_feedback(0, target);
 
-    if (target == Machine_para.buzzer_enable) {
+    if (target == machine_state_buzzer_enabled()) {
         return;
     }
 
@@ -950,7 +951,7 @@ void page_03_add_mode_event_cb(lv_event_t* e)
     bool target = (add_code > 0) ? true : false;
     page_03_menu_function_feedback(2, target);
 
-    if (target == Machine_para.add_enable) return;
+    if (target == machine_state_add_enabled()) return;
     if (!setting_service_request_add(target, lv_tick_get())) return;
 #if LV_DEBUG
     printf("ADD模式请求切换为：%s\n", target ? "ON" : "OFF");
@@ -964,7 +965,7 @@ void page_03_fo_mode_event_cb(lv_event_t* e)
     const char* fo_str = lv_event_get_user_data(e);
     uint8_t fo_code = atoi(fo_str);
     page_03_menu_function_feedback(3, fo_code);
-    if (fo_code >= FO_MODE || fo_code == Machine_para.fo_mode) return;
+    if (fo_code >= FO_MODE || fo_code == machine_state_fo_mode()) return;
     if (fo_code <= 3) {
         /* 协议第31条：菜单页直接发送 0~3 编码 */
         if (!setting_service_request_fo_mode(fo_code, lv_tick_get())) return;
