@@ -777,6 +777,66 @@ static int sensor_idx_to_ch(uint8_t idx)
     }
 }
 
+static void pccmd_handle_detail_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
+{
+    switch (cmd) {
+    /* ================== 0x31 重张检测级别应答 ================== */
+    case 0x31:
+    {
+        if (len < 6) {
+            uart_printf(fd6, "0x31 invalid len=%d\n", len);
+            break;
+        }
+
+        if (len == 6) {
+            ui_page_22_set_double_note_on_boot_setting(buf[4]);
+            uart_printf(fd6, "0x31 boot double note level: level=0x%02X\n", buf[4]);
+            break;
+        }
+
+        if (buf[4] == 0x31) {
+            ui_page_22_set_double_note_on_boot_setting(buf[5]);
+            uart_printf(fd6, "0x31 boot double note level: level=0x%02X\n", buf[5]);
+            break;
+        }
+
+        if (buf[5] == 0x01 &&
+            buf[4] >= DOUBLE_NOTE_LEVEL_MIN && buf[4] <= DOUBLE_NOTE_LEVEL_MAX) {
+            Machine_para.double_note_level = buf[4];
+        }
+
+        uart_printf(fd6, "0x31 double note level ack: level=0x%02X res=0x%02X\n",
+                    buf[4], buf[5]);
+        ui_page_22_set_double_note_on_reply(buf[4], buf[5]);
+        break;
+    }
+    /* ================== 0x32 冠字号档位应答 ================== */
+    case 0x32:
+    {
+        if (len < 6) {
+            uart_printf(fd6, "0x32 invalid len=%d\n", len);
+            break;
+        }
+
+        if (len == 6) {
+            ui_page_25_set_serial_number_on_boot_setting(buf[4]);
+            uart_printf(fd6, "0x32 boot serial number level: level=0x%02X\n", buf[4]);
+            break;
+        }
+
+        if (buf[5] == 0x01 && buf[4] <= SERIAL_NUMBER_LEVEL_MAX) {
+            Machine_para.serial_number_level = buf[4];
+            Machine_para.serial_num_enable = (buf[4] != SERIAL_NUMBER_LEVEL_OFF);
+        }
+
+        uart_printf(fd6, "0x32 serial number level ack: level=0x%02X res=0x%02X\n",
+                    buf[4], buf[5]);
+        ui_page_25_set_serial_number_on_reply(buf[4], buf[5]);
+        break;
+    }
+    }
+}
+
 
 void PCCmdHandle(void)
 {
@@ -2122,60 +2182,10 @@ void PCCmdHandle(void)
             uart_printf(fd6, "0x3B clear data ack: res=0x%02X\n", buf[4]);
             break;
         }
-        /* ================== 0x31 重张检测级别应答 ================== */
         case 0x31:
-        {
-            if (len < 6) {
-                uart_printf(fd6, "0x31 invalid len=%d\n", len);
-                break;
-            }
-
-            if (len == 6) {
-                ui_page_22_set_double_note_on_boot_setting(buf[4]);
-                uart_printf(fd6, "0x31 boot double note level: level=0x%02X\n", buf[4]);
-                break;
-            }
-
-            if (buf[4] == 0x31) {
-                ui_page_22_set_double_note_on_boot_setting(buf[5]);
-                uart_printf(fd6, "0x31 boot double note level: level=0x%02X\n", buf[5]);
-                break;
-            }
-
-            if (buf[5] == 0x01 &&
-                buf[4] >= DOUBLE_NOTE_LEVEL_MIN && buf[4] <= DOUBLE_NOTE_LEVEL_MAX) {
-                Machine_para.double_note_level = buf[4];
-            }
-
-            uart_printf(fd6, "0x31 double note level ack: level=0x%02X res=0x%02X\n",
-                        buf[4], buf[5]);
-            ui_page_22_set_double_note_on_reply(buf[4], buf[5]);
-            break;
-        }
-        /* ================== 0x32 冠字号档位应答 ================== */
         case 0x32:
-        {
-            if (len < 6) {
-                uart_printf(fd6, "0x32 invalid len=%d\n", len);
-                break;
-            }
-
-            if (len == 6) {
-                ui_page_25_set_serial_number_on_boot_setting(buf[4]);
-                uart_printf(fd6, "0x32 boot serial number level: level=0x%02X\n", buf[4]);
-                break;
-            }
-
-            if (buf[5] == 0x01 && buf[4] <= SERIAL_NUMBER_LEVEL_MAX) {
-                Machine_para.serial_number_level = buf[4];
-                Machine_para.serial_num_enable = (buf[4] != SERIAL_NUMBER_LEVEL_OFF);
-            }
-
-            uart_printf(fd6, "0x32 serial number level ack: level=0x%02X res=0x%02X\n",
-                        buf[4], buf[5]);
-            ui_page_25_set_serial_number_on_reply(buf[4], buf[5]);
+            pccmd_handle_detail_setting(cmd, buf, len);
             break;
-        }
         /* ================== 0x42 翻板控制应答 ================== */
         case 0x42:
         {
