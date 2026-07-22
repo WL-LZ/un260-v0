@@ -130,6 +130,19 @@ static void double_note_refresh_view(void)
     }
 }
 
+static bool double_note_page_is_valid(void)
+{
+    return double_note_page && lv_obj_is_valid(double_note_page);
+}
+
+static void double_note_refresh_if_page_valid(void)
+{
+    if (double_note_page_is_valid()) {
+        double_note_refresh_view();
+    }
+}
+
+/* Protocol adapter: keep command 0x31 payload normalization local to this page. */
 static bool double_note_send_level(uint8_t level)
 {
     uint8_t payload = double_note_normalize_level(level);
@@ -141,19 +154,9 @@ static bool double_note_send_level(uint8_t level)
     return true;
 }
 
-static void double_note_esc_cb(lv_event_t* e)
+/* User-request path: save rollback state, send, then show the optimistic selection. */
+static void double_note_request_level(uint8_t level)
 {
-    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
-    ui_manager_pop_page();
-}
-
-static void double_note_option_cb(lv_event_t* e)
-{
-    uint8_t level;
-
-    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
-
-    level = (uint8_t)(uintptr_t)lv_event_get_user_data(e);
     pending_prev_level = double_note_get_level();
     if (!double_note_send_level(level)) {
         pending_level = 0;
@@ -162,7 +165,19 @@ static void double_note_option_cb(lv_event_t* e)
 
     pending_level = double_note_normalize_level(level);
     Machine_para.double_note_level = pending_level;
-    double_note_refresh_view();
+    double_note_refresh_if_page_valid();
+}
+
+static void double_note_esc_cb(lv_event_t* e)
+{
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+    ui_manager_pop_page();
+}
+
+static void double_note_option_cb(lv_event_t* e)
+{
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+    double_note_request_level((uint8_t)(uintptr_t)lv_event_get_user_data(e));
 }
 
 static lv_obj_t* double_note_create_card(lv_obj_t* parent, lv_coord_t x, lv_coord_t y,
@@ -336,7 +351,7 @@ void ui_page_22_set_double_note_create(lv_obj_t* parent)
 
 void ui_page_22_set_double_note_destroy(void)
 {
-    if (double_note_page && lv_obj_is_valid(double_note_page)) {
+    if (double_note_page_is_valid()) {
         lv_obj_del(double_note_page);
     }
 
@@ -359,10 +374,26 @@ void ui_page_22_set_double_note_on_boot_setting(uint8_t level)
 {
     Machine_para.double_note_level = double_note_normalize_level(level);
     pending_level = 0;
+    double_note_refresh_if_page_valid();
+}
 
-    if (double_note_page) {
-        double_note_refresh_view();
+/* Successful replies confirm the machine value even if main.c already wrote it. */
+static void double_note_confirm_level(uint8_t level)
+{
+    Machine_para.double_note_level = level;
+    pending_level = 0;
+    double_note_refresh_if_page_valid();
+}
+
+/* Failed replies only roll back the request that is still pending, then refresh. */
+static void double_note_rollback_level(uint8_t level)
+{
+    if (pending_level == level) {
+        Machine_para.double_note_level = double_note_normalize_level(pending_prev_level);
+        pending_level = 0;
     }
+
+    double_note_refresh_if_page_valid();
 }
 
 void ui_page_22_set_double_note_on_reply(uint8_t level, uint8_t res)
@@ -370,20 +401,9 @@ void ui_page_22_set_double_note_on_reply(uint8_t level, uint8_t res)
     uint8_t normalized_level = double_note_normalize_level(level);
 
     if (res == 0x01) {
-        Machine_para.double_note_level = normalized_level;
-        pending_level = 0;
-        if (double_note_page) {
-            double_note_refresh_view();
-        }
+        double_note_confirm_level(normalized_level);
         return;
     }
 
-    if (pending_level == normalized_level) {
-        Machine_para.double_note_level = double_note_normalize_level(pending_prev_level);
-        pending_level = 0;
-    }
-
-    if (double_note_page) {
-        double_note_refresh_view();
-    }
+    double_note_rollback_level(normalized_level);
 }
