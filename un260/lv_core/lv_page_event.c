@@ -1064,7 +1064,7 @@ void page_03_cfd_mode_event_cb(lv_event_t* e)
     g_page03_beep_req_pending = true;
     g_page03_beep_req_target = target;
     g_page03_beep_req_tick = lv_tick_get();
-    send_command(fd4, 0x15, &beep_cmd, 1);
+    protocol_send(0x15, &beep_cmd, 1);
 #if LV_DEBUG
     printf("BEEP mode request -> %s\n", target ? "ON" : "OFF");
 #endif
@@ -1090,7 +1090,7 @@ void page_03_speed_mode_event_cb(lv_event_t* e)
     } else {
         speed_cmd = 0x01;
     }
-    send_command(fd4, 0x16, &speed_cmd, 1);
+    protocol_send(0x16, &speed_cmd, 1);
 #if LV_DEBUG
     printf("速度模式请求切换到： %u\n", speed_code);
 #endif // LV_DEBUG
@@ -1110,7 +1110,7 @@ void page_03_add_mode_event_cb(lv_event_t* e)
     if (target == Machine_para.add_enable) return;
     if (!page_01_add_req_start(target)) return;
 
-    send_command(fd4, 0x39, &add_cmd, 1);
+    protocol_send(0x39, &add_cmd, 1);
 #if LV_DEBUG
     printf("ADD模式请求切换为：%s\n", target ? "ON" : "OFF");
 #endif // LV_DEBUG
@@ -1130,7 +1130,7 @@ void page_03_fo_mode_event_cb(lv_event_t* e)
     if (fo_code <= 3) {
         /* 协议第31条：菜单页直接发送 0~3 编码 */
         fo_cmd = fo_code;
-        send_command(fd4, 0x3a, &fo_cmd, 1);
+        protocol_send(0x3a, &fo_cmd, 1);
     } 
 #if LV_DEBUG
     char* fo[] = {"OFF","F","O","F/O"};
@@ -1152,7 +1152,7 @@ void page_03_work_mode_event_cb(lv_event_t* e)
     if (!page_01_work_req_start(word_code)) return;
 
     uint8_t work_cmd = (word_code == 1) ? 0x00 : 0x01;
-    send_command(fd4, 0x38, &work_cmd, 1);
+    protocol_send(0x38, &work_cmd, 1);
 #if LV_DEBUG
     printf("工作模式请求切换为：%s\n", (word_code > 0) ? "MANUAL" : "AUTO");
 #endif // LV_DEBUG

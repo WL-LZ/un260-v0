@@ -431,7 +431,7 @@ static void switch_event_cb(lv_event_t* e) {
         batch_cmd = (uint8_t)preset;
     }
     g_batch_switch_sent_num = batch_cmd;
-    send_command(fd4, 0x06, &batch_cmd, 1);
+    protocol_send(0x06, &batch_cmd, 1);
 }
 
 void batch_switch_on_0x06_result(uint8_t status)
