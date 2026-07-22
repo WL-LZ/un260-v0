@@ -1300,6 +1300,7 @@ static void pccmd_handle_boot_and_selftest(uint8_t cmd, uint8_t *buf, uint8_t le
             boot_progress_set((uint8_t)(30 + index * 10));
         }
 
+        boot_service_finish_self_test();
         g_boot_stage++;
 
         if (g_boot_stage <= BOOT_STAGE_IMAGE) {

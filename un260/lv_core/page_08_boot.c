@@ -329,7 +329,7 @@ void ui_page_08_curr_create(lv_obj_t* parent)
     boot_progress_create(boot_page);
     boot_selftest_list_create(boot_page);
     boot_selftest_list_reset();
-    boot_selftest_list_sync_step(boot_get_selftest_step());
+    boot_selftest_list_sync_step(boot_service_self_test_sequence_index());
 
     if (g_boot_stage == BOOT_STAGE_HANDSHAKE &&
         boot_service_handshake_state() != HANDSHAKE_OK) {

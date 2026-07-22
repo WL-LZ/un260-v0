@@ -123,14 +123,6 @@ typedef enum {
 
 extern boot_stage_t g_boot_stage; //boot状态机
 
-typedef enum {
-    SELFTEST_SENSOR = 0x01,
-    SELFTEST_MOTOR  = 0x02,
-    SELFTEST_MAGNET = 0x03,
-    SELFTEST_CONFIG = 0x04,
-    SELFTEST_IMAGE  = 0x05,
-} selftest_type_t; //自检命令枚举
-
 void boot_send_next_selftest(void);
 uint8_t boot_get_selftest_step(void); // 获取当前自检步骤
 // CIS校准命令

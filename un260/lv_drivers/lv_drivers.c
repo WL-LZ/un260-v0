@@ -28,10 +28,6 @@ uint8_t g_cb_running = 0;
 static bool g_boot_waiting_log_shown = false;
 
 
-static int selftest_step = 0;   // 当前自检步骤索引
-static int selftest_total = 5;  // 总自检步骤数
-
-
 const char* g_start_error_desc[0x12] = {
     [0x00] = "No Error",
     [0x01] = "Upper Channel Error",
@@ -269,47 +265,38 @@ void machine_handshake_send(void)
 
 void boot_send_next_selftest(void)
 {
-    boot_selftest_list_sync_step((uint8_t)selftest_step);
+    boot_selftest_list_sync_step(boot_service_self_test_sequence_index());
 
-    switch (selftest_step) {
-        case 0:
-            send_command(fd4, 0x37, (uint8_t[]){0x04}, 1);
+    switch (g_boot_stage) {
+        case BOOT_STAGE_SENSOR:
+            boot_service_request_self_test(SELFTEST_CONFIG, custom_tick_get());
             break;
 
-        case 1:
-            send_command(fd4, 0x37, (uint8_t[]){0x01}, 1);
+        case BOOT_STAGE_MOTOR:
+            boot_service_request_self_test(SELFTEST_SENSOR, custom_tick_get());
             break;
 
-        case 2:
-            send_command(fd4, 0x37, (uint8_t[]){0x02}, 1);
+        case BOOT_STAGE_MAGNET:
+            boot_service_request_self_test(SELFTEST_MOTOR, custom_tick_get());
             break;
 
-        case 3:
-            send_command(fd4, 0x37, (uint8_t[]){0x03}, 1);
+        case BOOT_STAGE_CONFIG:
+            boot_service_request_self_test(SELFTEST_MAGNET, custom_tick_get());
             break;
 
-        case 4:
-            send_command(fd4, 0x37, (uint8_t[]){0x05}, 1);
+        case BOOT_STAGE_IMAGE:
+            boot_service_request_self_test(SELFTEST_IMAGE, custom_tick_get());
             break;
 
         default:
             return;
     }
 
-    selftest_step++;
 }
 
 uint8_t boot_get_selftest_step(void) // 获取当前自检步骤
 {
-    if (selftest_step < 0) {
-        return 0;
-    }
-
-    if (selftest_step > selftest_total) {
-        return (uint8_t)selftest_total;
-    }
-
-    return (uint8_t)selftest_step;
+    return boot_service_self_test_sequence_index();
 }
 
 void boot_handshake_waiting_log_reset(void)
