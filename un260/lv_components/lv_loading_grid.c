@@ -1,5 +1,6 @@
 #include "lv_loading_grid.h"
 
+/* Private 3x3 loading-grid construction and animation implementation. */
 #define LOADING_GRID_DOT_COUNT 9
 #define LOADING_GRID_COL_COUNT 3
 #define LOADING_GRID_ROW_COUNT 3
@@ -13,11 +14,57 @@
 #define LOADING_GRID_DEFAULT_ANIM_PLAYBACK 750
 #define LOADING_GRID_DEFAULT_DELAY_STEP 200
 
+typedef struct {
+    lv_coord_t dot_size;
+    lv_coord_t dot_gap;
+    lv_color_t dot_color;
+    lv_opa_t opa_min;
+    lv_opa_t opa_max;
+    uint16_t anim_time;
+    uint16_t anim_playback_time;
+    uint16_t delay_step;
+} lv_loading_grid_config_t;
+
 static const uint8_t g_loading_grid_wave_group[LOADING_GRID_DOT_COUNT] = {
     0, 1, 2,
     1, 2, 3,
     2, 3, 4
 };
+
+static lv_coord_t loading_grid_clamp_coord(lv_coord_t value, lv_coord_t min_value);
+static uint16_t loading_grid_clamp_u16(uint16_t value, uint16_t min_value);
+static void lv_loading_grid_config_init(lv_loading_grid_config_t *cfg);
+static void loading_grid_anim_opa_cb(void *var, int32_t v);
+static void loading_grid_start_dot_anim(lv_obj_t *dot, const lv_loading_grid_config_t *cfg,
+                                        uint16_t delay_ms);
+static void loading_grid_apply_host_style(lv_obj_t *host, lv_coord_t host_size,
+                                          lv_coord_t pad, lv_coord_t dot_gap);
+static lv_obj_t *lv_loading_grid_create_sized_with_config(
+    lv_obj_t *parent, lv_coord_t size, const lv_loading_grid_config_t *cfg_in);
+static lv_obj_t *lv_loading_grid_create_with_config(lv_obj_t *parent,
+                                                    const lv_loading_grid_config_t *cfg);
+
+lv_obj_t *lv_loading_grid_create(lv_obj_t *parent)
+{
+    return lv_loading_grid_create_with_config(parent, NULL);
+}
+
+lv_obj_t *lv_loading_grid_create_sized(lv_obj_t *parent, lv_coord_t size)
+{
+    lv_loading_grid_config_t cfg;
+
+    lv_loading_grid_config_init(&cfg);
+    return lv_loading_grid_create_sized_with_config(parent, size, &cfg);
+}
+
+void lv_loading_grid_set_opa(lv_obj_t *grid, lv_opa_t opa)
+{
+    if (!grid || !lv_obj_is_valid(grid)) {
+        return;
+    }
+
+    lv_obj_set_style_opa(grid, opa, 0);
+}
 
 static lv_coord_t loading_grid_clamp_coord(lv_coord_t value, lv_coord_t min_value)
 {
@@ -29,7 +76,7 @@ static uint16_t loading_grid_clamp_u16(uint16_t value, uint16_t min_value)
     return value < min_value ? min_value : value;
 }
 
-void lv_loading_grid_config_init(lv_loading_grid_config_t *cfg)
+static void lv_loading_grid_config_init(lv_loading_grid_config_t *cfg)
 {
     if (cfg == NULL) {
         return;
@@ -97,8 +144,8 @@ static void loading_grid_apply_host_style(lv_obj_t *host, lv_coord_t host_size,
     lv_obj_clear_flag(host, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
 }
 
-lv_obj_t *lv_loading_grid_create_sized_with_config(lv_obj_t *parent, lv_coord_t size,
-                                                   const lv_loading_grid_config_t *cfg_in)
+static lv_obj_t *lv_loading_grid_create_sized_with_config(
+    lv_obj_t *parent, lv_coord_t size, const lv_loading_grid_config_t *cfg_in)
 {
     lv_loading_grid_config_t cfg_default;
     const lv_loading_grid_config_t *cfg = cfg_in;
@@ -145,7 +192,8 @@ lv_obj_t *lv_loading_grid_create_sized_with_config(lv_obj_t *parent, lv_coord_t 
     return host;
 }
 
-lv_obj_t *lv_loading_grid_create_with_config(lv_obj_t *parent, const lv_loading_grid_config_t *cfg)
+static lv_obj_t *lv_loading_grid_create_with_config(lv_obj_t *parent,
+                                                    const lv_loading_grid_config_t *cfg)
 {
     lv_loading_grid_config_t cfg_default;
 
@@ -159,26 +207,4 @@ lv_obj_t *lv_loading_grid_create_with_config(lv_obj_t *parent, const lv_loading_
         (lv_coord_t)(cfg->dot_size * LOADING_GRID_COL_COUNT +
                      cfg->dot_gap * (LOADING_GRID_COL_COUNT - 1)),
         cfg);
-}
-
-lv_obj_t *lv_loading_grid_create(lv_obj_t *parent)
-{
-    return lv_loading_grid_create_with_config(parent, NULL);
-}
-
-lv_obj_t *lv_loading_grid_create_sized(lv_obj_t *parent, lv_coord_t size)
-{
-    lv_loading_grid_config_t cfg;
-
-    lv_loading_grid_config_init(&cfg);
-    return lv_loading_grid_create_sized_with_config(parent, size, &cfg);
-}
-
-void lv_loading_grid_set_opa(lv_obj_t *grid, lv_opa_t opa)
-{
-    if (!grid || !lv_obj_is_valid(grid)) {
-        return;
-    }
-
-    lv_obj_set_style_opa(grid, opa, 0);
 }
