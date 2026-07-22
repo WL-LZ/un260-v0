@@ -777,6 +777,110 @@ static int sensor_idx_to_ch(uint8_t idx)
     }
 }
 
+static void pccmd_handle_boot_and_selftest(uint8_t cmd, uint8_t *buf, uint8_t len)
+{
+    switch (cmd) {
+    /* ================== 0x01 握手 ================== */
+    case 0x01:
+    {
+        if (buf[4] == 0x01) {
+            boot_progress_set(20);
+            Machine_Statue.g_handshake_state = HANDSHAKE_OK;
+            g_handshake_start_tick = 0;
+            boot_selftest_result_reset();
+            g_boot_stage = BOOT_STAGE_SENSOR;
+            boot_send_next_selftest();
+        }
+        break;
+    }
+    /* ================== 0x37 自检 ================== */
+    case 0x37:
+    {
+        if (g_boot_stage == BOOT_STAGE_FAIL || g_boot_stage == BOOT_STAGE_DONE) {
+            break;
+        }
+
+        if (len < 6) break;
+
+        uint8_t test_type = buf[4];
+        uint8_t result = buf[5];
+
+        int index = -1;
+
+        switch (test_type)
+        {
+            case 0x04:
+                index = 0;
+                break;
+
+            case 0x01:
+                index = 1;
+                break;
+
+            case 0x02:
+                index = 2;
+                break;
+
+            case 0x03:
+                index = 3;
+                break;
+
+            case 0x05:
+                index = 4;
+                break;
+
+            default:
+                break;
+        }
+
+        if (result == 0x01) {
+            if (index >= 0) {
+                g_boot_selftest_result[index] = 1;
+            }
+
+        } else {
+            if (index >= 0) {
+                g_boot_selftest_result[index] = (result == 0x03) ? 3 : 2;
+            }
+
+            // 自检期间先记录首个错误，待全部流程结束后再统一弹出
+            if (!g_boot_selftest_has_error) {
+                g_boot_selftest_has_error = true;
+                g_boot_selftest_first_error_type = test_type;
+                g_boot_selftest_first_error_result = result;
+            }
+        }
+
+        if (index >= 0) {
+            boot_selftest_list_set_result((uint8_t)index, result);
+        }
+
+        if (index >= 0) {
+            boot_progress_set((uint8_t)(30 + index * 10));
+        }
+
+        g_boot_stage++;
+
+        if (g_boot_stage <= BOOT_STAGE_IMAGE) {
+            boot_send_next_selftest();
+        } else {
+            if (!g_boot_selftest_has_error) {
+                boot_progress_set(100);
+                send_command(fd4, 0x56, (uint8_t[]){0x01}, 1);
+                lv_timer_create(boot_selftest_finish_cb, 2000, NULL);
+            } else {
+                g_boot_stage = BOOT_STAGE_FAIL;
+                // 自检失败也继续读取主控货币列表，避免页面回落本地默认配置
+                send_command(fd4, 0x56, (uint8_t[]){0x01}, 1);
+                show_boot_fault_popup(g_boot_selftest_first_error_type,
+                                      g_boot_selftest_first_error_result);
+            }
+        }
+    }
+    break;
+    }
+}
+
 static void pccmd_handle_detail_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
 {
     switch (cmd) {
@@ -917,19 +1021,9 @@ void PCCmdHandle(void)
 
         switch (cmd) {
 
-        /* ================== 0x01 握手 ================== */
-        case 0x01: 
-        {
-            if (buf[4] == 0x01) {
-                boot_progress_set(20);
-                Machine_Statue.g_handshake_state = HANDSHAKE_OK;
-                g_handshake_start_tick = 0;
-                boot_selftest_result_reset();
-                g_boot_stage = BOOT_STAGE_SENSOR;
-                boot_send_next_selftest();
-            }
+        case 0x01:
+            pccmd_handle_boot_and_selftest(cmd, buf, len);
             break;
-        }
 
         /* ================== 0x17 版本信息 ================== */
         case 0x17:
@@ -1682,91 +1776,9 @@ void PCCmdHandle(void)
             cis_calib_ui_refresh();
             break;
         }
-        /* ================== 0x37 自检 ================== */
         case 0x37:
-        {
-            if (g_boot_stage == BOOT_STAGE_FAIL || g_boot_stage == BOOT_STAGE_DONE) {
-                break;
-            }
-
-            if (len < 6) break;
-
-            uint8_t test_type = buf[4];
-            uint8_t result = buf[5];
-
-            int index = -1;
-
-            switch (test_type)
-            {
-                case 0x04:
-                    index = 0;
-                    break;
-
-                case 0x01:
-                    index = 1;
-                    break;
-
-                case 0x02:
-                    index = 2;
-                    break;
-
-                case 0x03:
-                    index = 3;
-                    break;
-
-                case 0x05:
-                    index = 4;
-                    break;
-
-                default:
-                    break;
-            }
-
-            if (result == 0x01) {
-                if (index >= 0) {
-                    g_boot_selftest_result[index] = 1;
-                }
-
-            } else {
-                if (index >= 0) {
-                    g_boot_selftest_result[index] = (result == 0x03) ? 3 : 2;
-                }
-
-                // 自检期间先记录首个错误，待全部流程结束后再统一弹出
-                if (!g_boot_selftest_has_error) {
-                    g_boot_selftest_has_error = true;
-                    g_boot_selftest_first_error_type = test_type;
-                    g_boot_selftest_first_error_result = result;
-                }
-            }
-
-            if (index >= 0) {
-                boot_selftest_list_set_result((uint8_t)index, result);
-            }
-
-            if (index >= 0) {
-                boot_progress_set((uint8_t)(30 + index * 10));
-            }
-
-            g_boot_stage++;
-
-            if (g_boot_stage <= BOOT_STAGE_IMAGE) {
-                boot_send_next_selftest();
-            } else {
-                if (!g_boot_selftest_has_error) {
-                    boot_progress_set(100);
-                    send_command(fd4, 0x56, (uint8_t[]){0x01}, 1);
-                    lv_timer_create(boot_selftest_finish_cb, 2000, NULL);
-                } else {
-                    g_boot_stage = BOOT_STAGE_FAIL;
-                    // 自检失败也继续读取主控货币列表，避免页面回落本地默认配置
-                    send_command(fd4, 0x56, (uint8_t[]){0x01}, 1);
-                    show_boot_fault_popup(g_boot_selftest_first_error_type,
-                                          g_boot_selftest_first_error_result);
-                }
-            }
-        }
-        break;
+            pccmd_handle_boot_and_selftest(cmd, buf, len);
+            break;
         /* ================== 0x58 用户偏好参数 ================== */
         case 0x58:
         {
