@@ -862,6 +862,363 @@ static void pccmd_handle_diagnostic(uint8_t cmd, uint8_t *buf, uint8_t len)
     }
 }
 
+static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
+{
+    switch (cmd) {
+    /* ================== 0x04 设置工作模式 ================== */
+    case 0x04:
+    {
+        if (len < 6) break;
+
+        uint8_t status = buf[4];
+
+        if (status == 0x01)
+        {
+            uint8_t mode = Machine_work_code.mode_code;
+            uint8_t requested_mode = Machine_work_code.mode_code;
+            if (mode == 0x03) {
+                Machine_para.mode = MODE_MDC;
+            } else if (mode == 0x04) {
+                Machine_para.mode = MODE_SDC;
+            } else if (mode == 0x05) {
+                Machine_para.mode = MODE_CNT;
+            }
+            {
+                const char* mode_str = "NONE";
+                if (Machine_para.mode == MODE_MDC) mode_str = "MDC";
+                else if (Machine_para.mode == MODE_SDC) mode_str = "SDC";
+                else if (Machine_para.mode == MODE_CNT) mode_str = "CNT";
+
+                if (requested_mode != 0) {
+                    icon_feedback_comp("page_01_mode_icon.png", page_01_main_obj, page_01_main_len);
+                }
+                update_label_by_name(page_01_main_obj, page_01_main_len, "mix_label", "%s", mode_str);
+                update_label_by_name(page_01_main_obj, page_01_main_len, "mode_label", "%s", mode_str);
+                page_01_bottom_a_refresh_mode(true);
+            }
+            Machine_work_code.mode_code = 0;
+            schedule_mode_switch_clear();
+            uart_printf(fd6, "Set work mode success\n");
+            smart_island_refresh_summary();
+        }
+        else if (status == 0x02)
+        {
+            Machine_work_code.mode_code = 0;
+            uart_printf(fd6, "Set work mode fail\n");
+            show_start_fault_popup(0x02, 0x06);
+        }
+        else if (status == 0x03)
+        {
+            if (len < 7) break;
+            uint8_t mode = buf[5];
+
+            if (mode == 0x03) {
+                Machine_para.mode = MODE_MDC;
+            } else if (mode == 0x04) {
+                Machine_para.mode = MODE_SDC;
+            } else if (mode == 0x05) {
+                Machine_para.mode = MODE_CNT;
+            } else {
+                uart_printf(fd6, "Boot work mode invalid: 0x%02X\n", mode);
+                break;
+            }
+
+            Machine_work_code.mode_code = 0;
+            page_01_mode_switch_refre();
+            uart_printf(fd6, "Boot work mode: 0x%02X\n", mode);
+            smart_island_refresh_summary();
+        }
+
+        break;
+    }
+    /* ================== 0x06 设置预置数 ================== */
+    case 0x06:
+    {
+        if (len < 6) break;
+
+        uint8_t status = buf[4];
+
+        if (status == 0x01)
+        {
+            batch_switch_on_0x06_result(0x01);
+            page_03_batch_set_result(0x01);
+            uart_printf(fd6, "Set batch num success\n");
+            smart_island_refresh_summary();
+        }
+        else if (status == 0x02)
+        {
+            batch_switch_on_0x06_result(0x02);
+            page_03_batch_set_result(0x02);
+            show_batch_set_fail_popup();
+            uart_printf(fd6, "Set batch num fail\n");
+        }
+        else if (status == 0x03)
+        {
+            if (len < 7) break;
+            Machine_para.batch_num = buf[5];
+            Machine_para.batch_switch_enable = (Machine_para.batch_num != 200);
+            set_batch_switch_state(Machine_para.batch_switch_enable);
+            if (Machine_para.batch_switch_enable) {
+                update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label",
+                                     "%d", Machine_para.batch_num);
+            } else {
+                update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label",
+                                     "%s", "OFF");
+            }
+            page_01_batch_refre();
+            uart_printf(fd6, "Boot batch num: %d\n", Machine_para.batch_num);
+            smart_island_refresh_summary();
+        }
+
+        break;
+    }
+    /* ================== 0x39 ADD setting ================== */
+    case 0x39:
+    {
+        if (len < 6) break;
+        uint8_t sub = buf[4];
+
+        if (sub == 0x00) {
+            if (page_01_add_req_is_pending()) {
+                bool target = false;
+                page_01_add_req_finish(true, &target);
+                Machine_para.add_enable = target;
+                page_01_bottom_a_refresh_add(true);
+            }
+            page_03_update_menu_button_states_refresh();
+            uart_printf(fd6, "ADD set success\n");
+            smart_island_refresh_summary();
+        } else if (sub == 0x01) {
+            if (page_01_add_req_is_pending()) {
+                page_01_add_req_finish(false, NULL);
+            }
+            uart_printf(fd6, "ADD set failed\n");
+            show_start_fault_popup(0x02, 0x06);
+            page_03_update_menu_button_states_refresh();
+        } else if (sub == 0x02) {
+            uint8_t v = buf[5];
+            /* 0x39 状态字与设置命令一致：0x00=OFF, 0x01=ON */
+            if (v == 0x00) {
+                Machine_para.add_enable = false;
+            } else if (v == 0x01) {
+                Machine_para.add_enable = true;
+            } else {
+                uart_printf(fd6, "ADD boot status: unexpected raw=0x%02X, keep %s\n",
+                            v,
+                            Machine_para.add_enable ? "ON" : "OFF");
+            }
+            if (page_01_add_req_is_pending()) {
+                page_01_add_req_finish(false, NULL);
+            }
+            page_01_bottom_a_refresh_add(false);
+            uart_printf(fd6, "ADD boot status: raw=0x%02X -> %s\n",
+                        v,
+                        Machine_para.add_enable ? "ON" : "OFF");
+            smart_island_refresh_summary();
+            page_03_update_menu_button_states_refresh();
+        }
+
+        break;
+    }
+    /* ================== 0x15 BEEP setting ================== */
+    case 0x15:
+    {
+        if (len < 6) break;
+        uint8_t sub = buf[4];
+
+        if (sub == 0x01) {
+            if (page_03_beep_req_is_pending()) {
+                bool target = false;
+                page_03_beep_req_finish(true, &target);
+                Machine_para.buzzer_enable = target;
+            }
+            uart_printf(fd6, "BEEP set success\n");
+            page_03_update_menu_button_states_refresh();
+        } else if (sub == 0x02) {
+            uart_printf(fd6, "BEEP set failed\n");
+            if (page_03_beep_req_is_pending()) {
+                page_03_beep_req_finish(false, NULL);
+            }
+            show_start_fault_popup(0x02, 0x06);
+            page_03_update_menu_button_states_refresh();
+        } else if (sub == 0x03) {
+            if (len < 7) break;
+            uint8_t v = buf[5];
+            Machine_para.buzzer_enable = (v == 0x01);
+            if (page_03_beep_req_is_pending()) {
+                page_03_beep_req_finish(false, NULL);
+            }
+            uart_printf(fd6, "BEEP boot status: %s\n", Machine_para.buzzer_enable ? "ON" : "OFF");
+            page_03_update_menu_button_states_refresh();
+        }
+
+        break;
+    }
+    /* ================== 0x16 SPEED setting ================== */
+    case 0x16:
+    {
+        if (len < 6) break;
+        uint8_t type = buf[4];
+        uint8_t res  = buf[5];
+
+        if (type >= 0x01 && type <= 0x03) {
+            if (res == 0x01) {
+                uint8_t target_speed = (uint8_t)(0x03 - type);
+                if (!page_01_speed_req_is_pending()) {
+                    uart_printf(fd6, "SPEED set SUCCESS ignored: no pending request\n");
+                    break;
+                }
+                page_01_speed_req_finish(true, &target_speed);
+                Machine_para.speed = target_speed;
+                page_03_update_menu_button_states_refresh();
+                page_01_bottom_c_refresh_speed(true);
+                page_01_speed_refre();
+                uart_printf(fd6, "SPEED set SUCCESS: type=0x%02X -> ui=%u\n",
+                            type, Machine_para.speed);
+                smart_island_refresh_summary();
+            } else if (res == 0x02) {
+                if (page_01_speed_req_is_pending()) {
+                    page_01_speed_req_finish(false, NULL);
+                }
+                page_03_update_menu_button_states_refresh();
+                uart_printf(fd6, "SPEED set FAIL: type=0x%02X\n", type);
+                show_start_fault_popup(0x02, 0x06);
+            } else {
+                uart_printf(fd6, "SPEED set UNKNOWN result: type=0x%02X, res=0x%02X\n",
+                            type, res);
+            }
+        } else if (type == 0x04) {
+            /* 开机同步: 0x00=1000,0x01=800,0x02=600 -> UI: 2,1,0 */
+            if (res <= 0x02) {
+                Machine_para.speed = (uint8_t)(0x02 - res);
+                page_03_update_menu_button_states_refresh();
+                uart_printf(fd6, "SPEED boot sync: mode=0x%02X -> ui=%u\n",
+                            res, Machine_para.speed);
+                smart_island_refresh_summary();
+            } else {
+                uart_printf(fd6, "SPEED boot sync: invalid mode=0x%02X\n", res);
+            }
+        } else {
+            uart_printf(fd6, "0x16: unknown type=0x%02X, res=0x%02X\n", type, res);
+        }
+
+        break;
+    }
+
+    /* ================== 0x3A F/O 面向模式 ================== */
+    case 0x3A:
+    {
+        if (len < 6) {
+            uart_printf(fd6, "0x3A: frame too short (%d)\n", len);
+            break;
+        }
+        uint8_t type = buf[4];
+        uint8_t val  = buf[5];
+        if (type == 0x05) {
+            if (val <= 0x03) {
+                Machine_para.fo_mode = val;
+                uart_printf(fd6, "FO boot sync: mode=0x%02X -> ui=%u\n",
+                            val, Machine_para.fo_mode);
+            } else {
+                uart_printf(fd6, "FO boot sync: invalid mode=0x%02X\n", val);
+            }
+            if (page_01_fo_req_is_pending()) {
+                page_01_fo_req_finish(false, NULL);
+            }
+            page_01_bottom_a_refresh_fo(false);
+            smart_island_refresh_summary();
+            break;
+        }
+        if (type <= 0x03) {
+            if (val == 0x01) {
+                uint8_t target_mode = 0;
+                if (!page_01_fo_req_is_pending()) {
+                    uart_printf(fd6, "FO set SUCCESS ignored: no pending request\n");
+                    break;
+                }
+                page_01_fo_req_finish(true, &target_mode);
+                Machine_para.fo_mode = target_mode;
+                page_01_bottom_a_refresh_fo(true);
+                page_03_update_menu_button_states_refresh();
+                uart_printf(fd6, "FO set SUCCESS: type=0x%02X -> ui=%u\n",
+                            type, Machine_para.fo_mode);
+                smart_island_refresh_summary();
+            } else if (val == 0x02) {
+                if (page_01_fo_req_is_pending()) {
+                    page_01_fo_req_finish(false, NULL);
+                }
+                uart_printf(fd6, "FO set FAIL: type=0x%02X\n", type);
+                show_start_fault_popup(0x02, 0x06);
+                page_03_update_menu_button_states_refresh();
+            } else {
+                uart_printf(fd6, "FO set UNKNOWN result: type=0x%02X, res=0x%02X\n", type, val);
+            }
+        } else {
+            uart_printf(fd6, "0x3A: unknown type=0x%02X, val=0x%02X\n", type, val);
+        }
+        break;
+    }
+
+    /* ================== 0x38 手动/自动模式 ================== */
+
+    case 0x38:
+    {
+        if (len < 5) break;
+
+        if (len == 7 && buf[4] == 0x02) {
+            uint8_t mode = buf[5];
+            if (mode == 0x00) {
+                Machine_para.work_mode = 1;
+            } else if (mode == 0x01) {
+                Machine_para.work_mode = 0;
+            }
+            if (page_01_work_req_is_pending()) {
+                page_01_work_req_finish(false, NULL);
+            }
+            page_01_bottom_a_refresh_work(false);
+            uart_printf(fd6, "0x38 BOOT mode=0x%02X\n", mode);
+            smart_island_refresh_summary();
+            break;
+        }
+
+        uint8_t res = buf[4];
+        if (res == 0x00) {
+            uint8_t target_mode = 0;
+            if (!page_01_work_req_is_pending()) {
+                uart_printf(fd6, "0x38 MANUAL OK ignored: no pending request\n");
+                break;
+            }
+            page_01_work_req_finish(true, &target_mode);
+            Machine_para.work_mode = target_mode;
+            page_01_bottom_a_refresh_work(true);
+            page_03_update_menu_button_states_refresh();
+            uart_printf(fd6, "0x38 MANUAL OK\n");
+            smart_island_refresh_summary();
+        } else if (res == 0x01) {
+            uint8_t target_mode = 0;
+            if (!page_01_work_req_is_pending()) {
+                uart_printf(fd6, "0x38 AUTO OK ignored: no pending request\n");
+                break;
+            }
+            page_01_work_req_finish(true, &target_mode);
+            Machine_para.work_mode = target_mode;
+            page_01_bottom_a_refresh_work(true);
+            page_03_update_menu_button_states_refresh();
+            uart_printf(fd6, "0x38 AUTO OK\n");
+            smart_island_refresh_summary();
+        } else {
+            if (page_01_work_req_is_pending()) {
+                page_01_work_req_finish(false, NULL);
+            }
+            uart_printf(fd6, "0x38 RES=0x%02X\n", res);
+            show_start_fault_popup(0x02, 0x06);
+            page_03_update_menu_button_states_refresh();
+        }
+            break;
+        }
+    }
+}
+
 static void pccmd_handle_boot_and_selftest(uint8_t cmd, uint8_t *buf, uint8_t len)
 {
     switch (cmd) {
@@ -1280,113 +1637,12 @@ void PCCmdHandle(void)
 
             break;
         }
-        /* ================== 0x04 设置工作模式 ================== */
         case 0x04:
-        {
-            if (len < 6) break;
-
-            uint8_t status = buf[4];
-
-            if (status == 0x01)
-            {
-                uint8_t mode = Machine_work_code.mode_code;
-                uint8_t requested_mode = Machine_work_code.mode_code;
-                if (mode == 0x03) {
-                    Machine_para.mode = MODE_MDC;
-                } else if (mode == 0x04) {
-                    Machine_para.mode = MODE_SDC;
-                } else if (mode == 0x05) {
-                    Machine_para.mode = MODE_CNT;
-                }
-                {
-                    const char* mode_str = "NONE";
-                    if (Machine_para.mode == MODE_MDC) mode_str = "MDC";
-                    else if (Machine_para.mode == MODE_SDC) mode_str = "SDC";
-                    else if (Machine_para.mode == MODE_CNT) mode_str = "CNT";
-
-                    if (requested_mode != 0) {
-                        icon_feedback_comp("page_01_mode_icon.png", page_01_main_obj, page_01_main_len);
-                    }
-                    update_label_by_name(page_01_main_obj, page_01_main_len, "mix_label", "%s", mode_str);
-                    update_label_by_name(page_01_main_obj, page_01_main_len, "mode_label", "%s", mode_str);
-                    page_01_bottom_a_refresh_mode(true);
-                }
-                Machine_work_code.mode_code = 0;
-                schedule_mode_switch_clear();
-                uart_printf(fd6, "Set work mode success\n");
-                smart_island_refresh_summary();
-            }
-            else if (status == 0x02)
-            {
-                Machine_work_code.mode_code = 0;
-                uart_printf(fd6, "Set work mode fail\n");
-                show_start_fault_popup(0x02, 0x06);
-            }
-            else if (status == 0x03)
-            {
-                if (len < 7) break;
-                uint8_t mode = buf[5];
-
-                if (mode == 0x03) {
-                    Machine_para.mode = MODE_MDC;
-                } else if (mode == 0x04) {
-                    Machine_para.mode = MODE_SDC;
-                } else if (mode == 0x05) {
-                    Machine_para.mode = MODE_CNT;
-                } else {
-                    uart_printf(fd6, "Boot work mode invalid: 0x%02X\n", mode);
-                    break;
-                }
-
-                Machine_work_code.mode_code = 0;
-                page_01_mode_switch_refre();
-                uart_printf(fd6, "Boot work mode: 0x%02X\n", mode);
-                smart_island_refresh_summary();
-            }
-
+            pccmd_handle_basic_setting(cmd, buf, len);
             break;
-        }
-        /* ================== 0x06 设置预置数 ================== */
         case 0x06:
-        {
-            if (len < 6) break;
-
-            uint8_t status = buf[4];
-
-            if (status == 0x01)
-            {
-                batch_switch_on_0x06_result(0x01);
-                page_03_batch_set_result(0x01);
-                uart_printf(fd6, "Set batch num success\n");
-                smart_island_refresh_summary();
-            }
-            else if (status == 0x02)
-            {
-                batch_switch_on_0x06_result(0x02);
-                page_03_batch_set_result(0x02);
-                show_batch_set_fail_popup();
-                uart_printf(fd6, "Set batch num fail\n");
-            }
-            else if (status == 0x03)
-            {
-                if (len < 7) break;
-                Machine_para.batch_num = buf[5];
-                Machine_para.batch_switch_enable = (Machine_para.batch_num != 200);
-                set_batch_switch_state(Machine_para.batch_switch_enable);
-                if (Machine_para.batch_switch_enable) {
-                    update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label",
-                                         "%d", Machine_para.batch_num);
-                } else {
-                    update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label",
-                                         "%s", "OFF");
-                }
-                page_01_batch_refre();
-                uart_printf(fd6, "Boot batch num: %d\n", Machine_para.batch_num);
-                smart_island_refresh_summary();
-            }
-
+            pccmd_handle_basic_setting(cmd, buf, len);
             break;
-        }
         /* ================== 0x08 设置退钞口张数 ================== */
         case 0x08:
         {
@@ -1933,192 +2189,18 @@ void PCCmdHandle(void)
             }
             break;
         }
-        /* ================== 0x39 ADD setting ================== */
         case 0x39:
-        {
-            if (len < 6) break;
-            uint8_t sub = buf[4];
-
-            if (sub == 0x00) { 
-                if (page_01_add_req_is_pending()) {
-                    bool target = false;
-                    page_01_add_req_finish(true, &target);
-                    Machine_para.add_enable = target;
-                    page_01_bottom_a_refresh_add(true);
-                }
-                page_03_update_menu_button_states_refresh();
-                uart_printf(fd6, "ADD set success\n");
-                smart_island_refresh_summary();
-            } else if (sub == 0x01) { 
-                if (page_01_add_req_is_pending()) {
-                    page_01_add_req_finish(false, NULL);
-                }
-                uart_printf(fd6, "ADD set failed\n");
-                show_start_fault_popup(0x02, 0x06);
-                page_03_update_menu_button_states_refresh();
-            } else if (sub == 0x02) { 
-                uint8_t v = buf[5];
-                /* 0x39 状态字与设置命令一致：0x00=OFF, 0x01=ON */
-                if (v == 0x00) {
-                    Machine_para.add_enable = false;
-                } else if (v == 0x01) {
-                    Machine_para.add_enable = true;
-                } else {
-                    uart_printf(fd6, "ADD boot status: unexpected raw=0x%02X, keep %s\n",
-                                v,
-                                Machine_para.add_enable ? "ON" : "OFF");
-                }
-                if (page_01_add_req_is_pending()) {
-                    page_01_add_req_finish(false, NULL);
-                }
-                page_01_bottom_a_refresh_add(false);
-                uart_printf(fd6, "ADD boot status: raw=0x%02X -> %s\n",
-                            v,
-                            Machine_para.add_enable ? "ON" : "OFF");
-                smart_island_refresh_summary();
-                page_03_update_menu_button_states_refresh();
-            }
-
+            pccmd_handle_basic_setting(cmd, buf, len);
             break;
-        }
-        /* ================== 0x15 BEEP setting ================== */
         case 0x15:
-        {
-            if (len < 6) break;
-            uint8_t sub = buf[4];
-
-            if (sub == 0x01) {
-                if (page_03_beep_req_is_pending()) {
-                    bool target = false;
-                    page_03_beep_req_finish(true, &target);
-                    Machine_para.buzzer_enable = target;
-                }
-                uart_printf(fd6, "BEEP set success\n");
-                page_03_update_menu_button_states_refresh();
-            } else if (sub == 0x02) {
-                uart_printf(fd6, "BEEP set failed\n");
-                if (page_03_beep_req_is_pending()) {
-                    page_03_beep_req_finish(false, NULL);
-                }
-                show_start_fault_popup(0x02, 0x06);
-                page_03_update_menu_button_states_refresh();
-            } else if (sub == 0x03) {
-                if (len < 7) break;
-                uint8_t v = buf[5];
-                Machine_para.buzzer_enable = (v == 0x01);
-                if (page_03_beep_req_is_pending()) {
-                    page_03_beep_req_finish(false, NULL);
-                }
-                uart_printf(fd6, "BEEP boot status: %s\n", Machine_para.buzzer_enable ? "ON" : "OFF");
-                page_03_update_menu_button_states_refresh();
-            }
-
+            pccmd_handle_basic_setting(cmd, buf, len);
             break;
-        }
-        /* ================== 0x16 SPEED setting ================== */
         case 0x16:
-        {
-            if (len < 6) break;
-            uint8_t type = buf[4];
-            uint8_t res  = buf[5];
-
-            if (type >= 0x01 && type <= 0x03) {
-                if (res == 0x01) {
-                    uint8_t target_speed = (uint8_t)(0x03 - type);
-                    if (!page_01_speed_req_is_pending()) {
-                        uart_printf(fd6, "SPEED set SUCCESS ignored: no pending request\n");
-                        break;
-                    }
-                    page_01_speed_req_finish(true, &target_speed);
-                    Machine_para.speed = target_speed;
-                    page_03_update_menu_button_states_refresh();
-                    page_01_bottom_c_refresh_speed(true);
-                    page_01_speed_refre();
-                    uart_printf(fd6, "SPEED set SUCCESS: type=0x%02X -> ui=%u\n",
-                                type, Machine_para.speed);
-                    smart_island_refresh_summary();
-                } else if (res == 0x02) {
-                    if (page_01_speed_req_is_pending()) {
-                        page_01_speed_req_finish(false, NULL);
-                    }
-                    page_03_update_menu_button_states_refresh();
-                    uart_printf(fd6, "SPEED set FAIL: type=0x%02X\n", type);
-                    show_start_fault_popup(0x02, 0x06);
-                } else {
-                    uart_printf(fd6, "SPEED set UNKNOWN result: type=0x%02X, res=0x%02X\n",
-                                type, res);
-                }
-            } else if (type == 0x04) {
-                /* 开机同步: 0x00=1000,0x01=800,0x02=600 -> UI: 2,1,0 */
-                if (res <= 0x02) {
-                    Machine_para.speed = (uint8_t)(0x02 - res);
-                    page_03_update_menu_button_states_refresh();
-                    uart_printf(fd6, "SPEED boot sync: mode=0x%02X -> ui=%u\n",
-                                res, Machine_para.speed);
-                    smart_island_refresh_summary();
-                } else {
-                    uart_printf(fd6, "SPEED boot sync: invalid mode=0x%02X\n", res);
-                }
-            } else {
-                uart_printf(fd6, "0x16: unknown type=0x%02X, res=0x%02X\n", type, res);
-            }
-
+            pccmd_handle_basic_setting(cmd, buf, len);
             break;
-        }
-
-        /* ================== 0x3A F/O 面向模式 ================== */
         case 0x3A:
-        {
-            if (len < 6) {
-                uart_printf(fd6, "0x3A: frame too short (%d)\n", len);
-                break;
-            }
-            uint8_t type = buf[4];   
-            uint8_t val  = buf[5];   
-            if (type == 0x05) {
-                if (val <= 0x03) {
-                    Machine_para.fo_mode = val;
-                    uart_printf(fd6, "FO boot sync: mode=0x%02X -> ui=%u\n",
-                                val, Machine_para.fo_mode);
-                } else {
-                    uart_printf(fd6, "FO boot sync: invalid mode=0x%02X\n", val);
-                }
-                if (page_01_fo_req_is_pending()) {
-                    page_01_fo_req_finish(false, NULL);
-                }
-                page_01_bottom_a_refresh_fo(false);
-                smart_island_refresh_summary();
-                break;
-            }
-            if (type <= 0x03) {
-                if (val == 0x01) {
-                    uint8_t target_mode = 0;
-                    if (!page_01_fo_req_is_pending()) {
-                        uart_printf(fd6, "FO set SUCCESS ignored: no pending request\n");
-                        break;
-                    }
-                    page_01_fo_req_finish(true, &target_mode);
-                    Machine_para.fo_mode = target_mode;
-                    page_01_bottom_a_refresh_fo(true);
-                    page_03_update_menu_button_states_refresh();
-                    uart_printf(fd6, "FO set SUCCESS: type=0x%02X -> ui=%u\n",
-                                type, Machine_para.fo_mode);
-                    smart_island_refresh_summary();
-                } else if (val == 0x02) {
-                    if (page_01_fo_req_is_pending()) {
-                        page_01_fo_req_finish(false, NULL);
-                    }
-                    uart_printf(fd6, "FO set FAIL: type=0x%02X\n", type);
-                    show_start_fault_popup(0x02, 0x06);
-                    page_03_update_menu_button_states_refresh();
-                } else {
-                    uart_printf(fd6, "FO set UNKNOWN result: type=0x%02X, res=0x%02X\n", type, val);
-                }
-            } else {
-                uart_printf(fd6, "0x3A: unknown type=0x%02X, val=0x%02X\n", type, val);
-            }
+            pccmd_handle_basic_setting(cmd, buf, len);
             break;
-        }
 
         /* ================== 0x40 外显界面切换 ================== */
         case 0x40:
@@ -2141,63 +2223,9 @@ void PCCmdHandle(void)
             break;
         }
 
-        /* ================== 0x38 手动/自动模式 ================== */
-
         case 0x38:
-        {
-            if (len < 5) break;
-
-            if (len == 7 && buf[4] == 0x02) {
-                uint8_t mode = buf[5];
-                if (mode == 0x00) {
-                    Machine_para.work_mode = 1;
-                } else if (mode == 0x01) {
-                    Machine_para.work_mode = 0;
-                }
-                if (page_01_work_req_is_pending()) {
-                    page_01_work_req_finish(false, NULL);
-                }
-                page_01_bottom_a_refresh_work(false);
-                uart_printf(fd6, "0x38 BOOT mode=0x%02X\n", mode);
-                smart_island_refresh_summary();
-                break;
-            }
-
-            uint8_t res = buf[4];
-            if (res == 0x00) {
-                uint8_t target_mode = 0;
-                if (!page_01_work_req_is_pending()) {
-                    uart_printf(fd6, "0x38 MANUAL OK ignored: no pending request\n");
-                    break;
-                }
-                page_01_work_req_finish(true, &target_mode);
-                Machine_para.work_mode = target_mode;
-                page_01_bottom_a_refresh_work(true);
-                page_03_update_menu_button_states_refresh();
-                uart_printf(fd6, "0x38 MANUAL OK\n");
-                smart_island_refresh_summary();
-            } else if (res == 0x01) {
-                uint8_t target_mode = 0;
-                if (!page_01_work_req_is_pending()) {
-                    uart_printf(fd6, "0x38 AUTO OK ignored: no pending request\n");
-                    break;
-                }
-                page_01_work_req_finish(true, &target_mode);
-                Machine_para.work_mode = target_mode;
-                page_01_bottom_a_refresh_work(true);
-                page_03_update_menu_button_states_refresh();
-                uart_printf(fd6, "0x38 AUTO OK\n");
-                smart_island_refresh_summary();
-            } else {
-                if (page_01_work_req_is_pending()) {
-                    page_01_work_req_finish(false, NULL);
-                }
-                uart_printf(fd6, "0x38 RES=0x%02X\n", res);
-                show_start_fault_popup(0x02, 0x06);
-                page_03_update_menu_button_states_refresh();
-            }
-                break;
-            }
+            pccmd_handle_basic_setting(cmd, buf, len);
+            break;
 
         case 0xA1:
             pccmd_handle_upgrade(cmd, buf, len);
