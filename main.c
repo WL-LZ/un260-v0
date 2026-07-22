@@ -20,6 +20,7 @@
 #include "un260/lv_core/lv_page_event.h"
 #include "un260/app_service/setting_service.h"
 #include "un260/machine_state/machine_state.h"
+#include "un260/protocol/mode_codec.h"
 #include "un260/lv_core/page_01_main.h"
 #include "un260/lv_system/ui_screenshot.h"
 #include "un260/lv_core/page_19_history.h"
@@ -876,14 +877,10 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
 
         if (status == 0x01)
         {
-            uint8_t mode = Machine_work_code.mode_code;
-            uint8_t requested_mode = Machine_work_code.mode_code;
-            if (mode == 0x03) {
-                Machine_para.mode = MODE_MDC;
-            } else if (mode == 0x04) {
-                Machine_para.mode = MODE_SDC;
-            } else if (mode == 0x05) {
-                Machine_para.mode = MODE_CNT;
+            uint8_t requested_mode = 0;
+            if (setting_service_mode_is_pending()) {
+                requested_mode = setting_service_mode_target();
+                machine_state_confirm_mode(requested_mode);
             }
             {
                 const char* mode_str = "NONE";
@@ -898,36 +895,32 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
                 update_label_by_name(page_01_main_obj, page_01_main_len, "mode_label", "%s", mode_str);
                 page_01_bottom_a_refresh_mode(true);
             }
-            Machine_work_code.mode_code = 0;
+            setting_service_mode_finish();
             schedule_mode_switch_clear();
             uart_printf(fd6, "Set work mode success\n");
             smart_island_refresh_summary();
         }
         else if (status == 0x02)
         {
-            Machine_work_code.mode_code = 0;
+            setting_service_mode_finish();
             uart_printf(fd6, "Set work mode fail\n");
             show_start_fault_popup(0x02, 0x06);
         }
         else if (status == 0x03)
         {
             if (len < 7) break;
-            uint8_t mode = buf[5];
+            uint8_t protocol_mode = buf[5];
+            uint8_t machine_mode;
 
-            if (mode == 0x03) {
-                Machine_para.mode = MODE_MDC;
-            } else if (mode == 0x04) {
-                Machine_para.mode = MODE_SDC;
-            } else if (mode == 0x05) {
-                Machine_para.mode = MODE_CNT;
-            } else {
-                uart_printf(fd6, "Boot work mode invalid: 0x%02X\n", mode);
+            if (!mode_codec_decode(protocol_mode, &machine_mode)) {
+                uart_printf(fd6, "Boot work mode invalid: 0x%02X\n", protocol_mode);
                 break;
             }
 
-            Machine_work_code.mode_code = 0;
+            machine_state_confirm_mode(machine_mode);
+            setting_service_mode_finish();
             page_01_mode_switch_refre();
-            uart_printf(fd6, "Boot work mode: 0x%02X\n", mode);
+            uart_printf(fd6, "Boot work mode: 0x%02X\n", protocol_mode);
             smart_island_refresh_summary();
         }
 
@@ -2095,8 +2088,13 @@ void PCCmdHandle(void)
 
             switch (sub) {
             case 0x01: /* 工作模式 */
-                Machine_para.mode = buf[5];
+            {
+                uint8_t machine_mode;
+                if (mode_codec_decode(buf[5], &machine_mode)) {
+                    machine_state_confirm_mode(machine_mode);
+                }
                 break;
+            }
 
             case 0x02: /* 预置数量 */
                 Machine_para.batch_num = buf[5];

@@ -13,8 +13,6 @@
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/page_08_boot.h"
 
-
-Machine_work_code_t Machine_work_code={0};
 cis_calib_state_t cis_state = CIS_CALIB_IDLE;
 cb_calib_state_t cb_state = CB_CALIB_IDLE;
 calib_target_t g_calib_target = CALIB_TARGET_CIS;

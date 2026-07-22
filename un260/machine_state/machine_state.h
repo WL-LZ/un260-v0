@@ -4,6 +4,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+void machine_state_confirm_mode(uint8_t mode);
+uint8_t machine_state_mode(void);
+
 void machine_state_confirm_buzzer(bool enabled);
 bool machine_state_buzzer_enabled(void);
 

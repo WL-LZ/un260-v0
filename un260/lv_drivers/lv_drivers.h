@@ -60,10 +60,6 @@ extern void debug_append_rx_log(const char* data); // 接收数据时调用
 
 #define Query_ver_cmd 0x01
 #define curr_cmd 0x01
-typedef struct {
-    uint8_t mode_code;
-} Machine_work_code_t;
-extern Machine_work_code_t Machine_work_code;
 
 extern uint32_t g_handshake_tick;
 #define HANDSHAKE_TIMEOUT_MS  1000

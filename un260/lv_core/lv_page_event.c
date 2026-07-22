@@ -24,7 +24,6 @@ lv_timer_t* page_03_batch_num_del_timer = NULL;
 lv_timer_t* page_05_password_del_timer = NULL;
 static int32_t g_batch_num_pending = -1;
 static lv_obj_t* g_batch_tip_label = NULL;
-static uint32_t g_page01_mode_req_tick = 0;
 
 #define PAGE_01_DETAIL_TAP_THRESHOLD     10
 #define PAGE_01_MODE_REQ_TIMEOUT_MS      800
@@ -260,13 +259,13 @@ static bool page_01_mode_req_busy(void) //判断模式切换是否仍在等待�
 {
     uint32_t now_tick = lv_tick_get();
 
-    if (Machine_work_code.mode_code == 0) {
+    if (!setting_service_mode_is_pending()) {
         return false;
     }
 
-    // 防止某次回包丢失导致 mode_code 一直锁死，超时后允许继续下发
-    if ((now_tick - g_page01_mode_req_tick) >= PAGE_01_MODE_REQ_TIMEOUT_MS) {
-        Machine_work_code.mode_code = 0;
+    // 防止某次回包丢失导致请求一直锁死，超时后允许继续下发
+    if ((now_tick - setting_service_mode_tick()) >= PAGE_01_MODE_REQ_TIMEOUT_MS) {
+        setting_service_mode_finish();
         show_communication_error_popup();
         return false;
     }
@@ -284,9 +283,9 @@ void page_setting_req_poll(void)
 {
     uint32_t now_tick = lv_tick_get();
 
-    if (Machine_work_code.mode_code != 0 &&
-        (now_tick - g_page01_mode_req_tick) >= PAGE_01_MODE_REQ_TIMEOUT_MS) {
-        Machine_work_code.mode_code = 0;
+    if (setting_service_mode_is_pending() &&
+        (now_tick - setting_service_mode_tick()) >= PAGE_01_MODE_REQ_TIMEOUT_MS) {
+        setting_service_mode_finish();
         page_setting_req_timeout_notify();
     }
 
@@ -324,7 +323,6 @@ void page_setting_req_poll(void)
 static void page_01_mode_send_next(bool show_icon_feedback) //发送主界面模式切换命令
 {
     uint8_t next_mode = MODE_MDC;
-    uint8_t mode_cmd = 0x03;
 
     (void)show_icon_feedback;
 
@@ -332,25 +330,16 @@ static void page_01_mode_send_next(bool show_icon_feedback) //发送主界面模
         return;
     }
 
-    if (Machine_para.mode == MODE_MDC)
+    if (machine_state_mode() == MODE_MDC)
         next_mode = MODE_SDC;
-    else if (Machine_para.mode == MODE_SDC)
+    else if (machine_state_mode() == MODE_SDC)
         next_mode = MODE_CNT;
-    else if (Machine_para.mode == MODE_CNT)
+    else if (machine_state_mode() == MODE_CNT)
         next_mode = MODE_MDC;
     else
         next_mode = MODE_MDC;
 
-    if (next_mode == MODE_MDC)
-        mode_cmd = 0x03;
-    else if (next_mode == MODE_SDC)
-        mode_cmd = 0x04;
-    else if (next_mode == MODE_CNT)
-        mode_cmd = 0x05;
-
-    Machine_work_code.mode_code = mode_cmd;
-    g_page01_mode_req_tick = lv_tick_get();
-    protocol_send(0x04, &mode_cmd, 1);
+    setting_service_request_mode(next_mode, lv_tick_get());
 }
 
 void page_01_mode_btn_event_cb(lv_event_t* e)

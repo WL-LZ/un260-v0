@@ -1,6 +1,16 @@
 #include "machine_state.h"
 #include "un260/lv_system/user_cfg.h"
 
+void machine_state_confirm_mode(uint8_t mode)
+{
+    Machine_para.mode = mode;
+}
+
+uint8_t machine_state_mode(void)
+{
+    return Machine_para.mode;
+}
+
 void machine_state_confirm_buzzer(bool enabled)
 {
     Machine_para.buzzer_enable = enabled;
