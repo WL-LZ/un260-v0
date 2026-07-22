@@ -1,5 +1,6 @@
 #include "lv_drivers.h"
 #include "un260/protocol/protocol_send.h"
+#include "un260/boot/boot_service.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -16,7 +17,6 @@
 cis_calib_state_t cis_state = CIS_CALIB_IDLE;
 cb_calib_state_t cb_state = CB_CALIB_IDLE;
 calib_target_t g_calib_target = CALIB_TARGET_CIS;
-uint32_t g_handshake_tick = 0;
 data_collect_mode_t g_data_collect_mode = DATA_COLLECT_MODE_NONE;
 uint16_t g_data_collect_pcs = 0;
 char g_data_collect_status[128] = "Please select a collection mode.";
@@ -24,7 +24,6 @@ curr_query_state_t curr_query_state = CURR_QUERY_IDLE;
 boot_stage_t g_boot_stage = BOOT_STAGE_HANDSHAKE;
 
 uint32_t g_boot_stage_tick = 0;
-uint32_t g_handshake_start_tick = 0;
 uint8_t g_cb_running = 0;
 static bool g_boot_waiting_log_shown = false;
 
@@ -260,17 +259,9 @@ void uart_printf(int fd, const char *fmt, ...) {
 
 void machine_handshake_send(void)
 {
-    uint8_t sub = 0x01;
     uint32_t now = custom_tick_get();
 
-    if (Machine_Statue.g_handshake_state == HANDSHAKE_IDLE) {
-        g_handshake_start_tick = now;
-    }
-
-    send_command(fd4, 0x01, &sub, 1);
-
-    Machine_Statue.g_handshake_state = HANDSHAKE_SENT;
-    g_handshake_tick = now;
+    boot_service_request_handshake(now);
     if (g_boot_stage_tick == 0) {
         g_boot_stage_tick = now; // 从第一次握手开始计时
     }

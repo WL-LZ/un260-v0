@@ -7,6 +7,7 @@
 #include "un260/lv_components/lv_components.h"
 #include "un260/lv_refre/lvgl_refre.h"
 #include "un260/lv_drivers/lv_drivers.h"
+#include "un260/boot/boot_service.h"
 #include "../aic_ui/aic_ui.h"
 #include "page_08_boot.h"
 static lv_obj_t* boot_progress_bg = NULL;
@@ -331,7 +332,7 @@ void ui_page_08_curr_create(lv_obj_t* parent)
     boot_selftest_list_sync_step(boot_get_selftest_step());
 
     if (g_boot_stage == BOOT_STAGE_HANDSHAKE &&
-        Machine_Statue.g_handshake_state != HANDSHAKE_OK) {
+        boot_service_handshake_state() != HANDSHAKE_OK) {
         boot_progress_set(0);
         boot_progress_handshake_tick_start();
     } else if (g_boot_stage >= BOOT_STAGE_SENSOR && g_boot_stage <= BOOT_STAGE_IMAGE) {

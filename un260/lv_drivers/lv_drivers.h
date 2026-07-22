@@ -61,7 +61,6 @@ extern void debug_append_rx_log(const char* data); // 接收数据时调用
 #define Query_ver_cmd 0x01
 #define curr_cmd 0x01
 
-extern uint32_t g_handshake_tick;
 #define HANDSHAKE_TIMEOUT_MS  1000
 
 // CIS校准状态枚举
@@ -142,7 +141,6 @@ void boot_handshake_waiting_log_reset(void);
 #define BOOT_FAULT_QUERY_WAIT_MS      1000
 
 extern uint32_t g_boot_stage_tick;
-extern uint32_t g_handshake_start_tick;
 
 #define CIS_Calib_cmd  0x01
 #ifdef __cplusplus

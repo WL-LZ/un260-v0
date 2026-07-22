@@ -2,7 +2,6 @@
 #define USER_CFG_H
 #include <stdbool.h>
 #include <stdint.h>
-#include "un260/boot/boot_state.h"
 #define LV_DEBUG 1
 typedef enum {
     CURR_CNY_ITEM = 0,
@@ -125,7 +124,6 @@ typedef struct {
     char ecb[32];           // 图像BOOT版本
     char display_app[32];   // 显示软件版本(预留)
     bool version_valid;     // 版本数据是否有效
-    handshake_state_t g_handshake_state;
 } Machine_Statue_t;
 
 extern Machine_Statue_t Machine_Statue;

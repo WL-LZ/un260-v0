@@ -21,6 +21,7 @@
 #include "un260/app_service/setting_service.h"
 #include "un260/machine_state/machine_state.h"
 #include "un260/protocol/mode_codec.h"
+#include "un260/boot/boot_service.h"
 #include "un260/lv_core/page_01_main.h"
 #include "un260/lv_system/ui_screenshot.h"
 #include "un260/lv_core/page_19_history.h"
@@ -1226,8 +1227,7 @@ static void pccmd_handle_boot_and_selftest(uint8_t cmd, uint8_t *buf, uint8_t le
     {
         if (buf[4] == 0x01) {
             boot_progress_set(20);
-            Machine_Statue.g_handshake_state = HANDSHAKE_OK;
-            g_handshake_start_tick = 0;
+            boot_service_confirm_handshake();
             boot_selftest_result_reset();
             g_boot_stage = BOOT_STAGE_SENSOR;
             boot_send_next_selftest();
@@ -2524,21 +2524,21 @@ int main(void) {
         if (g_boot_stage == BOOT_STAGE_HANDSHAKE &&
             current_page == UI_PAGE_BOOT)
         {
-            if (Machine_Statue.g_handshake_state == HANDSHAKE_IDLE)
+            if (boot_service_handshake_state() == HANDSHAKE_IDLE)
             {
                 machine_handshake_send();
             }
-            else if (Machine_Statue.g_handshake_state == HANDSHAKE_SENT)
+            else if (boot_service_handshake_state() == HANDSHAKE_SENT)
             {
-                if (g_handshake_start_tick != 0 &&
-                    (now - g_handshake_start_tick) >= BOOT_HANDSHAKE_MAX_WAIT_MS)
+                if (boot_service_handshake_start_tick() != 0 &&
+                    (now - boot_service_handshake_start_tick()) >= BOOT_HANDSHAKE_MAX_WAIT_MS)
                 {
                     g_boot_stage = BOOT_STAGE_FAIL;
 
                     show_boot_selftest_error_popup(
                         "Controller handshake timeout.\nPress CONFIRM to enter sensor page.");
                 }
-                else if ((now - g_handshake_tick) >= HANDSHAKE_TIMEOUT_MS)
+                else if ((now - boot_service_handshake_tick()) >= HANDSHAKE_TIMEOUT_MS)
                 {
                     machine_handshake_send();
                 }
