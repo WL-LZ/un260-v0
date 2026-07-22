@@ -1065,11 +1065,12 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
         if (type >= 0x01 && type <= 0x03) {
             if (res == 0x01) {
                 uint8_t target_speed = (uint8_t)(0x03 - type);
-                if (!page_01_speed_req_is_pending()) {
+                if (!setting_service_speed_is_pending()) {
                     uart_printf(fd6, "SPEED set SUCCESS ignored: no pending request\n");
                     break;
                 }
-                page_01_speed_req_finish(true, &target_speed);
+                target_speed = setting_service_speed_target();
+                setting_service_speed_finish();
                 Machine_para.speed = target_speed;
                 page_03_update_menu_button_states_refresh();
                 page_01_bottom_c_refresh_speed(true);
@@ -1078,8 +1079,8 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
                             type, Machine_para.speed);
                 smart_island_refresh_summary();
             } else if (res == 0x02) {
-                if (page_01_speed_req_is_pending()) {
-                    page_01_speed_req_finish(false, NULL);
+                if (setting_service_speed_is_pending()) {
+                    setting_service_speed_finish();
                 }
                 page_03_update_menu_button_states_refresh();
                 uart_printf(fd6, "SPEED set FAIL: type=0x%02X\n", type);
@@ -1174,8 +1175,8 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
             } else if (mode == 0x01) {
                 Machine_para.work_mode = 0;
             }
-            if (page_01_work_req_is_pending()) {
-                page_01_work_req_finish(false, NULL);
+            if (setting_service_work_mode_is_pending()) {
+                setting_service_work_mode_finish();
             }
             page_01_bottom_a_refresh_work(false);
             uart_printf(fd6, "0x38 BOOT mode=0x%02X\n", mode);
@@ -1186,11 +1187,12 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
         uint8_t res = buf[4];
         if (res == 0x00) {
             uint8_t target_mode = 0;
-            if (!page_01_work_req_is_pending()) {
+            if (!setting_service_work_mode_is_pending()) {
                 uart_printf(fd6, "0x38 MANUAL OK ignored: no pending request\n");
                 break;
             }
-            page_01_work_req_finish(true, &target_mode);
+            target_mode = setting_service_work_mode_target();
+            setting_service_work_mode_finish();
             Machine_para.work_mode = target_mode;
             page_01_bottom_a_refresh_work(true);
             page_03_update_menu_button_states_refresh();
@@ -1198,19 +1200,20 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
             smart_island_refresh_summary();
         } else if (res == 0x01) {
             uint8_t target_mode = 0;
-            if (!page_01_work_req_is_pending()) {
+            if (!setting_service_work_mode_is_pending()) {
                 uart_printf(fd6, "0x38 AUTO OK ignored: no pending request\n");
                 break;
             }
-            page_01_work_req_finish(true, &target_mode);
+            target_mode = setting_service_work_mode_target();
+            setting_service_work_mode_finish();
             Machine_para.work_mode = target_mode;
             page_01_bottom_a_refresh_work(true);
             page_03_update_menu_button_states_refresh();
             uart_printf(fd6, "0x38 AUTO OK\n");
             smart_island_refresh_summary();
         } else {
-            if (page_01_work_req_is_pending()) {
-                page_01_work_req_finish(false, NULL);
+            if (setting_service_work_mode_is_pending()) {
+                setting_service_work_mode_finish();
             }
             uart_printf(fd6, "0x38 RES=0x%02X\n", res);
             show_start_fault_popup(0x02, 0x06);

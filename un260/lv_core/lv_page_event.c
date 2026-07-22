@@ -23,12 +23,6 @@ lv_timer_t* page_05_password_del_timer = NULL;
 static int32_t g_batch_num_pending = -1;
 static lv_obj_t* g_batch_tip_label = NULL;
 static uint32_t g_page01_mode_req_tick = 0;
-static bool g_page01_work_req_pending = false;
-static uint8_t g_page01_work_req_target = 0;
-static uint32_t g_page01_work_req_tick = 0;
-static bool g_page01_speed_req_pending = false;
-static uint8_t g_page01_speed_req_target = 0;
-static uint32_t g_page01_speed_req_tick = 0;
 static bool g_page03_beep_req_pending = false;
 static bool g_page03_beep_req_target = false;
 static uint32_t g_page03_beep_req_tick = 0;
@@ -303,9 +297,9 @@ void page_setting_req_poll(void)
         page_setting_req_timeout_notify();
     }
 
-    if (g_page01_work_req_pending &&
-        (now_tick - g_page01_work_req_tick) >= PAGE_01_MODE_REQ_TIMEOUT_MS) {
-        g_page01_work_req_pending = false;
+    if (setting_service_work_mode_is_pending() &&
+        (now_tick - setting_service_work_mode_tick()) >= PAGE_01_MODE_REQ_TIMEOUT_MS) {
+        setting_service_work_mode_finish();
         page_setting_req_timeout_notify();
     }
 
@@ -315,9 +309,9 @@ void page_setting_req_poll(void)
         page_setting_req_timeout_notify();
     }
 
-    if (g_page01_speed_req_pending &&
-        (now_tick - g_page01_speed_req_tick) >= PAGE_01_MODE_REQ_TIMEOUT_MS) {
-        g_page01_speed_req_pending = false;
+    if (setting_service_speed_is_pending() &&
+        (now_tick - setting_service_speed_tick()) >= PAGE_01_MODE_REQ_TIMEOUT_MS) {
+        setting_service_speed_finish();
         page_setting_req_timeout_notify();
     }
 
@@ -360,52 +354,6 @@ static void page_01_mode_send_next(bool show_icon_feedback) //发送主界面模
     protocol_send(0x04, &mode_cmd, 1);
 }
 
-bool page_01_work_req_start(uint8_t target_mode) //开始主界面工作模式切换请求
-{
-    if (g_page01_work_req_pending) return false;
-    g_page01_work_req_pending = true;
-    g_page01_work_req_target = target_mode;
-    g_page01_work_req_tick = lv_tick_get();
-    return true;
-}
-
-bool page_01_work_req_is_pending(void) //查询主界面工作模式切换请求是否挂起
-{
-    return g_page01_work_req_pending;
-}
-
-void page_01_work_req_finish(bool success, uint8_t* target_mode) //结束主界面工作模式切换请求
-{
-    if (target_mode) {
-        *target_mode = g_page01_work_req_target;
-    }
-    (void)success;
-    g_page01_work_req_pending = false;
-}
-
-bool page_01_speed_req_start(uint8_t target_speed) //开始主界面速度切换请求
-{
-    if (g_page01_speed_req_pending) return false;
-    g_page01_speed_req_pending = true;
-    g_page01_speed_req_target = target_speed;
-    g_page01_speed_req_tick = lv_tick_get();
-    return true;
-}
-
-bool page_01_speed_req_is_pending(void) //查询主界面速度切换请求是否挂起
-{
-    return g_page01_speed_req_pending;
-}
-
-void page_01_speed_req_finish(bool success, uint8_t* target_speed) //结束主界面速度切换请求
-{
-    if (target_speed) {
-        *target_speed = g_page01_speed_req_target;
-    }
-    (void)success;
-    g_page01_speed_req_pending = false;
-}
-
 bool page_03_beep_req_is_pending(void) //查询菜单页BEEP切换请求是否挂起
 {
     return g_page03_beep_req_pending;
@@ -444,16 +392,12 @@ void page_01_add_btn_event_cb(lv_event_t* e) //切换主界面底部ADD开关
 
 void page_01_work_btn_event_cb(lv_event_t* e) //切换主界面底部工作模式
 {
-    uint8_t work_cmd;
     uint8_t target_mode;
 
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
 
     target_mode = Machine_para.work_mode ? 0 : 1;
-    if (!page_01_work_req_start(target_mode)) return;
-
-    work_cmd = (target_mode == 1) ? 0x00 : 0x01;
-    protocol_send(0x38, &work_cmd, 1);
+    if (!setting_service_request_work_mode(target_mode, lv_tick_get())) return;
 }
 
 void page_01_fo_btn_event_cb(lv_event_t* e) //切换主界面底部F/O开关
@@ -476,23 +420,12 @@ void page_01_bottom_batch_btn_event_cb(lv_event_t* e) //进入主界面底部C�
 
 void page_01_bottom_speed_btn_event_cb(lv_event_t* e) //切换主界面底部C区速度
 {
-    uint8_t speed_cmd = 0x03;
     uint8_t target_speed;
 
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
 
     target_speed = (uint8_t)((Machine_para.speed + 1) % 3);
-    if (!page_01_speed_req_start(target_speed)) return;
-
-    if (target_speed == 0) {
-        speed_cmd = 0x03;
-    } else if (target_speed == 1) {
-        speed_cmd = 0x02;
-    } else {
-        speed_cmd = 0x01;
-    }
-
-    protocol_send(0x16, &speed_cmd, 1);
+    if (!setting_service_request_speed(target_speed, lv_tick_get())) return;
 }
 
 
@@ -1019,19 +952,9 @@ void page_03_speed_mode_event_cb(lv_event_t* e)
     uint8_t speed_code = atoi(speed_str);
     page_03_menu_function_feedback(1, speed_code);
     if (speed_code >= SPEED_MODE || speed_code == Machine_para.speed) return;
-    if (!page_01_speed_req_start(speed_code)) return;
-
     /* ================== 0x16 设置清分机点钞速度 ================== */
     /* 协议定义：0x01=1000张/分钟, 0x02=800张/分钟, 0x03=600张/分钟 */
-    uint8_t speed_cmd = 0x01;
-    if (speed_code == 0) {
-        speed_cmd = 0x03;
-    } else if (speed_code == 1) {
-        speed_cmd = 0x02;
-    } else {
-        speed_cmd = 0x01;
-    }
-    protocol_send(0x16, &speed_cmd, 1);
+    if (!setting_service_request_speed(speed_code, lv_tick_get())) return;
 #if LV_DEBUG
     printf("速度模式请求切换到： %u\n", speed_code);
 #endif // LV_DEBUG
@@ -1083,10 +1006,7 @@ void page_03_work_mode_event_cb(lv_event_t* e)
     uint8_t word_code = atoi(word_str);
     page_03_menu_function_feedback(4, word_code);
     if (word_code >= WORK_MODE || word_code == Machine_para.work_mode) return;
-    if (!page_01_work_req_start(word_code)) return;
-
-    uint8_t work_cmd = (word_code == 1) ? 0x00 : 0x01;
-    protocol_send(0x38, &work_cmd, 1);
+    if (!setting_service_request_work_mode(word_code, lv_tick_get())) return;
 #if LV_DEBUG
     printf("工作模式请求切换为：%s\n", (word_code > 0) ? "MANUAL" : "AUTO");
 #endif // LV_DEBUG
