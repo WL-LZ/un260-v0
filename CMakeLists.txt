@@ -38,6 +38,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_components/lv_capsule_pagination.c
     un260/app_service/setting_service.c
     un260/boot/boot_service.c
+    un260/device_info/device_info.c
     un260/protocol/mode_codec.c
     un260/machine_state/machine_state.c
     un260/lv_core/lv_page_event.c

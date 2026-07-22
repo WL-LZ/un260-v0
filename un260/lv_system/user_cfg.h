@@ -115,19 +115,6 @@ bool user_cfg_screenshot_load(void);
 bool user_cfg_screenshot_save(bool enabled);
 bool user_cfg_screenshot_enabled(void);
 
-typedef struct {
-    // 版本信息
-    char main_app[32];      // 主控软件版本
-    char image_app[32];     // 图像软件版本 
-    char fpga[32];          // FPGA版本
-    char thka_app[32];      // 主控BOOT版本
-    char ecb[32];           // 图像BOOT版本
-    char display_app[32];   // 显示软件版本(预留)
-    bool version_valid;     // 版本数据是否有效
-} Machine_Statue_t;
-
-extern Machine_Statue_t Machine_Statue;
-
 #define SENSOR_VOLTAGE_CH_NUM 11
 typedef struct {
     uint8_t raw[SENSOR_VOLTAGE_CH_NUM];

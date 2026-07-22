@@ -8,6 +8,7 @@
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/user_cfg.h"
+#include "un260/device_info/device_info.h"
 #include "un260/lv_drivers/lv_drivers.h"
 
 #include <stdint.h>
@@ -956,18 +957,18 @@ static lv_obj_t* create_version_row(lv_obj_t* parent, int row, const char* title
 
 static void create_version_page_content(lv_obj_t* parent)
 {
-    if (!Machine_Statue.version_valid) {
+    if (!device_info_is_valid()) {
         create_tile(parent, 0, 0, ui_text_get(UI_TEXT_SETTINGS_VERSION),
                     ui_text_get(UI_TEXT_SETTINGS_NOT_AVAILABLE), true, NULL, NULL);
         return;
     }
 
-    create_version_row(parent, 0, "Main App", Machine_Statue.main_app);
-    create_version_row(parent, 1, "Image App", Machine_Statue.image_app);
-    create_version_row(parent, 2, "FPGA", Machine_Statue.fpga);
-    create_version_row(parent, 3, "Main BOOT", Machine_Statue.thka_app);
-    create_version_row(parent, 4, "Image BOOT", Machine_Statue.ecb);
-    create_version_row(parent, 5, "Display App", Machine_Statue.display_app);
+    create_version_row(parent, 0, "Main App", device_info_main_app());
+    create_version_row(parent, 1, "Image App", device_info_image_app());
+    create_version_row(parent, 2, "FPGA", device_info_fpga());
+    create_version_row(parent, 3, "Main BOOT", device_info_main_boot());
+    create_version_row(parent, 4, "Image BOOT", device_info_image_boot());
+    create_version_row(parent, 5, "Display App", device_info_display_app());
 }
 
 static const char* get_data_collect_mode_name(data_collect_mode_t mode)

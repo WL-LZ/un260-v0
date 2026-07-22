@@ -63,7 +63,6 @@ Machine_para_t Machine_para = {
         { 3, 3, 3, 3 },
     },
 };
-Machine_Statue_t Machine_Statue = { 0 };
 sensor_voltage_t g_sensor_voltage = { 0 };
 
 static bool user_cfg_password_is_valid(const char* password)

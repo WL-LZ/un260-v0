@@ -22,6 +22,7 @@
 #include "un260/machine_state/machine_state.h"
 #include "un260/protocol/mode_codec.h"
 #include "un260/boot/boot_service.h"
+#include "un260/device_info/device_info.h"
 #include "un260/lv_core/page_01_main.h"
 #include "un260/lv_system/ui_screenshot.h"
 #include "un260/lv_core/page_19_history.h"
@@ -1475,23 +1476,14 @@ void PCCmdHandle(void)
             }
 
             uint8_t *p = &buf[4];
-            strncpy(Machine_Statue.display_app, UI_VERSION, sizeof(Machine_Statue.display_app) - 1);
-            Machine_Statue.display_app[sizeof(Machine_Statue.display_app) - 1] = '\0';
-            snprintf(Machine_Statue.main_app,  sizeof(Machine_Statue.main_app),
-                     "%d.%d.%d", p[0], p[1], p[2]);
-
-            snprintf(Machine_Statue.image_app, sizeof(Machine_Statue.image_app),
-                     "%d.%d.%d", p[3], p[4], p[5]);
-
-            snprintf(Machine_Statue.fpga, sizeof(Machine_Statue.fpga),
-                     "%d.%d", p[6], p[7]);
-
-            snprintf(Machine_Statue.thka_app, sizeof(Machine_Statue.thka_app),
-                     "%d.%d.%d", p[8], p[9], p[10]);
-
-            snprintf(Machine_Statue.ecb, sizeof(Machine_Statue.ecb),
-                     "%d.%d.%d", p[11], p[12], p[13]);
-            Machine_Statue.version_valid = true;
+            device_info_remote_versions_t versions = {
+                .main_app = { p[0], p[1], p[2] },
+                .image_app = { p[3], p[4], p[5] },
+                .fpga = { p[6], p[7] },
+                .main_boot = { p[8], p[9], p[10] },
+                .image_boot = { p[11], p[12], p[13] },
+            };
+            device_info_confirm_remote_versions(&versions);
 
             uart_printf(fd6, "Version Info Received\n");
             break;
@@ -2436,6 +2428,7 @@ int main(void) {
     lv_port_indev_init();
     user_cfg_password_load();
     user_cfg_screenshot_load();
+    device_info_init(UI_VERSION);
     ui_history_data_init();
     ui_manager_switch(UI_PAGE_BOOT_ANIM);
     perf_stats_init();

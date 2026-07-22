@@ -4,6 +4,7 @@
 #include "un260/lv_components/smart_island.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/user_cfg.h"
+#include "un260/device_info/device_info.h"
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -866,7 +867,7 @@ void show_fault_popup_ex(const fault_popup_data_t* data)
 
     /* 版本 */
     g_fault_version_label = lv_label_create(g_fault_popup);
-    lv_label_set_text_fmt(g_fault_version_label, " %s", Machine_Statue.main_app);
+    lv_label_set_text_fmt(g_fault_version_label, " %s", device_info_main_app());
     lv_obj_set_style_text_color(g_fault_version_label, lv_color_hex(0x999999), 0);
     lv_obj_set_style_text_font(g_fault_version_label, &lv_font_instrument_sans_medium_14, 0);
     lv_obj_set_pos(g_fault_version_label, 595, 342);
