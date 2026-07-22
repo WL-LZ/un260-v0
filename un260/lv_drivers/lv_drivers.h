@@ -36,6 +36,7 @@ int uart_send(int fd, const char *send_buf, int data_len);
 
 /* 关闭串口 */
 void uart_close(int fd);
+int protocol_send(uint8_t cmd_g, const uint8_t *cmd_s, uint16_t cmd_s_len);
 int send_command(int fd, uint8_t cmd_g, const uint8_t *cmd_s, uint16_t cmd_s_len);
 void uart_printf(int fd, const char *fmt, ...);
 

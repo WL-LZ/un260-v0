@@ -208,7 +208,7 @@ void uart_close(int fd)
 
 
 //通用发送指令
-int send_command(int fd, uint8_t cmd_g, const uint8_t *cmd_s, uint16_t cmd_s_len)
+int protocol_send(uint8_t cmd_g, const uint8_t *cmd_s, uint16_t cmd_s_len)
 {
     uint8_t buf[256];
     int i = 0;
@@ -234,6 +234,12 @@ int send_command(int fd, uint8_t cmd_g, const uint8_t *cmd_s, uint16_t cmd_s_len
     }
 
     return uart_send(fd4, (const char *)buf, i);
+}
+
+int send_command(int fd, uint8_t cmd_g, const uint8_t *cmd_s, uint16_t cmd_s_len)
+{
+    (void)fd;
+    return protocol_send(cmd_g, cmd_s, cmd_s_len);
 }
 
 
