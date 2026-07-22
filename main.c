@@ -777,6 +777,31 @@ static int sensor_idx_to_ch(uint8_t idx)
     }
 }
 
+static void pccmd_handle_upgrade(uint8_t cmd, uint8_t *buf, uint8_t len)
+{
+    switch (cmd) {
+    /* ================== 0xA1 主控升级状态 ================== */
+    case 0xA1:
+    {
+        if (len < 6) break;
+        uint8_t res = buf[4];
+        ui_page_14_main_upgrade_on_reply(0xA1, res);
+        uart_printf(fd6, "0xA1 res=0x%02X\n", res);
+        break;
+    }
+
+    /* ================== 0xB0 图像升级状态 ================== */
+    case 0xB0:
+    {
+        if (len < 6) break;
+        uint8_t res = buf[4];
+        ui_page_15_image_upgrade_on_reply(0xB0, res);
+        uart_printf(fd6, "0xB0 res=0x%02X\n", res);
+        break;
+    }
+    }
+}
+
 static void pccmd_handle_boot_and_selftest(uint8_t cmd, uint8_t *buf, uint8_t len)
 {
     switch (cmd) {
@@ -2162,25 +2187,13 @@ void PCCmdHandle(void)
                 break;
             }
 
-        /* ================== 0xA1 主控升级状态 ================== */
         case 0xA1:
-        {
-            if (len < 6) break;
-            uint8_t res = buf[4];
-            ui_page_14_main_upgrade_on_reply(0xA1, res);
-            uart_printf(fd6, "0xA1 res=0x%02X\n", res);
+            pccmd_handle_upgrade(cmd, buf, len);
             break;
-        }
 
-        /* ================== 0xB0 图像升级状态 ================== */
         case 0xB0:
-        {
-            if (len < 6) break;
-            uint8_t res = buf[4];
-            ui_page_15_image_upgrade_on_reply(0xB0, res);
-            uart_printf(fd6, "0xB0 res=0x%02X\n", res);
+            pccmd_handle_upgrade(cmd, buf, len);
             break;
-        }
         case 0xC0:
         {
             if (len < 5) break;
