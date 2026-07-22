@@ -802,6 +802,66 @@ static void pccmd_handle_upgrade(uint8_t cmd, uint8_t *buf, uint8_t len)
     }
 }
 
+static void pccmd_handle_diagnostic(uint8_t cmd, uint8_t *buf, uint8_t len)
+{
+    switch (cmd) {
+    /* ================== 0x1D 传感器电压 ================== */
+    case 0x1D:
+    {
+        if (len < 7) break;
+
+        uint8_t idx = buf[4];
+        uint8_t val = buf[5];
+
+        if (idx == 0x00 && val == 0x00) {
+            memset(g_sensor_voltage.valid, 0, sizeof(g_sensor_voltage.valid));
+            break;
+        }
+
+        if (idx == 0xFF && val == 0xFF) {
+            break;
+        }
+
+        int ch = sensor_idx_to_ch(idx);
+        if (ch >= 0) {
+            g_sensor_voltage.raw[ch] = val;
+            g_sensor_voltage.valid[ch] = true;
+            g_sensor_voltage.update_count++;
+        }
+
+        break;
+    }
+
+
+    /* ================== 0x5B CIS 校准 ================== */
+    case 0x5B:
+    {
+        if (len < 5) break;
+
+        if (g_calib_target == CALIB_TARGET_CB) {
+            switch (buf[4]) {
+            case 0x01: cb_state = CB_CALIB_RUNNING; break;
+            case 0x02: cb_state = CB_CALIB_SUCCESS; break;
+            case 0x05: cb_state = CB_CALIB_FAIL_IR; break;
+            default:   break;
+            }
+        } else {
+            switch (buf[4]) {
+            case 0x01: cis_state = CIS_CALIB_RUNNING; break;
+            case 0x02: cis_state = CIS_CALIB_SUCCESS; break;
+            case 0x03: cis_state = CIS_CALIB_FAIL_UPPER; break;
+            case 0x04: cis_state = CIS_CALIB_FAIL_LOWER; break;
+            case 0x05: cis_state = CIS_CALIB_FAIL_IR; break;
+            default:   break;
+            }
+        }
+
+        cis_calib_ui_refresh();
+        break;
+    }
+    }
+}
+
 static void pccmd_handle_boot_and_selftest(uint8_t cmd, uint8_t *buf, uint8_t len)
 {
     switch (cmd) {
@@ -1747,60 +1807,12 @@ void PCCmdHandle(void)
             }
             break;
         }
-        /* ================== 0x1D 传感器电压 ================== */
         case 0x1D:
-        {
-            if (len < 7) break;
-
-            uint8_t idx = buf[4];
-            uint8_t val = buf[5];
-
-            if (idx == 0x00 && val == 0x00) {
-                memset(g_sensor_voltage.valid, 0, sizeof(g_sensor_voltage.valid));
-                break;
-            }
-
-            if (idx == 0xFF && val == 0xFF) {
-                break;
-            }
-
-            int ch = sensor_idx_to_ch(idx);
-            if (ch >= 0) {
-                g_sensor_voltage.raw[ch] = val;
-                g_sensor_voltage.valid[ch] = true;
-                g_sensor_voltage.update_count++;
-            }
-
+            pccmd_handle_diagnostic(cmd, buf, len);
             break;
-        }
-
-
-        /* ================== 0x5B CIS 校准 ================== */
         case 0x5B:
-        {
-            if (len < 5) break;
-
-            if (g_calib_target == CALIB_TARGET_CB) {
-                switch (buf[4]) {
-                case 0x01: cb_state = CB_CALIB_RUNNING; break;
-                case 0x02: cb_state = CB_CALIB_SUCCESS; break;
-                case 0x05: cb_state = CB_CALIB_FAIL_IR; break;
-                default:   break;
-                }
-            } else {
-                switch (buf[4]) {
-                case 0x01: cis_state = CIS_CALIB_RUNNING; break;
-                case 0x02: cis_state = CIS_CALIB_SUCCESS; break;
-                case 0x03: cis_state = CIS_CALIB_FAIL_UPPER; break;
-                case 0x04: cis_state = CIS_CALIB_FAIL_LOWER; break;
-                case 0x05: cis_state = CIS_CALIB_FAIL_IR; break;
-                default:   break;
-                }
-            }
-
-            cis_calib_ui_refresh();
+            pccmd_handle_diagnostic(cmd, buf, len);
             break;
-        }
         case 0x37:
             pccmd_handle_boot_and_selftest(cmd, buf, len);
             break;
