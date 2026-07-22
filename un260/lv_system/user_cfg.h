@@ -2,7 +2,7 @@
 #define USER_CFG_H
 #include <stdbool.h>
 #include <stdint.h>
-#include "un260/lv_drivers/lv_drivers.h"
+#include "un260/boot/boot_state.h"
 #define LV_DEBUG 1
 typedef enum {
     CURR_CNY_ITEM = 0,

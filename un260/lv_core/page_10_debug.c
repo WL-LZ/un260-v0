@@ -20,6 +20,7 @@
 
 /* ================= page_10_debug.c ================= */
 #include "page_10_debug.h"
+#include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_components/lv_print_toast.h"
 #include "un260/lv_system/ui_export_data.h"
 #include "un260/lv_system/ui_text.h"

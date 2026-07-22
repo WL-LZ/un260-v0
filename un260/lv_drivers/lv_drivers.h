@@ -8,6 +8,7 @@ extern "C" {
 #include <unistd.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "un260/boot/boot_state.h"
 
 extern const char* g_currency_error_desc[0x32];
 extern const char* g_start_error_desc[0x12];
@@ -64,12 +65,6 @@ typedef struct {
 } Machine_work_code_t;
 extern Machine_work_code_t Machine_work_code;
 
-/*握手协议*/
-typedef enum {
-    HANDSHAKE_IDLE = 0,
-    HANDSHAKE_SENT,
-    HANDSHAKE_OK,
-} handshake_state_t;
 extern uint32_t g_handshake_tick;
 #define HANDSHAKE_TIMEOUT_MS  1000
 

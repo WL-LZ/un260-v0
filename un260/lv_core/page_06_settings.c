@@ -8,6 +8,7 @@
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/user_cfg.h"
+#include "un260/lv_drivers/lv_drivers.h"
 
 #include <stdint.h>
 #include <stdio.h>
