@@ -6,6 +6,7 @@
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_refre/lvgl_refre.h"
 #include "un260/lv_drivers/lv_drivers.h"
+#include "un260/protocol/protocol_send.h"
 
 typedef struct {
     lv_obj_t* switch_container;

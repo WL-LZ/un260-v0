@@ -9,6 +9,7 @@
 #include "un260/lv_refre/lvgl_refre.h"
 #include "un260/lv_core/page_03_menu.h"
 #include "un260/lv_drivers/lv_drivers.h"
+#include "un260/protocol/protocol_send.h"
 #include "un260/lv_components/lv_print_toast.h"
 #include "un260/lv_components/lv_qr_popup.h"
 #include "un260/lv_components/lv_fault_popup.h"
