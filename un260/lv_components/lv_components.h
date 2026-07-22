@@ -11,12 +11,13 @@
 #include "un260/lv_components/lv_qr_popup.h"
 #include "un260/lv_components/lv_selftest_list.h"
 #include "un260/lv_components/lv_capsule_pagination.h"
+#include "un260/app_service/setting_service.h"
 extern uint8_t g_sys_err_last_code;
 void create_batch_num_switch(lv_obj_t* parent);
 lv_obj_t* get_batch_switch_container(void);
 void set_batch_switch_state(bool enable);
 void batch_switch_set_last_on_num(uint8_t num);
-void batch_switch_on_0x06_result(uint8_t status);
+void batch_switch_on_0x06_result(bool success, const setting_batch_result_t *result);
 void icon_feedback_comp(const char* name, ui_element_t* page_cfg_obj, int len);
 void hide_system_error_popup(void);
 void system_error_confirm_cb(lv_event_t* e);

@@ -937,15 +937,27 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
 
         if (status == 0x01)
         {
-            batch_switch_on_0x06_result(0x01);
-            page_03_batch_set_result(0x01);
+            setting_batch_result_t result;
+            if (setting_service_batch_take_result(status, &result)) {
+                if (result.type == SETTING_BATCH_REQUEST_NUMBER) {
+                    page_03_batch_set_result(true, &result);
+                } else if (result.type == SETTING_BATCH_REQUEST_SWITCH) {
+                    batch_switch_on_0x06_result(true, &result);
+                }
+            }
             uart_printf(fd6, "Set batch num success\n");
             smart_island_refresh_summary();
         }
         else if (status == 0x02)
         {
-            batch_switch_on_0x06_result(0x02);
-            page_03_batch_set_result(0x02);
+            setting_batch_result_t result;
+            if (setting_service_batch_take_result(status, &result)) {
+                if (result.type == SETTING_BATCH_REQUEST_NUMBER) {
+                    page_03_batch_set_result(false, &result);
+                } else if (result.type == SETTING_BATCH_REQUEST_SWITCH) {
+                    batch_switch_on_0x06_result(false, &result);
+                }
+            }
             show_batch_set_fail_popup();
             uart_printf(fd6, "Set batch num fail\n");
         }

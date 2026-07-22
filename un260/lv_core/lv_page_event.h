@@ -4,6 +4,7 @@
 #include "lvgl/lvgl.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_components/lv_components.h"
+#include "un260/app_service/setting_service.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -65,7 +66,7 @@ void page_01_detail_area_event_cb(lv_event_t* e);
 void page_03_batch_num_keypad_event_cb(lv_event_t* e);
 void page_03_batch_num_keypad_clear_event_cb(lv_event_t* e);
 void page_03_batch_num_keypad_enter_event_cb(lv_event_t* e);
-void page_03_batch_set_result(uint8_t status);
+void page_03_batch_set_result(bool success, const setting_batch_result_t *result);
 
 //page 03 功能页面
 void page_03_cfd_mode_event_cb(lv_event_t* e);

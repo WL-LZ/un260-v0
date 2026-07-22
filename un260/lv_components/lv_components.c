@@ -6,7 +6,7 @@
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_refre/lvgl_refre.h"
 #include "un260/lv_drivers/lv_drivers.h"
-#include "un260/protocol/protocol_send.h"
+#include "un260/app_service/setting_service.h"
 
 typedef struct {
     lv_obj_t* switch_container;
@@ -21,10 +21,6 @@ static batch_switch_t batch_switch = {
     .label_on = NULL,
     .label_off = NULL,
 };
-static bool g_batch_switch_wait_ack = false;
-static bool g_batch_switch_prev_state = false;
-static bool g_batch_switch_target_state = false;
-static uint8_t g_batch_switch_sent_num = 200;
 static uint8_t g_batch_last_on_num = 100;
 
 void set_batch_switch_state(bool enable);
@@ -411,18 +407,15 @@ static void update_switch_visual(bool enable, bool animate) {
 // 点击切换状态
 static void switch_event_cb(lv_event_t* e) {
     LV_UNUSED(e);
-    if (g_batch_switch_wait_ack) return;
-
-    g_batch_switch_prev_state = Machine_para.batch_switch_enable;
-    g_batch_switch_target_state = !g_batch_switch_prev_state;
-    g_batch_switch_wait_ack = true;
+    bool previous_enable = Machine_para.batch_switch_enable;
+    bool target_enable = !previous_enable;
 
     /* batch 开关行为：
      * ON  -> 发送用户预设的 pcs batch
      * OFF -> 固定发送 200
      */
     uint8_t batch_cmd = 200;
-    if (g_batch_switch_target_state) {
+    if (target_enable) {
         int preset = Machine_para.batch_num;
         if (preset <= 0 || preset >= 200) {
             preset = g_batch_last_on_num;
@@ -431,18 +424,19 @@ static void switch_event_cb(lv_event_t* e) {
         if (preset > 199) preset = 199;
         batch_cmd = (uint8_t)preset;
     }
-    g_batch_switch_sent_num = batch_cmd;
-    protocol_send(0x06, &batch_cmd, 1);
+    if (!setting_service_request_batch_switch(target_enable, batch_cmd, previous_enable, (uint8_t)Machine_para.batch_num)) {
+        update_switch_visual(Machine_para.batch_switch_enable, false);
+    }
 }
 
-void batch_switch_on_0x06_result(uint8_t status)
+void batch_switch_on_0x06_result(bool success, const setting_batch_result_t *result)
 {
-    if (!g_batch_switch_wait_ack) return;
+    if (result == NULL) return;
 
-    if (status == 0x01) {
-        Machine_para.batch_switch_enable = g_batch_switch_target_state;
+    if (success) {
+        Machine_para.batch_switch_enable = result->target.enable;
         if (Machine_para.batch_switch_enable) {
-            Machine_para.batch_num = g_batch_switch_sent_num;
+            Machine_para.batch_num = result->target.num;
             if (Machine_para.batch_num >= 5 && Machine_para.batch_num <= 199) {
                 g_batch_last_on_num = (uint8_t)Machine_para.batch_num;
             }
@@ -452,14 +446,10 @@ void batch_switch_on_0x06_result(uint8_t status)
         update_switch_visual(Machine_para.batch_switch_enable, true);
         page_03_batch_num_refre();
         page_01_batch_refre();
-        g_batch_switch_wait_ack = false;
         return;
     }
 
-    if (status == 0x02) {
-        Machine_para.batch_switch_enable = g_batch_switch_prev_state;
-        g_batch_switch_wait_ack = false;
-    }
+    Machine_para.batch_switch_enable = result->previous.enable;
 }
 
 // 创建批次开关组件

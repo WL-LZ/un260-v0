@@ -1,6 +1,7 @@
 #include "un260/app_service/setting_service.h"
 #include "un260/protocol/protocol_send.h"
 #include "un260/protocol/mode_codec.h"
+#include <stddef.h>
 
 static bool g_mode_req_pending = false;
 static uint8_t g_mode_req_target = 0;
@@ -20,6 +21,10 @@ static uint32_t g_page01_work_req_tick = 0;
 static bool g_page03_beep_req_pending = false;
 static bool g_page03_beep_req_target = false;
 static uint32_t g_page03_beep_req_tick = 0;
+static bool g_batch_req_pending = false;
+static setting_batch_request_type_t g_batch_req_type = SETTING_BATCH_REQUEST_NONE;
+static setting_batch_snapshot_t g_batch_req_target = { false, 0 };
+static setting_batch_snapshot_t g_batch_req_previous = { false, 0 };
 
 bool setting_service_request_mode(uint8_t target, uint32_t request_tick)
 {
@@ -223,4 +228,48 @@ uint32_t setting_service_beep_tick(void)
 void setting_service_beep_finish(void)
 {
     g_page03_beep_req_pending = false;
+}
+
+bool setting_service_request_batch_number(uint8_t num, bool previous_enable, uint8_t previous_num)
+{
+    uint8_t batch_cmd = num;
+
+    if (g_batch_req_pending) return false;
+    g_batch_req_type = SETTING_BATCH_REQUEST_NUMBER;
+    g_batch_req_target.enable = true;
+    g_batch_req_target.num = num;
+    g_batch_req_previous.enable = previous_enable;
+    g_batch_req_previous.num = previous_num;
+    g_batch_req_pending = true;
+    protocol_send(0x06, &batch_cmd, 1);
+    return true;
+}
+
+bool setting_service_request_batch_switch(bool target_enable, uint8_t sent_num, bool previous_enable, uint8_t previous_num)
+{
+    uint8_t batch_cmd = sent_num;
+
+    if (g_batch_req_pending) return false;
+    g_batch_req_type = SETTING_BATCH_REQUEST_SWITCH;
+    g_batch_req_target.enable = target_enable;
+    g_batch_req_target.num = sent_num;
+    g_batch_req_previous.enable = previous_enable;
+    g_batch_req_previous.num = previous_num;
+    g_batch_req_pending = true;
+    protocol_send(0x06, &batch_cmd, 1);
+    return true;
+}
+
+bool setting_service_batch_take_result(uint8_t status, setting_batch_result_t *result)
+{
+    if (!g_batch_req_pending) return false;
+    if (status != 0x01 && status != 0x02) return false;
+    if (result == NULL) return false;
+
+    result->type = g_batch_req_type;
+    result->target = g_batch_req_target;
+    result->previous = g_batch_req_previous;
+    g_batch_req_pending = false;
+    g_batch_req_type = SETTING_BATCH_REQUEST_NONE;
+    return true;
 }

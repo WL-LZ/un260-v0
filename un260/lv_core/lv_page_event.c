@@ -22,7 +22,6 @@
 
 lv_timer_t* page_03_batch_num_del_timer = NULL;
 lv_timer_t* page_05_password_del_timer = NULL;
-static int32_t g_batch_num_pending = -1;
 static lv_obj_t* g_batch_tip_label = NULL;
 
 #define PAGE_01_DETAIL_TAP_THRESHOLD     10
@@ -756,23 +755,23 @@ void page_03_batch_num_keypad_enter_event_cb(lv_event_t* e)
         num = 200;
     }
 
-    g_batch_num_pending = num;
-
     /* ================== 0x06 设置清分机预置数量 ==================
      * 开关 ON：发送用户预设值
      * 开关 OFF：固定发送 200
      */
-    uint8_t batch_cmd = (uint8_t)g_batch_num_pending;
-    protocol_send(0x06, &batch_cmd, 1);
+    if (!setting_service_request_batch_number((uint8_t)num, Machine_para.batch_switch_enable, (uint8_t)Machine_para.batch_num)) {
+        return;
+    }
     // 确认后清空输入缓存，回到 0，等待下一次重新输入
     page_03_batch_num_edit_reset();
-    printf("batch pending:%d\n", g_batch_num_pending);
+    printf("batch pending:%d\n", num);
 
 
 }
-void page_03_batch_set_result(uint8_t status)
+void page_03_batch_set_result(bool success, const setting_batch_result_t *result)
 {
     if (menu_page == NULL) return;
+    if (result == NULL) return;
 
     if (page_03_batch_num_del_timer) {
         lv_obj_t* old_lbl = (lv_obj_t*)page_03_batch_num_del_timer->user_data;
@@ -786,9 +785,9 @@ void page_03_batch_set_result(uint8_t status)
         page_03_batch_num_del_timer = NULL;
     }
 
-    if (status == 0x01) {
-        if (g_batch_num_pending > 0) {
-            Machine_para.batch_num = g_batch_num_pending;
+    if (success) {
+        if (result->target.num > 0) {
+            Machine_para.batch_num = result->target.num;
             set_batch_switch_state(true);
             batch_switch_set_last_on_num((uint8_t)Machine_para.batch_num);
             update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label",
@@ -806,7 +805,6 @@ void page_03_batch_set_result(uint8_t status)
         }
     }
 
-    g_batch_num_pending = -1;
 }
 void page_03_update_menu_button_states_refresh(void)
 {
