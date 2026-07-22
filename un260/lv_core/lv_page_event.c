@@ -559,7 +559,7 @@ void page_01_set_btn_event_cb(lv_event_t* e){
     if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
         icon_feedback_comp("page_01_set_icon.png", page_01_main_obj, page_01_main_len);
         uint8_t version_cmd = 0x01;
-        send_command(fd4, 0x17, &version_cmd, 1);
+        protocol_send(0x17, &version_cmd, 1);
         ui_manager_switch(UI_PAGE_SET_PASSAGE);
         }
  }
@@ -600,7 +600,7 @@ void page_01_print_btn_event_cb(lv_event_t* e)
     payload[8] = Machine_para.second;
 
     lv_print_toast_show(ui_text_get(UI_TEXT_WIDGET_PRINT_TOAST_PRINTING));
-    send_command(fd4, 0x3C, payload, 9);
+    protocol_send(0x3C, payload, 9);
 }
 
 void page_01_qr_btn_event_cb(lv_event_t* e)
@@ -915,7 +915,7 @@ void page_03_batch_num_keypad_enter_event_cb(lv_event_t* e)
      * 开关 OFF：固定发送 200
      */
     uint8_t batch_cmd = (uint8_t)g_batch_num_pending;
-    send_command(fd4, 0x06, &batch_cmd, 1);
+    protocol_send(0x06, &batch_cmd, 1);
     // 确认后清空输入缓存，回到 0，等待下一次重新输入
     page_03_batch_num_edit_reset();
     printf("batch pending:%d\n", g_batch_num_pending);
