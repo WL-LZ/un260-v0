@@ -362,7 +362,7 @@ static void page_01_mode_send_next(bool show_icon_feedback) //发送主界面模
 
     Machine_work_code.mode_code = mode_cmd;
     g_page01_mode_req_tick = lv_tick_get();
-    send_command(fd4, 0x04, &mode_cmd, 1);
+    protocol_send(0x04, &mode_cmd, 1);
 }
 
 bool page_01_add_req_start(bool target) //开始主界面ADD切换请求
@@ -494,7 +494,7 @@ void page_01_add_btn_event_cb(lv_event_t* e) //切换主界面底部ADD开关
     if (!page_01_add_req_start(target)) return;
 
     add_cmd = target ? 0x01 : 0x00;
-    send_command(fd4, 0x39, &add_cmd, 1);
+    protocol_send(0x39, &add_cmd, 1);
 }
 
 void page_01_work_btn_event_cb(lv_event_t* e) //切换主界面底部工作模式
@@ -508,7 +508,7 @@ void page_01_work_btn_event_cb(lv_event_t* e) //切换主界面底部工作模�
     if (!page_01_work_req_start(target_mode)) return;
 
     work_cmd = (target_mode == 1) ? 0x00 : 0x01;
-    send_command(fd4, 0x38, &work_cmd, 1);
+    protocol_send(0x38, &work_cmd, 1);
 }
 
 void page_01_fo_btn_event_cb(lv_event_t* e) //切换主界面底部F/O开关
@@ -523,7 +523,7 @@ void page_01_fo_btn_event_cb(lv_event_t* e) //切换主界面底部F/O开关
 
     /* 协议第31条：0x00=OFF, 0x01=Face, 0x02=ORT, 0x03=Face&ORT */
     fo_cmd = target_mode;
-    send_command(fd4, 0x3A, &fo_cmd, 1);
+    protocol_send(0x3A, &fo_cmd, 1);
 }
 
 void page_01_bottom_batch_btn_event_cb(lv_event_t* e) //进入主界面底部C区Batch设置页
@@ -551,7 +551,7 @@ void page_01_bottom_speed_btn_event_cb(lv_event_t* e) //切换主界面底部C�
         speed_cmd = 0x01;
     }
 
-    send_command(fd4, 0x16, &speed_cmd, 1);
+    protocol_send(0x16, &speed_cmd, 1);
 }
 
 
