@@ -1,0 +1,19 @@
+#ifndef SETTING_SERVICE_H
+#define SETTING_SERVICE_H
+
+#include <stdbool.h>
+#include <stdint.h>
+
+bool setting_service_request_add(bool target, uint32_t request_tick);
+bool setting_service_add_is_pending(void);
+bool setting_service_add_target(void);
+uint32_t setting_service_add_tick(void);
+void setting_service_add_finish(void);
+
+bool setting_service_request_fo_mode(uint8_t target, uint32_t request_tick);
+bool setting_service_fo_mode_is_pending(void);
+uint8_t setting_service_fo_mode_target(void);
+uint32_t setting_service_fo_mode_tick(void);
+void setting_service_fo_mode_finish(void);
+
+#endif

@@ -18,6 +18,7 @@
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/lv_page_declear.h"
 #include "un260/lv_core/lv_page_event.h"
+#include "un260/app_service/setting_service.h"
 #include "un260/lv_core/page_01_main.h"
 #include "un260/lv_system/ui_screenshot.h"
 #include "un260/lv_core/page_19_history.h"
@@ -979,9 +980,9 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
         uint8_t sub = buf[4];
 
         if (sub == 0x00) {
-            if (page_01_add_req_is_pending()) {
-                bool target = false;
-                page_01_add_req_finish(true, &target);
+            if (setting_service_add_is_pending()) {
+                bool target = setting_service_add_target();
+                setting_service_add_finish();
                 Machine_para.add_enable = target;
                 page_01_bottom_a_refresh_add(true);
             }
@@ -989,8 +990,8 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
             uart_printf(fd6, "ADD set success\n");
             smart_island_refresh_summary();
         } else if (sub == 0x01) {
-            if (page_01_add_req_is_pending()) {
-                page_01_add_req_finish(false, NULL);
+            if (setting_service_add_is_pending()) {
+                setting_service_add_finish();
             }
             uart_printf(fd6, "ADD set failed\n");
             show_start_fault_popup(0x02, 0x06);
@@ -1007,8 +1008,8 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
                             v,
                             Machine_para.add_enable ? "ON" : "OFF");
             }
-            if (page_01_add_req_is_pending()) {
-                page_01_add_req_finish(false, NULL);
+            if (setting_service_add_is_pending()) {
+                setting_service_add_finish();
             }
             page_01_bottom_a_refresh_add(false);
             uart_printf(fd6, "ADD boot status: raw=0x%02X -> %s\n",
@@ -1122,8 +1123,8 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
             } else {
                 uart_printf(fd6, "FO boot sync: invalid mode=0x%02X\n", val);
             }
-            if (page_01_fo_req_is_pending()) {
-                page_01_fo_req_finish(false, NULL);
+            if (setting_service_fo_mode_is_pending()) {
+                setting_service_fo_mode_finish();
             }
             page_01_bottom_a_refresh_fo(false);
             smart_island_refresh_summary();
@@ -1132,11 +1133,12 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
         if (type <= 0x03) {
             if (val == 0x01) {
                 uint8_t target_mode = 0;
-                if (!page_01_fo_req_is_pending()) {
+                if (!setting_service_fo_mode_is_pending()) {
                     uart_printf(fd6, "FO set SUCCESS ignored: no pending request\n");
                     break;
                 }
-                page_01_fo_req_finish(true, &target_mode);
+                target_mode = setting_service_fo_mode_target();
+                setting_service_fo_mode_finish();
                 Machine_para.fo_mode = target_mode;
                 page_01_bottom_a_refresh_fo(true);
                 page_03_update_menu_button_states_refresh();
@@ -1144,8 +1146,8 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
                             type, Machine_para.fo_mode);
                 smart_island_refresh_summary();
             } else if (val == 0x02) {
-                if (page_01_fo_req_is_pending()) {
-                    page_01_fo_req_finish(false, NULL);
+                if (setting_service_fo_mode_is_pending()) {
+                    setting_service_fo_mode_finish();
                 }
                 uart_printf(fd6, "FO set FAIL: type=0x%02X\n", type);
                 show_start_fault_popup(0x02, 0x06);

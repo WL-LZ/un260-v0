@@ -16,21 +16,16 @@
 #include "un260/lv_system/ui_qr_data.h"
 #include "un260/lv_core/page_01_main.h"
 #include "un260/lv_core/page_02_list.h"
+#include "un260/app_service/setting_service.h"
 
 lv_timer_t* page_03_batch_num_del_timer = NULL;
 lv_timer_t* page_05_password_del_timer = NULL;
 static int32_t g_batch_num_pending = -1;
 static lv_obj_t* g_batch_tip_label = NULL;
 static uint32_t g_page01_mode_req_tick = 0;
-static bool g_page01_add_req_pending = false;
-static bool g_page01_add_req_target = false;
-static uint32_t g_page01_add_req_tick = 0;
 static bool g_page01_work_req_pending = false;
 static uint8_t g_page01_work_req_target = 0;
 static uint32_t g_page01_work_req_tick = 0;
-static bool g_page01_fo_req_pending = false;
-static uint8_t g_page01_fo_req_target = 0;
-static uint32_t g_page01_fo_req_tick = 0;
 static bool g_page01_speed_req_pending = false;
 static uint8_t g_page01_speed_req_target = 0;
 static uint32_t g_page01_speed_req_tick = 0;
@@ -302,9 +297,9 @@ void page_setting_req_poll(void)
         page_setting_req_timeout_notify();
     }
 
-    if (g_page01_add_req_pending &&
-        (now_tick - g_page01_add_req_tick) >= PAGE_01_MODE_REQ_TIMEOUT_MS) {
-        g_page01_add_req_pending = false;
+    if (setting_service_add_is_pending() &&
+        (now_tick - setting_service_add_tick()) >= PAGE_01_MODE_REQ_TIMEOUT_MS) {
+        setting_service_add_finish();
         page_setting_req_timeout_notify();
     }
 
@@ -314,9 +309,9 @@ void page_setting_req_poll(void)
         page_setting_req_timeout_notify();
     }
 
-    if (g_page01_fo_req_pending &&
-        (now_tick - g_page01_fo_req_tick) >= PAGE_01_MODE_REQ_TIMEOUT_MS) {
-        g_page01_fo_req_pending = false;
+    if (setting_service_fo_mode_is_pending() &&
+        (now_tick - setting_service_fo_mode_tick()) >= PAGE_01_MODE_REQ_TIMEOUT_MS) {
+        setting_service_fo_mode_finish();
         page_setting_req_timeout_notify();
     }
 
@@ -365,29 +360,6 @@ static void page_01_mode_send_next(bool show_icon_feedback) //发送主界面模
     protocol_send(0x04, &mode_cmd, 1);
 }
 
-bool page_01_add_req_start(bool target) //开始主界面ADD切换请求
-{
-    if (g_page01_add_req_pending) return false;
-    g_page01_add_req_pending = true;
-    g_page01_add_req_target = target;
-    g_page01_add_req_tick = lv_tick_get();
-    return true;
-}
-
-bool page_01_add_req_is_pending(void) //查询主界面ADD切换请求是否挂起
-{
-    return g_page01_add_req_pending;
-}
-
-void page_01_add_req_finish(bool success, bool* target) //结束主界面ADD切换请求
-{
-    if (target) {
-        *target = g_page01_add_req_target;
-    }
-    (void)success;
-    g_page01_add_req_pending = false;
-}
-
 bool page_01_work_req_start(uint8_t target_mode) //开始主界面工作模式切换请求
 {
     if (g_page01_work_req_pending) return false;
@@ -409,29 +381,6 @@ void page_01_work_req_finish(bool success, uint8_t* target_mode) //结束主界�
     }
     (void)success;
     g_page01_work_req_pending = false;
-}
-
-bool page_01_fo_req_start(uint8_t target_mode) //开始主界面F/O模式切换请求
-{
-    if (g_page01_fo_req_pending) return false;
-    g_page01_fo_req_pending = true;
-    g_page01_fo_req_target = target_mode;
-    g_page01_fo_req_tick = lv_tick_get();
-    return true;
-}
-
-bool page_01_fo_req_is_pending(void) //查询主界面F/O切换请求是否挂起
-{
-    return g_page01_fo_req_pending;
-}
-
-void page_01_fo_req_finish(bool success, uint8_t* target_mode) //结束主界面F/O模式切换请求
-{
-    if (target_mode) {
-        *target_mode = g_page01_fo_req_target;
-    }
-    (void)success;
-    g_page01_fo_req_pending = false;
 }
 
 bool page_01_speed_req_start(uint8_t target_speed) //开始主界面速度切换请求
@@ -485,16 +434,12 @@ void page_01_bottom_mode_btn_event_cb(lv_event_t* e) //切换主界面底部A区
 
 void page_01_add_btn_event_cb(lv_event_t* e) //切换主界面底部ADD开关
 {
-    uint8_t add_cmd;
     bool target;
 
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
 
     target = !Machine_para.add_enable;
-    if (!page_01_add_req_start(target)) return;
-
-    add_cmd = target ? 0x01 : 0x00;
-    protocol_send(0x39, &add_cmd, 1);
+    if (!setting_service_request_add(target, lv_tick_get())) return;
 }
 
 void page_01_work_btn_event_cb(lv_event_t* e) //切换主界面底部工作模式
@@ -513,17 +458,13 @@ void page_01_work_btn_event_cb(lv_event_t* e) //切换主界面底部工作模�
 
 void page_01_fo_btn_event_cb(lv_event_t* e) //切换主界面底部F/O开关
 {
-    uint8_t fo_cmd;
     uint8_t target_mode;
 
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
 
     target_mode = (uint8_t)((Machine_para.fo_mode + 1) % 4);
-    if (!page_01_fo_req_start(target_mode)) return;
-
     /* 协议第31条：0x00=OFF, 0x01=Face, 0x02=ORT, 0x03=Face&ORT */
-    fo_cmd = target_mode;
-    protocol_send(0x3A, &fo_cmd, 1);
+    if (!setting_service_request_fo_mode(target_mode, lv_tick_get())) return;
 }
 
 void page_01_bottom_batch_btn_event_cb(lv_event_t* e) //进入主界面底部C区Batch设置页
@@ -1104,13 +1045,10 @@ void page_03_add_mode_event_cb(lv_event_t* e)
     const char* add_str = lv_event_get_user_data(e);
     uint8_t add_code = atoi(add_str);
     bool target = (add_code > 0) ? true : false;
-    uint8_t add_cmd = target ? 0x01 : 0x00;
     page_03_menu_function_feedback(2, target);
 
     if (target == Machine_para.add_enable) return;
-    if (!page_01_add_req_start(target)) return;
-
-    protocol_send(0x39, &add_cmd, 1);
+    if (!setting_service_request_add(target, lv_tick_get())) return;
 #if LV_DEBUG
     printf("ADD模式请求切换为：%s\n", target ? "ON" : "OFF");
 #endif // LV_DEBUG
@@ -1124,13 +1062,9 @@ void page_03_fo_mode_event_cb(lv_event_t* e)
     uint8_t fo_code = atoi(fo_str);
     page_03_menu_function_feedback(3, fo_code);
     if (fo_code >= FO_MODE || fo_code == Machine_para.fo_mode) return;
-    if (!page_01_fo_req_start(fo_code)) return;
-
-    uint8_t fo_cmd;
     if (fo_code <= 3) {
         /* 协议第31条：菜单页直接发送 0~3 编码 */
-        fo_cmd = fo_code;
-        protocol_send(0x3a, &fo_cmd, 1);
+        if (!setting_service_request_fo_mode(fo_code, lv_tick_get())) return;
     } 
 #if LV_DEBUG
     char* fo[] = {"OFF","F","O","F/O"};
