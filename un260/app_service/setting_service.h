@@ -28,4 +28,10 @@ uint8_t setting_service_work_mode_target(void);
 uint32_t setting_service_work_mode_tick(void);
 void setting_service_work_mode_finish(void);
 
+bool setting_service_request_beep(bool target, uint32_t request_tick);
+bool setting_service_beep_is_pending(void);
+bool setting_service_beep_target(void);
+uint32_t setting_service_beep_tick(void);
+void setting_service_beep_finish(void);
+
 #endif

@@ -23,9 +23,6 @@ lv_timer_t* page_05_password_del_timer = NULL;
 static int32_t g_batch_num_pending = -1;
 static lv_obj_t* g_batch_tip_label = NULL;
 static uint32_t g_page01_mode_req_tick = 0;
-static bool g_page03_beep_req_pending = false;
-static bool g_page03_beep_req_target = false;
-static uint32_t g_page03_beep_req_tick = 0;
 
 #define PAGE_01_DETAIL_TAP_THRESHOLD     10
 #define PAGE_01_MODE_REQ_TIMEOUT_MS      800
@@ -315,9 +312,9 @@ void page_setting_req_poll(void)
         page_setting_req_timeout_notify();
     }
 
-    if (g_page03_beep_req_pending &&
-        (now_tick - g_page03_beep_req_tick) >= PAGE_01_MODE_REQ_TIMEOUT_MS) {
-        g_page03_beep_req_pending = false;
+    if (setting_service_beep_is_pending() &&
+        (now_tick - setting_service_beep_tick()) >= PAGE_01_MODE_REQ_TIMEOUT_MS) {
+        setting_service_beep_finish();
         page_setting_req_timeout_notify();
     }
 }
@@ -352,20 +349,6 @@ static void page_01_mode_send_next(bool show_icon_feedback) //发送主界面模
     Machine_work_code.mode_code = mode_cmd;
     g_page01_mode_req_tick = lv_tick_get();
     protocol_send(0x04, &mode_cmd, 1);
-}
-
-bool page_03_beep_req_is_pending(void) //查询菜单页BEEP切换请求是否挂起
-{
-    return g_page03_beep_req_pending;
-}
-
-void page_03_beep_req_finish(bool success, bool* target) //结束菜单页BEEP切换请求
-{
-    if (target) {
-        *target = g_page03_beep_req_target;
-    }
-    (void)success;
-    g_page03_beep_req_pending = false;
 }
 
 void page_01_mode_btn_event_cb(lv_event_t* e)
@@ -928,17 +911,13 @@ void page_03_cfd_mode_event_cb(lv_event_t* e)
     const char* beep_str = lv_event_get_user_data(e);
     uint8_t beep_code = atoi(beep_str);
     bool target = (beep_code > 0) ? true : false;
-    uint8_t beep_cmd = target ? 0x01 : 0x02;
     page_03_menu_function_feedback(0, target);
 
-    if (g_page03_beep_req_pending || target == Machine_para.buzzer_enable) {
+    if (target == Machine_para.buzzer_enable) {
         return;
     }
 
-    g_page03_beep_req_pending = true;
-    g_page03_beep_req_target = target;
-    g_page03_beep_req_tick = lv_tick_get();
-    protocol_send(0x15, &beep_cmd, 1);
+    if (!setting_service_request_beep(target, lv_tick_get())) return;
 #if LV_DEBUG
     printf("BEEP mode request -> %s\n", target ? "ON" : "OFF");
 #endif

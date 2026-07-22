@@ -1028,17 +1028,17 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
         uint8_t sub = buf[4];
 
         if (sub == 0x01) {
-            if (page_03_beep_req_is_pending()) {
-                bool target = false;
-                page_03_beep_req_finish(true, &target);
+            if (setting_service_beep_is_pending()) {
+                bool target = setting_service_beep_target();
+                setting_service_beep_finish();
                 Machine_para.buzzer_enable = target;
             }
             uart_printf(fd6, "BEEP set success\n");
             page_03_update_menu_button_states_refresh();
         } else if (sub == 0x02) {
             uart_printf(fd6, "BEEP set failed\n");
-            if (page_03_beep_req_is_pending()) {
-                page_03_beep_req_finish(false, NULL);
+            if (setting_service_beep_is_pending()) {
+                setting_service_beep_finish();
             }
             show_start_fault_popup(0x02, 0x06);
             page_03_update_menu_button_states_refresh();
@@ -1046,8 +1046,8 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
             if (len < 7) break;
             uint8_t v = buf[5];
             Machine_para.buzzer_enable = (v == 0x01);
-            if (page_03_beep_req_is_pending()) {
-                page_03_beep_req_finish(false, NULL);
+            if (setting_service_beep_is_pending()) {
+                setting_service_beep_finish();
             }
             uart_printf(fd6, "BEEP boot status: %s\n", Machine_para.buzzer_enable ? "ON" : "OFF");
             page_03_update_menu_button_states_refresh();
