@@ -266,32 +266,7 @@ void machine_handshake_send(void)
 void boot_send_next_selftest(void)
 {
     boot_selftest_list_sync_step(boot_service_self_test_sequence_index());
-
-    switch (g_boot_stage) {
-        case BOOT_STAGE_SENSOR:
-            boot_service_request_self_test(SELFTEST_CONFIG, custom_tick_get());
-            break;
-
-        case BOOT_STAGE_MOTOR:
-            boot_service_request_self_test(SELFTEST_SENSOR, custom_tick_get());
-            break;
-
-        case BOOT_STAGE_MAGNET:
-            boot_service_request_self_test(SELFTEST_MOTOR, custom_tick_get());
-            break;
-
-        case BOOT_STAGE_CONFIG:
-            boot_service_request_self_test(SELFTEST_MAGNET, custom_tick_get());
-            break;
-
-        case BOOT_STAGE_IMAGE:
-            boot_service_request_self_test(SELFTEST_IMAGE, custom_tick_get());
-            break;
-
-        default:
-            return;
-    }
-
+    boot_service_request_next_self_test();
 }
 
 uint8_t boot_get_selftest_step(void) // 获取当前自检步骤
