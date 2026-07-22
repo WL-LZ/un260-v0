@@ -834,6 +834,65 @@ static void pccmd_handle_detail_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
         ui_page_25_set_serial_number_on_reply(buf[4], buf[5]);
         break;
     }
+    /* ================== 0x42 翻板控制应答 ================== */
+    case 0x42:
+    {
+        if (len < 6) {
+            uart_printf(fd6, "0x42 invalid len=%d\n", len);
+            break;
+        }
+
+        uart_printf(fd6, "0x42 flap setting ack: res=0x%02X\n", buf[4]);
+        ui_page_23_set_flap_on_reply(buf[4]);
+        break;
+    }
+    /* ================== 0x46 老化设置应答 ================== */
+    case 0x46:
+    {
+        if (len < 6) {
+            uart_printf(fd6, "0x46 invalid len=%d\n", len);
+            break;
+        }
+
+        uart_printf(fd6, "0x46 aging setting reply: sx=0x%02X\n", buf[4]);
+        ui_page_26_set_aging_on_reply(buf[4]);
+        break;
+    }
+    /* ================== 0x44 出厂设置应答 ================== */
+    case 0x44:
+    {
+        if (len < 6) {
+            uart_printf(fd6, "0x44 invalid len=%d\n", len);
+            break;
+        }
+
+        uart_printf(fd6, "0x44 factory setting reply: res=0x%02X\n", buf[4]);
+        ui_page_30_set_factory_on_reply(buf[4]);
+        break;
+    }
+    /* ================== 0x41 打印设置应答 ================== */
+    case 0x41:
+    {
+        if (len < 7) {
+            uart_printf(fd6, "0x41 invalid len=%d\n", len);
+            break;
+        }
+
+        if ((buf[4] == 0x01 && buf[5] >= PRINT_SETTING_CONTENT_LIST &&
+             buf[5] <= PRINT_SETTING_CONTENT_LIST_SN) ||
+            (buf[4] == 0x02 && len >= 27 &&
+             (buf[5] == 0x01 || buf[5] == 0x02)) ||
+            (buf[4] == 0x03 && len >= 8 &&
+             (buf[5] == 0x01 || buf[5] == 0x02))) {
+            ui_page_20_set_print_on_boot_setting(&buf[4], (uint16_t)(len - 5));
+            uart_printf(fd6, "0x41 boot print setting: sub=0x%02X\n", buf[4]);
+            break;
+        }
+
+        uart_printf(fd6, "0x41 print setting ack: sub=0x%02X res=0x%02X\n", buf[4], buf[5]);
+        ui_page_20_set_print_on_reply(buf[4], buf[5]);
+        break;
+    }
     }
 }
 
@@ -2186,18 +2245,9 @@ void PCCmdHandle(void)
         case 0x32:
             pccmd_handle_detail_setting(cmd, buf, len);
             break;
-        /* ================== 0x42 翻板控制应答 ================== */
         case 0x42:
-        {
-            if (len < 6) {
-                uart_printf(fd6, "0x42 invalid len=%d\n", len);
-                break;
-            }
-
-            uart_printf(fd6, "0x42 flap setting ack: res=0x%02X\n", buf[4]);
-            ui_page_23_set_flap_on_reply(buf[4]);
+            pccmd_handle_detail_setting(cmd, buf, len);
             break;
-        }
         /* ================== 0x45 鉴伪档位信息 ================== */
         case 0x45:
         {
@@ -2211,18 +2261,9 @@ void PCCmdHandle(void)
             ui_page_27_set_cfd_level_on_info(&buf[4], (uint16_t)(len - 4));
             break;
         }
-        /* ================== 0x46 老化设置应答 ================== */
         case 0x46:
-        {
-            if (len < 6) {
-                uart_printf(fd6, "0x46 invalid len=%d\n", len);
-                break;
-            }
-
-            uart_printf(fd6, "0x46 aging setting reply: sx=0x%02X\n", buf[4]);
-            ui_page_26_set_aging_on_reply(buf[4]);
+            pccmd_handle_detail_setting(cmd, buf, len);
             break;
-        }
         /* ================== 0x47 图像数据获取 ================== */
         case 0x47:
         {
@@ -2245,41 +2286,12 @@ void PCCmdHandle(void)
             ui_page_31_get_wave_on_frame(&buf[4], (uint16_t)(len - 5));
             break;
         }
-        /* ================== 0x44 出厂设置应答 ================== */
         case 0x44:
-        {
-            if (len < 6) {
-                uart_printf(fd6, "0x44 invalid len=%d\n", len);
-                break;
-            }
-
-            uart_printf(fd6, "0x44 factory setting reply: res=0x%02X\n", buf[4]);
-            ui_page_30_set_factory_on_reply(buf[4]);
+            pccmd_handle_detail_setting(cmd, buf, len);
             break;
-        }
-        /* ================== 0x41 打印设置应答 ================== */
         case 0x41:
-        {
-            if (len < 7) {
-                uart_printf(fd6, "0x41 invalid len=%d\n", len);
-                break;
-            }
-
-            if ((buf[4] == 0x01 && buf[5] >= PRINT_SETTING_CONTENT_LIST &&
-                 buf[5] <= PRINT_SETTING_CONTENT_LIST_SN) ||
-                (buf[4] == 0x02 && len >= 27 &&
-                 (buf[5] == 0x01 || buf[5] == 0x02)) ||
-                (buf[4] == 0x03 && len >= 8 &&
-                 (buf[5] == 0x01 || buf[5] == 0x02))) {
-                ui_page_20_set_print_on_boot_setting(&buf[4], (uint16_t)(len - 5));
-                uart_printf(fd6, "0x41 boot print setting: sub=0x%02X\n", buf[4]);
-                break;
-            }
-
-            uart_printf(fd6, "0x41 print setting ack: sub=0x%02X res=0x%02X\n", buf[4], buf[5]);
-            ui_page_20_set_print_on_reply(buf[4], buf[5]);
+            pccmd_handle_detail_setting(cmd, buf, len);
             break;
-        }
         default:
             uart_printf(fd6, "Unknown command 0x%02X\n", cmd);
             break;
