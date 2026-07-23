@@ -21,5 +21,11 @@ uint32_t boot_service_handshake_start_tick(void);
 void boot_service_reset_self_test(void);
 bool boot_service_next_self_test_protocol_step(uint8_t *protocol_step);
 uint8_t boot_service_self_test_sequence_index(void);
+void boot_service_reset_self_test_results(void);
+bool boot_service_record_self_test_result(uint8_t protocol_step, uint8_t result, uint8_t *index);
+bool boot_service_self_test_all_received(void);
+bool boot_service_self_test_has_failure(void);
+bool boot_service_get_first_self_test_failure(uint8_t *protocol_step, uint8_t *result);
+bool boot_service_get_self_test_result(uint8_t protocol_step, uint8_t *result);
 
 #endif

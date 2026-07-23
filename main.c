@@ -81,10 +81,6 @@ static lv_timer_t* g_mode_clear_timer = NULL;
 #define DENOM_QUERY_IDLE_RETRY_MS 2500
 static uint32_t g_ui_upgrade_detect_tick = 0;
 
-static uint8_t g_boot_selftest_result[5] = {0};
-static bool g_boot_selftest_has_error = false;
-static uint8_t g_boot_selftest_first_error_type = 0;
-static uint8_t g_boot_selftest_first_error_result = 0;
 static bool g_count_session_active = false;
 static bool g_wait_start_ack_for_next_session = false;
 static bool g_count_end_anim_wait_detail_end = false;
@@ -276,14 +272,6 @@ static void ui_upgrade_popup_poll(uint32_t now)
     lv_upgrade_popup_process_detect(detect_info.usb_present,
                                     detect_info.package_found,
                                     detect_info.package_hash_match);
-}
-
-static void boot_selftest_result_reset(void)
-{
-    memset(g_boot_selftest_result, 0, sizeof(g_boot_selftest_result));
-    g_boot_selftest_has_error = false;
-    g_boot_selftest_first_error_type = 0;
-    g_boot_selftest_first_error_result = 0;
 }
 
 //-------------------- 工具函数 --------------------
@@ -1240,7 +1228,7 @@ static void pccmd_handle_boot_and_selftest(uint8_t cmd, uint8_t *buf, uint8_t le
         if (buf[4] == 0x01) {
             boot_progress_set(20);
             boot_service_confirm_handshake();
-            boot_selftest_result_reset();
+            boot_service_reset_self_test_results();
             boot_service_set_stage(BOOT_STAGE_SENSOR);
             boot_send_next_selftest();
         }
@@ -1258,57 +1246,14 @@ static void pccmd_handle_boot_and_selftest(uint8_t cmd, uint8_t *buf, uint8_t le
         uint8_t test_type = buf[4];
         uint8_t result = buf[5];
 
-        int index = -1;
+        uint8_t index;
+        bool valid_step = boot_service_record_self_test_result(test_type, result, &index);
 
-        switch (test_type)
-        {
-            case 0x04:
-                index = 0;
-                break;
-
-            case 0x01:
-                index = 1;
-                break;
-
-            case 0x02:
-                index = 2;
-                break;
-
-            case 0x03:
-                index = 3;
-                break;
-
-            case 0x05:
-                index = 4;
-                break;
-
-            default:
-                break;
+        if (valid_step) {
+            boot_selftest_list_set_result(index, result);
         }
 
-        if (result == 0x01) {
-            if (index >= 0) {
-                g_boot_selftest_result[index] = 1;
-            }
-
-        } else {
-            if (index >= 0) {
-                g_boot_selftest_result[index] = (result == 0x03) ? 3 : 2;
-            }
-
-            // 自检期间先记录首个错误，待全部流程结束后再统一弹出
-            if (!g_boot_selftest_has_error) {
-                g_boot_selftest_has_error = true;
-                g_boot_selftest_first_error_type = test_type;
-                g_boot_selftest_first_error_result = result;
-            }
-        }
-
-        if (index >= 0) {
-            boot_selftest_list_set_result((uint8_t)index, result);
-        }
-
-        if (index >= 0) {
+        if (valid_step) {
             boot_progress_set((uint8_t)(30 + index * 10));
         }
 
@@ -1317,16 +1262,20 @@ static void pccmd_handle_boot_and_selftest(uint8_t cmd, uint8_t *buf, uint8_t le
         if (boot_service_get_stage() <= BOOT_STAGE_IMAGE) {
             boot_send_next_selftest();
         } else {
-            if (!g_boot_selftest_has_error) {
+            if (!boot_service_self_test_has_failure()) {
                 boot_progress_set(100);
                 send_command(fd4, 0x56, (uint8_t[]){0x01}, 1);
                 lv_timer_create(boot_selftest_finish_cb, 2000, NULL);
             } else {
+                uint8_t first_failure_step;
+                uint8_t first_failure_result;
+
                 boot_service_set_stage(BOOT_STAGE_FAIL);
                 // 自检失败也继续读取主控货币列表，避免页面回落本地默认配置
                 send_command(fd4, 0x56, (uint8_t[]){0x01}, 1);
-                show_boot_fault_popup(g_boot_selftest_first_error_type,
-                                      g_boot_selftest_first_error_result);
+                if (boot_service_get_first_self_test_failure(&first_failure_step, &first_failure_result)) {
+                    show_boot_fault_popup(first_failure_step, first_failure_result);
+                }
             }
         }
     }
