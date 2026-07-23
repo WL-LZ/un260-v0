@@ -74,6 +74,7 @@ void save_counting_data(void);
 void restore_counting_data(void);
 void sim_clear_all_sn(counting_sim_t* sim_data);
 curr_item_t get_curr_item(const char* code);
+void set_curr(curr_item_t curr);
 void update_label_with_simple_highlight(ui_element_t* page_cfg_obj, int len,
     const char* name, const char* fmt, ...);
 void mode_switch(void);

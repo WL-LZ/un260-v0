@@ -24,6 +24,7 @@
 #include "un260/boot/boot_service.h"
 #include "un260/device_info/device_info.h"
 #include "un260/currency/currency_state.h"
+#include "un260/currency/currency_service.h"
 #include "un260/lv_core/page_01_main.h"
 #include "un260/lv_system/ui_screenshot.h"
 #include "un260/lv_core/page_19_history.h"
@@ -1582,7 +1583,14 @@ void PCCmdHandle(void)
 
             if (status == 0x01)
             {
-                page_07_curr_set_pending_result(status);
+                currency_switch_result_t result;
+                if (currency_service_take_switch_result(status, &result)) {
+                    currency_state_confirm_active_code(result.target_code);
+                    currency_state_confirm_active_index(result.target_index);
+                    set_curr(get_curr_item(result.target_code));
+                    sim_clear_all_sn(&sim);
+                    page_07_curr_apply_switch_result(&result);
+                }
                 char curr_code[4];
                 currency_state_get_active_code(curr_code);
                 uart_printf(fd6, "Set %s curr success\n", curr_code);
@@ -1592,7 +1600,10 @@ void PCCmdHandle(void)
             }
             else if (status == 0x02)
             {
-                page_07_curr_set_pending_result(status);
+                currency_switch_result_t result;
+                if (currency_service_take_switch_result(status, &result)) {
+                    page_07_curr_apply_switch_result(&result);
+                }
                 char curr_code[4];
                 currency_state_get_active_code(curr_code);
                 uart_printf(fd6, "Set %s curr fail\n", curr_code);

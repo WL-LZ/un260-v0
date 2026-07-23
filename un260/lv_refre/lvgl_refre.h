@@ -3,6 +3,7 @@
 #include"un260/lv_drivers/lv_drivers.h"
 #include "lvgl/lvgl.h"
 #include "un260/lv_core/lv_page_manager.h" 
+#include "un260/currency/currency_service.h"
 #ifdef __cplusplus
 extern "C" {  
 #endif
@@ -60,7 +61,7 @@ extern "C" {
 
 
     void page_07_curr_img_refre(void);
-    bool page_07_curr_set_pending_result(uint8_t status);
+    void page_07_curr_apply_switch_result(const currency_switch_result_t* result);
     void ui_state_apply_common_runtime(void);
     void ui_state_save_popup_auto_state(void);
     void ui_state_save_pure_count_state(void);

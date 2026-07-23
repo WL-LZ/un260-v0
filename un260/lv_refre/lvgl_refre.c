@@ -11,6 +11,7 @@
 #include "un260/lv_system/user_cfg.h"
 #include "un260/machine_state/machine_state.h"
 #include "un260/currency/currency_state.h"
+#include "un260/currency/currency_service.h"
 #include "un260/lv_core/lv_page_event.h"
 #include "un260/lv_core/page_02_list.h"
 #include "un260/lv_core/lv_page_declear.h"
@@ -1242,8 +1243,6 @@ static int g_curr_sel_abs_idx = 0;
 static int g_curr_sel_vis_idx = 0;
 static int g_curr_view_mode = CURR_VIEW_MODE_CARD;
 static bool g_curr_fav_only = false;
-static int g_curr_pending_abs_idx = -1;
-static char g_curr_pending_code[4] = {0};
 
 static bool g_curr_touch_active = false;
 static bool g_curr_touch_dragging = false;
@@ -1308,7 +1307,7 @@ void ui_state_save_page01_detail_section(void);
 
 static void curr_apply_selected_style(void);
 static void curr_style_back_button(void);
-bool page_07_curr_set_pending_result(uint8_t status);
+void page_07_curr_apply_switch_result(const currency_switch_result_t* result);
 
 static bool curr_has_currency_code(const char* code);
 static bool curr_add_favorite_code(const char* code);
@@ -2140,64 +2139,58 @@ static void curr_select_and_exit_abs(int abs_idx)
     char target_code[4];
 
     if (abs_idx < 0 || !currency_state_get_code((uint8_t)abs_idx, target_code)) return;
-    if (g_curr_pending_abs_idx >= 0) return;
+    if (currency_service_switch_pending()) return;
     currency_state_get_active_code(curr_code);
     if (curr_code_eq3(curr_code, target_code)) {
         ui_manager_switch(UI_PAGE_MAIN);
         return;
     }
 
-    g_curr_pending_abs_idx = abs_idx;
-    memcpy(g_curr_pending_code, target_code, sizeof(g_curr_pending_code));
-    send_command(fd4, 0x03, (const uint8_t*)target_code, 3);
+    if (!currency_service_request_switch((uint8_t)abs_idx, target_code)) return;
+    if (send_command(fd4, 0x03, (const uint8_t*)target_code, 3) < 0) {
+        currency_switch_result_t result;
+
+        if (currency_service_take_switch_result(0x02, &result)) {
+            page_07_curr_apply_switch_result(&result);
+        }
+    }
 }
 
-bool page_07_curr_set_pending_result(uint8_t status)
+void page_07_curr_apply_switch_result(const currency_switch_result_t* result)
 {
-    if (g_curr_pending_abs_idx < 0) return false;
+    char curr_code[4];
 
-    if (status == 0x01) {
-        currency_state_confirm_active_code(g_curr_pending_code);
-        set_curr(get_curr_item(g_curr_pending_code));
-        sim_clear_all_sn(&sim);
+    if (!result) return;
+    if (result->success) {
         memset(sim.denom, 0, sizeof(sim.denom)); //切币种时清空旧币种面额缓存，避免三角提示残留
         sim.denom_number = 0;
         sim.total_pcs = 0;
         sim.total_amount = 0.0f;
-        g_curr_sel_abs_idx = g_curr_pending_abs_idx;
+        g_curr_sel_abs_idx = result->target_index;
         g_curr_sel_vis_idx = curr_find_visible_pos_by_abs(g_curr_sel_abs_idx);
-        g_curr_pending_abs_idx = -1;
-        memset(g_curr_pending_code, 0, sizeof(g_curr_pending_code));
         ui_state_save_to_file();
+        if (curr_page == NULL) return;
         ui_manager_switch(UI_PAGE_MAIN);
         page_01_scroll_hint_force_hide();
         if (page_01_main_scroll_container && lv_obj_is_valid(page_01_main_scroll_container)) {
             // 切换币种成功后再次归零，确保不会出现首行被遮挡
             lv_obj_scroll_to_y(page_01_main_scroll_container, 0, LV_ANIM_OFF);
         }
-        return true;
+        return;
     }
 
-    if (status == 0x02) {
-        char curr_code[4];
-
-        g_curr_pending_abs_idx = -1;
-        memset(g_curr_pending_code, 0, sizeof(g_curr_pending_code));
-        currency_state_get_active_code(curr_code);
-        g_curr_sel_abs_idx = curr_find_abs_idx_by_code(curr_code);
-        g_curr_sel_vis_idx = curr_find_visible_pos_by_abs(g_curr_sel_abs_idx);
-        curr_set_left_info_by_abs(g_curr_sel_abs_idx);
-        if (g_curr_view_mode == CURR_VIEW_MODE_CARD) {
-            curr_apply_selected_style();
-            curr_scroll_to_visible_idx(g_curr_sel_vis_idx, true, true);
-        } else {
-            curr_refresh_right_views();
-        }
-        show_currency_set_fail_popup();
-        return true;
+    currency_state_get_active_code(curr_code);
+    g_curr_sel_abs_idx = curr_find_abs_idx_by_code(curr_code);
+    g_curr_sel_vis_idx = curr_find_visible_pos_by_abs(g_curr_sel_abs_idx);
+    if (curr_page == NULL) return;
+    curr_set_left_info_by_abs(g_curr_sel_abs_idx);
+    if (g_curr_view_mode == CURR_VIEW_MODE_CARD) {
+        curr_apply_selected_style();
+        curr_scroll_to_visible_idx(g_curr_sel_vis_idx, true, true);
+    } else {
+        curr_refresh_right_views();
     }
-
-    return false;
+    show_currency_set_fail_popup();
 }
 
 static void curr_update_card_fav_ui(int i)
@@ -2820,8 +2813,6 @@ void page_07_curr_img_reset(void)
     memset(g_curr_grid_items, 0, sizeof(g_curr_grid_items));
     memset(g_curr_visible_idx, 0, sizeof(g_curr_visible_idx));
     g_curr_visible_cnt = 0;
-    g_curr_pending_abs_idx = -1;
-    memset(g_curr_pending_code, 0, sizeof(g_curr_pending_code));
 }
 
 void page_07_curr_img_refre(void)
