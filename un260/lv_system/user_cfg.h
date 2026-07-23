@@ -100,7 +100,6 @@ typedef struct {
     uint8_t double_note_level;
     uint8_t flap_position;
     uint8_t serial_number_level;
-    bool aging_running;
     char cfd_setting_currency[4];
     uint8_t cfd_levels[CFD_SCENE_COUNT][CFD_ITEM_COUNT];
 }Machine_para_t;

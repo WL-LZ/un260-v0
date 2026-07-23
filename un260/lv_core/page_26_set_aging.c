@@ -1,8 +1,8 @@
 #include "page_26_set_aging.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/settings_detail_ui.h"
+#include "un260/machine_state/machine_state.h"
 #include "un260/lv_system/ui_text.h"
-#include "un260/lv_system/user_cfg.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -30,7 +30,7 @@ static void aging_anim_timer_cb(lv_timer_t* timer)
 
     (void)timer;
 
-    if (!Machine_para.aging_running) return;
+    if (!machine_state_aging_running()) return;
 
     anim_tick = (uint16_t)(anim_tick + 1);
     phase = (uint16_t)(anim_tick % 96);
@@ -88,7 +88,7 @@ static void aging_confirm_start(void* user_data)
 {
     (void)user_data;
 
-    if (Machine_para.aging_running) return;
+    if (machine_state_aging_running()) return;
 
     if (!aging_send_start()) {
         return;
@@ -98,7 +98,7 @@ static void aging_confirm_start(void* user_data)
 static void aging_start_cb(lv_event_t* e)
 {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
-    if (Machine_para.aging_running) return;
+    if (machine_state_aging_running()) return;
 
     settings_detail_dialog_show(ui_text_get(UI_TEXT_SETTINGS_AGING_CONFIRM_TITLE),
                                 ui_text_get(UI_TEXT_SETTINGS_AGING_CONFIRM_CONTENT),
@@ -240,7 +240,7 @@ static void aging_create_preview(lv_obj_t* parent)
 
 static void aging_refresh_view(void)
 {
-    bool running = Machine_para.aging_running;
+    bool running = machine_state_aging_running();
 
     if (start_btn && lv_obj_is_valid(start_btn)) {
         lv_obj_set_style_bg_color(start_btn,
@@ -312,7 +312,7 @@ void ui_page_26_set_aging_destroy(void)
 void ui_page_26_set_aging_on_reply(uint8_t res)
 {
     if (res == 0x00) {
-        Machine_para.aging_running = true;
+        machine_state_confirm_aging_running(true);
         if (aging_page) {
             aging_refresh_view();
         }
@@ -320,7 +320,7 @@ void ui_page_26_set_aging_on_reply(uint8_t res)
     }
 
     if (res == 0x02) {
-        Machine_para.aging_running = false;
+        machine_state_confirm_aging_running(false);
         if (aging_page) {
             aging_refresh_view();
         }
@@ -332,7 +332,7 @@ void ui_page_26_set_aging_on_reply(uint8_t res)
     }
 
     if (res == 0x01) {
-        Machine_para.aging_running = false;
+        machine_state_confirm_aging_running(false);
         if (aging_page) {
             aging_refresh_view();
         }

@@ -3,6 +3,7 @@
 
 static uint8_t g_batch_num = 0;
 static bool g_batch_enabled = true;
+static bool g_aging_running = false;
 
 void machine_state_confirm_mode(uint8_t mode)
 {
@@ -88,4 +89,14 @@ bool machine_state_batch_enabled(void)
 uint8_t machine_state_batch_num(void)
 {
     return g_batch_num;
+}
+
+void machine_state_confirm_aging_running(bool running)
+{
+    g_aging_running = running;
+}
+
+bool machine_state_aging_running(void)
+{
+    return g_aging_running;
 }

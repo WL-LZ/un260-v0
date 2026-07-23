@@ -28,4 +28,7 @@ void machine_state_confirm_batch_enable(bool enabled);
 bool machine_state_batch_enabled(void);
 uint8_t machine_state_batch_num(void);
 
+void machine_state_confirm_aging_running(bool running);
+bool machine_state_aging_running(void);
+
 #endif

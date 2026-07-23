@@ -53,7 +53,6 @@ Machine_para_t Machine_para = {
     .double_note_level = DOUBLE_NOTE_LEVEL_MIN,
     .flap_position = FLAP_POSITION_UP,
     .serial_number_level = SERIAL_NUMBER_LEVEL_OFF,
-    .aging_running = false,
     .cfd_setting_currency = "CNY",
     .cfd_levels = {
         { 3, 3, 3, 3 },
