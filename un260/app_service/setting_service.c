@@ -31,6 +31,15 @@ static bool g_batch_req_pending = false;
 static setting_batch_request_type_t g_batch_req_type = SETTING_BATCH_REQUEST_NONE;
 static setting_batch_snapshot_t g_batch_req_target = { false, 0 };
 static setting_batch_snapshot_t g_batch_req_previous = { false, 0 };
+static bool g_double_note_req_pending = false;
+static uint8_t g_double_note_req_target = 0;
+static uint8_t g_double_note_req_previous = 0;
+static bool g_flap_req_pending = false;
+static uint8_t g_flap_req_target = 0;
+static uint8_t g_flap_req_previous = 0;
+static bool g_reject_pocket_req_pending = false;
+static uint8_t g_reject_pocket_req_target = 0;
+static uint8_t g_reject_pocket_req_previous = 0;
 
 #if SETTING_BATCH_TRACE_ENABLE
 static uint32_t g_batch_trace_next_seq = 0;
@@ -378,4 +387,98 @@ bool setting_service_batch_take_result(uint8_t status, setting_batch_result_t *r
     g_batch_req_pending = false;
     g_batch_req_type = SETTING_BATCH_REQUEST_NONE;
     return true;
+}
+
+bool setting_service_request_double_note_level(uint8_t target, uint8_t previous)
+{
+    if (g_double_note_req_pending) return false;
+
+    g_double_note_req_pending = true;
+    g_double_note_req_target = target;
+    g_double_note_req_previous = previous;
+    if (!protocol_send(0x31, &target, 1)) {
+        g_double_note_req_pending = false;
+        return false;
+    }
+
+    return true;
+}
+
+bool setting_service_take_double_note_level_result(uint8_t status, setting_value_result_t *result)
+{
+    if (!g_double_note_req_pending || result == NULL) return false;
+
+    result->target = g_double_note_req_target;
+    result->previous = g_double_note_req_previous;
+    result->success = (status == 0x01);
+    result->timeout = false;
+    g_double_note_req_pending = false;
+    return true;
+}
+
+void setting_service_clear_double_note_level_request(void)
+{
+    g_double_note_req_pending = false;
+}
+
+bool setting_service_request_flap_position(uint8_t target, uint8_t previous)
+{
+    if (g_flap_req_pending) return false;
+
+    g_flap_req_pending = true;
+    g_flap_req_target = target;
+    g_flap_req_previous = previous;
+    if (!protocol_send(0x42, &target, 1)) {
+        g_flap_req_pending = false;
+        return false;
+    }
+
+    return true;
+}
+
+bool setting_service_take_flap_position_result(uint8_t status, setting_value_result_t *result)
+{
+    if (!g_flap_req_pending || result == NULL) return false;
+
+    result->target = g_flap_req_target;
+    result->previous = g_flap_req_previous;
+    result->success = (status == 0x00);
+    result->timeout = false;
+    g_flap_req_pending = false;
+    return true;
+}
+
+bool setting_service_request_reject_pocket_max(uint8_t target, uint8_t previous)
+{
+    uint8_t payload[2] = { 0x01, target };
+
+    if (g_reject_pocket_req_pending) return false;
+
+    g_reject_pocket_req_pending = true;
+    g_reject_pocket_req_target = target;
+    g_reject_pocket_req_previous = previous;
+    if (!protocol_send(0x08, payload, sizeof(payload))) {
+        g_reject_pocket_req_pending = false;
+        return false;
+    }
+
+    return true;
+}
+
+bool setting_service_take_reject_pocket_max_result(uint8_t status, setting_value_result_t *result)
+{
+    if (!g_reject_pocket_req_pending || result == NULL) return false;
+    if (status != 0x01 && status != 0x02) return false;
+
+    result->target = g_reject_pocket_req_target;
+    result->previous = g_reject_pocket_req_previous;
+    result->success = (status == 0x01);
+    result->timeout = false;
+    g_reject_pocket_req_pending = false;
+    return true;
+}
+
+void setting_service_clear_reject_pocket_max_request(void)
+{
+    g_reject_pocket_req_pending = false;
 }

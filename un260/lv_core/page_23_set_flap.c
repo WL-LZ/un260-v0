@@ -1,4 +1,5 @@
 #include "page_23_set_flap.h"
+#include "un260/app_service/setting_service.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/settings_detail_ui.h"
 #include "un260/lv_system/ui_text.h"
@@ -34,8 +35,6 @@ static lv_obj_t* flap_page = NULL;
 static lv_obj_t* preview_flap = NULL;
 static lv_obj_t* preview_flap_label = NULL;
 static flap_item_t g_flap_items[FLAP_OPTION_COUNT] = { 0 };
-static uint8_t pending_position = 0;
-static uint8_t pending_prev_position = FLAP_POSITION_UP;
 
 static uint8_t flap_normalize_position(uint8_t position)
 {
@@ -142,23 +141,14 @@ static void flap_refresh_view(bool animate_preview)
     flap_move_preview(position, animate_preview);
 }
 
-static bool flap_send_position(uint8_t position)
-{
-    uint8_t payload = flap_normalize_position(position);
-
-    return settings_detail_send_command(0x42, &payload, 1);
-}
-
 static void flap_request_position(uint8_t position)
 {
-    pending_prev_position = flap_get_position();
-    if (!flap_send_position(position)) {
-        pending_position = 0;
-        return;
-    }
+    uint8_t target_position = flap_normalize_position(position);
+    uint8_t previous_position = flap_get_position();
 
-    pending_position = flap_normalize_position(position);
-    Machine_para.flap_position = pending_position;
+    if (!setting_service_request_flap_position(target_position, previous_position)) return;
+
+    Machine_para.flap_position = target_position;
     flap_refresh_view(true);
 }
 
@@ -345,8 +335,6 @@ void ui_page_23_set_flap_create(lv_obj_t* parent)
     if (flap_page) return;
 
     Machine_para.flap_position = flap_get_position();
-    pending_position = 0;
-    pending_prev_position = Machine_para.flap_position;
 
     flap_page = settings_detail_create_page(parent,
                                             ui_text_get(UI_TEXT_SETTINGS_FLAP_TITLE),
@@ -368,8 +356,6 @@ void ui_page_23_set_flap_destroy(void)
     flap_setting_page = NULL;
     preview_flap = NULL;
     preview_flap_label = NULL;
-    pending_position = 0;
-    pending_prev_position = FLAP_POSITION_UP;
 
     for (size_t i = 0; i < FLAP_OPTION_COUNT; i++) {
         g_flap_items[i].card = NULL;
@@ -377,22 +363,11 @@ void ui_page_23_set_flap_destroy(void)
     }
 }
 
-void ui_page_23_set_flap_on_reply(uint8_t res)
+void ui_page_23_set_flap_on_reply(const setting_value_result_t* result)
 {
-    if (res == 0x00) {
-        if (pending_position != 0) {
-            Machine_para.flap_position = pending_position;
-        }
-        pending_position = 0;
-        return;
-    }
+    if (!result) return;
 
-    if (pending_position != 0) {
-        Machine_para.flap_position = flap_normalize_position(pending_prev_position);
-        pending_position = 0;
-    }
-
-    if (flap_page) {
+    if (!result->success && flap_page && lv_obj_is_valid(flap_page)) {
         flap_refresh_view(true);
     }
 }

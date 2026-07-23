@@ -1285,6 +1285,10 @@ static void pccmd_handle_detail_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
     /* ================== 0x31 重张检测级别应答 ================== */
     case 0x31:
     {
+        setting_value_result_t result;
+        bool result_taken;
+        uint8_t normalized_level;
+
         if (len < 6) {
             uart_printf(fd6, "0x31 invalid len=%d\n", len);
             break;
@@ -1302,14 +1306,23 @@ static void pccmd_handle_detail_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
             break;
         }
 
-        if (buf[5] == 0x01 &&
-            buf[4] >= DOUBLE_NOTE_LEVEL_MIN && buf[4] <= DOUBLE_NOTE_LEVEL_MAX) {
-            Machine_para.double_note_level = buf[4];
+        normalized_level = buf[4];
+        if (normalized_level < DOUBLE_NOTE_LEVEL_MIN || normalized_level > DOUBLE_NOTE_LEVEL_MAX) {
+            normalized_level = DOUBLE_NOTE_LEVEL_MIN;
+        }
+
+        result_taken = setting_service_take_double_note_level_result(buf[5], &result);
+        if (result_taken && result.success) {
+            Machine_para.double_note_level = normalized_level;
+        } else if (result_taken && result.target == normalized_level) {
+            Machine_para.double_note_level = result.previous;
         }
 
         uart_printf(fd6, "0x31 double note level ack: level=0x%02X res=0x%02X\n",
                     buf[4], buf[5]);
-        ui_page_22_set_double_note_on_reply(buf[4], buf[5]);
+        if (result_taken) {
+            ui_page_22_set_double_note_on_reply(&result);
+        }
         break;
     }
     /* ================== 0x32 冠字号档位应答 ================== */
@@ -1339,13 +1352,18 @@ static void pccmd_handle_detail_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
     /* ================== 0x42 翻板控制应答 ================== */
     case 0x42:
     {
+        setting_value_result_t result;
+
         if (len < 6) {
             uart_printf(fd6, "0x42 invalid len=%d\n", len);
             break;
         }
 
         uart_printf(fd6, "0x42 flap setting ack: res=0x%02X\n", buf[4]);
-        ui_page_23_set_flap_on_reply(buf[4]);
+        if (setting_service_take_flap_position_result(buf[4], &result)) {
+            Machine_para.flap_position = result.success ? result.target : result.previous;
+            ui_page_23_set_flap_on_reply(&result);
+        }
         break;
     }
     /* ================== 0x46 老化设置应答 ================== */
@@ -1593,6 +1611,8 @@ void PCCmdHandle(void)
         /* ================== 0x08 设置退钞口张数 ================== */
         case 0x08:
         {
+            setting_value_result_t result;
+
             if (len < 7) break;
 
             uint8_t type = buf[4];
@@ -1611,10 +1631,16 @@ void PCCmdHandle(void)
 
             if (res == 0x01) {
                 uart_printf(fd6, "Reject pocket pcs set success\n");
-                ui_page_24_set_reject_pocket_on_reply(res);
+                if (setting_service_take_reject_pocket_max_result(res, &result)) {
+                    Machine_para.reject_pocket_max = result.target;
+                    ui_page_24_set_reject_pocket_on_reply(&result);
+                }
             } else if (res == 0x02) {
                 uart_printf(fd6, "Reject pocket pcs set fail\n");
-                ui_page_24_set_reject_pocket_on_reply(res);
+                if (setting_service_take_reject_pocket_max_result(res, &result)) {
+                    Machine_para.reject_pocket_max = result.previous;
+                    ui_page_24_set_reject_pocket_on_reply(&result);
+                }
             } else {
                 uart_printf(fd6, "0x08 unknown res=0x%02X\n", res);
             }

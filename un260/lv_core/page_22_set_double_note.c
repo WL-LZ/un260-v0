@@ -1,4 +1,5 @@
 #include "page_22_set_double_note.h"
+#include "un260/app_service/setting_service.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/settings_detail_ui.h"
 #include "un260/lv_system/ui_text.h"
@@ -37,8 +38,6 @@ static lv_obj_t* preview_desc_label = NULL;
 static lv_obj_t* preview_bars[DOUBLE_NOTE_OPTION_COUNT] = { NULL };
 static lv_obj_t* preview_bar_labels[DOUBLE_NOTE_OPTION_COUNT] = { NULL };
 static double_note_item_t g_double_note_items[DOUBLE_NOTE_OPTION_COUNT] = { 0 };
-static uint8_t pending_level = 0;
-static uint8_t pending_prev_level = DOUBLE_NOTE_LEVEL_MIN;
 
 static uint8_t double_note_normalize_level(uint8_t level)
 {
@@ -142,29 +141,14 @@ static void double_note_refresh_if_page_valid(void)
     }
 }
 
-/* Protocol adapter: keep command 0x31 payload normalization local to this page. */
-static bool double_note_send_level(uint8_t level)
-{
-    uint8_t payload = double_note_normalize_level(level);
-
-    if (!settings_detail_send_command(0x31, &payload, 1)) {
-        return false;
-    }
-
-    return true;
-}
-
-/* User-request path: save rollback state, send, then show the optimistic selection. */
 static void double_note_request_level(uint8_t level)
 {
-    pending_prev_level = double_note_get_level();
-    if (!double_note_send_level(level)) {
-        pending_level = 0;
-        return;
-    }
+    uint8_t target_level = double_note_normalize_level(level);
+    uint8_t previous_level = double_note_get_level();
 
-    pending_level = double_note_normalize_level(level);
-    Machine_para.double_note_level = pending_level;
+    if (!setting_service_request_double_note_level(target_level, previous_level)) return;
+
+    Machine_para.double_note_level = target_level;
     double_note_refresh_if_page_valid();
 }
 
@@ -335,8 +319,6 @@ void ui_page_22_set_double_note_create(lv_obj_t* parent)
     if (double_note_page) return;
 
     Machine_para.double_note_level = double_note_get_level();
-    pending_level = 0;
-    pending_prev_level = Machine_para.double_note_level;
 
     double_note_page = settings_detail_create_page(parent,
                                                    ui_text_get(UI_TEXT_SETTINGS_DOUBLE_NOTE_TITLE),
@@ -359,8 +341,6 @@ void ui_page_22_set_double_note_destroy(void)
     double_note_setting_page = NULL;
     preview_level_label = NULL;
     preview_desc_label = NULL;
-    pending_level = 0;
-    pending_prev_level = DOUBLE_NOTE_LEVEL_MIN;
 
     for (size_t i = 0; i < DOUBLE_NOTE_OPTION_COUNT; i++) {
         g_double_note_items[i].card = NULL;
@@ -373,37 +353,12 @@ void ui_page_22_set_double_note_destroy(void)
 void ui_page_22_set_double_note_on_boot_setting(uint8_t level)
 {
     Machine_para.double_note_level = double_note_normalize_level(level);
-    pending_level = 0;
+    setting_service_clear_double_note_level_request();
     double_note_refresh_if_page_valid();
 }
 
-/* Successful replies confirm the machine value even if main.c already wrote it. */
-static void double_note_confirm_level(uint8_t level)
+void ui_page_22_set_double_note_on_reply(const setting_value_result_t* result)
 {
-    Machine_para.double_note_level = level;
-    pending_level = 0;
+    if (!result) return;
     double_note_refresh_if_page_valid();
-}
-
-/* Failed replies only roll back the request that is still pending, then refresh. */
-static void double_note_rollback_level(uint8_t level)
-{
-    if (pending_level == level) {
-        Machine_para.double_note_level = double_note_normalize_level(pending_prev_level);
-        pending_level = 0;
-    }
-
-    double_note_refresh_if_page_valid();
-}
-
-void ui_page_22_set_double_note_on_reply(uint8_t level, uint8_t res)
-{
-    uint8_t normalized_level = double_note_normalize_level(level);
-
-    if (res == 0x01) {
-        double_note_confirm_level(normalized_level);
-        return;
-    }
-
-    double_note_rollback_level(normalized_level);
 }
