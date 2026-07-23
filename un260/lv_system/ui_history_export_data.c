@@ -10,6 +10,7 @@
 #include "un260/lv_components/lv_print_toast.h"
 #include "un260/lv_system/ui_history_data.h"
 #include "un260/lv_system/machine_time.h"
+#include "un260/currency/currency_state.h"
 
 #define UI_HISTORY_EXPORT_USB_DIR          "/mnt/usb"
 #define UI_HISTORY_EXPORT_LOCK_MS          2000U
@@ -73,12 +74,15 @@ static void history_export_start_lock(void)
 
 static void history_export_get_currency_code(char *buf, size_t size)
 {
+    char curr_code[4];
+
     if (buf == NULL || size == 0) {
         return;
     }
 
-    if (Machine_para.curr_code[0] != '\0') {
-        lv_snprintf(buf, size, "%s", Machine_para.curr_code);
+    currency_state_get_active_code(curr_code);
+    if (curr_code[0] != '\0') {
+        lv_snprintf(buf, size, "%s", curr_code);
         return;
     }
 

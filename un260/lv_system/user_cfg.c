@@ -17,24 +17,18 @@ static bool g_screenshot_enabled = true;
 // 定义Machine_para变量
 Machine_para_t Machine_para = {
     .mode = 1,  //1 MDC , 2 CNT ,3 VER , 4 SDC
-    .curr_code = "CNY",
     .speed = 0,
     .add_enable = 0,
     .start_auto = 0,
-    .current_currency = CURR_CNY_ITEM,
     .password = "1111",               // 默认密码1111
     .batch_mode = 0,                  //0 pcs ,1 amount
     .cfd_mode = 0,
     .fo_mode = 0,
     .work_mode = 0,
     .language = 0,
-    .selected_currency = 0,
     .batch_amount = 0,
     .buzzer_enable = 1,
     .serial_num_enable = 0,
-    .currency_count = DEFAULT_CURRENCY_COUNT,
-    .currencies = { "USD", "CNY", "EUR", "AED", "SAR", "OMR", "QAR", "MAD",
-                    "EGP", "DZD", "INR", "PKR", "GBP", "IQD" },
     .last_total_pcs = 0,
     .last_total_amount = 0,
     .history_total_notes_counted = 0,

@@ -12,6 +12,7 @@
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_system/machine_time.h"
 #include "un260/machine_state/machine_state.h"
+#include "un260/currency/currency_state.h"
 
 #define UI_EXPORT_USB_DIR                  "/mnt/usb"
 #define UI_EXPORT_LOCK_MS                  2000U
@@ -119,15 +120,20 @@ static bool ui_export_data_is_empty(void)
 
 static void ui_export_data_get_currency_code(char *buf, size_t size)
 {
+    char curr_code[4];
+    char selected_code[4];
+    uint8_t selected_index;
+
     if (buf == NULL || size == 0U) {
         return;
     }
 
-    if (Machine_para.curr_code[0] != '\0') {
-        lv_snprintf(buf, size, "%s", Machine_para.curr_code);
-    } else if (Machine_para.selected_currency < Machine_para.currency_count &&
-               Machine_para.currencies[Machine_para.selected_currency][0] != '\0') {
-        lv_snprintf(buf, size, "%s", Machine_para.currencies[Machine_para.selected_currency]);
+    currency_state_get_active_code(curr_code);
+    selected_index = currency_state_active_index();
+    if (curr_code[0] != '\0') {
+        lv_snprintf(buf, size, "%s", curr_code);
+    } else if (currency_state_get_code(selected_index, selected_code) && selected_code[0] != '\0') {
+        lv_snprintf(buf, size, "%s", selected_code);
     } else {
         lv_snprintf(buf, size, "%s", "CUR");
     }
@@ -536,6 +542,7 @@ static bool ui_export_data_write_csv_file(const char *file_path)
     char mode_buf[8] = "NONE";
     char reason_buf[96];
     machine_time_value_t now;
+    char curr_code[4];
 
     if (Machine_para.mode == MODE_MDC) {
         lv_snprintf(mode_buf, sizeof(mode_buf), "%s", "MDC");
@@ -550,6 +557,7 @@ static bool ui_export_data_write_csv_file(const char *file_path)
     }
 
     machine_time_get(&now);
+    currency_state_get_active_code(curr_code);
 
     fp = fopen(file_path, "w");
     if (fp == NULL) {
@@ -562,7 +570,7 @@ static bool ui_export_data_write_csv_file(const char *file_path)
             (unsigned)now.hour,
             (unsigned)now.minute,
             (unsigned)now.second);
-    fprintf(fp, "Currency,%s\n", Machine_para.curr_code);
+    fprintf(fp, "Currency,%s\n", curr_code);
     fprintf(fp, "Total Pcs,%d\n", sim.total_pcs);
     fprintf(fp, "Total Amount,%.0f\n", sim.total_amount);
     fprintf(fp, "Reject Pcs,%d\n\n", ui_export_data_get_reject_count());

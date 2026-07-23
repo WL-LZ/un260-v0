@@ -23,6 +23,7 @@
 #include "un260/protocol/mode_codec.h"
 #include "un260/boot/boot_service.h"
 #include "un260/device_info/device_info.h"
+#include "un260/currency/currency_state.h"
 #include "un260/lv_core/page_01_main.h"
 #include "un260/lv_system/ui_screenshot.h"
 #include "un260/lv_core/page_19_history.h"
@@ -1582,7 +1583,9 @@ void PCCmdHandle(void)
             if (status == 0x01)
             {
                 page_07_curr_set_pending_result(status);
-                uart_printf(fd6, "Set %s curr success\n", Machine_para.curr_code);
+                char curr_code[4];
+                currency_state_get_active_code(curr_code);
+                uart_printf(fd6, "Set %s curr success\n", curr_code);
                 g_count_end_anim_wait_detail_end = false;
                 trigger_denom_query();
                 smart_island_refresh_summary();
@@ -1590,18 +1593,18 @@ void PCCmdHandle(void)
             else if (status == 0x02)
             {
                 page_07_curr_set_pending_result(status);
-                uart_printf(fd6, "Set %s curr fail\n", Machine_para.curr_code);
+                char curr_code[4];
+                currency_state_get_active_code(curr_code);
+                uart_printf(fd6, "Set %s curr fail\n", curr_code);
             }
             else if (status == 0x03)
             {
                 if (len < 9) break;
 
-                Machine_para.curr_code[0] = (char)buf[5];
-                Machine_para.curr_code[1] = (char)buf[6];
-                Machine_para.curr_code[2] = (char)buf[7];
-                Machine_para.curr_code[3] = '\0';
+                char curr_code[4] = { (char)buf[5], (char)buf[6], (char)buf[7], '\0' };
+                currency_state_confirm_active_code(curr_code);
 
-                uart_printf(fd6, "Boot curr: %s\n", Machine_para.curr_code);
+                uart_printf(fd6, "Boot curr: %s\n", curr_code);
                 clear_master_denom_cache();
                 if (is_main_page_active()) {
                     ui_refresh_main_page();
@@ -2124,7 +2127,7 @@ void PCCmdHandle(void)
                 break;
 
             case 0x08: /* 货币索引 */
-                Machine_para.selected_currency = buf[5];
+                currency_state_confirm_active_index(buf[5]);
                 break;
 
             case 0x09: /* 预置模式 */
@@ -2161,27 +2164,22 @@ void PCCmdHandle(void)
             uint8_t c3 = buf[7];
 
             if (idx == 0x00 && c1 == 0x00 && c2 == 0x00 && c3 == 0x00) {
-                Machine_para.currency_count = 0;
-                memset(Machine_para.currencies, 0, sizeof(Machine_para.currencies));
+                currency_state_begin_list_sync();
                 uart_printf(fd6, "0x56 currency query start\n");
                 break;
             }
 
             if (idx == 0xFF && c1 == 0xFF && c2 == 0xFF && c3 == 0xFF) {
-                uart_printf(fd6, "0x56 currency query end, count=%d\n", Machine_para.currency_count);
+                currency_state_finish_list_sync();
+                uart_printf(fd6, "0x56 currency query end, count=%d\n", currency_state_count());
                 break;
             }
 
             if (idx >= 1 && idx <= MAX_CURRENCIES) {
                 int pos = (int)idx - 1;
-                Machine_para.currencies[pos][0] = (char)c1;
-                Machine_para.currencies[pos][1] = (char)c2;
-                Machine_para.currencies[pos][2] = (char)c3;
-                Machine_para.currencies[pos][3] = '\0';
-                if (Machine_para.currency_count < idx) {
-                    Machine_para.currency_count = idx;
-                }
-                uart_printf(fd6, "0x56 currency[%d]=%s\n", pos, Machine_para.currencies[pos]);
+                char curr_code[4] = { (char)c1, (char)c2, (char)c3, '\0' };
+                currency_state_append_list_code(idx, curr_code);
+                uart_printf(fd6, "0x56 currency[%d]=%s\n", pos, curr_code);
             }
             break;
         }

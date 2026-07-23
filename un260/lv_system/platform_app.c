@@ -11,6 +11,7 @@
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_components/smart_island.h"
 #include "un260/lv_system/ui_text.h"
+#include "un260/currency/currency_state.h"
 // 全局变量定义
 counting_sim_t sim = { 0 };
 page_02_report_status_t page_02_a_report_status = { 0 };
@@ -100,27 +101,8 @@ lv_obj_t* find_obj_by_name(const char* name, ui_element_t* page_cfg_obj, int len
 }
 
 /* 把字符串码映射到枚举 */
-     curr_item_t get_curr_item(const char* code) {
-    if (strcmp(code, "CNY") == 0) return CURR_CNY_ITEM;
-    if (strcmp(code, "USD") == 0) return CURR_USD_ITEM;
-    if (strcmp(code, "EUR") == 0) return CURR_EUR_ITEM;
-    if (strcmp(code, "GBP") == 0) return CURR_GBP_ITEM;
-    if (strcmp(code, "KRW") == 0) return CURR_KRW_ITEM;
-    if (strcmp(code, "EGP") == 0) return CURR_EGP_ITEM;
-    if (strcmp(code, "ISK") == 0) return CURR_ISK_ITEM;
-    if (strcmp(code, "PHP") == 0) return CURR_PHP_ITEM;
-    if (strcmp(code, "SOS") == 0) return CURR_SOS_ITEM;
-    if (strcmp(code, "TRY") == 0) return CURR_TRY_ITEM;
-    if (strcmp(code, "AED") == 0) return CURR_AED_ITEM;
-    if (strcmp(code, "SAR") == 0) return CURR_SAR_ITEM;
-    if (strcmp(code, "OMR") == 0) return CURR_OMR_ITEM;    
-    if (strcmp(code, "QAR") == 0) return CURR_QAR_ITEM;
-    if (strcmp(code, "MAD") == 0) return CURR_MAD_ITEM;
-    if (strcmp(code, "DZD") == 0) return CURR_DZD_ITEM; 
-    if (strcmp(code, "INR") == 0) return CURR_INR_ITEM;
-    if (strcmp(code, "PKR") == 0) return CURR_PKR_ITEM;
-    if (strcmp(code, "IQD") == 0) return CURR_IQD_ITEM;           
-    return CURR_COUNT;  // 不认识
+curr_item_t get_curr_item(const char* code) {
+    return currency_state_code_to_item(code);
 }
 
 //刷新字符串
@@ -177,13 +159,16 @@ int sim_get_sn_nth_valid_index(int nth)
 //设置国家curr
 void set_curr(curr_item_t curr)
 {
+    char curr_code[4];
+
+    currency_state_get_active_code(curr_code);
     if (curr >= CURR_COUNT) {
 #if LV_DEBUG
-        printf("set_curr unknown enum, keep curr_code=%s\n", Machine_para.curr_code);
+        printf("set_curr unknown enum, keep curr_code=%s\n", curr_code);
 #endif
     } else {
-        if (curr == Machine_para.current_currency) return;
-        Machine_para.current_currency = curr;
+        if (curr == currency_state_active_currency()) return;
+        currency_state_confirm_active_currency(curr);
     }
     sim_clear_all_sn(&sim);
 
@@ -196,109 +181,93 @@ void set_curr(curr_item_t curr)
 
 void sim_data_init(void)
 {
-    printf("Current currency enum: %d\n", Machine_para.current_currency);
+    char curr_code[4];
+
+    currency_state_get_active_code(curr_code);
+    printf("Current currency enum: %d\n", currency_state_active_currency());
 
     counting_sim_t* sim_data = &sim;
     memset(sim_data, 0, sizeof(counting_sim_t));
     const int* arr = NULL;
     int count = 0;
 
-    switch (get_curr_item(Machine_para.curr_code))
+    switch (get_curr_item(curr_code))
     {
     case CURR_USD_ITEM:
         arr = USD_value;
         count = USD_value_num;
-        strcpy(Machine_para.curr_code, "USD");
         break;
     case CURR_CNY_ITEM:
         arr = CNY_value;
         count = CNY_value_num;
-        strcpy(Machine_para.curr_code, "CNY");
         break;
     case CURR_GBP_ITEM:
         arr = GBP_value;
         count = GBP_value_num;
-        strcpy(Machine_para.curr_code, "GBP");
         break;
     case CURR_EUR_ITEM:
         arr = EUR_value;
         count = EUR_value_num;
-        strcpy(Machine_para.curr_code, "EUR");
         break;
     case CURR_KRW_ITEM:
         arr = KRW_value;
         count = KRW_value_num;
-        strcpy(Machine_para.curr_code, "KRW");
         break;
     case CURR_EGP_ITEM:
         arr = EGP_value;
         count = EGP_value_num;
-        strcpy(Machine_para.curr_code, "EGP");
         break;
     case CURR_ISK_ITEM:
         arr = ISK_value;
         count = ISK_value_num;
-        strcpy(Machine_para.curr_code, "ISK");
         break;
     case CURR_PHP_ITEM:
         arr = PHP_value;
         count = PHP_value_num;
-        strcpy(Machine_para.curr_code, "PHP");
         break;
     case CURR_SOS_ITEM:
         arr = SOS_value;
         count = SOS_value_num;
-        strcpy(Machine_para.curr_code, "SOS");
         break;
     case CURR_TRY_ITEM:
         arr = TRY_value;
         count = TRY_value_num;
-        strcpy(Machine_para.curr_code, "TRY");
         break;
     case CURR_AED_ITEM:
         arr = AED_value;
         count = AED_value_num;
-        strcpy(Machine_para.curr_code, "AED");
         break;
     case CURR_SAR_ITEM:
         arr = SAR_value;
         count = SAR_value_num;
-        strcpy(Machine_para.curr_code, "SAR");
         break;
     case CURR_OMR_ITEM:
         arr = OMR_value;
         count = OMR_value_num;
-        strcpy(Machine_para.curr_code, "OMR");
         break;
     case CURR_QAR_ITEM:
         arr = QAR_value;
         count = QAR_value_num;
-        strcpy(Machine_para.curr_code, "QAR");
         break;
     case CURR_MAD_ITEM:
         arr = MAD_value;
         count = MAD_value_num;
-        strcpy(Machine_para.curr_code, "MAD");
         break;
     case CURR_DZD_ITEM:
         arr = DZD_value;
         count = DZD_value_num;
-        strcpy(Machine_para.curr_code, "DZD");
         break;
     case CURR_INR_ITEM:
         arr = INR_value;
         count = INR_value_num;
-        strcpy(Machine_para.curr_code, "INR");
         break;
     case CURR_PKR_ITEM:
         arr = PKR_value;
         count = PKR_value_num;
-        strcpy(Machine_para.curr_code, "PKR");
         break;
     case CURR_IQD_ITEM:
         arr = IQD_value;
         count = IQD_value_num;
-        strcpy(Machine_para.curr_code, "IQD");
         break;
     default:
         arr = USD_value;
@@ -734,8 +703,11 @@ void ui_refresh_main_page(void) {
     int first_row = page_01_detail_scroll_first_row_get(section);
     char buf[32];
     char amount_buf[32];
+    char curr_code[4];
     int right_total_pcs = 0;
     float right_total_amount = 0.0f;
+
+    currency_state_get_active_code(curr_code);
 
     //main_left_list
     lv_obj_t* curr_label;
@@ -743,7 +715,7 @@ void ui_refresh_main_page(void) {
 
     if (curr_label && lv_obj_is_valid(curr_label))
     {
-        update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", Machine_para.curr_code);
+        update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", curr_code);
     }
     if (page_01_main_page_pcs_label == NULL || !lv_obj_is_valid(page_01_main_page_pcs_label))
     {

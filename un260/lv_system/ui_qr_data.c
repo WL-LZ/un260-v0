@@ -1,6 +1,7 @@
 #include "ui_qr_data.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/machine_time.h"
+#include "un260/currency/currency_state.h"
 #include <stdarg.h>
 #include <stdio.h>
 
@@ -47,6 +48,7 @@ bool ui_qr_data_build(char* buf, size_t buf_size) //组装当前点钞结果二�
     int sn_col = 0;
     int emitted_sn = 0;
     int omitted_sn = 0;
+    char curr_code[4];
 
     if (buf == NULL || buf_size == 0 || !ui_qr_data_is_ready()) {
         return false;
@@ -54,11 +56,12 @@ bool ui_qr_data_build(char* buf, size_t buf_size) //组装当前点钞结果二�
 
     buf[0] = '\0';
     machine_time_get(&now);
+    currency_state_get_active_code(curr_code);
 
     if (!ui_qr_data_append(buf, buf_size, &used,
         "Total Amount: %.2f %s;" QR_LINE_BREAK,
         sim.total_amount,
-        (Machine_para.curr_code[0] != '\0') ? Machine_para.curr_code : "---")) {
+        (curr_code[0] != '\0') ? curr_code : "---")) {
         return false;
     }
 

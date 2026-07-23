@@ -12,6 +12,7 @@
 #include "un260/lv_core/page_18_pure.h"
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/machine_state/machine_state.h"
+#include "un260/currency/currency_state.h"
 #include <stdio.h>
 #include <string.h>
 #include "un260/lv_components/lv_capsule_pagination.h"
@@ -1072,13 +1073,18 @@ static void smart_island_update_idle_time(void)
 
 static void smart_island_get_currency_code(char *buf, size_t size)
 {
+    char curr_code[4];
+    char selected_code[4];
+    uint8_t selected_index;
+
     if (buf == NULL || size == 0U) return;
 
-    if (Machine_para.curr_code[0] != '\0') {
-        lv_snprintf(buf, size, "%s", Machine_para.curr_code);
-    } else if (Machine_para.selected_currency < Machine_para.currency_count &&
-               Machine_para.currencies[Machine_para.selected_currency][0] != '\0') {
-        lv_snprintf(buf, size, "%s", Machine_para.currencies[Machine_para.selected_currency]);
+    currency_state_get_active_code(curr_code);
+    selected_index = currency_state_active_index();
+    if (curr_code[0] != '\0') {
+        lv_snprintf(buf, size, "%s", curr_code);
+    } else if (currency_state_get_code(selected_index, selected_code) && selected_code[0] != '\0') {
+        lv_snprintf(buf, size, "%s", selected_code);
     } else {
         lv_snprintf(buf, size, "%s", "CUR");
     }

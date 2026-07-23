@@ -10,6 +10,7 @@
 
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_system/machine_time.h"
+#include "un260/currency/currency_state.h"
 
 #define UI_HISTORY_STORE_PATH "/etc/ui_state/history_state.cfg"
 #define UI_HISTORY_MAGIC 0x48495354u
@@ -412,6 +413,7 @@ bool ui_history_record_append_from_session(const counting_sim_t *sim_data, uint3
 {
     ui_history_record_t *rec;
     machine_time_value_t now;
+    char curr_code[4];
 
     history_ensure_loaded();
 
@@ -431,7 +433,8 @@ bool ui_history_record_append_from_session(const counting_sim_t *sim_data, uint3
     rec->record_no = total_notes_after;
     rec->pcs = pcs_total;
     rec->amount = (uint32_t)((sim_data->total_amount < 0.0f) ? 0.0f : sim_data->total_amount);
-    lv_snprintf(rec->currency, sizeof(rec->currency), "%s", Machine_para.curr_code);
+    currency_state_get_active_code(curr_code);
+    lv_snprintf(rec->currency, sizeof(rec->currency), "%s", curr_code);
     machine_time_get(&now);
     rec->year = now.year;
     rec->month = now.month;

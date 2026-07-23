@@ -3,6 +3,7 @@
 #include "un260/lv_core/settings_detail_ui.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/user_cfg.h"
+#include "un260/currency/currency_state.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -55,12 +56,11 @@ static lv_color_t cfd_level_color(uint8_t level)
 
 static void cfd_set_currency_from_current(void)
 {
-    if (Machine_para.curr_code[0] == '\0') return;
+    char curr_code[4];
 
-    Machine_para.cfd_setting_currency[0] = Machine_para.curr_code[0];
-    Machine_para.cfd_setting_currency[1] = Machine_para.curr_code[1];
-    Machine_para.cfd_setting_currency[2] = Machine_para.curr_code[2];
-    Machine_para.cfd_setting_currency[3] = '\0';
+    currency_state_get_active_code(curr_code);
+    if (curr_code[0] == '\0') return;
+    memcpy(Machine_para.cfd_setting_currency, curr_code, sizeof(Machine_para.cfd_setting_currency));
 }
 
 static void cfd_refresh_view(void)

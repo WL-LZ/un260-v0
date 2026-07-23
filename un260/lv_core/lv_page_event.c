@@ -20,6 +20,7 @@
 #include "un260/lv_core/page_02_list.h"
 #include "un260/app_service/setting_service.h"
 #include "un260/machine_state/machine_state.h"
+#include "un260/currency/currency_state.h"
 
 lv_timer_t* page_03_batch_num_del_timer = NULL;
 lv_timer_t* page_05_password_del_timer = NULL;
@@ -234,11 +235,11 @@ void page_01_start_btn_event_cb(lv_event_t* e) // 开始仿真
 
 //         uint8_t send_data = 0;
 
-//         if (strcmp(Machine_para.curr_code, "AUT") == 0)
+//         if (strcmp(active_currency_code, "AUT") == 0)
 //         {
 //             send_data = Machine_AUT_MODE_MDC;
 //         }
-//         else if (strcmp(Machine_para.curr_code, "MUL") == 0)
+//         else if (strcmp(active_currency_code, "MUL") == 0)
 //         {
 //             send_data = Machine_MUL_MODE_MDC;
 //         }
@@ -438,11 +439,13 @@ void page_01_print_btn_event_cb(lv_event_t* e)
 
     machine_time_value_t now;
     uint8_t payload[9];
+    char curr_code[4];
 
     machine_time_get(&now);
-    payload[0] = (uint8_t)Machine_para.curr_code[0];
-    payload[1] = (uint8_t)Machine_para.curr_code[1];
-    payload[2] = (uint8_t)Machine_para.curr_code[2];
+    currency_state_get_active_code(curr_code);
+    payload[0] = (uint8_t)curr_code[0];
+    payload[1] = (uint8_t)curr_code[1];
+    payload[2] = (uint8_t)curr_code[2];
     payload[3] = (uint8_t)(now.year >= 2000 ? (now.year - 2000) : now.year);
     payload[4] = now.month;
     payload[5] = now.day;

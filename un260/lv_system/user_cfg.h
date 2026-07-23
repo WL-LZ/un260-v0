@@ -65,23 +65,18 @@ typedef enum {
 typedef struct {
 
     int mode;
-    char curr_code[4];
     uint8_t speed;
     bool add_enable;
     bool start_auto;
-    curr_item_t current_currency;
     char password[USER_PASSWORD_MAX_LEN + 1];
     int batch_mode;
     uint8_t cfd_mode;
     uint8_t fo_mode;
     uint8_t work_mode;
     uint8_t language;
-    uint8_t selected_currency;
     uint32_t batch_amount;
     bool buzzer_enable;
     bool serial_num_enable;
-    uint8_t currency_count;
-    char currencies[MAX_CURRENCIES][4];
     uint16_t last_total_pcs;
     uint32_t last_total_amount;
     uint32_t history_total_notes_counted;
