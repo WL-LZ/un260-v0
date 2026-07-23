@@ -79,11 +79,6 @@ typedef struct {
     uint16_t last_total_pcs;
     uint32_t last_total_amount;
     uint32_t history_total_notes_counted;
-    uint8_t print_space_top;
-    char print_head1[PRINT_SETTING_HEAD_MAX_LEN + 1];
-    char print_head2[PRINT_SETTING_HEAD_MAX_LEN + 1];
-    uint8_t print_content;
-    uint8_t print_space_bottom;
     char cfd_setting_currency[4];
     uint8_t cfd_levels[CFD_SCENE_COUNT][CFD_ITEM_COUNT];
 }Machine_para_t;

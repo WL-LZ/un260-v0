@@ -3,6 +3,7 @@
 #include "un260/lv_core/settings_detail_ui.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_system/ui_text.h"
+#include "un260/print/print_config.h"
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -40,18 +41,6 @@ static print_field_t active_field = PRINT_FIELD_SPACE_TOP;
 static bool active_field_valid = false;
 
 static void print_refresh_view(void);
-
-static print_content_t print_get_content(void)
-{
-    switch (Machine_para.print_content) {
-    case PRINT_CONTENT_LIST:
-    case PRINT_CONTENT_SN:
-    case PRINT_CONTENT_LIST_SN:
-        return (print_content_t)Machine_para.print_content;
-    default:
-        return PRINT_CONTENT_LIST;
-    }
-}
 
 static void print_set_status(const char* text, lv_color_t color)
 {
@@ -161,12 +150,16 @@ static void print_esc_cb(lv_event_t* e)
 static void print_field_keyboard_done(const char* value, void* user_data)
 {
     print_field_t field = (print_field_t)(uintptr_t)user_data;
+    print_config_value_t config;
+
+    print_config_get(&config);
 
     switch (field) {
     case PRINT_FIELD_SPACE_TOP: {
         uint8_t lines = print_parse_space(value);
         if (print_send_space(0x01, lines)) {
-            Machine_para.print_space_top = lines;
+            config.space_top = lines;
+            print_config_confirm(&config);
         }
         break;
     }
@@ -175,7 +168,8 @@ static void print_field_keyboard_done(const char* value, void* user_data)
         char text[PRINT_HEAD_MAX_LEN + 1];
         lv_snprintf(text, sizeof(text), "%s", value ? value : "");
         if (print_send_head(0x01, text)) {
-            lv_snprintf(Machine_para.print_head1, sizeof(Machine_para.print_head1), "%s", text);
+            lv_snprintf(config.head1, sizeof(config.head1), "%s", text);
+            print_config_confirm(&config);
         }
         break;
     }
@@ -184,7 +178,8 @@ static void print_field_keyboard_done(const char* value, void* user_data)
         char text[PRINT_HEAD_MAX_LEN + 1];
         lv_snprintf(text, sizeof(text), "%s", value ? value : "");
         if (print_send_head(0x02, text)) {
-            lv_snprintf(Machine_para.print_head2, sizeof(Machine_para.print_head2), "%s", text);
+            lv_snprintf(config.head2, sizeof(config.head2), "%s", text);
+            print_config_confirm(&config);
         }
         break;
     }
@@ -192,7 +187,8 @@ static void print_field_keyboard_done(const char* value, void* user_data)
     case PRINT_FIELD_SPACE_BOTTOM: {
         uint8_t lines = print_parse_space(value);
         if (print_send_space(0x02, lines)) {
-            Machine_para.print_space_bottom = lines;
+            config.space_bottom = lines;
+            print_config_confirm(&config);
         }
         break;
     }
@@ -211,35 +207,37 @@ static void print_input_cb(lv_event_t* e)
     const char* title = "";
     settings_detail_keyboard_mode_t mode = SETTINGS_DETAIL_KEYBOARD_NUM;
     uint16_t max_len = 2;
+    print_config_value_t config;
 
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
 
     field = (print_field_t)(uintptr_t)lv_event_get_user_data(e);
     value[0] = '\0';
+    print_config_get(&config);
 
     switch (field) {
     case PRINT_FIELD_SPACE_TOP:
         title = ui_text_get(UI_TEXT_SETTINGS_PRINT_SPACE_TOP);
-        lv_snprintf(value, sizeof(value), "%u", (unsigned)Machine_para.print_space_top);
+        lv_snprintf(value, sizeof(value), "%u", (unsigned)config.space_top);
         break;
 
     case PRINT_FIELD_HEAD1:
         title = ui_text_get(UI_TEXT_SETTINGS_PRINT_HEAD1);
-        lv_snprintf(value, sizeof(value), "%s", Machine_para.print_head1);
+        lv_snprintf(value, sizeof(value), "%s", config.head1);
         mode = SETTINGS_DETAIL_KEYBOARD_TEXT;
         max_len = PRINT_HEAD_MAX_LEN;
         break;
 
     case PRINT_FIELD_HEAD2:
         title = ui_text_get(UI_TEXT_SETTINGS_PRINT_HEAD2);
-        lv_snprintf(value, sizeof(value), "%s", Machine_para.print_head2);
+        lv_snprintf(value, sizeof(value), "%s", config.head2);
         mode = SETTINGS_DETAIL_KEYBOARD_TEXT;
         max_len = PRINT_HEAD_MAX_LEN;
         break;
 
     case PRINT_FIELD_SPACE_BOTTOM:
         title = ui_text_get(UI_TEXT_SETTINGS_PRINT_SPACE_BOTTOM);
-        lv_snprintf(value, sizeof(value), "%u", (unsigned)Machine_para.print_space_bottom);
+        lv_snprintf(value, sizeof(value), "%u", (unsigned)config.space_bottom);
         break;
 
     default:
@@ -262,6 +260,7 @@ static void print_content_cb(lv_event_t* e)
 {
     print_content_t content;
     int index;
+    print_config_value_t config;
 
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
 
@@ -272,7 +271,9 @@ static void print_content_cb(lv_event_t* e)
     print_refresh_view();
 
     if (print_send_content(content)) {
-        Machine_para.print_content = (uint8_t)content;
+        print_config_get(&config);
+        config.content = (uint8_t)content;
+        print_config_confirm(&config);
         print_refresh_view();
     }
 }
@@ -337,19 +338,32 @@ static void print_create_content_row(lv_obj_t* parent, int index,
 static void print_refresh_view(void)
 {
     const char* content_text = ui_text_get(UI_TEXT_SETTINGS_PRINT_CONTENT_LIST);
-    print_content_t content = print_get_content();
+    print_config_value_t config;
+    print_content_t content;
+
+    print_config_get(&config);
+    switch (config.content) {
+    case PRINT_CONTENT_LIST:
+    case PRINT_CONTENT_SN:
+    case PRINT_CONTENT_LIST_SN:
+        content = (print_content_t)config.content;
+        break;
+    default:
+        content = PRINT_CONTENT_LIST;
+        break;
+    }
 
     if (value_space_top) {
-        lv_label_set_text_fmt(value_space_top, "%u", (unsigned)Machine_para.print_space_top);
+        lv_label_set_text_fmt(value_space_top, "%u", (unsigned)config.space_top);
     }
     if (value_head1) {
-        lv_label_set_text(value_head1, Machine_para.print_head1[0] ? Machine_para.print_head1 : "---");
+        lv_label_set_text(value_head1, config.head1[0] ? config.head1 : "---");
     }
     if (value_head2) {
-        lv_label_set_text(value_head2, Machine_para.print_head2[0] ? Machine_para.print_head2 : "---");
+        lv_label_set_text(value_head2, config.head2[0] ? config.head2 : "---");
     }
     if (value_space_bottom) {
-        lv_label_set_text_fmt(value_space_bottom, "%u", (unsigned)Machine_para.print_space_bottom);
+        lv_label_set_text_fmt(value_space_bottom, "%u", (unsigned)config.space_bottom);
     }
 
     settings_detail_set_select_box_checked(content_boxes[0], content == PRINT_CONTENT_LIST);
@@ -360,10 +374,10 @@ static void print_refresh_view(void)
     }
 
     if (preview_head1) {
-        lv_label_set_text(preview_head1, Machine_para.print_head1[0] ? Machine_para.print_head1 : "----------------");
+        lv_label_set_text(preview_head1, config.head1[0] ? config.head1 : "----------------");
     }
     if (preview_head2) {
-        lv_label_set_text(preview_head2, Machine_para.print_head2[0] ? Machine_para.print_head2 : "----------------");
+        lv_label_set_text(preview_head2, config.head2[0] ? config.head2 : "----------------");
     }
 
     if (content == PRINT_CONTENT_SN) {
@@ -483,15 +497,18 @@ void ui_page_20_set_print_destroy(void)
 void ui_page_20_set_print_on_boot_setting(const uint8_t* data, uint16_t len)
 {
     uint8_t sub;
+    print_config_value_t config;
 
     if (!data || len < 2) return;
 
     sub = data[0];
+    print_config_get(&config);
     switch (sub) {
     case 0x01:
         if (data[1] >= PRINT_SETTING_CONTENT_LIST &&
             data[1] <= PRINT_SETTING_CONTENT_LIST_SN) {
-            Machine_para.print_content = data[1];
+            config.content = data[1];
+            print_config_confirm(&config);
         }
         break;
 
@@ -508,9 +525,11 @@ void ui_page_20_set_print_on_boot_setting(const uint8_t* data, uint16_t len)
             text[copy_len] = '\0';
 
             if (data[1] == 0x01) {
-                lv_snprintf(Machine_para.print_head1, sizeof(Machine_para.print_head1), "%s", text);
+                lv_snprintf(config.head1, sizeof(config.head1), "%s", text);
+                print_config_confirm(&config);
             } else if (data[1] == 0x02) {
-                lv_snprintf(Machine_para.print_head2, sizeof(Machine_para.print_head2), "%s", text);
+                lv_snprintf(config.head2, sizeof(config.head2), "%s", text);
+                print_config_confirm(&config);
             }
         }
         break;
@@ -521,9 +540,11 @@ void ui_page_20_set_print_on_boot_setting(const uint8_t* data, uint16_t len)
             if (lines > PRINT_SPACE_MAX_LINES) lines = PRINT_SPACE_MAX_LINES;
 
             if (data[1] == 0x01) {
-                Machine_para.print_space_top = lines;
+                config.space_top = lines;
+                print_config_confirm(&config);
             } else if (data[1] == 0x02) {
-                Machine_para.print_space_bottom = lines;
+                config.space_bottom = lines;
+                print_config_confirm(&config);
             }
         }
         break;

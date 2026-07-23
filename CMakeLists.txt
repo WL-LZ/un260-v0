@@ -43,6 +43,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/currency/currency_service.c
     un260/serial_number/serial_number_state.c
     un260/serial_number/serial_number_service.c
+    un260/print/print_config.c
     un260/protocol/mode_codec.c
     un260/machine_state/machine_state.c
     un260/lv_core/lv_page_event.c
