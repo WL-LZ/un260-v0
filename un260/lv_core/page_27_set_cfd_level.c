@@ -4,6 +4,8 @@
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/currency/currency_state.h"
+#include "un260/cfd/cfd_state.h"
+#include "un260/cfd/cfd_service.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -30,7 +32,6 @@ static lv_obj_t* table_rows[CFD_SCENE_COUNT] = { NULL };
 static lv_obj_t* table_row_labels[CFD_SCENE_COUNT] = { NULL };
 static cfd_scene_item_t scene_items[CFD_SCENE_COUNT] = { 0 };
 static uint8_t selected_scene = 0;
-static bool query_pending = false;
 
 static uint8_t cfd_normalize_level(uint8_t level)
 {
@@ -57,16 +58,23 @@ static lv_color_t cfd_level_color(uint8_t level)
 static void cfd_set_currency_from_current(void)
 {
     char curr_code[4];
+    cfd_state_value_t config;
 
     currency_state_get_active_code(curr_code);
     if (curr_code[0] == '\0') return;
-    memcpy(Machine_para.cfd_setting_currency, curr_code, sizeof(Machine_para.cfd_setting_currency));
+    cfd_state_get(&config);
+    memcpy(config.currency, curr_code, sizeof(config.currency));
+    config.currency[3] = '\0';
+    cfd_state_confirm(&config);
 }
 
 static void cfd_refresh_view(void)
 {
+    cfd_state_value_t config;
+
+    cfd_state_get(&config);
     if (currency_label) {
-        lv_label_set_text(currency_label, Machine_para.cfd_setting_currency);
+        lv_label_set_text(currency_label, config.currency);
     }
 
     for (uint8_t scene = 0; scene < CFD_SCENE_COUNT; scene++) {
@@ -100,7 +108,7 @@ static void cfd_refresh_view(void)
     for (uint8_t scene = 0; scene < CFD_SCENE_COUNT; scene++) {
         for (uint8_t item = 0; item < CFD_ITEM_COUNT; item++) {
             uint8_t index = cfd_cell_index(scene, item);
-            uint8_t level = cfd_normalize_level(Machine_para.cfd_levels[scene][item]);
+            uint8_t level = cfd_normalize_level(config.levels[scene][item]);
             bool selected = (scene == selected_scene);
             lv_color_t color = cfd_level_color(level);
 
@@ -126,15 +134,18 @@ static void cfd_refresh_view(void)
 bool ui_page_27_set_cfd_level_query(void)
 {
     uint8_t payload[4] = { 0x01, 0, 0, 0 };
+    cfd_state_value_t config;
     bool sent;
 
     cfd_set_currency_from_current();
-    payload[1] = (uint8_t)Machine_para.cfd_setting_currency[0];
-    payload[2] = (uint8_t)Machine_para.cfd_setting_currency[1];
-    payload[3] = (uint8_t)Machine_para.cfd_setting_currency[2];
+    cfd_state_get(&config);
+    if (!cfd_service_request_query(config.currency)) return false;
+    payload[1] = (uint8_t)config.currency[0];
+    payload[2] = (uint8_t)config.currency[1];
+    payload[3] = (uint8_t)config.currency[2];
 
     sent = settings_detail_send_command(0x45, payload, sizeof(payload));
-    query_pending = sent;
+    if (!sent) cfd_service_cancel_query();
     return sent;
 }
 
@@ -142,16 +153,18 @@ static bool cfd_send_update(void)
 {
     uint8_t payload[17];
     uint8_t pos = 5;
+    cfd_state_value_t config;
 
+    cfd_state_get(&config);
     payload[0] = 0x02;
-    payload[1] = (uint8_t)Machine_para.cfd_setting_currency[0];
-    payload[2] = (uint8_t)Machine_para.cfd_setting_currency[1];
-    payload[3] = (uint8_t)Machine_para.cfd_setting_currency[2];
+    payload[1] = (uint8_t)config.currency[0];
+    payload[2] = (uint8_t)config.currency[1];
+    payload[3] = (uint8_t)config.currency[2];
     payload[4] = (uint8_t)(selected_scene + 1);
 
     for (uint8_t scene = 0; scene < CFD_SCENE_COUNT; scene++) {
         for (uint8_t item = 0; item < CFD_ITEM_COUNT; item++) {
-            payload[pos++] = cfd_normalize_level(Machine_para.cfd_levels[scene][item]);
+            payload[pos++] = cfd_normalize_level(config.levels[scene][item]);
         }
     }
 
@@ -183,6 +196,7 @@ static void cfd_level_cell_cb(lv_event_t* e)
     uint8_t scene;
     uint8_t item;
     uint8_t level;
+    cfd_state_value_t config;
 
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
 
@@ -197,9 +211,11 @@ static void cfd_level_cell_cb(lv_event_t* e)
         return;
     }
 
-    level = cfd_normalize_level(Machine_para.cfd_levels[scene][item]);
+    cfd_state_get(&config);
+    level = cfd_normalize_level(config.levels[scene][item]);
     level = (uint8_t)(level >= CFD_LEVEL_MAX ? CFD_LEVEL_MIN : level + 1);
-    Machine_para.cfd_levels[scene][item] = level;
+    config.levels[scene][item] = level;
+    cfd_state_confirm(&config);
     cfd_refresh_view();
 }
 
@@ -392,7 +408,6 @@ void ui_page_27_set_cfd_level_destroy(void)
     cfd_level_setting_page = NULL;
     currency_label = NULL;
     selected_scene = 0;
-    query_pending = false;
 
     for (uint8_t i = 0; i < CFD_CELL_COUNT; i++) {
         level_cells[i] = NULL;
@@ -409,25 +424,27 @@ void ui_page_27_set_cfd_level_destroy(void)
 void ui_page_27_set_cfd_level_on_info(const uint8_t* data, uint16_t len)
 {
     uint16_t pos = 4;
+    cfd_state_value_t config;
 
     if (!data || len < 16) return;
-    if (!query_pending) return;
+    if (!cfd_service_take_query_result()) return;
 
-    query_pending = false;
-
-    Machine_para.cfd_setting_currency[0] = (char)data[0];
-    Machine_para.cfd_setting_currency[1] = (char)data[1];
-    Machine_para.cfd_setting_currency[2] = (char)data[2];
-    Machine_para.cfd_setting_currency[3] = '\0';
-    if (data[3] >= 1 && data[3] <= CFD_SCENE_COUNT) {
+    cfd_state_get(&config);
+    config.currency[0] = (char)data[0];
+    config.currency[1] = (char)data[1];
+    config.currency[2] = (char)data[2];
+    config.currency[3] = '\0';
+    if (cfd_level_page && data[3] >= 1 && data[3] <= CFD_SCENE_COUNT) {
         selected_scene = (uint8_t)(data[3] - 1);
     }
 
     for (uint8_t scene = 0; scene < CFD_SCENE_COUNT; scene++) {
         for (uint8_t item = 0; item < CFD_ITEM_COUNT; item++) {
-            Machine_para.cfd_levels[scene][item] = cfd_normalize_level(data[pos++]);
+            config.levels[scene][item] = cfd_normalize_level(data[pos++]);
         }
     }
+
+    cfd_state_confirm(&config);
 
     if (cfd_level_page) {
         cfd_refresh_view();

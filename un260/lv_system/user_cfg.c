@@ -31,12 +31,6 @@ Machine_para_t Machine_para = {
     .last_total_pcs = 0,
     .last_total_amount = 0,
     .history_total_notes_counted = 0,
-    .cfd_setting_currency = "CNY",
-    .cfd_levels = {
-        { 3, 3, 3, 3 },
-        { 3, 3, 3, 3 },
-        { 3, 3, 3, 3 },
-    },
 };
 sensor_voltage_t g_sensor_voltage = { 0 };
 
