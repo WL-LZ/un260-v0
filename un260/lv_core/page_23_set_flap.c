@@ -2,6 +2,7 @@
 #include "un260/app_service/setting_service.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/settings_detail_ui.h"
+#include "un260/machine_state/machine_state.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/user_cfg.h"
 
@@ -35,6 +36,7 @@ static lv_obj_t* flap_page = NULL;
 static lv_obj_t* preview_flap = NULL;
 static lv_obj_t* preview_flap_label = NULL;
 static flap_item_t g_flap_items[FLAP_OPTION_COUNT] = { 0 };
+static uint8_t display_position = FLAP_POSITION_UP;
 
 static uint8_t flap_normalize_position(uint8_t position)
 {
@@ -47,7 +49,7 @@ static uint8_t flap_normalize_position(uint8_t position)
 
 static uint8_t flap_get_position(void)
 {
-    return flap_normalize_position(Machine_para.flap_position);
+    return flap_normalize_position(machine_state_flap_position());
 }
 
 static const flap_option_t* flap_find_option(uint8_t position)
@@ -117,7 +119,7 @@ static void flap_move_preview(uint8_t position, bool animate)
 
 static void flap_refresh_view(bool animate_preview)
 {
-    uint8_t position = flap_get_position();
+    uint8_t position = flap_normalize_position(display_position);
     int selected_index = flap_option_index(position);
 
     for (size_t i = 0; i < FLAP_OPTION_COUNT; i++) {
@@ -148,7 +150,7 @@ static void flap_request_position(uint8_t position)
 
     if (!setting_service_request_flap_position(target_position, previous_position)) return;
 
-    Machine_para.flap_position = target_position;
+    display_position = target_position;
     flap_refresh_view(true);
 }
 
@@ -334,7 +336,7 @@ void ui_page_23_set_flap_create(lv_obj_t* parent)
 
     if (flap_page) return;
 
-    Machine_para.flap_position = flap_get_position();
+    display_position = flap_get_position();
 
     flap_page = settings_detail_create_page(parent,
                                             ui_text_get(UI_TEXT_SETTINGS_FLAP_TITLE),
@@ -366,6 +368,10 @@ void ui_page_23_set_flap_destroy(void)
 void ui_page_23_set_flap_on_reply(const setting_value_result_t* result)
 {
     if (!result) return;
+
+    if (!result->success) {
+        display_position = flap_get_position();
+    }
 
     if (!result->success && flap_page && lv_obj_is_valid(flap_page)) {
         flap_refresh_view(true);

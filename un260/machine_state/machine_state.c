@@ -4,6 +4,9 @@
 static uint8_t g_batch_num = 0;
 static bool g_batch_enabled = true;
 static bool g_aging_running = false;
+static uint8_t g_double_note_level = DOUBLE_NOTE_LEVEL_MIN;
+static uint8_t g_flap_position = FLAP_POSITION_UP;
+static uint8_t g_reject_pocket_max = REJECT_POCKET_MIN_CAPACITY;
 
 void machine_state_confirm_mode(uint8_t mode)
 {
@@ -99,4 +102,34 @@ void machine_state_confirm_aging_running(bool running)
 bool machine_state_aging_running(void)
 {
     return g_aging_running;
+}
+
+void machine_state_confirm_double_note_level(uint8_t level)
+{
+    g_double_note_level = level;
+}
+
+uint8_t machine_state_double_note_level(void)
+{
+    return g_double_note_level;
+}
+
+void machine_state_confirm_flap_position(uint8_t position)
+{
+    g_flap_position = position;
+}
+
+uint8_t machine_state_flap_position(void)
+{
+    return g_flap_position;
+}
+
+void machine_state_confirm_reject_pocket_max(uint8_t capacity)
+{
+    g_reject_pocket_max = capacity;
+}
+
+uint8_t machine_state_reject_pocket_max(void)
+{
+    return g_reject_pocket_max;
 }

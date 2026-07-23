@@ -78,7 +78,6 @@ typedef struct {
     uint8_t language;
     uint8_t selected_currency;
     uint32_t batch_amount;
-    uint8_t reject_pocket_max;
     bool buzzer_enable;
     bool serial_num_enable;
     uint8_t currency_count;
@@ -97,8 +96,6 @@ typedef struct {
     char print_head2[PRINT_SETTING_HEAD_MAX_LEN + 1];
     uint8_t print_content;
     uint8_t print_space_bottom;
-    uint8_t double_note_level;
-    uint8_t flap_position;
     uint8_t serial_number_level;
     char cfd_setting_currency[4];
     uint8_t cfd_levels[CFD_SCENE_COUNT][CFD_ITEM_COUNT];

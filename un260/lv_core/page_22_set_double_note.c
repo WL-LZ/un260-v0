@@ -2,6 +2,7 @@
 #include "un260/app_service/setting_service.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/settings_detail_ui.h"
+#include "un260/machine_state/machine_state.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/user_cfg.h"
 
@@ -38,6 +39,7 @@ static lv_obj_t* preview_desc_label = NULL;
 static lv_obj_t* preview_bars[DOUBLE_NOTE_OPTION_COUNT] = { NULL };
 static lv_obj_t* preview_bar_labels[DOUBLE_NOTE_OPTION_COUNT] = { NULL };
 static double_note_item_t g_double_note_items[DOUBLE_NOTE_OPTION_COUNT] = { 0 };
+static uint8_t display_level = DOUBLE_NOTE_LEVEL_MIN;
 
 static uint8_t double_note_normalize_level(uint8_t level)
 {
@@ -50,7 +52,7 @@ static uint8_t double_note_normalize_level(uint8_t level)
 
 static uint8_t double_note_get_level(void)
 {
-    return double_note_normalize_level(Machine_para.double_note_level);
+    return double_note_normalize_level(machine_state_double_note_level());
 }
 
 static const double_note_option_t* double_note_find_option(uint8_t level)
@@ -81,7 +83,7 @@ static int double_note_option_index(uint8_t level)
 
 static void double_note_refresh_view(void)
 {
-    uint8_t level = double_note_get_level();
+    uint8_t level = double_note_normalize_level(display_level);
     const double_note_option_t* option = double_note_find_option(level);
     int selected_index = double_note_option_index(level);
     lv_color_t active_color = lv_color_hex(option->color_hex);
@@ -148,7 +150,7 @@ static void double_note_request_level(uint8_t level)
 
     if (!setting_service_request_double_note_level(target_level, previous_level)) return;
 
-    Machine_para.double_note_level = target_level;
+    display_level = target_level;
     double_note_refresh_if_page_valid();
 }
 
@@ -318,7 +320,7 @@ void ui_page_22_set_double_note_create(lv_obj_t* parent)
 
     if (double_note_page) return;
 
-    Machine_para.double_note_level = double_note_get_level();
+    display_level = double_note_get_level();
 
     double_note_page = settings_detail_create_page(parent,
                                                    ui_text_get(UI_TEXT_SETTINGS_DOUBLE_NOTE_TITLE),
@@ -350,15 +352,16 @@ void ui_page_22_set_double_note_destroy(void)
     }
 }
 
-void ui_page_22_set_double_note_on_boot_setting(uint8_t level)
+void ui_page_22_set_double_note_on_boot_setting(void)
 {
-    Machine_para.double_note_level = double_note_normalize_level(level);
     setting_service_clear_double_note_level_request();
+    display_level = double_note_get_level();
     double_note_refresh_if_page_valid();
 }
 
 void ui_page_22_set_double_note_on_reply(const setting_value_result_t* result)
 {
     if (!result) return;
+    display_level = double_note_get_level();
     double_note_refresh_if_page_valid();
 }

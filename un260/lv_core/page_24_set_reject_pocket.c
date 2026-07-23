@@ -2,6 +2,7 @@
 #include "un260/app_service/setting_service.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/settings_detail_ui.h"
+#include "un260/machine_state/machine_state.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/user_cfg.h"
 
@@ -21,6 +22,7 @@ static lv_obj_t* preview_value_label = NULL;
 static lv_obj_t* preview_unit_label = NULL;
 static lv_obj_t* preview_level_label = NULL;
 static lv_obj_t* level_bars[REJECT_LEVEL_COUNT] = { NULL };
+static uint8_t display_capacity = REJECT_POCKET_MIN_CAPACITY;
 
 static uint8_t reject_normalize_capacity(uint8_t capacity)
 {
@@ -36,7 +38,7 @@ static uint8_t reject_normalize_capacity(uint8_t capacity)
 
 static uint8_t reject_get_capacity(void)
 {
-    return reject_normalize_capacity(Machine_para.reject_pocket_max);
+    return reject_normalize_capacity(machine_state_reject_pocket_max());
 }
 
 static uint8_t reject_level_from_capacity(uint8_t capacity)
@@ -78,7 +80,7 @@ static lv_color_t reject_level_color(uint8_t level)
 
 static void reject_refresh_view(void)
 {
-    uint8_t capacity = reject_get_capacity();
+    uint8_t capacity = reject_normalize_capacity(display_capacity);
     uint8_t level = reject_level_from_capacity(capacity);
 
     if (value_label) {
@@ -124,7 +126,7 @@ static void reject_request_capacity(uint8_t capacity)
 
     if (!setting_service_request_reject_pocket_max(normalized, previous)) return;
 
-    Machine_para.reject_pocket_max = normalized;
+    display_capacity = normalized;
     reject_refresh_view();
 }
 
@@ -292,7 +294,7 @@ void ui_page_24_set_reject_pocket_create(lv_obj_t* parent)
 
     if (reject_page) return;
 
-    Machine_para.reject_pocket_max = reject_get_capacity();
+    display_capacity = reject_get_capacity();
 
     reject_page = settings_detail_create_page(parent,
                                               ui_text_get(UI_TEXT_SETTINGS_REJECT_POCKET_TITLE),
@@ -325,10 +327,10 @@ void ui_page_24_set_reject_pocket_destroy(void)
     }
 }
 
-void ui_page_24_set_reject_pocket_on_boot_setting(uint8_t capacity)
+void ui_page_24_set_reject_pocket_on_boot_setting(void)
 {
-    Machine_para.reject_pocket_max = reject_normalize_capacity(capacity);
     setting_service_clear_reject_pocket_max_request();
+    display_capacity = reject_get_capacity();
 
     if (reject_page && lv_obj_is_valid(reject_page)) {
         reject_refresh_view();
@@ -338,6 +340,10 @@ void ui_page_24_set_reject_pocket_on_boot_setting(uint8_t capacity)
 void ui_page_24_set_reject_pocket_on_reply(const setting_value_result_t* result)
 {
     if (!result) return;
+
+    if (!result->success) {
+        display_capacity = reject_get_capacity();
+    }
 
     if (!result->success && reject_page && lv_obj_is_valid(reject_page)) {
         reject_refresh_view();

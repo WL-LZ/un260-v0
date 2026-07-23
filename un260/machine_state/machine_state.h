@@ -31,4 +31,13 @@ uint8_t machine_state_batch_num(void);
 void machine_state_confirm_aging_running(bool running);
 bool machine_state_aging_running(void);
 
+void machine_state_confirm_double_note_level(uint8_t level);
+uint8_t machine_state_double_note_level(void);
+
+void machine_state_confirm_flap_position(uint8_t position);
+uint8_t machine_state_flap_position(void);
+
+void machine_state_confirm_reject_pocket_max(uint8_t capacity);
+uint8_t machine_state_reject_pocket_max(void);
+
 #endif

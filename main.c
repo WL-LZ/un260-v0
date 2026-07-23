@@ -1295,13 +1295,23 @@ static void pccmd_handle_detail_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
         }
 
         if (len == 6) {
-            ui_page_22_set_double_note_on_boot_setting(buf[4]);
+            normalized_level = buf[4];
+            if (normalized_level < DOUBLE_NOTE_LEVEL_MIN || normalized_level > DOUBLE_NOTE_LEVEL_MAX) {
+                normalized_level = DOUBLE_NOTE_LEVEL_MIN;
+            }
+            machine_state_confirm_double_note_level(normalized_level);
+            ui_page_22_set_double_note_on_boot_setting();
             uart_printf(fd6, "0x31 boot double note level: level=0x%02X\n", buf[4]);
             break;
         }
 
         if (buf[4] == 0x31) {
-            ui_page_22_set_double_note_on_boot_setting(buf[5]);
+            normalized_level = buf[5];
+            if (normalized_level < DOUBLE_NOTE_LEVEL_MIN || normalized_level > DOUBLE_NOTE_LEVEL_MAX) {
+                normalized_level = DOUBLE_NOTE_LEVEL_MIN;
+            }
+            machine_state_confirm_double_note_level(normalized_level);
+            ui_page_22_set_double_note_on_boot_setting();
             uart_printf(fd6, "0x31 boot double note level: level=0x%02X\n", buf[5]);
             break;
         }
@@ -1313,9 +1323,9 @@ static void pccmd_handle_detail_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
 
         result_taken = setting_service_take_double_note_level_result(buf[5], &result);
         if (result_taken && result.success) {
-            Machine_para.double_note_level = normalized_level;
+            machine_state_confirm_double_note_level(normalized_level);
         } else if (result_taken && result.target == normalized_level) {
-            Machine_para.double_note_level = result.previous;
+            machine_state_confirm_double_note_level(result.previous);
         }
 
         uart_printf(fd6, "0x31 double note level ack: level=0x%02X res=0x%02X\n",
@@ -1361,7 +1371,7 @@ static void pccmd_handle_detail_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
 
         uart_printf(fd6, "0x42 flap setting ack: res=0x%02X\n", buf[4]);
         if (setting_service_take_flap_position_result(buf[4], &result)) {
-            Machine_para.flap_position = result.success ? result.target : result.previous;
+            machine_state_confirm_flap_position(result.success ? result.target : result.previous);
             ui_page_23_set_flap_on_reply(&result);
         }
         break;
@@ -1624,21 +1634,29 @@ void PCCmdHandle(void)
             }
 
             if (len >= 8) {
-                ui_page_24_set_reject_pocket_on_boot_setting(buf[6]);
-                uart_printf(fd6, "Boot reject pocket pcs: %u\n", Machine_para.reject_pocket_max);
+                uint8_t capacity = buf[6];
+                if (capacity < REJECT_POCKET_MIN_CAPACITY) {
+                    capacity = REJECT_POCKET_MIN_CAPACITY;
+                }
+                if (capacity > REJECT_POCKET_MAX_CAPACITY) {
+                    capacity = REJECT_POCKET_MAX_CAPACITY;
+                }
+                machine_state_confirm_reject_pocket_max(capacity);
+                ui_page_24_set_reject_pocket_on_boot_setting();
+                uart_printf(fd6, "Boot reject pocket pcs: %u\n", machine_state_reject_pocket_max());
                 break;
             }
 
             if (res == 0x01) {
                 uart_printf(fd6, "Reject pocket pcs set success\n");
                 if (setting_service_take_reject_pocket_max_result(res, &result)) {
-                    Machine_para.reject_pocket_max = result.target;
+                    machine_state_confirm_reject_pocket_max(result.target);
                     ui_page_24_set_reject_pocket_on_reply(&result);
                 }
             } else if (res == 0x02) {
                 uart_printf(fd6, "Reject pocket pcs set fail\n");
                 if (setting_service_take_reject_pocket_max_result(res, &result)) {
-                    Machine_para.reject_pocket_max = result.previous;
+                    machine_state_confirm_reject_pocket_max(result.previous);
                     ui_page_24_set_reject_pocket_on_reply(&result);
                 }
             } else {
@@ -2083,7 +2101,7 @@ void PCCmdHandle(void)
                 break;
 
             case 0x04: /* 退钞口最大容量 */
-                Machine_para.reject_pocket_max = buf[5];
+                machine_state_confirm_reject_pocket_max(buf[5]);
                 break;
 
             case 0x05: /* 蜂鸣器 */
@@ -2121,7 +2139,7 @@ void PCCmdHandle(void)
             {
                 uint8_t v = buf[5];
                 if (v >= DOUBLE_NOTE_LEVEL_MIN && v <= DOUBLE_NOTE_LEVEL_MAX) {
-                    Machine_para.double_note_level = v;
+                    machine_state_confirm_double_note_level(v);
                 }
                 break;
             }

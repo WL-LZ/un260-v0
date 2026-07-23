@@ -7,7 +7,7 @@
 
 void ui_page_24_set_reject_pocket_create(lv_obj_t* parent);
 void ui_page_24_set_reject_pocket_destroy(void);
-void ui_page_24_set_reject_pocket_on_boot_setting(uint8_t capacity);
+void ui_page_24_set_reject_pocket_on_boot_setting(void);
 void ui_page_24_set_reject_pocket_on_reply(const setting_value_result_t* result);
 
 #endif
