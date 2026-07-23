@@ -26,6 +26,8 @@ static boot_self_test_result_t g_self_test_results[sizeof(g_self_test_sequence) 
 static bool g_self_test_has_failure = false;
 static uint8_t g_self_test_first_failure_step = 0;
 static uint8_t g_self_test_first_failure_result = 0;
+static boot_self_test_event_t g_self_test_event = BOOT_SELF_TEST_EVENT_NONE;
+static bool g_self_test_event_consumed = false;
 
 static bool boot_self_test_step_to_protocol(selftest_type_t step, uint8_t *protocol_step)
 {
@@ -99,6 +101,11 @@ boot_stage_t boot_service_get_stage(void)
 void boot_service_advance_stage(void)
 {
     g_stage++;
+    if (g_stage > BOOT_STAGE_IMAGE && !g_self_test_event_consumed &&
+        g_self_test_event == BOOT_SELF_TEST_EVENT_NONE) {
+        g_self_test_event = g_self_test_has_failure ?
+                            BOOT_SELF_TEST_EVENT_FAILURE : BOOT_SELF_TEST_EVENT_SUCCESS;
+    }
 }
 
 bool boot_service_check_total_timeout(uint32_t now_ms)
@@ -180,6 +187,8 @@ void boot_service_reset_self_test_results(void)
     g_self_test_has_failure = false;
     g_self_test_first_failure_step = 0;
     g_self_test_first_failure_result = 0;
+    g_self_test_event = BOOT_SELF_TEST_EVENT_NONE;
+    g_self_test_event_consumed = false;
 }
 
 bool boot_service_record_self_test_result(uint8_t protocol_step, uint8_t result, uint8_t *index)
@@ -204,35 +213,19 @@ bool boot_service_record_self_test_result(uint8_t protocol_step, uint8_t result,
     return valid_step;
 }
 
-bool boot_service_self_test_all_received(void)
+boot_self_test_event_t boot_service_take_self_test_event(uint8_t *failure_step, uint8_t *failure_result)
 {
-    for (uint8_t i = 0; i < sizeof(g_self_test_results) / sizeof(g_self_test_results[0]); i++) {
-        if (!g_self_test_results[i].received) return false;
+    boot_self_test_event_t event;
+
+    if (g_self_test_event_consumed || g_self_test_event == BOOT_SELF_TEST_EVENT_NONE) {
+        return BOOT_SELF_TEST_EVENT_NONE;
     }
-    return true;
-}
 
-bool boot_service_self_test_has_failure(void)
-{
-    return g_self_test_has_failure;
-}
-
-bool boot_service_get_first_self_test_failure(uint8_t *protocol_step, uint8_t *result)
-{
-    if (!g_self_test_has_failure || protocol_step == NULL || result == NULL) return false;
-
-    *protocol_step = g_self_test_first_failure_step;
-    *result = g_self_test_first_failure_result;
-    return true;
-}
-
-bool boot_service_get_self_test_result(uint8_t protocol_step, uint8_t *result)
-{
-    uint8_t index;
-
-    if (result == NULL || !boot_self_test_protocol_step_to_index(protocol_step, &index)) return false;
-    if (!g_self_test_results[index].received) return false;
-
-    *result = g_self_test_results[index].result;
-    return true;
+    event = g_self_test_event;
+    g_self_test_event_consumed = true;
+    if (event == BOOT_SELF_TEST_EVENT_FAILURE && failure_step != NULL && failure_result != NULL) {
+        *failure_step = g_self_test_first_failure_step;
+        *failure_result = g_self_test_first_failure_result;
+    }
+    return event;
 }

@@ -1259,24 +1259,20 @@ static void pccmd_handle_boot_and_selftest(uint8_t cmd, uint8_t *buf, uint8_t le
 
         boot_service_advance_stage();
 
-        if (boot_service_get_stage() <= BOOT_STAGE_IMAGE) {
+        uint8_t first_failure_step;
+        uint8_t first_failure_result;
+        boot_self_test_event_t self_test_event = boot_service_take_self_test_event(&first_failure_step, &first_failure_result);
+        if (self_test_event == BOOT_SELF_TEST_EVENT_NONE) {
             boot_send_next_selftest();
-        } else {
-            if (!boot_service_self_test_has_failure()) {
-                boot_progress_set(100);
-                send_command(fd4, 0x56, (uint8_t[]){0x01}, 1);
-                lv_timer_create(boot_selftest_finish_cb, 2000, NULL);
-            } else {
-                uint8_t first_failure_step;
-                uint8_t first_failure_result;
-
-                boot_service_set_stage(BOOT_STAGE_FAIL);
-                // 自检失败也继续读取主控货币列表，避免页面回落本地默认配置
-                send_command(fd4, 0x56, (uint8_t[]){0x01}, 1);
-                if (boot_service_get_first_self_test_failure(&first_failure_step, &first_failure_result)) {
-                    show_boot_fault_popup(first_failure_step, first_failure_result);
-                }
-            }
+        } else if (self_test_event == BOOT_SELF_TEST_EVENT_SUCCESS) {
+            boot_progress_set(100);
+            send_command(fd4, 0x56, (uint8_t[]){0x01}, 1);
+            lv_timer_create(boot_selftest_finish_cb, 2000, NULL);
+        } else if (self_test_event == BOOT_SELF_TEST_EVENT_FAILURE) {
+            boot_service_set_stage(BOOT_STAGE_FAIL);
+            // 自检失败也继续读取主控货币列表，避免页面回落本地默认配置
+            send_command(fd4, 0x56, (uint8_t[]){0x01}, 1);
+            show_boot_fault_popup(first_failure_step, first_failure_result);
         }
     }
     break;

@@ -29,4 +29,10 @@ typedef enum {
     BOOT_STAGE_FAIL,
 } boot_stage_t;
 
+typedef enum {
+    BOOT_SELF_TEST_EVENT_NONE = 0,
+    BOOT_SELF_TEST_EVENT_SUCCESS,
+    BOOT_SELF_TEST_EVENT_FAILURE,
+} boot_self_test_event_t;
+
 #endif
