@@ -16,4 +16,17 @@ typedef enum {
     SELFTEST_IMAGE  = 0x05,
 } selftest_type_t;
 
+typedef enum {
+    BOOT_STAGE_HANDSHAKE = 0,
+
+    BOOT_STAGE_SENSOR,
+    BOOT_STAGE_MOTOR,
+    BOOT_STAGE_MAGNET,
+    BOOT_STAGE_CONFIG,
+    BOOT_STAGE_IMAGE,
+
+    BOOT_STAGE_DONE,
+    BOOT_STAGE_FAIL,
+} boot_stage_t;
+
 #endif

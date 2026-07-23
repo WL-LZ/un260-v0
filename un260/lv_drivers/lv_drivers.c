@@ -21,9 +21,7 @@ data_collect_mode_t g_data_collect_mode = DATA_COLLECT_MODE_NONE;
 uint16_t g_data_collect_pcs = 0;
 char g_data_collect_status[128] = "Please select a collection mode.";
 curr_query_state_t curr_query_state = CURR_QUERY_IDLE;
-boot_stage_t g_boot_stage = BOOT_STAGE_HANDSHAKE;
 
-uint32_t g_boot_stage_tick = 0;
 uint8_t g_cb_running = 0;
 static bool g_boot_waiting_log_shown = false;
 
@@ -256,17 +254,21 @@ void uart_printf(int fd, const char *fmt, ...) {
 void machine_handshake_send(void)
 {
     uint32_t now = custom_tick_get();
+    uint8_t payload = 0x01;
 
+    boot_service_start(now);
     boot_service_request_handshake(now);
-    if (g_boot_stage_tick == 0) {
-        g_boot_stage_tick = now; // 从第一次握手开始计时
-    }
+    protocol_send(0x01, &payload, 1);
 }
 
 void boot_send_next_selftest(void)
 {
+    uint8_t protocol_step;
+
     boot_selftest_list_sync_step(boot_service_self_test_sequence_index());
-    boot_service_request_next_self_test();
+    if (boot_service_next_self_test_protocol_step(&protocol_step)) {
+        protocol_send(0x37, &protocol_step, 1);
+    }
 }
 
 uint8_t boot_get_selftest_step(void) // 获取当前自检步骤

@@ -573,7 +573,7 @@ static void trigger_denom_query(void)
 {
     g_denom_query_retry = 0;
     /* Avoid injecting extra command during boot self-test/param-read flow. */
-    if (g_boot_stage != BOOT_STAGE_DONE && g_boot_stage != BOOT_STAGE_FAIL) {
+    if (boot_service_get_stage() != BOOT_STAGE_DONE && boot_service_get_stage() != BOOT_STAGE_FAIL) {
         g_denom_query_deferred = true;
         uart_printf(fd6, "defer denom query until boot done\n");
         return;
@@ -1241,7 +1241,7 @@ static void pccmd_handle_boot_and_selftest(uint8_t cmd, uint8_t *buf, uint8_t le
             boot_progress_set(20);
             boot_service_confirm_handshake();
             boot_selftest_result_reset();
-            g_boot_stage = BOOT_STAGE_SENSOR;
+            boot_service_set_stage(BOOT_STAGE_SENSOR);
             boot_send_next_selftest();
         }
         break;
@@ -1249,7 +1249,7 @@ static void pccmd_handle_boot_and_selftest(uint8_t cmd, uint8_t *buf, uint8_t le
     /* ================== 0x37 自检 ================== */
     case 0x37:
     {
-        if (g_boot_stage == BOOT_STAGE_FAIL || g_boot_stage == BOOT_STAGE_DONE) {
+        if (boot_service_get_stage() == BOOT_STAGE_FAIL || boot_service_get_stage() == BOOT_STAGE_DONE) {
             break;
         }
 
@@ -1312,9 +1312,9 @@ static void pccmd_handle_boot_and_selftest(uint8_t cmd, uint8_t *buf, uint8_t le
             boot_progress_set((uint8_t)(30 + index * 10));
         }
 
-        g_boot_stage++;
+        boot_service_advance_stage();
 
-        if (g_boot_stage <= BOOT_STAGE_IMAGE) {
+        if (boot_service_get_stage() <= BOOT_STAGE_IMAGE) {
             boot_send_next_selftest();
         } else {
             if (!g_boot_selftest_has_error) {
@@ -1322,7 +1322,7 @@ static void pccmd_handle_boot_and_selftest(uint8_t cmd, uint8_t *buf, uint8_t le
                 send_command(fd4, 0x56, (uint8_t[]){0x01}, 1);
                 lv_timer_create(boot_selftest_finish_cb, 2000, NULL);
             } else {
-                g_boot_stage = BOOT_STAGE_FAIL;
+                boot_service_set_stage(BOOT_STAGE_FAIL);
                 // 自检失败也继续读取主控货币列表，避免页面回落本地默认配置
                 send_command(fd4, 0x56, (uint8_t[]){0x01}, 1);
                 show_boot_fault_popup(g_boot_selftest_first_error_type,
@@ -2508,7 +2508,7 @@ int main(void) {
 
         if (g_denom_query_deferred &&
             !g_denom_query_pending &&
-            (g_boot_stage == BOOT_STAGE_DONE || g_boot_stage == BOOT_STAGE_FAIL)) {
+            (boot_service_get_stage() == BOOT_STAGE_DONE || boot_service_get_stage() == BOOT_STAGE_FAIL)) {
             g_denom_query_deferred = false;
             request_denom_list();
         }
@@ -2516,7 +2516,7 @@ int main(void) {
         if (!g_denom_query_pending &&
             !g_denom_query_got_frame &&
             is_main_page_active() &&
-            (g_boot_stage == BOOT_STAGE_DONE || g_boot_stage == BOOT_STAGE_FAIL)) {
+            (boot_service_get_stage() == BOOT_STAGE_DONE || boot_service_get_stage() == BOOT_STAGE_FAIL)) {
             if ((now - g_denom_query_idle_retry_tick) >= DENOM_QUERY_IDLE_RETRY_MS) {
                 g_denom_query_idle_retry_tick = now;
                 g_denom_query_retry = 0;
@@ -2525,7 +2525,7 @@ int main(void) {
             }
         }
 
-        if (g_boot_stage == BOOT_STAGE_HANDSHAKE &&
+        if (boot_service_get_stage() == BOOT_STAGE_HANDSHAKE &&
             current_page == UI_PAGE_BOOT)
         {
             if (boot_service_handshake_state() == HANDSHAKE_IDLE)
@@ -2534,28 +2534,26 @@ int main(void) {
             }
             else if (boot_service_handshake_state() == HANDSHAKE_SENT)
             {
-                if (boot_service_handshake_start_tick() != 0 &&
-                    (now - boot_service_handshake_start_tick()) >= BOOT_HANDSHAKE_MAX_WAIT_MS)
+                if (boot_service_check_total_timeout(now))
                 {
-                    g_boot_stage = BOOT_STAGE_FAIL;
+                    boot_service_set_stage(BOOT_STAGE_FAIL);
 
                     show_boot_selftest_error_popup(
                         "Controller handshake timeout.\nPress CONFIRM to enter sensor page.");
                 }
-                else if ((now - boot_service_handshake_tick()) >= HANDSHAKE_TIMEOUT_MS)
+                else if ((now - boot_service_handshake_tick()) >= BOOT_SERVICE_HANDSHAKE_RETRY_MS)
                 {
                     machine_handshake_send();
                 }
             }
         }
 
-        if (g_boot_stage >= BOOT_STAGE_SENSOR && g_boot_stage <= BOOT_STAGE_IMAGE &&
+        if (boot_service_get_stage() >= BOOT_STAGE_SENSOR && boot_service_get_stage() <= BOOT_STAGE_IMAGE &&
             current_page == UI_PAGE_BOOT)
         {
-            if (g_boot_stage_tick != 0 &&
-                (uint32_t)(now - g_boot_stage_tick) >= BOOT_SELFTEST_TIMEOUT_MS)
+            if (boot_service_check_total_timeout(now))
             {
-                g_boot_stage = BOOT_STAGE_FAIL;
+                boot_service_set_stage(BOOT_STAGE_FAIL);
                 show_boot_selftest_error_popup(
                     "Self-test timeout.\nPress CONFIRM to enter sensor page.");
             }

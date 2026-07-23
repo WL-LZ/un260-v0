@@ -1,7 +1,12 @@
 #include "un260/boot/boot_service.h"
-#include "un260/protocol/protocol_send.h"
 #include <stddef.h>
 
+#define BOOT_SERVICE_TOTAL_TIMEOUT_MS 60000
+
+static boot_stage_t g_stage = BOOT_STAGE_HANDSHAKE;
+static uint32_t g_boot_start_tick = 0;
+static bool g_boot_started = false;
+static bool g_boot_timeout_consumed = false;
 static handshake_state_t g_handshake_state = HANDSHAKE_IDLE;
 static uint32_t g_handshake_tick = 0;
 static uint32_t g_handshake_start_tick = 0;
@@ -39,6 +44,39 @@ static bool boot_self_test_step_to_protocol(selftest_type_t step, uint8_t *proto
     }
 }
 
+void boot_service_start(uint32_t now_ms)
+{
+    if (g_boot_started) return;
+
+    g_boot_started = true;
+    g_boot_start_tick = now_ms;
+    g_boot_timeout_consumed = false;
+}
+
+void boot_service_set_stage(boot_stage_t stage)
+{
+    g_stage = stage;
+}
+
+boot_stage_t boot_service_get_stage(void)
+{
+    return g_stage;
+}
+
+void boot_service_advance_stage(void)
+{
+    g_stage++;
+}
+
+bool boot_service_check_total_timeout(uint32_t now_ms)
+{
+    if (!g_boot_started || g_boot_timeout_consumed) return false;
+    if ((uint32_t)(now_ms - g_boot_start_tick) < BOOT_SERVICE_TOTAL_TIMEOUT_MS) return false;
+
+    g_boot_timeout_consumed = true;
+    return true;
+}
+
 void boot_service_reset_handshake(void)
 {
     g_handshake_state = HANDSHAKE_IDLE;
@@ -48,13 +86,10 @@ void boot_service_reset_handshake(void)
 
 bool boot_service_request_handshake(uint32_t request_tick)
 {
-    uint8_t payload = 0x01;
-
     if (g_handshake_state == HANDSHAKE_IDLE) {
         g_handshake_start_tick = request_tick;
     }
 
-    protocol_send(0x01, &payload, 1);
     g_handshake_state = HANDSHAKE_SENT;
     g_handshake_tick = request_tick;
     return true;
@@ -86,15 +121,14 @@ void boot_service_reset_self_test(void)
     g_self_test_sequence_index = 0;
 }
 
-bool boot_service_request_next_self_test(void)
+bool boot_service_next_self_test_protocol_step(uint8_t *protocol_step)
 {
     selftest_type_t step;
-    uint8_t protocol_step;
 
+    if (protocol_step == NULL) return false;
     if (g_self_test_sequence_index >= sizeof(g_self_test_sequence) / sizeof(g_self_test_sequence[0])) return false;
     step = g_self_test_sequence[g_self_test_sequence_index];
-    if (!boot_self_test_step_to_protocol(step, &protocol_step)) return false;
-    protocol_send(0x37, &protocol_step, 1);
+    if (!boot_self_test_step_to_protocol(step, protocol_step)) return false;
     g_self_test_sequence_index++;
     return true;
 }

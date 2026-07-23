@@ -331,14 +331,14 @@ void ui_page_08_curr_create(lv_obj_t* parent)
     boot_selftest_list_reset();
     boot_selftest_list_sync_step(boot_service_self_test_sequence_index());
 
-    if (g_boot_stage == BOOT_STAGE_HANDSHAKE &&
+    if (boot_service_get_stage() == BOOT_STAGE_HANDSHAKE &&
         boot_service_handshake_state() != HANDSHAKE_OK) {
         boot_progress_set(0);
         boot_progress_handshake_tick_start();
-    } else if (g_boot_stage >= BOOT_STAGE_SENSOR && g_boot_stage <= BOOT_STAGE_IMAGE) {
-        uint8_t selftest_ok_cnt = (uint8_t)(g_boot_stage - BOOT_STAGE_SENSOR);
+    } else if (boot_service_get_stage() >= BOOT_STAGE_SENSOR && boot_service_get_stage() <= BOOT_STAGE_IMAGE) {
+        uint8_t selftest_ok_cnt = (uint8_t)(boot_service_get_stage() - BOOT_STAGE_SENSOR);
         boot_progress_set((uint8_t)(20 + selftest_ok_cnt * 10));
-    } else if (g_boot_stage == BOOT_STAGE_DONE) {
+    } else if (boot_service_get_stage() == BOOT_STAGE_DONE) {
         boot_progress_set(100);
     } else {
         boot_progress_handshake_tick_stop();

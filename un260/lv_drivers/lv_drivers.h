@@ -8,7 +8,6 @@ extern "C" {
 #include <unistd.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include "un260/boot/boot_state.h"
 
 extern const char* g_currency_error_desc[0x32];
 extern const char* g_start_error_desc[0x12];
@@ -61,8 +60,6 @@ extern void debug_append_rx_log(const char* data); // 接收数据时调用
 #define Query_ver_cmd 0x01
 #define curr_cmd 0x01
 
-#define HANDSHAKE_TIMEOUT_MS  1000
-
 // CIS校准状态枚举
 typedef enum {
     CIS_CALIB_IDLE = 0,          // 空闲
@@ -108,31 +105,12 @@ typedef enum {
 
 extern curr_query_state_t curr_query_state ;
 
-typedef enum {
-    BOOT_STAGE_HANDSHAKE = 0,
-
-    BOOT_STAGE_SENSOR,
-    BOOT_STAGE_MOTOR,
-    BOOT_STAGE_MAGNET,
-    BOOT_STAGE_CONFIG,
-    BOOT_STAGE_IMAGE,
-
-    BOOT_STAGE_DONE,
-    BOOT_STAGE_FAIL,
-} boot_stage_t;
-
-extern boot_stage_t g_boot_stage; //boot状态机
-
 void boot_send_next_selftest(void);
 uint8_t boot_get_selftest_step(void); // 获取当前自检步骤
 // CIS校准命令
 void boot_handshake_waiting_log_reset(void);
 
-#define BOOT_HANDSHAKE_MAX_WAIT_MS   60000
-#define BOOT_SELFTEST_TIMEOUT_MS      60000
 #define BOOT_FAULT_QUERY_WAIT_MS      1000
-
-extern uint32_t g_boot_stage_tick;
 
 #define CIS_Calib_cmd  0x01
 #ifdef __cplusplus
