@@ -1,8 +1,10 @@
 #include "machine_time.h"
 #include <stdio.h>
+#include "lvgl/lvgl.h"
 
 static machine_time_value_t g_machine_time = { 2024, 10, 26, 11, 28, 30 };
 static bool g_machine_time_paused = false;
+static lv_timer_t* g_machine_time_timer = NULL;
 
 static bool is_leap(uint16_t year)
 {
@@ -96,6 +98,18 @@ void machine_time_tick(void)
     }
 
     g_machine_time = value;
+}
+
+static void machine_time_timer_cb(lv_timer_t* timer)
+{
+    (void)timer;
+    machine_time_tick();
+}
+
+void machine_time_init(void)
+{
+    if (g_machine_time_timer) return;
+    g_machine_time_timer = lv_timer_create(machine_time_timer_cb, 1000, NULL);
 }
 
 void machine_time_pause(bool pause)

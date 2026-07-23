@@ -49,6 +49,8 @@ static void roller_changed_cb(lv_event_t* e)
     s_editing_time.minute = (uint8_t)(lv_roller_get_selected(r_min));
     s_editing_time.second = (uint8_t)(lv_roller_get_selected(r_sec));
     machine_time_normalize(&s_editing_time);
+    machine_time_confirm(&s_editing_time);
+    machine_time_get(&s_editing_time);
     s_roller_syncing = true;
     lv_roller_set_selected(r_year, (int)(s_editing_time.year - 2000), LV_ANIM_OFF);
     lv_roller_set_selected(r_mon, (int)(s_editing_time.month - 1), LV_ANIM_OFF);

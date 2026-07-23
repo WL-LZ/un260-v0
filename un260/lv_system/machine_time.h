@@ -18,6 +18,7 @@ void machine_time_get(machine_time_value_t* value);
 bool machine_time_is_valid(const machine_time_value_t* value);
 void machine_time_normalize(machine_time_value_t* value);
 void machine_time_tick(void);
+void machine_time_init(void);
 void machine_time_pause(bool pause);
 void machine_time_format(char* out, uint32_t out_len);
 
