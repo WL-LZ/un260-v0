@@ -3,6 +3,8 @@
 #include "un260/lv_core/settings_detail_ui.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/user_cfg.h"
+#include "un260/serial_number/serial_number_state.h"
+#include "un260/serial_number/serial_number_service.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -38,21 +40,15 @@ static lv_obj_t* preview_desc_label = NULL;
 static lv_obj_t* preview_bars[SERIAL_OPTION_COUNT] = { NULL };
 static lv_obj_t* preview_bar_labels[SERIAL_OPTION_COUNT] = { NULL };
 static serial_level_item_t g_serial_items[SERIAL_OPTION_COUNT] = { 0 };
-static uint8_t pending_level = 0xFF;
-static uint8_t pending_prev_level = SERIAL_NUMBER_LEVEL_OFF;
 
 static uint8_t serial_level_normalize(uint8_t level)
 {
-    if (level > SERIAL_NUMBER_LEVEL_MAX) {
-        return SERIAL_NUMBER_LEVEL_OFF;
-    }
-
-    return level;
+    return serial_number_state_normalize_level(level);
 }
 
 static uint8_t serial_level_get(void)
 {
-    return serial_level_normalize(Machine_para.serial_number_level);
+    return serial_level_normalize(serial_number_state_level());
 }
 
 static const serial_level_option_t* serial_level_find_option(uint8_t level)
@@ -81,9 +77,8 @@ static int serial_level_option_index(uint8_t level)
     return 0;
 }
 
-static void serial_level_refresh_view(void)
+static void serial_level_refresh_view(uint8_t level)
 {
-    uint8_t level = serial_level_get();
     const serial_level_option_t* option = serial_level_find_option(level);
     int selected_index = serial_level_option_index(level);
     lv_color_t active_color = lv_color_hex(option->color_hex);
@@ -154,16 +149,14 @@ static void serial_level_option_cb(lv_event_t* e)
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
 
     level = (uint8_t)(uintptr_t)lv_event_get_user_data(e);
-    pending_prev_level = serial_level_get();
+    level = serial_level_normalize(level);
+    if (!serial_number_service_request(level != SERIAL_NUMBER_LEVEL_OFF, level)) return;
     if (!serial_level_send(level)) {
-        pending_level = 0xFF;
+        serial_number_service_cancel_request();
         return;
     }
 
-    pending_level = serial_level_normalize(level);
-    Machine_para.serial_number_level = pending_level;
-    Machine_para.serial_num_enable = (pending_level != SERIAL_NUMBER_LEVEL_OFF);
-    serial_level_refresh_view();
+    serial_level_refresh_view(level);
 }
 
 static lv_obj_t* serial_level_create_card(lv_obj_t* parent, lv_coord_t x, lv_coord_t y,
@@ -324,10 +317,6 @@ void ui_page_25_set_serial_number_create(lv_obj_t* parent)
 
     if (serial_page) return;
 
-    Machine_para.serial_number_level = serial_level_get();
-    pending_level = 0xFF;
-    pending_prev_level = Machine_para.serial_number_level;
-
     serial_page = settings_detail_create_page(parent,
                                               ui_text_get(UI_TEXT_SETTINGS_SERIAL_LEVEL_TITLE),
                                               serial_level_esc_cb, &content);
@@ -336,7 +325,7 @@ void ui_page_25_set_serial_number_create(lv_obj_t* parent)
     serial_level_create_panel(content);
     serial_level_create_preview(content);
 
-    serial_level_refresh_view();
+    serial_level_refresh_view(serial_level_get());
 }
 
 void ui_page_25_set_serial_number_destroy(void)
@@ -349,8 +338,6 @@ void ui_page_25_set_serial_number_destroy(void)
     serial_number_setting_page = NULL;
     preview_level_label = NULL;
     preview_desc_label = NULL;
-    pending_level = 0xFF;
-    pending_prev_level = SERIAL_NUMBER_LEVEL_OFF;
 
     for (size_t i = 0; i < SERIAL_OPTION_COUNT; i++) {
         g_serial_items[i].card = NULL;
@@ -362,36 +349,19 @@ void ui_page_25_set_serial_number_destroy(void)
 
 void ui_page_25_set_serial_number_on_boot_setting(uint8_t level)
 {
-    Machine_para.serial_number_level = serial_level_normalize(level);
-    Machine_para.serial_num_enable = (Machine_para.serial_number_level != SERIAL_NUMBER_LEVEL_OFF);
-    pending_level = 0xFF;
+    (void)level;
 
     if (serial_page) {
-        serial_level_refresh_view();
+        serial_level_refresh_view(serial_level_get());
     }
 }
 
 void ui_page_25_set_serial_number_on_reply(uint8_t level, uint8_t res)
 {
-    uint8_t normalized_level = serial_level_normalize(level);
-
-    if (res == 0x01) {
-        Machine_para.serial_number_level = normalized_level;
-        Machine_para.serial_num_enable = (normalized_level != SERIAL_NUMBER_LEVEL_OFF);
-        pending_level = 0xFF;
-        if (serial_page) {
-            serial_level_refresh_view();
-        }
-        return;
-    }
-
-    if (pending_level == normalized_level) {
-        Machine_para.serial_number_level = serial_level_normalize(pending_prev_level);
-        Machine_para.serial_num_enable = (Machine_para.serial_number_level != SERIAL_NUMBER_LEVEL_OFF);
-        pending_level = 0xFF;
-    }
+    (void)level;
+    (void)res;
 
     if (serial_page) {
-        serial_level_refresh_view();
+        serial_level_refresh_view(serial_level_get());
     }
 }

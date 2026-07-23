@@ -76,7 +76,6 @@ typedef struct {
     uint8_t language;
     uint32_t batch_amount;
     bool buzzer_enable;
-    bool serial_num_enable;
     uint16_t last_total_pcs;
     uint32_t last_total_amount;
     uint32_t history_total_notes_counted;
@@ -85,7 +84,6 @@ typedef struct {
     char print_head2[PRINT_SETTING_HEAD_MAX_LEN + 1];
     uint8_t print_content;
     uint8_t print_space_bottom;
-    uint8_t serial_number_level;
     char cfd_setting_currency[4];
     uint8_t cfd_levels[CFD_SCENE_COUNT][CFD_ITEM_COUNT];
 }Machine_para_t;

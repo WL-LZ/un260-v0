@@ -25,6 +25,8 @@
 #include "un260/device_info/device_info.h"
 #include "un260/currency/currency_state.h"
 #include "un260/currency/currency_service.h"
+#include "un260/serial_number/serial_number_state.h"
+#include "un260/serial_number/serial_number_service.h"
 #include "un260/lv_core/page_01_main.h"
 #include "un260/lv_system/ui_screenshot.h"
 #include "un260/lv_core/page_19_history.h"
@@ -1340,20 +1342,30 @@ static void pccmd_handle_detail_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
     /* ================== 0x32 冠字号档位应答 ================== */
     case 0x32:
     {
+        serial_number_setting_result_t result;
+        bool result_taken;
+        uint8_t normalized_level;
+
         if (len < 6) {
             uart_printf(fd6, "0x32 invalid len=%d\n", len);
             break;
         }
 
         if (len == 6) {
+            normalized_level = serial_number_state_normalize_level(buf[4]);
+            serial_number_service_cancel_request();
+            serial_number_state_confirm(normalized_level != SERIAL_NUMBER_LEVEL_OFF, normalized_level);
             ui_page_25_set_serial_number_on_boot_setting(buf[4]);
             uart_printf(fd6, "0x32 boot serial number level: level=0x%02X\n", buf[4]);
             break;
         }
 
-        if (buf[5] == 0x01 && buf[4] <= SERIAL_NUMBER_LEVEL_MAX) {
-            Machine_para.serial_number_level = buf[4];
-            Machine_para.serial_num_enable = (buf[4] != SERIAL_NUMBER_LEVEL_OFF);
+        normalized_level = serial_number_state_normalize_level(buf[4]);
+        result_taken = serial_number_service_take_reply(normalized_level, buf[5], &result);
+        if (result_taken && result.success) {
+            serial_number_state_confirm(normalized_level != SERIAL_NUMBER_LEVEL_OFF, normalized_level);
+        } else if (result_taken) {
+            serial_number_state_confirm(result.previous_enabled, result.previous_level);
         }
 
         uart_printf(fd6, "0x32 serial number level ack: level=0x%02X res=0x%02X\n",
@@ -2132,9 +2144,8 @@ void PCCmdHandle(void)
             }
 
             case 0x07: /* 冠字号 */
-                Machine_para.serial_num_enable = (buf[5] == 0x01);
-                Machine_para.serial_number_level = Machine_para.serial_num_enable ?
-                                                   0x01 : SERIAL_NUMBER_LEVEL_OFF;
+                serial_number_state_confirm(buf[5] == 0x01, buf[5] == 0x01 ?
+                                            0x01 : SERIAL_NUMBER_LEVEL_OFF);
                 break;
 
             case 0x08: /* 货币索引 */

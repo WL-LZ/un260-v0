@@ -28,7 +28,6 @@ Machine_para_t Machine_para = {
     .language = 0,
     .batch_amount = 0,
     .buzzer_enable = 1,
-    .serial_num_enable = 0,
     .last_total_pcs = 0,
     .last_total_amount = 0,
     .history_total_notes_counted = 0,
@@ -37,7 +36,6 @@ Machine_para_t Machine_para = {
     .print_head2 = "",
     .print_content = PRINT_SETTING_CONTENT_LIST,
     .print_space_bottom = 0,
-    .serial_number_level = SERIAL_NUMBER_LEVEL_OFF,
     .cfd_setting_currency = "CNY",
     .cfd_levels = {
         { 3, 3, 3, 3 },
