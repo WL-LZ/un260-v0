@@ -4,6 +4,7 @@
 #include "un260/lv_components/smart_island.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/user_cfg.h"
+#include "un260/lv_system/machine_time.h"
 #include "un260/device_info/device_info.h"
 #include <stdio.h>
 #include <string.h>
@@ -165,6 +166,7 @@ static const char* g_runtime_solution_desc[0x100] = {
  * ========================= */
 static void get_time_str(char* buf, size_t size)
 {
+    machine_time_value_t device_time;
     time_t now = time(NULL);
     struct tm tm_now;
     struct tm* p = localtime_r(&now, &tm_now);
@@ -174,26 +176,27 @@ static void get_time_str(char* buf, size_t size)
     }
 
     /*
-     * Prefer device time from Machine_para when available.
+     * Prefer confirmed device time when available.
      * Keep current localtime defaults if fields are out of range.
      */
-    if (Machine_para.year > 0) {
-        tm_now.tm_year = (Machine_para.year >= 1900) ? (Machine_para.year - 1900) : Machine_para.year;
+    machine_time_get(&device_time);
+    if (device_time.year > 0) {
+        tm_now.tm_year = (device_time.year >= 1900) ? (device_time.year - 1900) : device_time.year;
     }
-    if (Machine_para.month >= 0 && Machine_para.month <= 11) {
-        tm_now.tm_mon = Machine_para.month;
+    if (device_time.month <= 11) {
+        tm_now.tm_mon = device_time.month;
     }
-    if (Machine_para.day >= 1 && Machine_para.day <= 31) {
-        tm_now.tm_mday = Machine_para.day;
+    if (device_time.day >= 1 && device_time.day <= 31) {
+        tm_now.tm_mday = device_time.day;
     }
-    if (Machine_para.hour >= 0 && Machine_para.hour <= 23) {
-        tm_now.tm_hour = Machine_para.hour;
+    if (device_time.hour <= 23) {
+        tm_now.tm_hour = device_time.hour;
     }
-    if (Machine_para.minute >= 0 && Machine_para.minute <= 59) {
-        tm_now.tm_min = Machine_para.minute;
+    if (device_time.minute <= 59) {
+        tm_now.tm_min = device_time.minute;
     }
-    if (Machine_para.second >= 0 && Machine_para.second <= 59) {
-        tm_now.tm_sec = Machine_para.second;
+    if (device_time.second <= 59) {
+        tm_now.tm_sec = device_time.second;
     }
 
     snprintf(buf, size, "%04d-%02d-%02d %02d:%02d:%02d",

@@ -23,11 +23,16 @@ static lv_obj_t* r_hour = NULL;
 static lv_obj_t* r_min = NULL;
 static lv_obj_t* r_sec = NULL;
 static bool s_roller_syncing = false;
+static machine_time_value_t s_editing_time = { 2024, 10, 26, 11, 28, 30 };
 
 static void refresh_time_label(void)
 {
     char buf[64];
-    machine_time_format(buf, sizeof(buf));
+
+    lv_snprintf(buf, sizeof(buf), "%04u/%02u/%02u/%02u/%02u/%02u",
+                (unsigned)s_editing_time.year, (unsigned)s_editing_time.month,
+                (unsigned)s_editing_time.day, (unsigned)s_editing_time.hour,
+                (unsigned)s_editing_time.minute, (unsigned)s_editing_time.second);
     if (lbl_time && lv_obj_is_valid(lbl_time)) {
         lv_label_set_text(lbl_time, buf);
     }
@@ -37,22 +42,20 @@ static void roller_changed_cb(lv_event_t* e)
 {
     if (s_roller_syncing) return;
 
-    uint16_t y = (uint16_t)(2000 + lv_roller_get_selected(r_year));
-    uint8_t  m = (uint8_t)(1 + lv_roller_get_selected(r_mon));
-    uint8_t  d = (uint8_t)(1 + lv_roller_get_selected(r_day));
-    uint8_t  hh = (uint8_t)(lv_roller_get_selected(r_hour));
-    uint8_t  mm = (uint8_t)(lv_roller_get_selected(r_min));
-    uint8_t  ss = (uint8_t)(lv_roller_get_selected(r_sec));
-
-    machine_time_set(y, m, d, hh, mm, ss);
-    machine_time_get(&y, &m, &d, &hh, &mm, &ss);
+    s_editing_time.year = (uint16_t)(2000 + lv_roller_get_selected(r_year));
+    s_editing_time.month = (uint8_t)(1 + lv_roller_get_selected(r_mon));
+    s_editing_time.day = (uint8_t)(1 + lv_roller_get_selected(r_day));
+    s_editing_time.hour = (uint8_t)(lv_roller_get_selected(r_hour));
+    s_editing_time.minute = (uint8_t)(lv_roller_get_selected(r_min));
+    s_editing_time.second = (uint8_t)(lv_roller_get_selected(r_sec));
+    machine_time_normalize(&s_editing_time);
     s_roller_syncing = true;
-    lv_roller_set_selected(r_year, (int)(y - 2000), LV_ANIM_OFF);
-    lv_roller_set_selected(r_mon, (int)(m - 1), LV_ANIM_OFF);
-    lv_roller_set_selected(r_day, (int)(d - 1), LV_ANIM_OFF);
-    lv_roller_set_selected(r_hour, (int)hh, LV_ANIM_OFF);
-    lv_roller_set_selected(r_min, (int)mm, LV_ANIM_OFF);
-    lv_roller_set_selected(r_sec, (int)ss, LV_ANIM_OFF);
+    lv_roller_set_selected(r_year, (int)(s_editing_time.year - 2000), LV_ANIM_OFF);
+    lv_roller_set_selected(r_mon, (int)(s_editing_time.month - 1), LV_ANIM_OFF);
+    lv_roller_set_selected(r_day, (int)(s_editing_time.day - 1), LV_ANIM_OFF);
+    lv_roller_set_selected(r_hour, (int)s_editing_time.hour, LV_ANIM_OFF);
+    lv_roller_set_selected(r_min, (int)s_editing_time.minute, LV_ANIM_OFF);
+    lv_roller_set_selected(r_sec, (int)s_editing_time.second, LV_ANIM_OFF);
     s_roller_syncing = false;
     refresh_time_label();
 }
@@ -142,8 +145,7 @@ void ui_page_11_timeset_create(lv_obj_t* parent)
     }
     memcpy(opt_s, opt_m, sizeof(opt_s));
 
-    uint16_t y; uint8_t mo, d, hh, mm, ss;
-    machine_time_get(&y, &mo, &d, &hh, &mm, &ss);
+    machine_time_get(&s_editing_time);
 
     lv_obj_t* card = settings_detail_create_card(content, 32, 110, 1028, 205);
 
@@ -153,12 +155,12 @@ void ui_page_11_timeset_create(lv_obj_t* parent)
     int rh = 200;
     int gap = 20;
 
-    r_year = create_roller(card, base_x + (rw + gap) * 0, base_y, rw, rh, opt_year, (int)(y - 2000));
-    r_mon = create_roller(card, base_x + (rw + gap) * 1, base_y, rw, rh, opt_mon, (int)(mo - 1));
-    r_day = create_roller(card, base_x + (rw + gap) * 2, base_y, rw, rh, opt_day, (int)(d - 1));
-    r_hour = create_roller(card, base_x + (rw + gap) * 3, base_y, rw, rh, opt_h, (int)(hh));
-    r_min = create_roller(card, base_x + (rw + gap) * 4, base_y, rw, rh, opt_m, (int)(mm));
-    r_sec = create_roller(card, base_x + (rw + gap) * 5, base_y, rw, rh, opt_s, (int)(ss));
+    r_year = create_roller(card, base_x + (rw + gap) * 0, base_y, rw, rh, opt_year, (int)(s_editing_time.year - 2000));
+    r_mon = create_roller(card, base_x + (rw + gap) * 1, base_y, rw, rh, opt_mon, (int)(s_editing_time.month - 1));
+    r_day = create_roller(card, base_x + (rw + gap) * 2, base_y, rw, rh, opt_day, (int)(s_editing_time.day - 1));
+    r_hour = create_roller(card, base_x + (rw + gap) * 3, base_y, rw, rh, opt_h, (int)s_editing_time.hour);
+    r_min = create_roller(card, base_x + (rw + gap) * 4, base_y, rw, rh, opt_m, (int)s_editing_time.minute);
+    r_sec = create_roller(card, base_x + (rw + gap) * 5, base_y, rw, rh, opt_s, (int)s_editing_time.second);
 }
 
 void ui_page_11_timeset_destroy(void)

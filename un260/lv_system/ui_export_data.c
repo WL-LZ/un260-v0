@@ -10,6 +10,7 @@
 #include "un260/lv_core/ui_upgrade_service.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/user_cfg.h"
+#include "un260/lv_system/machine_time.h"
 #include "un260/machine_state/machine_state.h"
 
 #define UI_EXPORT_USB_DIR                  "/mnt/usb"
@@ -165,6 +166,7 @@ static void ui_export_data_build_export_name(char *buf, size_t size)
 {
     char curr_raw[8] = {0};
     char curr[8] = {0};
+    machine_time_value_t now;
 
     if (buf == NULL || size == 0U) {
         return;
@@ -172,15 +174,16 @@ static void ui_export_data_build_export_name(char *buf, size_t size)
 
     ui_export_data_get_currency_code(curr_raw, sizeof(curr_raw));
     ui_export_data_sanitize_token(curr, sizeof(curr), curr_raw);
+    machine_time_get(&now);
 
     lv_snprintf(buf, size, "%s_%04u-%02u-%02u_%02u-%02u-%02u",
                 curr,
-                (unsigned)Machine_para.year,
-                (unsigned)Machine_para.month,
-                (unsigned)Machine_para.day,
-                (unsigned)Machine_para.hour,
-                (unsigned)Machine_para.minute,
-                (unsigned)Machine_para.second);
+                (unsigned)now.year,
+                (unsigned)now.month,
+                (unsigned)now.day,
+                (unsigned)now.hour,
+                (unsigned)now.minute,
+                (unsigned)now.second);
 }
 
 static void ui_export_data_get_sort_text(char *buf, size_t size)
@@ -331,6 +334,7 @@ static bool ui_export_data_write_html_file(const char *file_path)
     char curr_buf[8] = "CUR";
     char reason_buf[96];
     char reason_js[160];
+    machine_time_value_t now;
 
     if (file_path == NULL || file_path[0] == '\0') {
         return false;
@@ -354,6 +358,7 @@ static bool ui_export_data_write_html_file(const char *file_path)
         lv_snprintf(batch_buf, sizeof(batch_buf), "%s", "BAT:OFF");
     }
     ui_export_data_get_currency_code(curr_buf, sizeof(curr_buf));
+    machine_time_get(&now);
 
     fp = fopen(file_path, "w");
     if (fp == NULL) {
@@ -398,8 +403,8 @@ static bool ui_export_data_write_html_file(const char *file_path)
         "<section class=\"panel panel-denom\">\n"
         "<div class=\"panel-header\"><h2>Denomination</h2><div class=\"panel-note\">Face value distribution</div></div>\n"
         "<div class=\"table-wrap\"><table><thead><tr><th>Denom</th><th class=\"text-right\">PCS</th><th class=\"text-right\">Amount</th></tr></thead><tbody>\n",
-        (unsigned)Machine_para.year, (unsigned)Machine_para.month, (unsigned)Machine_para.day,
-        (unsigned)Machine_para.hour, (unsigned)Machine_para.minute, (unsigned)Machine_para.second,
+        (unsigned)now.year, (unsigned)now.month, (unsigned)now.day,
+        (unsigned)now.hour, (unsigned)now.minute, (unsigned)now.second,
         curr_buf, total_amount, total_pcs, reject_total,
         mode_buf, sort_buf, work_buf, add_buf, batch_buf, speed_buf);
 
@@ -530,6 +535,7 @@ static bool ui_export_data_write_csv_file(const char *file_path)
     bool has_error = false;
     char mode_buf[8] = "NONE";
     char reason_buf[96];
+    machine_time_value_t now;
 
     if (Machine_para.mode == MODE_MDC) {
         lv_snprintf(mode_buf, sizeof(mode_buf), "%s", "MDC");
@@ -543,6 +549,8 @@ static bool ui_export_data_write_csv_file(const char *file_path)
         return false;
     }
 
+    machine_time_get(&now);
+
     fp = fopen(file_path, "w");
     if (fp == NULL) {
         return false;
@@ -551,9 +559,9 @@ static bool ui_export_data_write_csv_file(const char *file_path)
     fprintf(fp, "Un260 Intelligent Cash Counter Report\n");
     fprintf(fp, "Machine Mode,%s\n", mode_buf);
     fprintf(fp, "Export Time,%02u:%02u:%02u\n",
-            (unsigned)Machine_para.hour,
-            (unsigned)Machine_para.minute,
-            (unsigned)Machine_para.second);
+            (unsigned)now.hour,
+            (unsigned)now.minute,
+            (unsigned)now.second);
     fprintf(fp, "Currency,%s\n", Machine_para.curr_code);
     fprintf(fp, "Total Pcs,%d\n", sim.total_pcs);
     fprintf(fp, "Total Amount,%.0f\n", sim.total_amount);

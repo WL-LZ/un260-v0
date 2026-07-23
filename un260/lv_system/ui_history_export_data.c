@@ -9,6 +9,7 @@
 
 #include "un260/lv_components/lv_print_toast.h"
 #include "un260/lv_system/ui_history_data.h"
+#include "un260/lv_system/machine_time.h"
 
 #define UI_HISTORY_EXPORT_USB_DIR          "/mnt/usb"
 #define UI_HISTORY_EXPORT_LOCK_MS          2000U
@@ -117,6 +118,7 @@ static void history_export_build_name(char *buf, size_t size)
 {
     char curr_raw[8] = {0};
     char curr[8] = {0};
+    machine_time_value_t now;
 
     if (buf == NULL || size == 0) {
         return;
@@ -124,15 +126,16 @@ static void history_export_build_name(char *buf, size_t size)
 
     history_export_get_currency_code(curr_raw, sizeof(curr_raw));
     history_export_sanitize_token(curr, sizeof(curr), curr_raw);
+    machine_time_get(&now);
 
     lv_snprintf(buf, size, "HISTORY_%s_%04u-%02u-%02u_%02u-%02u-%02u",
                 curr,
-                (unsigned)Machine_para.year,
-                (unsigned)Machine_para.month,
-                (unsigned)Machine_para.day,
-                (unsigned)Machine_para.hour,
-                (unsigned)Machine_para.minute,
-                (unsigned)Machine_para.second);
+                (unsigned)now.year,
+                (unsigned)now.month,
+                (unsigned)now.day,
+                (unsigned)now.hour,
+                (unsigned)now.minute,
+                (unsigned)now.second);
 }
 
 static void history_export_escape_html(char *dst, size_t dst_size, const char *src)

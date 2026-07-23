@@ -499,20 +499,12 @@ static void page_06_register_option(lv_obj_t* tile, lv_obj_t* rail,
 
 static void update_footer_time(void)
 {
-    uint16_t year = 0;
-    uint8_t mon = 0;
-    uint8_t day = 0;
-    uint8_t hour = 0;
-    uint8_t min = 0;
-    uint8_t sec = 0;
+    machine_time_value_t now;
     char buf[16];
 
-    (void)year;
-    (void)mon;
-    (void)day;
-    machine_time_get(&year, &mon, &day, &hour, &min, &sec);
+    machine_time_get(&now);
     lv_snprintf(buf, sizeof(buf), "%02u:%02u:%02u",
-                (unsigned)hour, (unsigned)min, (unsigned)sec);
+                (unsigned)now.hour, (unsigned)now.minute, (unsigned)now.second);
 
     if (footer_time_label) {
         lv_label_set_text(footer_time_label, buf);

@@ -76,17 +76,21 @@ typedef enum {
 
 static void main_time_refresh(void)
 {
+    machine_time_value_t now;
     char buf[16];
+
+    machine_time_get(&now);
     lv_snprintf(buf, sizeof(buf), "%02u:%02u:%02u",
-        (unsigned)Machine_para.hour,
-        (unsigned)Machine_para.minute,
-        (unsigned)Machine_para.second);
+        (unsigned)now.hour,
+        (unsigned)now.minute,
+        (unsigned)now.second);
     if (s_time_label) lv_label_set_text(s_time_label, buf);
 }
 
 static void main_time_timer_cb(lv_timer_t* t)
 {
     (void)t;
+    machine_time_tick();
     main_time_refresh();
     smart_island_refresh_time(); //刷新灵动岛默认时间
 }
@@ -1171,7 +1175,6 @@ void ui_main_create(lv_obj_t* parent)
     page_01_detail_section_set((page_01_detail_section_t)ui_state_page01_detail_section_get(), false);
     // 创建滚动容器并将标签放入容器
    // sim_data_init();           // 初始化面额列表、count=0、amount=0
-    machine_time_init();
     ui_refresh_main_page();    // 把面额+"0"+"0.00"写到每一行
     page_01_create_mian_scrollable_container();
     page_01_add_refre();

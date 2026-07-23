@@ -40,8 +40,7 @@ bool ui_qr_data_build(char* buf, size_t buf_size) //组装当前点钞结果二�
 {
     size_t used = 0;
     const size_t qr_safe_payload_limit = 2500; //保守上限，避免二维码编码阶段“too large”
-    uint16_t year = 0;
-    uint8_t mon = 0, day = 0, hour = 0, min = 0, sec = 0;
+    machine_time_value_t now;
     int sn_count = 0;
     bool has_err = false;
     int i;
@@ -54,7 +53,7 @@ bool ui_qr_data_build(char* buf, size_t buf_size) //组装当前点钞结果二�
     }
 
     buf[0] = '\0';
-    machine_time_get(&year, &mon, &day, &hour, &min, &sec);
+    machine_time_get(&now);
 
     if (!ui_qr_data_append(buf, buf_size, &used,
         "Total Amount: %.2f %s;" QR_LINE_BREAK,
@@ -69,8 +68,8 @@ bool ui_qr_data_build(char* buf, size_t buf_size) //组装当前点钞结果二�
 
     if (!ui_qr_data_append(buf, buf_size, &used,
         "Transaction Time: %04u-%02u-%02u %02u:%02u:%02u;" QR_LINE_BREAK,
-        (unsigned)year, (unsigned)mon, (unsigned)day,
-        (unsigned)hour, (unsigned)min, (unsigned)sec)) {
+        (unsigned)now.year, (unsigned)now.month, (unsigned)now.day,
+        (unsigned)now.hour, (unsigned)now.minute, (unsigned)now.second)) {
         return false;
     }
 

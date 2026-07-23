@@ -3,6 +3,7 @@
 #include "un260/lv_components/lv_print_toast.h"
 #include "un260/lv_components/lv_qr_popup.h"
 #include "un260/lv_system/user_cfg.h"
+#include "un260/lv_system/machine_time.h"
 #include "un260/lv_system/ui_qr_data.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/platform_app.h"
@@ -1058,12 +1059,14 @@ static void smart_island_stop_warning_timer(void)
 
 static void smart_island_update_idle_time(void) 
 {
+    machine_time_value_t now;
     char buf[16];
     if (g_smart_island_time == NULL || !lv_obj_is_valid(g_smart_island_time)) return;
+    machine_time_get(&now);
     lv_snprintf(buf, sizeof(buf), "%02u:%02u:%02u",
-        (unsigned)Machine_para.hour,
-        (unsigned)Machine_para.minute,
-        (unsigned)Machine_para.second);
+        (unsigned)now.hour,
+        (unsigned)now.minute,
+        (unsigned)now.second);
     lv_label_set_text(g_smart_island_time, buf);
 }
 

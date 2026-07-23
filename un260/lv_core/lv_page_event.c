@@ -6,6 +6,7 @@
 #include <string.h>
 #include "lvgl/src/misc/lv_timer.h"
 #include "un260/lv_system/user_cfg.h"
+#include "un260/lv_system/machine_time.h"
 #include "un260/lv_refre/lvgl_refre.h"
 #include "un260/lv_core/page_03_menu.h"
 #include "un260/lv_drivers/lv_drivers.h"
@@ -435,16 +436,19 @@ void page_01_print_btn_event_cb(lv_event_t* e)
         return;
     }
 
+    machine_time_value_t now;
     uint8_t payload[9];
+
+    machine_time_get(&now);
     payload[0] = (uint8_t)Machine_para.curr_code[0];
     payload[1] = (uint8_t)Machine_para.curr_code[1];
     payload[2] = (uint8_t)Machine_para.curr_code[2];
-    payload[3] = (uint8_t)(Machine_para.year >= 2000? (Machine_para.year - 2000): Machine_para.year);
-    payload[4] = Machine_para.month;
-    payload[5] = Machine_para.day;
-    payload[6] = Machine_para.hour;
-    payload[7] = Machine_para.minute;
-    payload[8] = Machine_para.second;
+    payload[3] = (uint8_t)(now.year >= 2000 ? (now.year - 2000) : now.year);
+    payload[4] = now.month;
+    payload[5] = now.day;
+    payload[6] = now.hour;
+    payload[7] = now.minute;
+    payload[8] = now.second;
 
     lv_print_toast_show(ui_text_get(UI_TEXT_WIDGET_PRINT_TOAST_PRINTING));
     protocol_send(0x3C, payload, 9);
