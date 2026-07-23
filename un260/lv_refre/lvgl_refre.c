@@ -9,6 +9,7 @@
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/user_cfg.h"
+#include "un260/machine_state/machine_state.h"
 #include "un260/lv_core/lv_page_event.h"
 #include "un260/lv_core/page_02_list.h"
 #include "un260/lv_core/lv_page_declear.h"
@@ -637,7 +638,7 @@ void page_03_create_batch_label_switcher(lv_obj_t* parent)
         LV_LOG_WARN("amount_obj or pcs_obj not found. Check names or UI structure.");
     }
 
-    if (!Machine_para.batch_switch_enable)
+    if (!machine_state_batch_enabled())
     {
         if (Machine_para.batch_mode == AMOUNT_BATCH_MODE)
         {
@@ -697,9 +698,9 @@ void page_03_batch_num_container(void)
 
 void page_03_batch_num_refre(void)
 {
-    if (Machine_para.batch_switch_enable) {
-        if (Machine_para.batch_num > 0) {
-            update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label", "%d", Machine_para.batch_num);
+    if (machine_state_batch_enabled()) {
+        if (machine_state_batch_num() > 0) {
+            update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label", "%d", machine_state_batch_num());
         } else {
             update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label", "%d", 200);
         }
@@ -716,7 +717,7 @@ void page_03_batch_mode_status_refre(void)
 {
     lv_obj_t* amount_obj = find_obj_by_name("03_amount_batch_label", page_03_menu_obj, page_03_menu_len);
     lv_obj_t* pcs_obj = find_obj_by_name("03_pcs_batch_label", page_03_menu_obj, page_03_menu_len);
-    if (!Machine_para.batch_switch_enable)
+    if (!machine_state_batch_enabled())
     {
         if (Machine_para.batch_mode == AMOUNT_BATCH_MODE)
         {
@@ -1021,9 +1022,9 @@ void page_01_batch_refre(void)
 {
     char* batch[2] = { "BATCH :","VBATCH :" };
     char buf[12];
-    snprintf(buf, sizeof(buf), "%d", Machine_para.batch_num);
+    snprintf(buf, sizeof(buf), "%d", machine_state_batch_num());
     update_label_by_name(page_01_main_obj, page_01_main_len, "bacth_label", "%s", batch[Machine_para.batch_mode]);
-    if (Machine_para.batch_switch_enable)
+    if (machine_state_batch_enabled())
     {
         update_label_by_name(page_01_main_obj, page_01_main_len, "bacth_num_label", "%s", buf);
     }

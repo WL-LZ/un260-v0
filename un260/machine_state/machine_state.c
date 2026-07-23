@@ -1,6 +1,9 @@
 #include "machine_state.h"
 #include "un260/lv_system/user_cfg.h"
 
+static uint8_t g_batch_num = 0;
+static bool g_batch_enabled = true;
+
 void machine_state_confirm_mode(uint8_t mode)
 {
     Machine_para.mode = mode;
@@ -59,4 +62,30 @@ void machine_state_confirm_work_mode(uint8_t mode)
 uint8_t machine_state_work_mode(void)
 {
     return Machine_para.work_mode;
+}
+
+void machine_state_confirm_batch(bool enabled, uint8_t num)
+{
+    g_batch_enabled = enabled;
+    g_batch_num = num;
+}
+
+void machine_state_sync_batch_num(uint8_t num)
+{
+    g_batch_num = num;
+}
+
+void machine_state_confirm_batch_enable(bool enabled)
+{
+    g_batch_enabled = enabled;
+}
+
+bool machine_state_batch_enabled(void)
+{
+    return g_batch_enabled;
+}
+
+uint8_t machine_state_batch_num(void)
+{
+    return g_batch_num;
 }

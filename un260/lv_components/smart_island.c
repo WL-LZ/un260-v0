@@ -10,6 +10,7 @@
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/page_18_pure.h"
 #include "un260/lv_drivers/lv_drivers.h"
+#include "un260/machine_state/machine_state.h"
 #include <stdio.h>
 #include <string.h>
 #include "un260/lv_components/lv_capsule_pagination.h"
@@ -1088,7 +1089,9 @@ static const char *smart_island_get_work_mode_text(void)
 
 static bool smart_island_batch_enabled(void)
 {
-    return Machine_para.batch_switch_enable && Machine_para.batch_num > 0 && Machine_para.batch_num != 200;
+    uint8_t batch_num = machine_state_batch_num();
+
+    return machine_state_batch_enabled() && batch_num > 0 && batch_num != 200;
 }
 
 static void smart_island_apply_idle_line_text(char *dst, size_t dst_size, const char *text)
@@ -1212,7 +1215,7 @@ static void smart_island_rebuild_scene_texts(void)
         }
         if (smart_island_batch_enabled() && sim.total_pcs > 0) {
             lv_snprintf(g_smart_island_info_footer_text, sizeof(g_smart_island_info_footer_text),
-                ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_BATCH_PROGRESS_FMT), sim.total_pcs, (int)Machine_para.batch_num);
+                ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_BATCH_PROGRESS_FMT), sim.total_pcs, (int)machine_state_batch_num());
         } else {
             lv_snprintf(g_smart_island_info_footer_text, sizeof(g_smart_island_info_footer_text), "%s", work_text);
         }

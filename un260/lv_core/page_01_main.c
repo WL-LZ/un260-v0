@@ -12,6 +12,7 @@
 #include "un260/lv_system/lv_str.h" 
 #include "lv_page_declear.h"
 #include "un260/lv_system/user_cfg.h"
+#include "un260/machine_state/machine_state.h"
 #include "un260/lv_components/lv_print_toast.h"
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_system/machine_time.h"
@@ -631,9 +632,9 @@ void page_01_bottom_c_refresh_batch(bool anim_en) //刷新主界面底部C区Bat
 {
     char text_buf[32];
 
-    if (Machine_para.batch_switch_enable) {
+    if (machine_state_batch_enabled()) {
         lv_snprintf(text_buf, sizeof(text_buf), ui_text_get(UI_TEXT_PAGE01_BOTTOM_BATCH_VALUE_FMT),
-            Machine_para.batch_num);
+            machine_state_batch_num());
     } else {
         lv_snprintf(text_buf, sizeof(text_buf), "%s", ui_text_get(UI_TEXT_PAGE01_BOTTOM_BATCH_OFF));
     }

@@ -964,18 +964,17 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
         else if (status == 0x03)
         {
             if (len < 7) break;
-            Machine_para.batch_num = buf[5];
-            Machine_para.batch_switch_enable = (Machine_para.batch_num != 200);
-            set_batch_switch_state(Machine_para.batch_switch_enable);
-            if (Machine_para.batch_switch_enable) {
+            machine_state_confirm_batch(buf[5] != 200, buf[5]);
+            set_batch_switch_state(machine_state_batch_enabled());
+            if (machine_state_batch_enabled()) {
                 update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label",
-                                     "%d", Machine_para.batch_num);
+                                     "%d", machine_state_batch_num());
             } else {
                 update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label",
                                      "%s", "OFF");
             }
             page_01_batch_refre();
-            uart_printf(fd6, "Boot batch num: %d\n", Machine_para.batch_num);
+            uart_printf(fd6, "Boot batch num: %d\n", machine_state_batch_num());
             smart_island_refresh_summary();
         }
 
@@ -2101,7 +2100,7 @@ void PCCmdHandle(void)
             }
 
             case 0x02: /* 预置数量 */
-                Machine_para.batch_num = buf[5];
+                machine_state_sync_batch_num(buf[5]);
                 break;
 
             case 0x03: /* 预置金额 */

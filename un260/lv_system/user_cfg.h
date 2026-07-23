@@ -72,8 +72,6 @@ typedef struct {
     curr_item_t current_currency;
     char password[USER_PASSWORD_MAX_LEN + 1];
     int batch_mode;
-    int32_t batch_num;
-    bool batch_switch_enable;
     uint8_t cfd_mode;
     uint8_t fo_mode;
     uint8_t work_mode;

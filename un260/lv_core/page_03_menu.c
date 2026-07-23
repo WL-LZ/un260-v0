@@ -7,6 +7,7 @@
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_components/lv_components.h"
+#include "un260/machine_state/machine_state.h"
 #include "un260/lv_refre/lvgl_refre.h"
 #include "un260/lv_system/ui_text.h"
 #include "../aic_ui/aic_ui.h"
@@ -1102,8 +1103,8 @@ void ui_page_03_menu_create(lv_obj_t* parent)
     lv_obj_t* obj = get_batch_switch_container();
     lv_obj_set_pos(obj, 411, 32);
     
-    // 确保开关状态与Machine_para.batch_switch_enable一致
-    set_batch_switch_state(Machine_para.batch_switch_enable);
+    // 确保开关状态与已确认 Batch enable 一致
+    set_batch_switch_state(machine_state_batch_enabled());
 
     page_03_apply_modern_style();
     page_03_create_plain(menu_page, 85, 174, 405, 2, 0x0B69FF, 0);

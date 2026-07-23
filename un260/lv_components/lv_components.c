@@ -7,6 +7,7 @@
 #include "un260/lv_refre/lvgl_refre.h"
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/app_service/setting_service.h"
+#include "un260/machine_state/machine_state.h"
 
 typedef struct {
     lv_obj_t* switch_container;
@@ -399,7 +400,7 @@ static void update_switch_visual(bool enable, bool animate) {
     }
     page_03_batch_mode_status_refre();
 #if LV_DEBUG
-    printf("batch_switch_status: %s\n", Machine_para.batch_switch_enable ? "ON" : "OFF");
+    printf("batch_switch_status: %s\n", machine_state_batch_enabled() ? "ON" : "OFF");
 #endif // LV_DEBUG
 
 }
@@ -407,7 +408,7 @@ static void update_switch_visual(bool enable, bool animate) {
 // 点击切换状态
 static void switch_event_cb(lv_event_t* e) {
     LV_UNUSED(e);
-    bool previous_enable = Machine_para.batch_switch_enable;
+    bool previous_enable = machine_state_batch_enabled();
     bool target_enable = !previous_enable;
 
     /* batch 开关行为：
@@ -416,7 +417,7 @@ static void switch_event_cb(lv_event_t* e) {
      */
     uint8_t batch_cmd = 200;
     if (target_enable) {
-        int preset = Machine_para.batch_num;
+        int preset = machine_state_batch_num();
         if (preset <= 0 || preset >= 200) {
             preset = g_batch_last_on_num;
         }
@@ -424,8 +425,8 @@ static void switch_event_cb(lv_event_t* e) {
         if (preset > 199) preset = 199;
         batch_cmd = (uint8_t)preset;
     }
-    if (!setting_service_request_batch_switch(target_enable, batch_cmd, previous_enable, (uint8_t)Machine_para.batch_num)) {
-        update_switch_visual(Machine_para.batch_switch_enable, false);
+    if (!setting_service_request_batch_switch(target_enable, batch_cmd, previous_enable, machine_state_batch_num())) {
+        update_switch_visual(machine_state_batch_enabled(), false);
     }
 }
 
@@ -434,22 +435,19 @@ void batch_switch_on_0x06_result(bool success, const setting_batch_result_t *res
     if (result == NULL) return;
 
     if (success) {
-        Machine_para.batch_switch_enable = result->target.enable;
-        if (Machine_para.batch_switch_enable) {
-            Machine_para.batch_num = result->target.num;
-            if (Machine_para.batch_num >= 5 && Machine_para.batch_num <= 199) {
-                g_batch_last_on_num = (uint8_t)Machine_para.batch_num;
+        machine_state_confirm_batch(result->target.enable, result->target.num);
+        if (machine_state_batch_enabled()) {
+            if (machine_state_batch_num() >= 5 && machine_state_batch_num() <= 199) {
+                g_batch_last_on_num = machine_state_batch_num();
             }
-        } else {
-            Machine_para.batch_num = 200;
         }
-        update_switch_visual(Machine_para.batch_switch_enable, true);
+        update_switch_visual(machine_state_batch_enabled(), true);
         page_03_batch_num_refre();
         page_01_batch_refre();
         return;
     }
 
-    Machine_para.batch_switch_enable = result->previous.enable;
+    machine_state_confirm_batch_enable(result->previous.enable);
 }
 
 // 创建批次开关组件
@@ -460,7 +458,7 @@ void create_batch_num_switch(lv_obj_t* parent) {
     lv_obj_set_style_radius(batch_switch.switch_container, 18, 0);
     lv_obj_set_style_pad_all(batch_switch.switch_container, 0, 0);
     lv_obj_set_style_bg_color(batch_switch.switch_container,
-        Machine_para.batch_switch_enable ?
+        machine_state_batch_enabled() ?
         lv_color_hex(0x0A66F6) :
         lv_color_hex(0xE9EEF5), 0);
     lv_obj_set_style_bg_opa(batch_switch.switch_container, LV_OPA_COVER, LV_STATE_PRESSED);
@@ -507,7 +505,7 @@ void create_batch_num_switch(lv_obj_t* parent) {
     batch_switch_center_knob_y();
 
     // 设置初始状态，无动画
-    update_switch_visual(Machine_para.batch_switch_enable, false);
+    update_switch_visual(machine_state_batch_enabled(), false);
 }
 
 // 外部调用：获取容器
@@ -517,9 +515,8 @@ lv_obj_t* get_batch_switch_container(void) {
 
 //设置开关状态（自动更新UI，无动画）
 void set_batch_switch_state(bool enable) {
-    Machine_para.batch_switch_enable = enable;
-    if (Machine_para.batch_num >= 5 && Machine_para.batch_num <= 199) {
-        g_batch_last_on_num = (uint8_t)Machine_para.batch_num;
+    if (machine_state_batch_num() >= 5 && machine_state_batch_num() <= 199) {
+        g_batch_last_on_num = machine_state_batch_num();
     }
 
     if (batch_switch.switch_container == NULL ||

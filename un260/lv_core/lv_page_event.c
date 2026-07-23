@@ -570,7 +570,7 @@ void page_03_batch_label_input_event_cb(lv_event_t* e)
     LV_UNUSED(e);
     return;
 #if 0
-    if (!Machine_para.batch_switch_enable) return;
+    if (!machine_state_batch_enabled()) return;
 
     static struct {
         bool is_dragging;      // 是否正在拖拽
@@ -747,7 +747,7 @@ void page_03_batch_num_keypad_enter_event_cb(lv_event_t* e)
     if (batch_num_index > 0) {
         num = atoi(input_batch_num);
     } else {
-        num = Machine_para.batch_num;
+        num = machine_state_batch_num();
     }
     if (num <= 0) num = 200;
     if (num < 5) num = 5;
@@ -759,7 +759,7 @@ void page_03_batch_num_keypad_enter_event_cb(lv_event_t* e)
      * 开关 ON：发送用户预设值
      * 开关 OFF：固定发送 200
      */
-    if (!setting_service_request_batch_number((uint8_t)num, Machine_para.batch_switch_enable, (uint8_t)Machine_para.batch_num)) {
+    if (!setting_service_request_batch_number((uint8_t)num, machine_state_batch_enabled(), machine_state_batch_num())) {
         return;
     }
     // 确认后清空输入缓存，回到 0，等待下一次重新输入
@@ -787,11 +787,11 @@ void page_03_batch_set_result(bool success, const setting_batch_result_t *result
 
     if (success) {
         if (result->target.num > 0) {
-            Machine_para.batch_num = result->target.num;
-            set_batch_switch_state(true);
-            batch_switch_set_last_on_num((uint8_t)Machine_para.batch_num);
+            machine_state_confirm_batch(result->target.enable, result->target.num);
+            set_batch_switch_state(machine_state_batch_enabled());
+            batch_switch_set_last_on_num(machine_state_batch_num());
             update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label",
-                                 "%d", Machine_para.batch_num);
+                                 "%d", machine_state_batch_num());
             page_01_batch_refre();
             page_03_batch_num_edit_reset();
             g_batch_tip_label = lv_label_create(menu_page);

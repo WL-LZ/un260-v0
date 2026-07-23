@@ -10,6 +10,7 @@
 #include "un260/lv_core/ui_upgrade_service.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/user_cfg.h"
+#include "un260/machine_state/machine_state.h"
 
 #define UI_EXPORT_USB_DIR                  "/mnt/usb"
 #define UI_EXPORT_LOCK_MS                  2000U
@@ -347,8 +348,8 @@ static bool ui_export_data_write_html_file(const char *file_path)
     ui_export_data_get_add_text(add_buf, sizeof(add_buf));
     ui_export_data_get_work_text(work_buf, sizeof(work_buf));
     ui_export_data_get_speed_text(speed_buf, sizeof(speed_buf));
-    if (Machine_para.batch_switch_enable) {
-        lv_snprintf(batch_buf, sizeof(batch_buf), "BAT:%d", (int)Machine_para.batch_num);
+    if (machine_state_batch_enabled()) {
+        lv_snprintf(batch_buf, sizeof(batch_buf), "BAT:%d", (int)machine_state_batch_num());
     } else {
         lv_snprintf(batch_buf, sizeof(batch_buf), "%s", "BAT:OFF");
     }
