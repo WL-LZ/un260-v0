@@ -338,10 +338,6 @@ bool setting_service_request_batch_number(uint8_t num, bool previous_enable, uin
 {
     uint8_t batch_cmd = num;
 
-    if (setting_service_request_expired(g_batch_req_pending, g_batch_req_tick_ms)) {
-        g_batch_req_pending = false;
-        g_batch_req_type = SETTING_BATCH_REQUEST_NONE;
-    }
     if (g_batch_req_pending) {
 #if SETTING_BATCH_TRACE_ENABLE
         setting_batch_trace_reject(SETTING_BATCH_REQUEST_NUMBER, batch_cmd);
@@ -370,10 +366,6 @@ bool setting_service_request_batch_switch(bool target_enable, uint8_t sent_num, 
 {
     uint8_t batch_cmd = sent_num;
 
-    if (setting_service_request_expired(g_batch_req_pending, g_batch_req_tick_ms)) {
-        g_batch_req_pending = false;
-        g_batch_req_type = SETTING_BATCH_REQUEST_NONE;
-    }
     if (g_batch_req_pending) {
 #if SETTING_BATCH_TRACE_ENABLE
         setting_batch_trace_reject(SETTING_BATCH_REQUEST_SWITCH, batch_cmd);
@@ -400,10 +392,7 @@ bool setting_service_request_batch_switch(bool target_enable, uint8_t sent_num, 
 
 bool setting_service_batch_take_result(uint8_t status, setting_batch_result_t *result)
 {
-    if (setting_service_request_expired(g_batch_req_pending, g_batch_req_tick_ms)) {
-        g_batch_req_pending = false;
-        g_batch_req_type = SETTING_BATCH_REQUEST_NONE;
-    }
+    if (setting_service_request_expired(g_batch_req_pending, g_batch_req_tick_ms)) return false;
     if (!g_batch_req_pending) {
 #if SETTING_BATCH_TRACE_ENABLE
         if (status == 0x01 || status == 0x02) {
@@ -441,11 +430,21 @@ bool setting_service_batch_take_result(uint8_t status, setting_batch_result_t *r
     return true;
 }
 
+bool setting_service_batch_take_timeout(setting_batch_result_t *result)
+{
+    if (!result || !setting_service_request_expired(g_batch_req_pending, g_batch_req_tick_ms)) return false;
+
+    result->type = g_batch_req_type;
+    result->target = g_batch_req_target;
+    result->previous = g_batch_req_previous;
+    g_batch_req_pending = false;
+    g_batch_req_type = SETTING_BATCH_REQUEST_NONE;
+    g_batch_req_tick_ms = 0;
+    return true;
+}
+
 bool setting_service_request_double_note_level(uint8_t target, uint8_t previous)
 {
-    if (setting_service_request_expired(g_double_note_req_pending, g_double_note_req_tick_ms)) {
-        setting_service_clear_double_note_level_request();
-    }
     if (g_double_note_req_pending) return false;
 
     g_double_note_req_pending = true;
@@ -462,9 +461,7 @@ bool setting_service_request_double_note_level(uint8_t target, uint8_t previous)
 
 bool setting_service_take_double_note_level_result(uint8_t status, setting_value_result_t *result)
 {
-    if (setting_service_request_expired(g_double_note_req_pending, g_double_note_req_tick_ms)) {
-        setting_service_clear_double_note_level_request();
-    }
+    if (setting_service_request_expired(g_double_note_req_pending, g_double_note_req_tick_ms)) return false;
     if (!g_double_note_req_pending || result == NULL) return false;
     if (status != 0x01 && status != 0x02) return false;
 
@@ -477,6 +474,18 @@ bool setting_service_take_double_note_level_result(uint8_t status, setting_value
     return true;
 }
 
+bool setting_service_take_double_note_level_timeout(setting_value_result_t *result)
+{
+    if (!result || !setting_service_request_expired(g_double_note_req_pending, g_double_note_req_tick_ms)) return false;
+
+    result->target = g_double_note_req_target;
+    result->previous = g_double_note_req_previous;
+    result->success = false;
+    result->timeout = true;
+    setting_service_clear_double_note_level_request();
+    return true;
+}
+
 void setting_service_clear_double_note_level_request(void)
 {
     g_double_note_req_pending = false;
@@ -485,9 +494,6 @@ void setting_service_clear_double_note_level_request(void)
 
 bool setting_service_request_flap_position(uint8_t target, uint8_t previous)
 {
-    if (setting_service_request_expired(g_flap_req_pending, g_flap_req_tick_ms)) {
-        g_flap_req_pending = false;
-    }
     if (g_flap_req_pending) return false;
 
     g_flap_req_pending = true;
@@ -505,9 +511,7 @@ bool setting_service_request_flap_position(uint8_t target, uint8_t previous)
 
 bool setting_service_take_flap_position_result(uint8_t status, setting_value_result_t *result)
 {
-    if (setting_service_request_expired(g_flap_req_pending, g_flap_req_tick_ms)) {
-        g_flap_req_pending = false;
-    }
+    if (setting_service_request_expired(g_flap_req_pending, g_flap_req_tick_ms)) return false;
     if (!g_flap_req_pending || result == NULL) return false;
     if (status != 0x00 && status != 0x01) return false;
 
@@ -520,13 +524,23 @@ bool setting_service_take_flap_position_result(uint8_t status, setting_value_res
     return true;
 }
 
+bool setting_service_take_flap_position_timeout(setting_value_result_t *result)
+{
+    if (!result || !setting_service_request_expired(g_flap_req_pending, g_flap_req_tick_ms)) return false;
+
+    result->target = g_flap_req_target;
+    result->previous = g_flap_req_previous;
+    result->success = false;
+    result->timeout = true;
+    g_flap_req_pending = false;
+    g_flap_req_tick_ms = 0;
+    return true;
+}
+
 bool setting_service_request_reject_pocket_max(uint8_t target, uint8_t previous)
 {
     uint8_t payload[2] = { 0x01, target };
 
-    if (setting_service_request_expired(g_reject_pocket_req_pending, g_reject_pocket_req_tick_ms)) {
-        setting_service_clear_reject_pocket_max_request();
-    }
     if (g_reject_pocket_req_pending) return false;
 
     g_reject_pocket_req_pending = true;
@@ -543,9 +557,7 @@ bool setting_service_request_reject_pocket_max(uint8_t target, uint8_t previous)
 
 bool setting_service_take_reject_pocket_max_result(uint8_t status, setting_value_result_t *result)
 {
-    if (setting_service_request_expired(g_reject_pocket_req_pending, g_reject_pocket_req_tick_ms)) {
-        setting_service_clear_reject_pocket_max_request();
-    }
+    if (setting_service_request_expired(g_reject_pocket_req_pending, g_reject_pocket_req_tick_ms)) return false;
     if (!g_reject_pocket_req_pending || result == NULL) return false;
     if (status != 0x01 && status != 0x02) return false;
 
@@ -555,6 +567,18 @@ bool setting_service_take_reject_pocket_max_result(uint8_t status, setting_value
     result->timeout = false;
     g_reject_pocket_req_pending = false;
     g_reject_pocket_req_tick_ms = 0;
+    return true;
+}
+
+bool setting_service_take_reject_pocket_max_timeout(setting_value_result_t *result)
+{
+    if (!result || !setting_service_request_expired(g_reject_pocket_req_pending, g_reject_pocket_req_tick_ms)) return false;
+
+    result->target = g_reject_pocket_req_target;
+    result->previous = g_reject_pocket_req_previous;
+    result->success = false;
+    result->timeout = true;
+    setting_service_clear_reject_pocket_max_request();
     return true;
 }
 

@@ -16,6 +16,7 @@ typedef struct {
 
 bool currency_service_request_switch(uint8_t target_index, const char target_code[4]);
 bool currency_service_take_switch_result(uint8_t status, currency_switch_result_t* result);
+bool currency_service_take_switch_timeout(currency_switch_result_t* result);
 bool currency_service_switch_pending(void);
 
 #endif

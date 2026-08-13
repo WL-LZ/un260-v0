@@ -167,8 +167,9 @@ void set_curr(curr_item_t curr)
         printf("set_curr unknown enum, keep curr_code=%s\n", curr_code);
 #endif
     } else {
-        if (curr == currency_state_active_currency()) return;
-        currency_state_confirm_active_currency(curr);
+        if (curr != currency_state_active_currency()) {
+            currency_state_confirm_active_currency(curr);
+        }
     }
     sim_clear_all_sn(&sim);
 

@@ -24,12 +24,10 @@ static uint64_t currency_service_now_ms(void)
     return (uint64_t)ts.tv_sec * 1000ULL + (uint64_t)(ts.tv_nsec / 1000000ULL);
 }
 
-static void currency_service_expire_request(void)
+static bool currency_service_request_expired(void)
 {
-    if (g_currency_switch_request.pending &&
-        currency_service_now_ms() - g_currency_switch_request.request_tick_ms >= CURRENCY_SWITCH_TIMEOUT_MS) {
-        memset(&g_currency_switch_request, 0, sizeof(g_currency_switch_request));
-    }
+    return g_currency_switch_request.pending &&
+           currency_service_now_ms() - g_currency_switch_request.request_tick_ms >= CURRENCY_SWITCH_TIMEOUT_MS;
 }
 
 static void currency_service_copy_code(char dst[4], const char src[4])
@@ -43,7 +41,6 @@ static void currency_service_copy_code(char dst[4], const char src[4])
 
 bool currency_service_request_switch(uint8_t target_index, const char target_code[4])
 {
-    currency_service_expire_request();
     if (g_currency_switch_request.pending || !target_code || target_code[0] == '\0') return false;
 
     memset(&g_currency_switch_request, 0, sizeof(g_currency_switch_request));
@@ -59,7 +56,7 @@ bool currency_service_request_switch(uint8_t target_index, const char target_cod
 
 bool currency_service_take_switch_result(uint8_t status, currency_switch_result_t* result)
 {
-    currency_service_expire_request();
+    if (currency_service_request_expired()) return false;
     if (!g_currency_switch_request.pending || !result) return false;
     if (status != 0x01 && status != 0x02) return false;
 
@@ -74,8 +71,22 @@ bool currency_service_take_switch_result(uint8_t status, currency_switch_result_
     return true;
 }
 
+bool currency_service_take_switch_timeout(currency_switch_result_t* result)
+{
+    if (!result || !currency_service_request_expired()) return false;
+
+    memset(result, 0, sizeof(*result));
+    result->success = false;
+    result->target_index = g_currency_switch_request.target_index;
+    currency_service_copy_code(result->target_code, g_currency_switch_request.target_code);
+    currency_service_copy_code(result->previous_code, g_currency_switch_request.previous_code);
+    result->previous_currency = g_currency_switch_request.previous_currency;
+    result->previous_index = g_currency_switch_request.previous_index;
+    memset(&g_currency_switch_request, 0, sizeof(g_currency_switch_request));
+    return true;
+}
+
 bool currency_service_switch_pending(void)
 {
-    currency_service_expire_request();
     return g_currency_switch_request.pending;
 }

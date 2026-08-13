@@ -29,7 +29,6 @@ static bool serial_number_service_request_expired(void)
 
 bool serial_number_service_request(bool target_enabled, uint8_t target_level)
 {
-    if (serial_number_service_request_expired()) serial_number_service_cancel_request();
     if (g_serial_number_request_pending) return false;
 
     g_serial_number_request_pending = true;
@@ -49,10 +48,10 @@ void serial_number_service_cancel_request(void)
 
 bool serial_number_service_take_reply(uint8_t level, uint8_t status, serial_number_setting_result_t *result)
 {
-    if (serial_number_service_request_expired()) serial_number_service_cancel_request();
+    if (serial_number_service_request_expired()) return false;
     if (!g_serial_number_request_pending || result == NULL) return false;
     if (status != 0x01 && status != 0x02) return false;
-    if (level != g_serial_number_request_target_level) return false;
+    if (status == 0x01 && level != g_serial_number_request_target_level) return false;
 
     result->success = (status == 0x01);
     result->target_enabled = g_serial_number_request_target_enabled;
@@ -61,5 +60,19 @@ bool serial_number_service_take_reply(uint8_t level, uint8_t status, serial_numb
     result->previous_level = g_serial_number_request_previous_level;
     result->response_level = level;
     g_serial_number_request_pending = false;
+    return true;
+}
+
+bool serial_number_service_take_timeout(serial_number_setting_result_t *result)
+{
+    if (!result || !serial_number_service_request_expired()) return false;
+
+    result->success = false;
+    result->target_enabled = g_serial_number_request_target_enabled;
+    result->target_level = g_serial_number_request_target_level;
+    result->previous_enabled = g_serial_number_request_previous_enabled;
+    result->previous_level = g_serial_number_request_previous_level;
+    result->response_level = g_serial_number_request_target_level;
+    serial_number_service_cancel_request();
     return true;
 }

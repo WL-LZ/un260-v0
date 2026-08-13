@@ -14,6 +14,7 @@
 #include "un260/lv_components/lv_print_toast.h"
 #include "un260/lv_components/lv_qr_popup.h"
 #include "un260/lv_components/lv_fault_popup.h"
+#include "un260/lv_components/lv_components.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/ui_qr_data.h"
 #include "un260/lv_core/page_01_main.h"
@@ -21,6 +22,14 @@
 #include "un260/app_service/setting_service.h"
 #include "un260/machine_state/machine_state.h"
 #include "un260/currency/currency_state.h"
+#include "un260/currency/currency_service.h"
+#include "un260/serial_number/serial_number_state.h"
+#include "un260/serial_number/serial_number_service.h"
+#include "un260/cfd/cfd_service.h"
+#include "un260/lv_core/page_22_set_double_note.h"
+#include "un260/lv_core/page_23_set_flap.h"
+#include "un260/lv_core/page_24_set_reject_pocket.h"
+#include "un260/lv_core/page_25_set_serial_number.h"
 
 lv_timer_t* page_03_batch_num_del_timer = NULL;
 lv_timer_t* page_05_password_del_timer = NULL;
@@ -283,6 +292,10 @@ static void page_setting_req_timeout_notify(void)
 void page_setting_req_poll(void)
 {
     uint32_t now_tick = lv_tick_get();
+    setting_batch_result_t batch_result;
+    setting_value_result_t value_result;
+    serial_number_setting_result_t serial_result;
+    currency_switch_result_t currency_result;
 
     if (setting_service_mode_is_pending() &&
         (now_tick - setting_service_mode_tick()) >= PAGE_01_MODE_REQ_TIMEOUT_MS) {
@@ -317,6 +330,47 @@ void page_setting_req_poll(void)
     if (setting_service_beep_is_pending() &&
         (now_tick - setting_service_beep_tick()) >= PAGE_01_MODE_REQ_TIMEOUT_MS) {
         setting_service_beep_finish();
+        page_setting_req_timeout_notify();
+    }
+
+    if (setting_service_batch_take_timeout(&batch_result)) {
+        if (batch_result.type == SETTING_BATCH_REQUEST_NUMBER) {
+            page_03_batch_set_result(false, &batch_result);
+        } else if (batch_result.type == SETTING_BATCH_REQUEST_SWITCH) {
+            batch_switch_on_0x06_result(false, &batch_result);
+        }
+        page_setting_req_timeout_notify();
+    }
+
+    if (setting_service_take_double_note_level_timeout(&value_result)) {
+        machine_state_confirm_double_note_level(value_result.previous);
+        ui_page_22_set_double_note_on_reply(&value_result);
+        page_setting_req_timeout_notify();
+    }
+
+    if (setting_service_take_flap_position_timeout(&value_result)) {
+        machine_state_confirm_flap_position(value_result.previous);
+        ui_page_23_set_flap_on_reply(&value_result);
+        page_setting_req_timeout_notify();
+    }
+
+    if (setting_service_take_reject_pocket_max_timeout(&value_result)) {
+        machine_state_confirm_reject_pocket_max(value_result.previous);
+        ui_page_24_set_reject_pocket_on_reply(&value_result);
+        page_setting_req_timeout_notify();
+    }
+
+    if (serial_number_service_take_timeout(&serial_result)) {
+        serial_number_state_confirm(serial_result.previous_enabled, serial_result.previous_level);
+        ui_page_25_set_serial_number_on_reply(serial_result.response_level, 0x02);
+        page_setting_req_timeout_notify();
+    }
+
+    if (currency_service_take_switch_timeout(&currency_result)) {
+        page_07_curr_apply_switch_result(&currency_result);
+    }
+
+    if (cfd_service_take_query_timeout()) {
         page_setting_req_timeout_notify();
     }
 }

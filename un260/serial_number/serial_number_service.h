@@ -16,5 +16,6 @@ typedef struct {
 bool serial_number_service_request(bool target_enabled, uint8_t target_level);
 void serial_number_service_cancel_request(void);
 bool serial_number_service_take_reply(uint8_t level, uint8_t status, serial_number_setting_result_t *result);
+bool serial_number_service_take_timeout(serial_number_setting_result_t *result);
 
 #endif

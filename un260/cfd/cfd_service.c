@@ -41,7 +41,6 @@ static void cfd_service_copy_currency(char dst[4], const char *src)
 bool cfd_service_request_query(const char currency[4])
 {
     if (!currency || currency[0] == '\0') return false;
-    if (cfd_service_query_expired()) cfd_service_cancel_query();
     if (g_cfd_query_pending) return false;
 
     cfd_service_copy_currency(g_cfd_query_currency, currency);
@@ -59,9 +58,16 @@ void cfd_service_cancel_query(void)
 
 bool cfd_service_take_query_result(const char currency[4])
 {
-    if (cfd_service_query_expired()) cfd_service_cancel_query();
+    if (cfd_service_query_expired()) return false;
     if (!g_cfd_query_pending) return false;
     if (!currency || strncmp(currency, g_cfd_query_currency, 3) != 0) return false;
+    cfd_service_cancel_query();
+    return true;
+}
+
+bool cfd_service_take_query_timeout(void)
+{
+    if (!cfd_service_query_expired()) return false;
     cfd_service_cancel_query();
     return true;
 }
