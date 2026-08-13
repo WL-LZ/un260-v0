@@ -55,19 +55,6 @@ static lv_color_t cfd_level_color(uint8_t level)
     return lv_color_hex(colors[level - 1]);
 }
 
-static void cfd_set_currency_from_current(void)
-{
-    char curr_code[4];
-    cfd_state_value_t config;
-
-    currency_state_get_active_code(curr_code);
-    if (curr_code[0] == '\0') return;
-    cfd_state_get(&config);
-    memcpy(config.currency, curr_code, sizeof(config.currency));
-    config.currency[3] = '\0';
-    cfd_state_confirm(&config);
-}
-
 static void cfd_refresh_view(void)
 {
     cfd_state_value_t config;
@@ -134,15 +121,14 @@ static void cfd_refresh_view(void)
 bool ui_page_27_set_cfd_level_query(void)
 {
     uint8_t payload[4] = { 0x01, 0, 0, 0 };
-    cfd_state_value_t config;
+    char query_currency[4];
     bool sent;
 
-    cfd_set_currency_from_current();
-    cfd_state_get(&config);
-    if (!cfd_service_request_query(config.currency)) return false;
-    payload[1] = (uint8_t)config.currency[0];
-    payload[2] = (uint8_t)config.currency[1];
-    payload[3] = (uint8_t)config.currency[2];
+    currency_state_get_active_code(query_currency);
+    if (!cfd_service_request_query(query_currency)) return false;
+    payload[1] = (uint8_t)query_currency[0];
+    payload[2] = (uint8_t)query_currency[1];
+    payload[3] = (uint8_t)query_currency[2];
 
     sent = settings_detail_send_command(0x45, payload, sizeof(payload));
     if (!sent) cfd_service_cancel_query();
@@ -385,7 +371,6 @@ void ui_page_27_set_cfd_level_create(lv_obj_t* parent)
 
     if (cfd_level_page) return;
 
-    cfd_set_currency_from_current();
     selected_scene = 0;
 
     cfd_level_page = settings_detail_create_page(parent,
@@ -425,15 +410,17 @@ void ui_page_27_set_cfd_level_on_info(const uint8_t* data, uint16_t len)
 {
     uint16_t pos = 4;
     cfd_state_value_t config;
+    char response_currency[4];
 
     if (!data || len < 16) return;
-    if (!cfd_service_take_query_result()) return;
+    response_currency[0] = (char)data[0];
+    response_currency[1] = (char)data[1];
+    response_currency[2] = (char)data[2];
+    response_currency[3] = '\0';
+    if (!cfd_service_take_query_result(response_currency)) return;
 
     cfd_state_get(&config);
-    config.currency[0] = (char)data[0];
-    config.currency[1] = (char)data[1];
-    config.currency[2] = (char)data[2];
-    config.currency[3] = '\0';
+    memcpy(config.currency, response_currency, sizeof(config.currency));
     if (cfd_level_page && data[3] >= 1 && data[3] <= CFD_SCENE_COUNT) {
         selected_scene = (uint8_t)(data[3] - 1);
     }

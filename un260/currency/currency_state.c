@@ -85,8 +85,11 @@ curr_item_t currency_state_code_to_item(const char* code)
 
 void currency_state_confirm_active_code(const char* code)
 {
+    curr_item_t currency;
     if (!code) return;
     currency_state_copy_code(g_currency_state.active_code, code);
+    currency = currency_state_code_to_item(code);
+    if (currency < CURR_COUNT) g_currency_state.active_currency = currency;
 }
 
 void currency_state_confirm_active_currency(curr_item_t currency)

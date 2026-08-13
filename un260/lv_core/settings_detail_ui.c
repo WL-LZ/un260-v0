@@ -368,7 +368,11 @@ bool settings_detail_send_command(uint8_t cmd_g, const uint8_t* cmd_s,
         return false;
     }
 
-    send_command(fd4, cmd_g, cmd_s, cmd_s_len);
+    if (send_command(fd4, cmd_g, cmd_s, cmd_s_len) < 0) {
+        page_06_settings_set_status(ui_text_get(UI_TEXT_SETTINGS_UART_NOT_READY),
+                                    lv_color_hex(0xC03A2B));
+        return false;
+    }
     return true;
 }
 
