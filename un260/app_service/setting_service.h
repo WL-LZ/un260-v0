@@ -28,41 +28,46 @@ typedef struct {
     bool timeout;
 } setting_value_result_t;
 
-bool setting_service_request_mode(uint8_t target, uint32_t request_tick);
+typedef enum {
+    SETTING_REQUEST_TIMEOUT_NONE = 0,
+    SETTING_REQUEST_TIMEOUT_MODE = 1U << 0,
+    SETTING_REQUEST_TIMEOUT_ADD = 1U << 1,
+    SETTING_REQUEST_TIMEOUT_FO_MODE = 1U << 2,
+    SETTING_REQUEST_TIMEOUT_SPEED = 1U << 3,
+    SETTING_REQUEST_TIMEOUT_WORK_MODE = 1U << 4,
+    SETTING_REQUEST_TIMEOUT_BEEP = 1U << 5,
+} setting_request_timeout_t;
+
+bool setting_service_request_mode(uint8_t target);
 bool setting_service_mode_is_pending(void);
 uint8_t setting_service_mode_target(void);
-uint32_t setting_service_mode_tick(void);
 void setting_service_mode_finish(void);
 
-bool setting_service_request_add(bool target, uint32_t request_tick);
+bool setting_service_request_add(bool target);
 bool setting_service_add_is_pending(void);
 bool setting_service_add_target(void);
-uint32_t setting_service_add_tick(void);
 void setting_service_add_finish(void);
 
-bool setting_service_request_fo_mode(uint8_t target, uint32_t request_tick);
+bool setting_service_request_fo_mode(uint8_t target);
 bool setting_service_fo_mode_is_pending(void);
 uint8_t setting_service_fo_mode_target(void);
-uint32_t setting_service_fo_mode_tick(void);
 void setting_service_fo_mode_finish(void);
 
-bool setting_service_request_speed(uint8_t target, uint32_t request_tick);
+bool setting_service_request_speed(uint8_t target);
 bool setting_service_speed_is_pending(void);
 uint8_t setting_service_speed_target(void);
-uint32_t setting_service_speed_tick(void);
 void setting_service_speed_finish(void);
 
-bool setting_service_request_work_mode(uint8_t target, uint32_t request_tick);
+bool setting_service_request_work_mode(uint8_t target);
 bool setting_service_work_mode_is_pending(void);
 uint8_t setting_service_work_mode_target(void);
-uint32_t setting_service_work_mode_tick(void);
 void setting_service_work_mode_finish(void);
 
-bool setting_service_request_beep(bool target, uint32_t request_tick);
+bool setting_service_request_beep(bool target);
 bool setting_service_beep_is_pending(void);
 bool setting_service_beep_target(void);
-uint32_t setting_service_beep_tick(void);
 void setting_service_beep_finish(void);
+uint32_t setting_service_take_basic_timeouts(void);
 
 bool setting_service_request_batch_number(uint8_t num, bool previous_enable, uint8_t previous_num);
 bool setting_service_request_batch_switch(bool target_enable, uint8_t sent_num, bool previous_enable, uint8_t previous_num);

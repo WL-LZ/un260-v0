@@ -36,8 +36,6 @@ lv_timer_t* page_05_password_del_timer = NULL;
 static lv_obj_t* g_batch_tip_label = NULL;
 
 #define PAGE_01_DETAIL_TAP_THRESHOLD     10
-#define PAGE_01_MODE_REQ_TIMEOUT_MS      800
-
 // 声明外部变量
 
 bool pcs_batch_num_lock_200 = false;
@@ -267,20 +265,7 @@ void page_01_start_btn_event_cb(lv_event_t* e) // 开始仿真
 
 static bool page_01_mode_req_busy(void) //判断模式切换是否仍在等待回包
 {
-    uint32_t now_tick = lv_tick_get();
-
-    if (!setting_service_mode_is_pending()) {
-        return false;
-    }
-
-    // 防止某次回包丢失导致请求一直锁死，超时后允许继续下发
-    if ((now_tick - setting_service_mode_tick()) >= PAGE_01_MODE_REQ_TIMEOUT_MS) {
-        setting_service_mode_finish();
-        show_communication_error_popup();
-        return false;
-    }
-
-    return true;
+    return setting_service_mode_is_pending();
 }
 
 static void page_setting_req_timeout_notify(void)
@@ -291,47 +276,14 @@ static void page_setting_req_timeout_notify(void)
 
 void page_setting_req_poll(void)
 {
-    uint32_t now_tick = lv_tick_get();
+    uint32_t basic_timeouts;
     setting_batch_result_t batch_result;
     setting_value_result_t value_result;
     serial_number_setting_result_t serial_result;
     currency_switch_result_t currency_result;
 
-    if (setting_service_mode_is_pending() &&
-        (now_tick - setting_service_mode_tick()) >= PAGE_01_MODE_REQ_TIMEOUT_MS) {
-        setting_service_mode_finish();
-        page_setting_req_timeout_notify();
-    }
-
-    if (setting_service_add_is_pending() &&
-        (now_tick - setting_service_add_tick()) >= PAGE_01_MODE_REQ_TIMEOUT_MS) {
-        setting_service_add_finish();
-        page_setting_req_timeout_notify();
-    }
-
-    if (setting_service_work_mode_is_pending() &&
-        (now_tick - setting_service_work_mode_tick()) >= PAGE_01_MODE_REQ_TIMEOUT_MS) {
-        setting_service_work_mode_finish();
-        page_setting_req_timeout_notify();
-    }
-
-    if (setting_service_fo_mode_is_pending() &&
-        (now_tick - setting_service_fo_mode_tick()) >= PAGE_01_MODE_REQ_TIMEOUT_MS) {
-        setting_service_fo_mode_finish();
-        page_setting_req_timeout_notify();
-    }
-
-    if (setting_service_speed_is_pending() &&
-        (now_tick - setting_service_speed_tick()) >= PAGE_01_MODE_REQ_TIMEOUT_MS) {
-        setting_service_speed_finish();
-        page_setting_req_timeout_notify();
-    }
-
-    if (setting_service_beep_is_pending() &&
-        (now_tick - setting_service_beep_tick()) >= PAGE_01_MODE_REQ_TIMEOUT_MS) {
-        setting_service_beep_finish();
-        page_setting_req_timeout_notify();
-    }
+    basic_timeouts = setting_service_take_basic_timeouts();
+    if (basic_timeouts != SETTING_REQUEST_TIMEOUT_NONE) page_setting_req_timeout_notify();
 
     if (setting_service_batch_take_timeout(&batch_result)) {
         if (batch_result.type == SETTING_BATCH_REQUEST_NUMBER) {
@@ -394,7 +346,7 @@ static void page_01_mode_send_next(bool show_icon_feedback) //发送主界面模
     else
         next_mode = MODE_MDC;
 
-    setting_service_request_mode(next_mode, lv_tick_get());
+    setting_service_request_mode(next_mode);
 }
 
 void page_01_mode_btn_event_cb(lv_event_t* e)
@@ -416,7 +368,7 @@ void page_01_add_btn_event_cb(lv_event_t* e) //切换主界面底部ADD开关
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
 
     target = !machine_state_add_enabled();
-    if (!setting_service_request_add(target, lv_tick_get())) return;
+    if (!setting_service_request_add(target)) return;
 }
 
 void page_01_work_btn_event_cb(lv_event_t* e) //切换主界面底部工作模式
@@ -426,7 +378,7 @@ void page_01_work_btn_event_cb(lv_event_t* e) //切换主界面底部工作模�
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
 
     target_mode = machine_state_work_mode() ? 0 : 1;
-    if (!setting_service_request_work_mode(target_mode, lv_tick_get())) return;
+    if (!setting_service_request_work_mode(target_mode)) return;
 }
 
 void page_01_fo_btn_event_cb(lv_event_t* e) //切换主界面底部F/O开关
@@ -437,7 +389,7 @@ void page_01_fo_btn_event_cb(lv_event_t* e) //切换主界面底部F/O开关
 
     target_mode = (uint8_t)((machine_state_fo_mode() + 1) % 4);
     /* 协议第31条：0x00=OFF, 0x01=Face, 0x02=ORT, 0x03=Face&ORT */
-    if (!setting_service_request_fo_mode(target_mode, lv_tick_get())) return;
+    if (!setting_service_request_fo_mode(target_mode)) return;
 }
 
 void page_01_bottom_batch_btn_event_cb(lv_event_t* e) //进入主界面底部C区Batch设置页
@@ -454,7 +406,7 @@ void page_01_bottom_speed_btn_event_cb(lv_event_t* e) //切换主界面底部C�
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
 
     target_speed = (uint8_t)((machine_state_speed() + 1) % 3);
-    if (!setting_service_request_speed(target_speed, lv_tick_get())) return;
+    if (!setting_service_request_speed(target_speed)) return;
 }
 
 
@@ -967,7 +919,7 @@ void page_03_cfd_mode_event_cb(lv_event_t* e)
         return;
     }
 
-    if (!setting_service_request_beep(target, lv_tick_get())) return;
+    if (!setting_service_request_beep(target)) return;
 #if LV_DEBUG
     printf("BEEP mode request -> %s\n", target ? "ON" : "OFF");
 #endif
@@ -983,7 +935,7 @@ void page_03_speed_mode_event_cb(lv_event_t* e)
     if (speed_code >= SPEED_MODE || speed_code == machine_state_speed()) return;
     /* ================== 0x16 设置清分机点钞速度 ================== */
     /* 协议定义：0x01=1000张/分钟, 0x02=800张/分钟, 0x03=600张/分钟 */
-    if (!setting_service_request_speed(speed_code, lv_tick_get())) return;
+    if (!setting_service_request_speed(speed_code)) return;
 #if LV_DEBUG
     printf("速度模式请求切换到： %u\n", speed_code);
 #endif // LV_DEBUG
@@ -1000,7 +952,7 @@ void page_03_add_mode_event_cb(lv_event_t* e)
     page_03_menu_function_feedback(2, target);
 
     if (target == machine_state_add_enabled()) return;
-    if (!setting_service_request_add(target, lv_tick_get())) return;
+    if (!setting_service_request_add(target)) return;
 #if LV_DEBUG
     printf("ADD模式请求切换为：%s\n", target ? "ON" : "OFF");
 #endif // LV_DEBUG
@@ -1016,7 +968,7 @@ void page_03_fo_mode_event_cb(lv_event_t* e)
     if (fo_code >= FO_MODE || fo_code == machine_state_fo_mode()) return;
     if (fo_code <= 3) {
         /* 协议第31条：菜单页直接发送 0~3 编码 */
-        if (!setting_service_request_fo_mode(fo_code, lv_tick_get())) return;
+        if (!setting_service_request_fo_mode(fo_code)) return;
     } 
 #if LV_DEBUG
     char* fo[] = {"OFF","F","O","F/O"};
@@ -1035,7 +987,7 @@ void page_03_work_mode_event_cb(lv_event_t* e)
     uint8_t word_code = atoi(word_str);
     page_03_menu_function_feedback(4, word_code);
     if (word_code >= WORK_MODE || word_code == machine_state_work_mode()) return;
-    if (!setting_service_request_work_mode(word_code, lv_tick_get())) return;
+    if (!setting_service_request_work_mode(word_code)) return;
 #if LV_DEBUG
     printf("工作模式请求切换为：%s\n", (word_code > 0) ? "MANUAL" : "AUTO");
 #endif // LV_DEBUG
