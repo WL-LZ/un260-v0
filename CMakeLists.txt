@@ -39,6 +39,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/app_service/setting_service.c
     un260/app_service/app_clock.c
     un260/app_service/app_boot_runtime.c
+    un260/app_service/app_command_runtime.c
     un260/app_service/app_counting_runtime.c
     un260/app_service/app_currency_runtime.c
     un260/app_service/app_protocol_runtime.c
