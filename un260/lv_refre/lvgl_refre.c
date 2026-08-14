@@ -1,7 +1,6 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <fcntl.h>
 #include <string.h>
 #include "lvgl/lvgl.h"
 #include "un260/lv_refre/lvgl_refre.h"
@@ -10,6 +9,7 @@
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/user_cfg.h"
+#include "un260/lv_system/ui_state_store.h"
 #include "un260/machine_state/machine_state.h"
 #include "un260/currency/currency_state.h"
 #include "un260/currency/currency_service.h"
@@ -21,9 +21,6 @@
 #include "un260/lv_components/smart_island.h"
 #include "un260/lv_resources/lv_img_init.h"
 #include "lv_port_indev.h"
-#include <errno.h>
-#include <unistd.h>
-#include <sys/stat.h>
 
 
 void ui_switch_to(page_id_t page)
@@ -818,41 +815,6 @@ typedef struct {
     lv_obj_t* fav_icon;
     int abs_idx;
 } curr_grid_item_t;
-#define UI_STATE_STORE_PATH "/etc/ui_state/ui_state.cfg"  //添加掉电保存
-#define UI_STATE_MAGIC      0x55495354U   /* 'UIST' */
-#define UI_STATE_VERSION    1
-
-typedef struct {
-    int view_mode;                      /* 0=card 1=grid */
-    int fav_only;                       /* 0=off 1=on */
-    int selected_abs_idx;               
-    int fav_count;
-    char fav_codes[CURR_MAX_ITEMS][4];
-} page07_state_t;
-
-typedef struct {
-    int reserved05_enable;              
-    int reserved06_enable;             
-} common_page_state_t;
-
-typedef struct {
-    int detail_section;
-} page01_state_t;
-
-typedef struct {
-    int reserved18_enable;
-} page18_state_t;
-
-typedef struct {
-    unsigned int magic;
-    unsigned int version;
-    page01_state_t page01;
-    page07_state_t page07;
-    common_page_state_t page05;
-    common_page_state_t page06;
-    page18_state_t page18;
-} ui_persist_state_t;
-
 static ui_persist_state_t g_ui_state;
 static bool g_ui_state_loaded = false;
 
@@ -906,7 +868,6 @@ static lv_obj_t* g_curr_grid_scroll = NULL;
 static lv_obj_t* g_curr_empty_label = NULL;
 
 static void curr_refresh_right_views(void);
-static int ui_state_ensure_store_dir(void);
 static void ui_state_set_defaults(void);
 static void ui_state_load_from_file(void);
 static void ui_state_save_to_file(void);
@@ -940,8 +901,8 @@ static int curr_find_abs_idx_by_code(const char* code);
 static void ui_state_set_defaults(void) //默认掉电配置
 {
     memset(&g_ui_state, 0, sizeof(g_ui_state));
-    g_ui_state.magic = UI_STATE_MAGIC;
-    g_ui_state.version = UI_STATE_VERSION;
+    g_ui_state.magic = UI_STATE_STORE_MAGIC;
+    g_ui_state.version = UI_STATE_STORE_VERSION;
 
     g_ui_state.page01.detail_section = PAGE_01_DETAIL_SECTION_A;
     g_ui_state.page07.view_mode = CURR_VIEW_MODE_CARD;
@@ -1039,37 +1000,6 @@ static void page18_state_apply_to_runtime(void)
 {
     smart_island_set_pure_count_enabled(g_ui_state.page18.reserved18_enable != 0);
 }
-static int ui_state_ensure_store_dir(void)
-{
-    const char *slash;
-    char dir_path[128];
-    size_t dir_len;
-
-    slash = strrchr(UI_STATE_STORE_PATH, '/');
-    if (slash == NULL) return -1;
-
-    dir_len = (size_t)(slash - UI_STATE_STORE_PATH);
-    if (dir_len == 0 || dir_len >= sizeof(dir_path)) return -1;
-
-    memcpy(dir_path, UI_STATE_STORE_PATH, dir_len);
-    dir_path[dir_len] = '\0';
-
-    if (access(dir_path, F_OK) == 0) {
-        return 0;
-    }
-
-    if (mkdir(dir_path, 0775) == 0) {
-#if LV_DEBUG
-        printf("[ui_state] mkdir ok: %s\n", dir_path);
-#endif
-        return 0;
-    }
-#if LV_DEBUG
-    printf("[ui_state] mkdir failed: %s err=%s\n", dir_path, strerror(errno));
-#endif
-    return -1;
-}
-
 static int curr_abs_i32(int v)
 {
     return (v >= 0) ? v : -v;
@@ -1094,66 +1024,8 @@ static bool curr_has_currency_code(const char* code)
 
 static void ui_state_load_from_file(void)
 {
-    FILE *fp;
-    char line[128];
-
     ui_state_set_defaults();
-
-    fp = fopen(UI_STATE_STORE_PATH, "r");
-#if LV_DEBUG
-    printf("[ui_state] load from: %s\n", UI_STATE_STORE_PATH);
-#endif
-    if (fp == NULL) {
-#if LV_DEBUG
-        printf("[ui_state] load skipped, fopen failed: %s\n", strerror(errno));
-#endif
-        g_ui_state_loaded = true;
-        return;
-    }
-
-    while (fgets(line, sizeof(line), fp) != NULL) {
-        if (strncmp(line, "magic=", 6) == 0) {
-            g_ui_state.magic = (unsigned int)strtoul(line + 6, NULL, 0);
-        } else if (strncmp(line, "version=", 8) == 0) {
-            g_ui_state.version = (unsigned int)strtoul(line + 8, NULL, 0);
-        } else if (strncmp(line, "p01_detail_section=", 19) == 0) {
-            g_ui_state.page01.detail_section = atoi(line + 19);
-        } else if (strncmp(line, "p07_view_mode=", 14) == 0) {
-            g_ui_state.page07.view_mode = atoi(line + 14);
-        } else if (strncmp(line, "p07_fav_only=", 13) == 0) {
-            g_ui_state.page07.fav_only = atoi(line + 13);
-        } else if (strncmp(line, "p07_selected_abs_idx=", 21) == 0) {
-            g_ui_state.page07.selected_abs_idx = atoi(line + 21);
-        } else if (strncmp(line, "p07_fav_count=", 14) == 0) {
-            g_ui_state.page07.fav_count = atoi(line + 14);
-            if (g_ui_state.page07.fav_count < 0) g_ui_state.page07.fav_count = 0;
-            if (g_ui_state.page07.fav_count > CURR_MAX_ITEMS) g_ui_state.page07.fav_count = CURR_MAX_ITEMS;
-        } else if (strncmp(line, "p07_fav", 7) == 0) {
-            int idx = -1;
-            char code[4] = {0};
-            if (sscanf(line, "p07_fav%d=%3[A-Z]", &idx, code) == 2) {
-                if (idx >= 0 && idx < CURR_MAX_ITEMS && curr_has_currency_code(code)) {
-                    memcpy(g_ui_state.page07.fav_codes[idx], code, 4);
-                }
-            }
-        } else if (strncmp(line, "p05_reserved=", 13) == 0) {
-            g_ui_state.page05.reserved05_enable = atoi(line + 13);
-        } else if (strncmp(line, "p06_reserved=", 13) == 0) {
-            g_ui_state.page06.reserved06_enable = atoi(line + 13);
-        } else if (strncmp(line, "p18_reserved=", 13) == 0) {
-            g_ui_state.page18.reserved18_enable = atoi(line + 13);
-        }
-    }
-
-    fclose(fp);
-
-    if (g_ui_state.magic != UI_STATE_MAGIC) {
-#if LV_DEBUG
-        printf("[ui_state] invalid magic, fallback defaults\n");
-#endif
-        ui_state_set_defaults();
-    }
-
+    (void)ui_state_store_load(&g_ui_state);
     g_ui_state_loaded = true;
 }
 
@@ -1220,86 +1092,14 @@ void ui_state_save_page01_detail_section(void)
 
 static void ui_state_save_to_file(void)
 {
-    char tmp_path[128];
-    int fd;
-    FILE *fp;
-    int dir_fd;
-    const char *slash;
-    char dir_path[128];
-    int i;
-
     page01_state_pull_from_runtime();
     page07_state_pull_from_runtime();
     page05_state_pull_from_runtime();
     page06_state_pull_from_runtime();
     page18_state_pull_from_runtime();
-
-    if (ui_state_ensure_store_dir() != 0) {
-        printf("[ui_state] save aborted, store dir not ready\n");
-        return;
-    }
-
-    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", UI_STATE_STORE_PATH);
-
-#if LV_DEBUG
-    printf("[ui_state] save to: %s\n", UI_STATE_STORE_PATH);
-#endif
-
-    fd = open(tmp_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (fd < 0) {
-        printf("[ui_state] open tmp file failed: %s\n", strerror(errno));
-        return;
-    }
-
-    fp = fdopen(fd, "w");
-    if (fp == NULL) {
-        printf("[ui_state] fdopen failed: %s\n", strerror(errno));
-        close(fd);
-        return;
-    }
-
-    fprintf(fp, "magic=%u\n", g_ui_state.magic);
-    fprintf(fp, "version=%u\n", g_ui_state.version);
-    fprintf(fp, "p01_detail_section=%d\n", g_ui_state.page01.detail_section);
-
-    fprintf(fp, "p07_view_mode=%d\n", g_ui_state.page07.view_mode);
-    fprintf(fp, "p07_fav_only=%d\n", g_ui_state.page07.fav_only);
-    fprintf(fp, "p07_selected_abs_idx=%d\n", g_ui_state.page07.selected_abs_idx);
-    fprintf(fp, "p07_fav_count=%d\n", g_ui_state.page07.fav_count);
-
-    for (i = 0; i < g_ui_state.page07.fav_count && i < CURR_MAX_ITEMS; i++) {
-        fprintf(fp, "p07_fav%d=%s\n", i, g_ui_state.page07.fav_codes[i]);
-    }
-
-    fprintf(fp, "p05_reserved=%d\n", g_ui_state.page05.reserved05_enable);
-    fprintf(fp, "p06_reserved=%d\n", g_ui_state.page06.reserved06_enable);
-    fprintf(fp, "p18_reserved=%d\n", g_ui_state.page18.reserved18_enable);
-
-    fflush(fp);
-    fsync(fd);
-    fclose(fp);
-
-    if (rename(tmp_path, UI_STATE_STORE_PATH) != 0) {
-        printf("[ui_state] rename failed: %s\n", strerror(errno));
-        unlink(tmp_path);
-        return;
-    }
-
-    slash = strrchr(UI_STATE_STORE_PATH, '/');
-    if (slash != NULL) {
-        size_t dir_len = (size_t)(slash - UI_STATE_STORE_PATH);
-        if (dir_len < sizeof(dir_path)) {
-            memcpy(dir_path, UI_STATE_STORE_PATH, dir_len);
-            dir_path[dir_len] = '\0';
-
-            dir_fd = open(dir_path, O_RDONLY | O_DIRECTORY);
-            if (dir_fd >= 0) {
-                fsync(dir_fd);
-                close(dir_fd);
-            }
-        }
-    }
+    (void)ui_state_store_save(&g_ui_state);
 }
+
 static bool curr_is_favorite_code(const char* code)
 {
     for (int i = 0; i < g_curr_fav_cnt; i++) {

@@ -123,6 +123,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_refre/lvgl_refre.c
     un260/lv_resources/lv_img_init.c
     un260/lv_system/platform_app.c
+    un260/lv_system/ui_state_store.c
     un260/lv_system/lv_str.c
     un260/lv_system/ui_lang.c
     un260/lv_system/ui_text_page.c
