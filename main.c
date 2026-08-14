@@ -25,6 +25,7 @@
 #include "un260/protocol/protocol_rx_service.h"
 #include "un260/protocol/setting_reply_dispatch.h"
 #include "un260/protocol/startup_sync_reply.h"
+#include "un260/protocol/auxiliary_reply.h"
 #include "un260/boot/boot_service.h"
 #include "un260/boot/boot_reply.h"
 #include "un260/device_info/device_reply.h"
@@ -660,6 +661,39 @@ static void pccmd_handle_boot_and_selftest(uint8_t cmd, const uint8_t *buf, uint
     }
 }
 
+static void pccmd_handle_auxiliary_reply(uint8_t cmd, const uint8_t *buf, uint8_t len)
+{
+    auxiliary_reply_result_t reply = auxiliary_reply_dispatch(cmd, buf, len);
+
+    switch (reply.kind) {
+    case AUXILIARY_REPLY_DISPLAY_MAIN:
+        uart_printf(fd6, "0x40 switch to main SUCCESS\n");
+        break;
+    case AUXILIARY_REPLY_DISPLAY_DETAIL:
+        uart_printf(fd6, "0x40 switch to detail SUCCESS\n");
+        break;
+    case AUXILIARY_REPLY_DISPLAY_UNKNOWN:
+        uart_printf(fd6, "0x40 unknown result=0x%02X\n", reply.value);
+        break;
+    case AUXILIARY_REPLY_PRINT_DETAIL:
+        uart_printf(fd6, "0x3C print detail frame\n");
+        break;
+    case AUXILIARY_REPLY_PRINT_DONE:
+        uart_printf(fd6, "0x3C print done\n");
+        break;
+    case AUXILIARY_REPLY_PRINT_UNKNOWN:
+        uart_printf(fd6, "0x3C unknown len=%d\n", reply.frame_len);
+        break;
+    case AUXILIARY_REPLY_CLEAR_DATA_ACK:
+        uart_printf(fd6, "0x3B clear data ack: res=0x%02X\n", reply.value);
+        break;
+    case AUXILIARY_REPLY_INVALID:
+    default:
+        uart_printf(fd6, "0x%02X invalid len=%d\n", cmd, len);
+        break;
+    }
+}
+
 void PCCmdHandle(void)
 {
     protocol_frame_t frame;
@@ -811,26 +845,11 @@ void PCCmdHandle(void)
             pccmd_handle_basic_setting(cmd, buf, len);
             break;
 
-        /* ================== 0x40 外显界面切换 ================== */
         case 0x40:
-        {
-            if (len < 6) {
-                uart_printf(fd6, "0x40: frame too short (%d)\n", len);
-                break;
-            }
-
-            uint8_t val = buf[4];
-
-            if (val == 0x00) {
-                uart_printf(fd6, "0x40 switch to main SUCCESS\n");
-            } else if (val == 0x01) {
-                uart_printf(fd6, "0x40 switch to detail SUCCESS\n");
-            } else {
-                uart_printf(fd6, "0x40 unknown result=0x%02X\n", val);
-            }
-
+        case 0x3C:
+        case 0x3B:
+            pccmd_handle_auxiliary_reply(cmd, buf, len);
             break;
-        }
 
         case 0x38:
             pccmd_handle_basic_setting(cmd, buf, len);
@@ -845,32 +864,6 @@ void PCCmdHandle(void)
                 page_06_data_collection_refresh();
             }
             break;
-                /* ================== 0x3C 打印状态 ================== */
-        case 0x3C:
-        {
-            if (len == 0x10) {
-                uart_printf(fd6, "0x3C print detail frame\n");
-            }
-            else if (len == 0x08) {
-                uart_printf(fd6, "0x3C print done\n");
-            }
-            else {
-                uart_printf(fd6, "0x3C unknown len=%d\n", len);
-            }
-
-            break;
-        }
-        /* ================== 0x3B 清除数据应答 ================== */
-        case 0x3B:
-        {
-            if (len < 6) {
-                uart_printf(fd6, "0x3B invalid len=%d\n", len);
-                break;
-            }
-
-            uart_printf(fd6, "0x3B clear data ack: res=0x%02X\n", buf[4]);
-            break;
-        }
         case 0x31:
         case 0x32:
         case 0x41:
