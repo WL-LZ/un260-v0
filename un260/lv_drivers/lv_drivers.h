@@ -26,11 +26,6 @@ int uart_open(const char *device);
  */
 int uart_config(int fd, int baud, int dataBit, char parity, int stopBit);
 
-/* 接收数据，带超时 (timeout 毫秒)
- * 返回值：读取字节数，-1 表示超时或错误
- */
-int uart_recv(int fd, char *rcv_buf, int data_len, int timeout);
-
 /* 关闭串口 */
 void uart_close(int fd);
 int send_command(int fd, uint8_t cmd_g, const uint8_t *cmd_s, uint16_t cmd_s_len);

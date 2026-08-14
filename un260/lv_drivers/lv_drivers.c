@@ -9,8 +9,6 @@
 #include <fcntl.h>
 #include <termios.h>
 #include <string.h>
-#include <sys/select.h>
-#include <sys/time.h>
 #include <unistd.h>
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_core/lv_page_manager.h"
@@ -168,26 +166,6 @@ int uart_config(int fd, int baud, int dataBit, char parity, int stopBit)
         return -1;
     }
     return 0;
-}
-
-/* 接收数据 */
-int uart_recv(int fd, char *rcv_buf, int data_len, int timeout)
-{
-    fd_set fs_read;
-    struct timeval tv;
-    int ret;
-
-    FD_ZERO(&fs_read);
-    FD_SET(fd, &fs_read);
-
-    tv.tv_sec  = timeout / 1000;
-    tv.tv_usec = (timeout % 1000) * 1000;
-
-    memset(rcv_buf, 0, data_len);
-
-    ret = select(fd + 1, &fs_read, NULL, NULL, &tv);
-    if (ret > 0) return read(fd, rcv_buf, data_len);
-    else return -1;
 }
 
 void uart_close(int fd)

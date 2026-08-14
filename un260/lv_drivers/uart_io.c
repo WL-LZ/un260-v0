@@ -7,6 +7,8 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <sys/select.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 static pthread_mutex_t g_uart_tx_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -70,6 +72,41 @@ int uart_send(int fd, const char *send_buf, int data_len)
     result = uart_write_all(fd, send_buf, (size_t)data_len);
     pthread_mutex_unlock(&g_uart_tx_mutex);
     return result;
+}
+
+int uart_recv(int fd, char *recv_buf, int data_len, int timeout_ms)
+{
+    fd_set read_fds;
+    struct timeval timeout;
+    int select_result;
+    ssize_t read_result;
+
+    if (fd < 0 || fd >= FD_SETSIZE || recv_buf == NULL ||
+        data_len <= 0 || timeout_ms < 0) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    do {
+        FD_ZERO(&read_fds);
+        FD_SET(fd, &read_fds);
+        timeout.tv_sec = timeout_ms / 1000;
+        timeout.tv_usec = (timeout_ms % 1000) * 1000;
+        select_result = select(fd + 1, &read_fds, NULL, NULL, &timeout);
+    } while (select_result < 0 && errno == EINTR);
+
+    if (select_result <= 0) {
+        return select_result;
+    }
+
+    do {
+        read_result = read(fd, recv_buf, (size_t)data_len);
+    } while (read_result < 0 && errno == EINTR);
+
+    if (read_result < 0) {
+        return -1;
+    }
+    return (int)read_result;
 }
 
 void uart_printf(int fd, const char *fmt, ...)

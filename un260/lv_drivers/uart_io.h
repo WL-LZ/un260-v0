@@ -6,6 +6,8 @@
 
 int uart_write_all(int fd, const void *data, size_t data_len);
 int uart_send(int fd, const char *send_buf, int data_len);
+/* Returns bytes read, 0 on timeout/end-of-file, and -1 on error. */
+int uart_recv(int fd, char *recv_buf, int data_len, int timeout_ms);
 void uart_printf(int fd, const char *fmt, ...);
 void uart_log_hex(int fd,
                   const char *prefix,
