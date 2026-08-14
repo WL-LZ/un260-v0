@@ -513,6 +513,7 @@ void ui_page_28_get_image_on_frame(const uint8_t* data, uint16_t len)
 
         if (len < 6) return;
         image_id = data[1];
+        if (image_id < 1 || image_id > IMAGE_SOURCE_COUNT) return;
         length = (uint16_t)(((uint16_t)data[2] << 8) | data[3]);
         image_clear_buffer();
         reported_image_length = length;

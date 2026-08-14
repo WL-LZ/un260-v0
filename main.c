@@ -26,6 +26,7 @@
 #include "un260/protocol/setting_reply_dispatch.h"
 #include "un260/protocol/startup_sync_reply.h"
 #include "un260/protocol/auxiliary_reply.h"
+#include "un260/protocol/stream_data_reply.h"
 #include "un260/boot/boot_service.h"
 #include "un260/boot/boot_reply.h"
 #include "un260/device_info/device_reply.h"
@@ -694,6 +695,19 @@ static void pccmd_handle_auxiliary_reply(uint8_t cmd, const uint8_t *buf, uint8_
     }
 }
 
+static void pccmd_handle_stream_data_reply(uint8_t cmd, const uint8_t *buf, uint8_t len)
+{
+    stream_data_reply_view_t reply = stream_data_reply_parse(buf, len);
+
+    if (reply.kind == STREAM_DATA_REPLY_IMAGE) {
+        ui_page_28_get_image_on_frame(reply.payload, reply.payload_len);
+    } else if (reply.kind == STREAM_DATA_REPLY_WAVE) {
+        ui_page_31_get_wave_on_frame(reply.payload, reply.payload_len);
+    } else {
+        uart_printf(fd6, "0x%02X invalid len=%d\n", cmd, len);
+    }
+}
+
 void PCCmdHandle(void)
 {
     protocol_frame_t frame;
@@ -873,28 +887,10 @@ void PCCmdHandle(void)
         case 0x46:
             setting_reply_dispatch_detail(cmd, buf, len);
             break;
-        /* ================== 0x47 图像数据获取 ================== */
         case 0x47:
-        {
-            if (len < 6) {
-                uart_printf(fd6, "0x47 invalid len=%d\n", len);
-                break;
-            }
-
-            ui_page_28_get_image_on_frame(&buf[4], (uint16_t)(len - 5));
-            break;
-        }
-        /* ================== 0x48 波形数据采集 ================== */
         case 0x48:
-        {
-            if (len < 6) {
-                uart_printf(fd6, "0x48 invalid len=%d\n", len);
-                break;
-            }
-
-            ui_page_31_get_wave_on_frame(&buf[4], (uint16_t)(len - 5));
+            pccmd_handle_stream_data_reply(cmd, buf, len);
             break;
-        }
         default:
             uart_printf(fd6, "Unknown command 0x%02X\n", cmd);
             break;
