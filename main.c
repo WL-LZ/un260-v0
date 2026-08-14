@@ -33,6 +33,7 @@
 #include "un260/counting/counting_control_reply.h"
 #include "un260/counting/counting_denom_reply.h"
 #include "un260/counting/counting_info_reply.h"
+#include "un260/counting/counting_reject_sn_reply.h"
 #include "un260/serial_number/serial_number_state.h"
 #include "un260/serial_number/serial_number_service.h"
 #include "un260/lv_core/page_01_main.h"
@@ -74,6 +75,10 @@ static size_t g_history_session_log_len = 0;
 static void frame_to_hex_str(const uint8_t *buf, int len, char *out, int out_len);
 static bool history_copy_sim_snapshot(counting_sim_t *dst, const counting_sim_t *src);
 static void history_free_sim_snapshot(counting_sim_t *sim_data);
+static void history_try_commit_pending_record(void);
+static void pending_result_recalc_issue_from_reject_detail(void);
+static bool is_main_page_active(void);
+static void trigger_auto_wave_after_detail(void);
 
 static bool ui_counting_should_keep_current_page(void)
 {
@@ -181,6 +186,29 @@ static void counting_denom_on_history_frame(const char *tag,
 
 static const counting_denom_reply_hooks_t g_counting_denom_hooks = {
     .on_history_frame = counting_denom_on_history_frame,
+};
+
+static void counting_detail_on_reject_analysis_ready(void)
+{
+    pending_result_recalc_issue_from_reject_detail();
+}
+
+static void counting_detail_on_history_record_ready(void)
+{
+    history_try_commit_pending_record();
+}
+
+static void counting_detail_on_complete(void)
+{
+    trigger_auto_wave_after_detail();
+}
+
+static const counting_reject_sn_reply_hooks_t g_counting_detail_hooks = {
+    .on_history_frame = counting_denom_on_history_frame,
+    .on_reject_analysis_ready = counting_detail_on_reject_analysis_ready,
+    .on_history_record_ready = counting_detail_on_history_record_ready,
+    .on_detail_complete = counting_detail_on_complete,
+    .is_main_page_active = is_main_page_active,
 };
 
 static void history_try_commit_pending_record(void)
@@ -413,63 +441,6 @@ static void pending_result_recalc_issue_from_reject_detail(void)
     uart_printf(fd6, "count analysis valid=%d expected=%d current=%d delta=%d source=%s suspect=%d damaged=%d\n",
                 g_counting_session.analysis_valid_pcs, expected_issue, current_total, delta_total,
                 use_delta ? "delta" : "current", suspect, damaged);
-}
-
-static void sim_clear_sn_only(counting_sim_t* sim_data)
-{
-    if (!sim_data) return;
-    if (sim_data->sn_str != NULL) {
-        /* 冠字号缓存容量可能大于/小于当前总张数，按容量释放最稳妥 */
-        for (int i = 0; i < sim_data->sn_capacity; i++) {
-            if (sim_data->sn_str[i] != NULL) {
-                free(sim_data->sn_str[i]);
-                sim_data->sn_str[i] = NULL;
-            }
-        }
-        free(sim_data->sn_str);
-        sim_data->sn_str = NULL;
-    }
-    /* 只清冠字号缓存，不改点钞总数，避免 UI 从 0 重新滚动 */
-    memset(sim_data->denom_mix, 0, sizeof(sim_data->denom_mix));
-    sim_data->sn_capacity = 0;
-    page_01_detail_scroll_reset_all();
-}
-
-static bool sim_ensure_sn_capacity(counting_sim_t* sim_data, int new_total)
-{
-    if (!sim_data || new_total <= 0) return false;
-    if (new_total > (int)(sizeof(sim_data->denom_mix) / sizeof(sim_data->denom_mix[0]))) {
-        return false;
-    }
-
-    if (sim_data->sn_str == NULL) {
-        sim_data->sn_capacity = 0;
-    }
-
-    if (new_total <= sim_data->sn_capacity) {
-        return true;
-    }
-
-    int new_cap = sim_data->sn_capacity > 0 ? sim_data->sn_capacity : 64;
-    while (new_cap < new_total) {
-        new_cap *= 2;
-        if (new_cap > 10000) {
-            new_cap = 10000;
-            break;
-        }
-    }
-    if (new_cap < new_total) return false;
-
-    char** new_ptr = realloc(sim_data->sn_str, sizeof(char*) * new_cap);
-    if (new_ptr == NULL) {
-        return false;
-    }
-    if (new_cap > sim_data->sn_capacity) {
-        memset(new_ptr + sim_data->sn_capacity, 0, sizeof(char*) * (new_cap - sim_data->sn_capacity));
-    }
-    sim_data->sn_str = new_ptr;
-    sim_data->sn_capacity = new_cap;
-    return true;
 }
 
 static void format_amount_with_comma_fast(char* dest, size_t dest_size, float amount)
@@ -960,194 +931,16 @@ void PCCmdHandle(void)
             break;
 
         /* ================== 0x0C 退钞明细 ================== */
-        case 0x0C:
-        {
-            if (len < 7) break;
-
-            uint8_t err_code = buf[4];
-            uint8_t pcs = buf[5];
-
-            if (err_code == 0x00 && pcs == 0x00) {
-                sim_clear_err_only(&sim);
-                /* 保留期望数量（来自 0x0E），用于 LIST 立即看到“应有多少条” */
-                //uart_printf(fd6, "0x0C reject detail receive start\n");
-                history_session_append_line("0x0C", buf, len);
-                break;
-            }
-
-            if (err_code == 0xFF && pcs == 0xFF) {
-                history_session_append_line("0x0C", buf, len);
-                page_02_c_report_status.curent_page = 1;
-                page_02_c_report_status.total_page = (sim.err_num == 0)
-                    ? 1
-                    : ((sim.err_num + PAGE_02_C_ITEM - 1) / PAGE_02_C_ITEM);
-                page_02_c_page_refre();
-                page_02_c_page_num_refre();
-                pending_result_recalc_issue_from_reject_detail();
-                uart_printf(fd6, "0x0C reject detail receive end, parsed=%u expected=%u\n",
-                            sim.err_num, sim.err_expected);
-                smart_island_refresh_summary();
-                if (is_main_page_active()) {
-                    ui_refresh_main_page(); // C区在退钞明细结束时也自动刷新
-                }
-                if (g_counting_detail_state.wait_sn_after_reject_end) {
-                    uint8_t sn_req[2] = { 0x01, 0x01 };
-                    send_command(fd4, 0x0D, sn_req, 2);
-                    g_counting_detail_state.wait_sn_after_reject_end = false;
-                }
-                break;
-            }
-
-            /* ESC 清除后 err_expected=0，此时丢弃延迟到达的旧错误明细，避免主界面与 list 显示不一致。 */
-            if (sim.err_expected == 0) {
-                uart_printf(fd6, "0x0C detail ignored because err_expected=0\n");
-                break;
-            }
-
-            if (!sim_ensure_err_capacity(&sim, (int)sim.err_num + 1)) {
-                uart_printf(fd6, "0x0C: err capacity fail idx=%u\n", sim.err_num);
-                break;
-            }
-
-            history_session_append_line("0x0C", buf, len);
-
-            int idx = sim.err_num;
-            const char* desc = get_currency_error_desc(err_code);
-            size_t desc_len = strlen(desc);
-
-            sim.err_str[idx] = malloc(desc_len + 1);
-            if (sim.err_str[idx] == NULL) {
-                uart_printf(fd6, "0x0C: err malloc fail idx=%d\n", idx);
-                break;
-            }
-            memcpy(sim.err_str[idx], desc, desc_len + 1);
-            sim.err_pcs[idx] = pcs;
-            sim.err_code[idx] = err_code;
-            sim.err_num++;
-            /* 不等 end 帧：收到一条就刷新 LIST 的报错区 */
-            page_02_c_report_status.total_page = (sim.err_num == 0)
-                ? 1
-                : ((sim.err_num + PAGE_02_C_ITEM - 1) / PAGE_02_C_ITEM);
-            page_02_c_page_refre();
-            page_02_c_page_num_refre();
-            smart_island_refresh_summary();
-            break;
-        }
-
-        /* ================== 0x0D 冠字号明细 ================== */
         case 0x0D:
-        {
-            if (len < 6) break;
-
-            int payload_len = len - 4; // buf[4..] 为 payload
-            if (payload_len < 2) break;
-            /* 最后 1 字节是校验，不参与开始/结束帧判断 */
-            int payload_end = len - 1;
-
-            // start frame: payload 全 0x00
-            bool all_zero = true;
-            for (int i = 4; i < payload_end; i++) {
-                if (buf[i] != 0x00) { all_zero = false; break; }
-            }
-            if (all_zero) {
-                sim_clear_sn_only(&sim);
-                history_session_append_line("0x0D", buf, len);
-                break;
-            }
-
-            // end frame: payload 全 0xFF
-            bool all_ff = true;
-            for (int i = 4; i < payload_end; i++) {
-                if (buf[i] != 0xFF) { all_ff = false; break; }
-            }
-            if (all_ff) {
-                page_02_report_init();
-                page_02_b_page_refre();
-                page_02_b_page_num_refre();
-                history_session_append_line("0x0D", buf, len);
-                g_counting_session.history_record.end_seen = true;
-                history_try_commit_pending_record();
-                if (is_main_page_active()) {
-                    ui_refresh_main_page();
-                }
-                /* 详情页这次刷新完成后，再放行点钞结束动画 */
-                if (g_counting_session.end_anim_wait_detail) {
-                    g_counting_session.end_anim_wait_detail = false;
-                    ui_count_end_anim_begin(NULL);
-                }
-                trigger_auto_wave_after_detail();
-                break;
-            }
-
-            uint8_t seq = buf[4];
-            if (seq == 0x00 || seq == 0xFF) break;
-            int idx = (int)seq - 1;
-            if (idx < 0 || idx >= 10000) break;
-
-            int data_len = payload_len - 1;
-            if (data_len <= 0) break;
-
-            int ascii_len = data_len - 1;
-            if (ascii_len <= 0) break;
-
-            history_session_append_line("0x0D", buf, len);
-
-            char ascii_buf[32];
-            if (ascii_len >= (int)sizeof(ascii_buf)) {
-                ascii_len = (int)sizeof(ascii_buf) - 1;
-            }
-            memcpy(ascii_buf, &buf[5], ascii_len);
-            ascii_buf[ascii_len] = '\0';
-
-            // trim right spaces
-            int r = ascii_len - 1;
-            while (r >= 0 && ascii_buf[r] == ' ') {
-                ascii_buf[r] = '\0';
-                r--;
-            }
-
-            // trim left spaces
-            char *p = ascii_buf;
-            while (*p == ' ') p++;
-            if (*p == '\0') break;
-
-            // parse denom at head
-            int denom = 0;
-            while (*p && isdigit((unsigned char)*p)) {
-                denom = denom * 10 + (*p - '0');
-                p++;
-            }
-            while (*p == ' ') p++;
-            if (*p == '\0') break;
-
-            // ensure capacity and store
-            if (!sim_ensure_sn_capacity(&sim, idx + 1)) {
-                uart_printf(fd6, "0x0D: SN capacity fail idx=%d\n", idx);
-                break;
-            }
-
-            if (sim.sn_str[idx]) {
-                free(sim.sn_str[idx]);
-                sim.sn_str[idx] = NULL;
-            }
-            size_t sn_len = strlen(p);
-            sim.sn_str[idx] = malloc(sn_len + 1);
-            if (!sim.sn_str[idx]) {
-                uart_printf(fd6, "0x0D: SN malloc fail idx=%d\n", idx);
-                break;
-            }
-            memcpy(sim.sn_str[idx], p, sn_len + 1);
-            sim.denom_mix[idx] = denom;
-            if (is_main_page_active() &&
-                page_01_detail_section_get() == PAGE_01_DETAIL_SECTION_B) {
-                /*
-                 * B区当前可见行始终跟随 SN 明细刷新。
-                 * 结束帧仍然会走 ui_refresh_main_page() 做一次完整收口。
-                 */
-                page_01_main_detail_refresh_rows_only();
-            }
+        case 0x0C:
+            counting_reject_sn_reply_dispatch(cmd,
+                                              &g_counting_detail_state,
+                                              &g_counting_session,
+                                              &sim,
+                                              buf,
+                                              len,
+                                              &g_counting_detail_hooks);
             break;
-        }
         case 0x1D:
             pccmd_handle_diagnostic(cmd, buf, len);
             break;
