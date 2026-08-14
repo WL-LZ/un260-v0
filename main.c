@@ -957,6 +957,7 @@ int main(void) {
     while (1) {
         uint32_t now = app_clock_uptime_ms();
         ui_page_t current_page = ui_manager_get_current_page();
+        boot_service_action_t boot_action = BOOT_SERVICE_ACTION_NONE;
         uint64_t ui_start_us;
         uint64_t ui_end_us;
         uint32_t ui_time_us;
@@ -1006,38 +1007,17 @@ int main(void) {
             }
         }
 
-        if (boot_service_get_stage() == BOOT_STAGE_HANDSHAKE &&
-            current_page == UI_PAGE_BOOT)
-        {
-            if (boot_service_handshake_state() == HANDSHAKE_IDLE)
-            {
-                machine_handshake_send();
-            }
-            else if (boot_service_handshake_state() == HANDSHAKE_SENT)
-            {
-                if (boot_service_check_total_timeout(now))
-                {
-                    boot_service_set_stage(BOOT_STAGE_FAIL);
-
-                    show_boot_selftest_error_popup(
-                        "Controller handshake timeout.\nPress CONFIRM to enter sensor page.");
-                }
-                else if ((now - boot_service_handshake_tick()) >= BOOT_SERVICE_HANDSHAKE_RETRY_MS)
-                {
-                    machine_handshake_send();
-                }
-            }
+        if (current_page == UI_PAGE_BOOT) {
+            boot_action = boot_service_poll(now);
         }
-
-        if (boot_service_get_stage() >= BOOT_STAGE_SENSOR && boot_service_get_stage() <= BOOT_STAGE_IMAGE &&
-            current_page == UI_PAGE_BOOT)
-        {
-            if (boot_service_check_total_timeout(now))
-            {
-                boot_service_set_stage(BOOT_STAGE_FAIL);
-                show_boot_selftest_error_popup(
-                    "Self-test timeout.\nPress CONFIRM to enter sensor page.");
-            }
+        if (boot_action == BOOT_SERVICE_ACTION_SEND_HANDSHAKE) {
+            machine_handshake_send();
+        } else if (boot_action == BOOT_SERVICE_ACTION_HANDSHAKE_TIMEOUT) {
+            show_boot_selftest_error_popup(
+                "Controller handshake timeout.\nPress CONFIRM to enter sensor page.");
+        } else if (boot_action == BOOT_SERVICE_ACTION_SELF_TEST_TIMEOUT) {
+            show_boot_selftest_error_popup(
+                "Self-test timeout.\nPress CONFIRM to enter sensor page.");
         }
 
         usleep(1000);

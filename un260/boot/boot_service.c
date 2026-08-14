@@ -2,6 +2,7 @@
 #include <stddef.h>
 
 #define BOOT_SERVICE_TOTAL_TIMEOUT_MS 60000
+#define BOOT_SERVICE_HANDSHAKE_RETRY_MS 1000
 
 static boot_stage_t g_stage = BOOT_STAGE_HANDSHAKE;
 static uint32_t g_boot_start_tick = 0;
@@ -108,13 +109,41 @@ void boot_service_advance_stage(void)
     }
 }
 
-bool boot_service_check_total_timeout(uint32_t now_ms)
+static bool boot_service_check_total_timeout(uint32_t now_ms)
 {
     if (!g_boot_started || g_boot_timeout_consumed) return false;
     if ((uint32_t)(now_ms - g_boot_start_tick) < BOOT_SERVICE_TOTAL_TIMEOUT_MS) return false;
 
     g_boot_timeout_consumed = true;
     return true;
+}
+
+boot_service_action_t boot_service_poll(uint32_t now_ms)
+{
+    if (g_stage == BOOT_STAGE_HANDSHAKE) {
+        if (g_handshake_state == HANDSHAKE_IDLE) {
+            return BOOT_SERVICE_ACTION_SEND_HANDSHAKE;
+        }
+        if (g_handshake_state != HANDSHAKE_SENT) {
+            return BOOT_SERVICE_ACTION_NONE;
+        }
+        if (boot_service_check_total_timeout(now_ms)) {
+            g_stage = BOOT_STAGE_FAIL;
+            return BOOT_SERVICE_ACTION_HANDSHAKE_TIMEOUT;
+        }
+        if ((uint32_t)(now_ms - g_handshake_tick) >= BOOT_SERVICE_HANDSHAKE_RETRY_MS) {
+            return BOOT_SERVICE_ACTION_SEND_HANDSHAKE;
+        }
+        return BOOT_SERVICE_ACTION_NONE;
+    }
+
+    if (g_stage >= BOOT_STAGE_SENSOR && g_stage <= BOOT_STAGE_IMAGE &&
+        boot_service_check_total_timeout(now_ms)) {
+        g_stage = BOOT_STAGE_FAIL;
+        return BOOT_SERVICE_ACTION_SELF_TEST_TIMEOUT;
+    }
+
+    return BOOT_SERVICE_ACTION_NONE;
 }
 
 void boot_service_reset_handshake(void)

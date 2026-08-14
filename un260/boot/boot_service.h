@@ -5,13 +5,18 @@
 #include <stdint.h>
 #include "un260/boot/boot_state.h"
 
-#define BOOT_SERVICE_HANDSHAKE_RETRY_MS 1000
+typedef enum {
+    BOOT_SERVICE_ACTION_NONE = 0,
+    BOOT_SERVICE_ACTION_SEND_HANDSHAKE,
+    BOOT_SERVICE_ACTION_HANDSHAKE_TIMEOUT,
+    BOOT_SERVICE_ACTION_SELF_TEST_TIMEOUT,
+} boot_service_action_t;
 
 void boot_service_start(uint32_t now_ms);
 void boot_service_set_stage(boot_stage_t stage);
 boot_stage_t boot_service_get_stage(void);
 void boot_service_advance_stage(void);
-bool boot_service_check_total_timeout(uint32_t now_ms);
+boot_service_action_t boot_service_poll(uint32_t now_ms);
 void boot_service_reset_handshake(void);
 bool boot_service_request_handshake(uint32_t request_tick);
 void boot_service_confirm_handshake(void);
