@@ -22,6 +22,7 @@
 #include "un260/machine_state/machine_state.h"
 #include "un260/protocol/mode_codec.h"
 #include "un260/protocol/basic_setting_reply_dispatch.h"
+#include "un260/protocol/protocol_frame_queue.h"
 #include "un260/protocol/setting_reply_dispatch.h"
 #include "un260/boot/boot_service.h"
 #include "un260/device_info/device_info.h"
@@ -50,20 +51,8 @@
  int fd4 = -1, fd5 = -1, fd6 = -1;
 static bool uart_running = false;
 #define MAX_CMD_PER_TICK  64   // 每轮处理上限，避免长帧流长时间占用UI
-#define RECV_BUF_SIZE 512
-#define MAX_CMD_QUEUE     256   // 接收队列容量，避免0x0D明细流被挤掉
 
-typedef struct {
-    uint8_t data[RECV_BUF_SIZE];
-    int len;
-} cmd_frame_t;
-
-static cmd_frame_t cmd_queue[MAX_CMD_QUEUE];
-static volatile int queue_head = 0;
-static volatile int queue_tail = 0;
-static volatile int queue_count = 0;
-
-static uint8_t gPCRecvBuff[RECV_BUF_SIZE];
+static uint8_t gPCRecvBuff[PROTOCOL_FRAME_MAX_SIZE];
 static int gPCRecvIndex = 0;
 static int gPCRecvLen = 0;
 static int gPCRecvSig = 0;        // 是否正在接收一帧
@@ -72,7 +61,6 @@ static int gPCRecvComplete = 0;   // 一帧接收完成标志
 
 // 添加互斥锁保护共享变量
 static pthread_mutex_t recv_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 static bool g_wait_sn_after_reject_end = false;
 static bool g_denom_query_pending = false;
 static bool g_denom_query_deferred = false;
@@ -612,34 +600,6 @@ static void frame_to_hex_str(const uint8_t *buf, int len, char *out, int out_len
 }
 
 
-// 队列入队
-static bool enqueue_cmd(const uint8_t* data, int len) {
-    bool ret = false;
-    pthread_mutex_lock(&queue_mutex);
-    if (queue_count < MAX_CMD_QUEUE) {
-        memcpy(cmd_queue[queue_tail].data, data, len);
-        cmd_queue[queue_tail].len = len;
-        queue_tail = (queue_tail + 1) % MAX_CMD_QUEUE;
-        queue_count++;
-        ret = true;
-    }
-    pthread_mutex_unlock(&queue_mutex);
-    return ret;
-}
-// 队列出队
-static bool dequeue_cmd(cmd_frame_t* frame) {
-    bool ret = false;
-    pthread_mutex_lock(&queue_mutex);
-    if (queue_count > 0) {
-        *frame = cmd_queue[queue_head];
-        queue_head = (queue_head + 1) % MAX_CMD_QUEUE;
-        queue_count--;
-        ret = true;
-    }
-    pthread_mutex_unlock(&queue_mutex);
-    return ret;
-}
-
 void* uart4_thread(void* arg) {
     uint8_t byte;
     //uart_printf(fd6, "UART4 start (queue version)\n");
@@ -668,7 +628,7 @@ void* uart4_thread(void* arg) {
                         }
                     } else if (gPCRecvIndex == 3) {
                         gPCRecvLen = byte - 3;
-                        if (byte < 3 || byte > RECV_BUF_SIZE) {
+                        if (byte < 3) {
                             //uart_printf(fd6, "UART4: invalid len=%d, reset\n", byte);
                             gPCRecvSig = 0;
                             gPCRecvIndex = 0;
@@ -687,7 +647,7 @@ void* uart4_thread(void* arg) {
                             /* ============================ */
 
                             // 一帧接收完成，立即入队
-                            if (!enqueue_cmd(gPCRecvBuff, gPCRecvIndex)) {
+                            if (!protocol_frame_queue_push(gPCRecvBuff, gPCRecvIndex)) {
                                 uart_printf(fd6, "UART4: queue full, drop frame\n");
                             }
                             gPCRecvSig = 0;
@@ -695,7 +655,7 @@ void* uart4_thread(void* arg) {
                             gPCRecvLen = 0;
                         }
                     }
-                    if (gPCRecvIndex >= RECV_BUF_SIZE) {
+                    if (gPCRecvIndex >= PROTOCOL_FRAME_MAX_SIZE) {
                         //uart_printf(fd6, "UART4: buffer overflow, reset\n");
                         gPCRecvSig = 0;
                         gPCRecvIndex = 0;
@@ -932,9 +892,9 @@ static void pccmd_handle_boot_and_selftest(uint8_t cmd, uint8_t *buf, uint8_t le
 
 void PCCmdHandle(void)
 {
-    cmd_frame_t frame;
+    protocol_frame_t frame;
     int processed = 0;
-    while (processed < MAX_CMD_PER_TICK && dequeue_cmd(&frame)) {
+    while (processed < MAX_CMD_PER_TICK && protocol_frame_queue_pop(&frame)) {
         processed++; // 每轮最多处理 MAX_CMD_PER_TICK 帧，避免丢帧
         uint8_t *buf = frame.data;
         uint8_t len  = frame.len;
