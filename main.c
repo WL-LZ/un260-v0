@@ -16,8 +16,8 @@
 #include "un260/app_service/app_clock.h"
 #include "un260/app_service/app_boot_runtime.h"
 #include "un260/app_service/app_serial_runtime.h"
+#include "un260/app_service/app_setting_runtime.h"
 #include "un260/machine_state/machine_state.h"
-#include "un260/protocol/basic_setting_reply_dispatch.h"
 #include "un260/protocol/protocol_frame_format.h"
 #include "un260/protocol/protocol_frame_queue.h"
 #include "un260/protocol/setting_reply_dispatch.h"
@@ -56,7 +56,6 @@
 #define MAX_CMD_PER_TICK  64   // 每轮处理上限，避免长帧流长时间占用UI
 
 static counting_detail_state_t g_counting_detail_state;
-static lv_timer_t* g_mode_clear_timer = NULL;
 #define UI_UPGRADE_DETECT_INTERVAL_MS 500
 static uint32_t g_ui_upgrade_detect_tick = 0;
 
@@ -267,32 +266,6 @@ static void trigger_auto_wave_after_detail(void)
     uart_printf(fd6, "auto wave after count: sent=%d\n", sent ? 1 : 0);
 }
 
-static void mode_switch_clear_timer_cb(lv_timer_t* timer)
-{
-    LV_UNUSED(timer);
-    g_mode_clear_timer = NULL;
-    sim_clear_all_sn(&sim);
-}
-
-static void schedule_mode_switch_clear(void)
-{
-    // 无数据时不做清理，避免无意义开销
-    if (sim.total_pcs == 0 && sim.err_num == 0 && sim.err_expected == 0) {
-        return;
-    }
-
-    if (g_mode_clear_timer != NULL) {
-        lv_timer_del(g_mode_clear_timer);
-        g_mode_clear_timer = NULL;
-    }
-
-    // 让底部文本动画先跑起来，再执行重置，降低按键卡顿体感
-    g_mode_clear_timer = lv_timer_create(mode_switch_clear_timer_cb, 120, NULL);
-    if (g_mode_clear_timer != NULL) {
-        lv_timer_set_repeat_count(g_mode_clear_timer, 1);
-    }
-}
-
 static void pccmd_handle_device_reply(uint8_t cmd, const uint8_t *buf, uint8_t len)
 {
     device_reply_result_t reply = device_reply_dispatch(cmd, buf, len);
@@ -316,15 +289,6 @@ static void diagnostic_on_calibration_changed(void)
 static const diagnostic_reply_hooks_t g_diagnostic_reply_hooks = {
     .on_calibration_changed = diagnostic_on_calibration_changed,
 };
-
-static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
-{
-    basic_setting_reply_action_t actions = basic_setting_reply_dispatch(cmd, buf, len);
-
-    if ((actions & BASIC_SETTING_REPLY_ACTION_SCHEDULE_MODE_CLEAR) != 0) {
-        schedule_mode_switch_clear();
-    }
-}
 
 static void pccmd_handle_auxiliary_reply(uint8_t cmd, const uint8_t *buf, uint8_t len)
 {
@@ -467,10 +431,10 @@ void PCCmdHandle(void)
             break;
         }
         case 0x04:
-            pccmd_handle_basic_setting(cmd, buf, len);
+            app_setting_runtime_handle_basic_reply(cmd, buf, len);
             break;
         case 0x06:
-            pccmd_handle_basic_setting(cmd, buf, len);
+            app_setting_runtime_handle_basic_reply(cmd, buf, len);
             break;
         /* ================== 0x08 设置退钞口张数 ================== */
         case 0x08:
@@ -519,16 +483,16 @@ void PCCmdHandle(void)
             startup_sync_reply_dispatch(cmd, buf, len);
             break;
         case 0x39:
-            pccmd_handle_basic_setting(cmd, buf, len);
+            app_setting_runtime_handle_basic_reply(cmd, buf, len);
             break;
         case 0x15:
-            pccmd_handle_basic_setting(cmd, buf, len);
+            app_setting_runtime_handle_basic_reply(cmd, buf, len);
             break;
         case 0x16:
-            pccmd_handle_basic_setting(cmd, buf, len);
+            app_setting_runtime_handle_basic_reply(cmd, buf, len);
             break;
         case 0x3A:
-            pccmd_handle_basic_setting(cmd, buf, len);
+            app_setting_runtime_handle_basic_reply(cmd, buf, len);
             break;
 
         case 0x40:
@@ -538,7 +502,7 @@ void PCCmdHandle(void)
             break;
 
         case 0x38:
-            pccmd_handle_basic_setting(cmd, buf, len);
+            app_setting_runtime_handle_basic_reply(cmd, buf, len);
             break;
 
         case 0xA1:
@@ -616,6 +580,7 @@ int main(void) {
 
         usleep(1000);
     }
+    app_setting_runtime_stop();
     app_serial_runtime_stop();
 
     return 0;
