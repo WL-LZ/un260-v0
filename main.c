@@ -2,8 +2,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
-#include <fcntl.h>
-#include <ctype.h>
 #include "lvgl/lvgl.h"
 #include "lv_port_disp.h"
 #include "lv_port_indev.h"
@@ -20,6 +18,7 @@
 #include "un260/app_service/app_serial_runtime.h"
 #include "un260/machine_state/machine_state.h"
 #include "un260/protocol/basic_setting_reply_dispatch.h"
+#include "un260/protocol/protocol_frame_format.h"
 #include "un260/protocol/protocol_frame_queue.h"
 #include "un260/protocol/setting_reply_dispatch.h"
 #include "un260/protocol/startup_sync_reply.h"
@@ -62,7 +61,6 @@ static lv_timer_t* g_mode_clear_timer = NULL;
 static uint32_t g_ui_upgrade_detect_tick = 0;
 
 static counting_session_state_t g_counting_session;
-static void frame_to_hex_str(const uint8_t *buf, int len, char *out, int out_len);
 static bool is_main_page_active(void);
 static void trigger_auto_wave_after_detail(void);
 
@@ -186,10 +184,6 @@ static void ui_upgrade_popup_poll(uint32_t now)
 }
 
 //-------------------- 工具函数 --------------------
-bool check_aa_header(const char* data, int len) {
-    return (len >= 2 && (unsigned char)data[0] == 0xFD && (unsigned char)data[1] == 0xDF);
-}
-
 const char* get_currency_error_desc(uint8_t code)
 {
     if (code < sizeof(g_currency_error_desc) / sizeof(g_currency_error_desc[0]) &&
@@ -299,17 +293,6 @@ static void schedule_mode_switch_clear(void)
     }
 }
 
-// ===== RX HEX 转字符串 =====
-static void frame_to_hex_str(const uint8_t *buf, int len, char *out, int out_len)
-{
-    int pos = 0;
-    for (int i = 0; i < len && pos + 3 < out_len; i++) {
-        pos += snprintf(out + pos, out_len - pos, "%02X ", buf[i]);
-    }
-    if (pos > 0) out[pos - 1] = '\0'; // 去掉最后一个空格
-}
-
-
 static void pccmd_handle_device_reply(uint8_t cmd, const uint8_t *buf, uint8_t len)
 {
     device_reply_result_t reply = device_reply_dispatch(cmd, buf, len);
@@ -401,7 +384,7 @@ void PCCmdHandle(void)
 
     /* ========= 新增：打印到 Debug 日志 ========= */
     char hex_log[256];
-    frame_to_hex_str(buf, len, hex_log, sizeof(hex_log));
+    protocol_frame_format_hex(buf, len, hex_log, sizeof(hex_log));
     debug_append_rx_log(hex_log);
     /* ========================================== */
 
@@ -586,49 +569,6 @@ void PCCmdHandle(void)
         }
     }
 }
-
-
-static void sent_machine_code(void)
-{   uint8_t mdc_cmd = 0x03;
-    send_command(fd4, 0x04, &mdc_cmd, 1); // 发送设置币种命令，默认USD
-}
-static lv_obj_t* g_msgbox_cont = NULL;
-
-static void msgbox_close_cb(lv_event_t* e)
-{
-    if (g_msgbox_cont && lv_obj_is_valid(g_msgbox_cont)) {
-        lv_obj_del(g_msgbox_cont);
-        g_msgbox_cont = NULL;
-    }
-}
-
-void lv_show_center_msgbox(const char* title_text, const char* info_text)
-{
-    lv_obj_t* scr = lv_scr_act();
-
-    g_msgbox_cont = lv_obj_create(scr);
-    lv_obj_set_size(g_msgbox_cont, 400, 200);
-    lv_obj_set_pos(g_msgbox_cont, 440, 100); // 居中在 (1280,400)
-    lv_obj_set_style_bg_color(g_msgbox_cont, lv_color_hex(0xE1E1E1), 0); // 灰色
-    lv_obj_set_style_radius(g_msgbox_cont, 10, 0);
-    lv_obj_set_style_opa(g_msgbox_cont, LV_OPA_COVER, 0);
-
-    lv_obj_add_event_cb(g_msgbox_cont, msgbox_close_cb, LV_EVENT_CLICKED, NULL);
-
-    lv_obj_t* label_title = lv_label_create(g_msgbox_cont);
-    lv_label_set_text(label_title, title_text);
-    lv_obj_set_style_text_font(label_title, &lv_font_montserrat_30, 0);
-    lv_obj_align(label_title, LV_ALIGN_TOP_MID, 0, 10);
-
-    lv_obj_t* label_info = lv_label_create(g_msgbox_cont);
-    lv_label_set_text(label_info, info_text);
-    lv_obj_set_style_radius(g_msgbox_cont, 10, 0);
-    lv_obj_set_style_text_font(label_info, &lv_font_montserrat_22, 0);
-
-    lv_obj_align(label_info, LV_ALIGN_TOP_MID, 0, 100);
-    lv_obj_add_event_cb(scr, msgbox_close_cb, LV_EVENT_CLICKED, NULL);
-}
-
 //-------------------- 主函数 --------------------
 int main(void) {
     lv_init();

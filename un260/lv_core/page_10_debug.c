@@ -155,14 +155,6 @@ static int hex_str_to_bytes(const char *str, uint8_t *out, int max_len)
     return count;
 }
 
-static void bytes_to_hex_str(const uint8_t *buf, int len, char *out, int out_size)
-{
-    int pos = 0;
-    for (int i = 0; i < len && pos < out_size - 3; i++) {
-        pos += snprintf(out + pos, out_size - pos, "%02X ", buf[i]);
-    }
-}
-
 static void btn_send_event_cb(lv_event_t* e)
 {
     const char* cmd_str = lv_textarea_get_text(ta_input);
