@@ -22,8 +22,8 @@
 #include "un260/machine_state/machine_state.h"
 #include "un260/protocol/mode_codec.h"
 #include "un260/protocol/basic_setting_reply_dispatch.h"
-#include "un260/protocol/protocol_frame_parser.h"
 #include "un260/protocol/protocol_frame_queue.h"
+#include "un260/protocol/protocol_rx_service.h"
 #include "un260/protocol/setting_reply_dispatch.h"
 #include "un260/boot/boot_service.h"
 #include "un260/device_info/device_info.h"
@@ -591,38 +591,6 @@ static void frame_to_hex_str(const uint8_t *buf, int len, char *out, int out_len
     if (pos > 0) out[pos - 1] = '\0'; // 去掉最后一个空格
 }
 
-
-void* uart4_thread(void* arg) {
-    protocol_frame_parser_t parser;
-    protocol_frame_view_t frame;
-    uint8_t byte;
-
-    (void)arg;
-    protocol_frame_parser_init(&parser);
-    //uart_printf(fd6, "UART4 start (queue version)\n");
-    while (uart_running) {
-        int len = uart_recv(fd4, (char*)&byte, 1, 10);
-        if (len > 0) {
-            protocol_frame_parse_result_t result;
-
-            result = protocol_frame_parser_feed(&parser, byte, &frame);
-            if (result == PROTOCOL_FRAME_PARSE_READY) {
-                uart_printf(fd6, "RX: ");
-                for (int i = 0; i < frame.len; i++) {
-                    uart_printf(fd6, "%02X ", frame.data[i]);
-                }
-                uart_printf(fd6, "\n");
-
-                if (!protocol_frame_queue_push(frame.data, frame.len)) {
-                    uart_printf(fd6, "UART4: queue full, drop frame\n");
-                }
-            }
-        }
-        usleep(100);
-    }
-    //uart_printf(fd6, "UART4 end\n");
-    return NULL;
-}
 
 void* uart5_thread(void* arg) {
     uint8_t buf[256];
@@ -1805,10 +1773,24 @@ int main(void) {
     printf("UART配置完成\n");
 
     uart_running = true;
-    pthread_t thread4, thread5;
-    pthread_create(&thread4, NULL, uart4_thread, NULL);
-    pthread_create(&thread5, NULL, uart5_thread, NULL);
-    pthread_detach(thread4);
+    pthread_t thread5;
+    if (!protocol_rx_service_start(fd4, fd6)) {
+        printf("UART4接收服务启动失败\n");
+        uart_running = false;
+        uart_close(fd4);
+        uart_close(fd5);
+        uart_close(fd6);
+        return -1;
+    }
+    if (pthread_create(&thread5, NULL, uart5_thread, NULL) != 0) {
+        printf("UART5线程启动失败\n");
+        uart_running = false;
+        protocol_rx_service_stop();
+        uart_close(fd4);
+        uart_close(fd5);
+        uart_close(fd6);
+        return -1;
+    }
     pthread_detach(thread5);
    // machine_handshake_send(); 只发一次握手
 
@@ -1905,6 +1887,7 @@ int main(void) {
         usleep(1000);
     }
     uart_running = false;
+    protocol_rx_service_stop();
     if (fd4 >= 0) uart_close(fd4);
     if (fd5 >= 0) uart_close(fd5);
     if (fd6 >= 0) uart_close(fd6);
