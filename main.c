@@ -1,7 +1,6 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdbool.h>
-#include <string.h>
 #include "lvgl/lvgl.h"
 #include "lv_port_disp.h"
 #include "lv_port_indev.h"
@@ -15,11 +14,11 @@
 #include "un260/app_service/setting_service.h"
 #include "un260/app_service/app_clock.h"
 #include "un260/app_service/app_boot_runtime.h"
+#include "un260/app_service/app_counting_runtime.h"
 #include "un260/app_service/app_currency_runtime.h"
 #include "un260/app_service/app_protocol_runtime.h"
 #include "un260/app_service/app_serial_runtime.h"
 #include "un260/app_service/app_setting_runtime.h"
-#include "un260/machine_state/machine_state.h"
 #include "un260/protocol/protocol_frame_format.h"
 #include "un260/protocol/protocol_frame_queue.h"
 #include "un260/boot/boot_service.h"
@@ -29,10 +28,8 @@
 #include "un260/counting/counting_denom_query_service.h"
 #include "un260/counting/counting_denom_reply.h"
 #include "un260/counting/counting_history_service.h"
-#include "un260/counting/counting_info_reply.h"
 #include "un260/counting/counting_reject_analysis_service.h"
 #include "un260/counting/counting_reject_sn_reply.h"
-#include "un260/lv_core/page_01_main.h"
 #include "un260/lv_system/ui_screenshot.h"
 #include "un260/lv_components/lv_components.h"
 #include "un260/lv_components/smart_island.h"
@@ -40,7 +37,6 @@
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/ui_history_data.h"
-#include "un260/lv_components/lv_fault_popup.h"
 #include "un260/lv_components/lv_print_toast.h"
 #include "un260/lv_core/ui_upgrade_service.h"
 #include "aic_ui/perf_stats.h"
@@ -55,7 +51,6 @@ static uint32_t g_ui_upgrade_detect_tick = 0;
 
 static counting_session_state_t g_counting_session;
 static bool is_main_page_active(void);
-static void trigger_auto_wave_after_detail(void);
 
 static bool ui_counting_should_keep_current_page(void)
 {
@@ -147,7 +142,7 @@ static void counting_detail_on_history_record_ready(void)
 
 static void counting_detail_on_complete(void)
 {
-    trigger_auto_wave_after_detail();
+    app_counting_runtime_handle_detail_complete(&g_counting_session);
 }
 
 static const counting_reject_sn_reply_hooks_t g_counting_detail_hooks = {
@@ -176,79 +171,10 @@ static void ui_upgrade_popup_poll(uint32_t now)
                                     detect_info.package_hash_match);
 }
 
-//-------------------- 工具函数 --------------------
-static void format_amount_with_comma_fast(char* dest, size_t dest_size, float amount)
-{
-    char temp[32];
-    int len;
-    int dest_index = 0;
-    int i;
-
-    if (dest == NULL || dest_size == 0U) {
-        return;
-    }
-
-    lv_snprintf(temp, sizeof(temp), "%.0f", amount);
-    len = (int)strlen(temp);
-
-    if (len <= 3) {
-        lv_snprintf(dest, dest_size, "%s", temp);
-        return;
-    }
-
-    for (i = 0; i < len && dest_index < (int)dest_size - 1; i++) {
-        dest[dest_index++] = temp[i];
-        if (i < len - 1 && ((len - i - 1) % 3) == 0 && dest_index < (int)dest_size - 1) {
-            dest[dest_index++] = ',';
-        }
-    }
-    dest[dest_index] = '\0';
-}
-
-/* 0x0E 高频帧：仅刷新主界面左侧紧凑区 */
-static void ui_refresh_main_compact_fast(void)
-{
-    char amount_buf[32];
-
-    update_label_by_name(page_01_main_obj, page_01_main_len, "01_pcs_label", "%d", sim.total_pcs);
-    format_amount_with_comma_fast(amount_buf, sizeof(amount_buf), sim.total_amount);
-    update_label_by_name(page_01_main_obj, page_01_main_len, "01_amount_label", "%s", amount_buf);
-}
-
 static bool is_main_page_active(void)
 {
     return ui_manager_get_current_page() == UI_PAGE_MAIN &&
            main_page && lv_obj_is_valid(main_page);
-}
-
-static void schedule_auto_wave_after_count(void)
-{
-    ui_page_t page = ui_manager_get_current_page();
-
-    g_counting_session.auto_wave_pending = false;
-
-    if (Machine_para.work_mode != 0) return;
-    if (page != UI_PAGE_WAVE_GET) return;
-
-    g_counting_session.auto_wave_pending = true;
-    uart_printf(fd6, "auto wave scheduled after count\n");
-}
-
-static void trigger_auto_wave_after_detail(void)
-{
-    bool sent = false;
-
-    if (!g_counting_session.auto_wave_pending) return;
-    g_counting_session.auto_wave_pending = false;
-
-    if (Machine_para.work_mode != 0 ||
-        ui_manager_get_current_page() != UI_PAGE_WAVE_GET) {
-        return;
-    }
-
-    sent = ui_page_31_get_wave_request();
-
-    uart_printf(fd6, "auto wave after count: sent=%d\n", sent ? 1 : 0);
 }
 
 void PCCmdHandle(void)
@@ -282,32 +208,8 @@ void PCCmdHandle(void)
 
         /* ================== 0x0E 点钞信息 ================== */
         case 0x0E:
-        {
-            counting_info_reply_result_t result =
-                counting_info_reply_handle(&g_counting_session, &sim, buf, len);
-
-            if (result.kind == COUNTING_INFO_REPLY_LIVE) {
-                ui_refresh_main_compact_fast();
-                counting_history_append_frame("0x0E", buf, len);
-                if (!(!fault_popup_get_auto_enabled() && fault_popup_has_pending_start_issue())) {
-                    smart_island_notify_count_start();
-                    smart_island_refresh_summary();
-                }
-            } else if (result.kind == COUNTING_INFO_REPLY_FINISHED) {
-                uart_printf(fd6, "Count finished\n");
-                counting_history_capture_end(buf, len);
-                smart_island_set_count_analysis(g_counting_session.analysis_valid_pcs,
-                                                result.final_issue,
-                                                0);
-                counting_history_try_commit(&g_counting_session, &sim);
-
-                if (is_main_page_active()) {
-                    ui_refresh_main_page();
-                }
-                schedule_auto_wave_after_count();
-            }
+            app_counting_runtime_handle_info(&g_counting_session, &sim, buf, len);
             break;
-        }
 
         /* ================== 0x03 设置货币 ================== */
         case 0x03:
