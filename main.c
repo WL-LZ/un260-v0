@@ -27,8 +27,7 @@
 #include "un260/protocol/startup_sync_reply.h"
 #include "un260/boot/boot_service.h"
 #include "un260/device_info/device_info.h"
-#include "un260/currency/currency_state.h"
-#include "un260/currency/currency_service.h"
+#include "un260/currency/currency_reply.h"
 #include "un260/counting/counting_session_state.h"
 #include "un260/counting/counting_control_reply.h"
 #include "un260/counting/counting_denom_reply.h"
@@ -849,45 +848,21 @@ void PCCmdHandle(void)
         /* ================== 0x03 设置货币 ================== */
         case 0x03:
         {
-            if (len < 6) break;
+            currency_reply_result_t reply = currency_reply_handle(buf, len);
 
-            uint8_t status = buf[4];
-
-            if (status == 0x01)
-            {
-                currency_switch_result_t result;
-                if (currency_service_take_switch_result(status, &result)) {
-                    currency_state_confirm_active_code(result.target_code);
-                    currency_state_confirm_active_index(result.target_index);
-                    set_curr(get_curr_item(result.target_code));
-                    sim_clear_all_sn(&sim);
-                    page_07_curr_apply_switch_result(&result);
-                }
-                char curr_code[4];
-                currency_state_get_active_code(curr_code);
-                uart_printf(fd6, "Set %s curr success\n", curr_code);
+            if (reply.kind == CURRENCY_REPLY_SWITCH_SUCCESS) {
+                set_curr(get_curr_item(reply.switch_result.target_code));
+                sim_clear_all_sn(&sim);
+                page_07_curr_apply_switch_result(&reply.switch_result);
+                uart_printf(fd6, "Set %s curr success\n", reply.active_code);
                 g_counting_session.end_anim_wait_detail = false;
                 trigger_denom_query();
                 smart_island_refresh_summary();
-            }
-            else if (status == 0x02)
-            {
-                currency_switch_result_t result;
-                if (currency_service_take_switch_result(status, &result)) {
-                    page_07_curr_apply_switch_result(&result);
-                }
-                char curr_code[4];
-                currency_state_get_active_code(curr_code);
-                uart_printf(fd6, "Set %s curr fail\n", curr_code);
-            }
-            else if (status == 0x03)
-            {
-                if (len < 9) break;
-
-                char curr_code[4] = { (char)buf[5], (char)buf[6], (char)buf[7], '\0' };
-                currency_state_confirm_active_code(curr_code);
-
-                uart_printf(fd6, "Boot curr: %s\n", curr_code);
+            } else if (reply.kind == CURRENCY_REPLY_SWITCH_FAILURE) {
+                page_07_curr_apply_switch_result(&reply.switch_result);
+                uart_printf(fd6, "Set %s curr fail\n", reply.active_code);
+            } else if (reply.kind == CURRENCY_REPLY_BOOT_ACTIVE) {
+                uart_printf(fd6, "Boot curr: %s\n", reply.active_code);
                 clear_master_denom_cache();
                 if (is_main_page_active()) {
                     ui_refresh_main_page();
@@ -895,7 +870,6 @@ void PCCmdHandle(void)
                 trigger_denom_query();
                 smart_island_refresh_summary();
             }
-
             break;
         }
         case 0x04:

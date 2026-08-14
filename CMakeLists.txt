@@ -45,6 +45,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/device_info/device_info.c
     un260/currency/currency_state.c
     un260/currency/currency_service.c
+    un260/currency/currency_reply.c
     un260/serial_number/serial_number_state.c
     un260/serial_number/serial_number_service.c
     un260/print/print_config.c
