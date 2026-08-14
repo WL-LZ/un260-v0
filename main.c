@@ -1,5 +1,4 @@
 #include <unistd.h>
-#include <stdio.h>
 #include <stdbool.h>
 #include "lvgl/lvgl.h"
 #include "lv_port_disp.h"
@@ -22,11 +21,8 @@
 #include "un260/protocol/protocol_frame_format.h"
 #include "un260/protocol/protocol_frame_queue.h"
 #include "un260/boot/boot_service.h"
-#include "un260/data_collection/data_collection_state.h"
 #include "un260/counting/counting_session_state.h"
-#include "un260/counting/counting_control_reply.h"
 #include "un260/counting/counting_denom_query_service.h"
-#include "un260/counting/counting_denom_reply.h"
 #include "un260/counting/counting_history_service.h"
 #include "un260/counting/counting_reject_analysis_service.h"
 #include "un260/counting/counting_reject_sn_reply.h"
@@ -51,68 +47,6 @@ static uint32_t g_ui_upgrade_detect_tick = 0;
 
 static counting_session_state_t g_counting_session;
 static bool is_main_page_active(void);
-
-static bool ui_counting_should_keep_current_page(void)
-{
-    ui_page_t page = ui_manager_get_current_page();
-
-    return page == UI_PAGE_DEBUG ||
-           page == UI_PAGE_IMAGE_GET ||
-           page == UI_PAGE_WAVE_GET ||
-           page == UI_PAGE_SENSOR;
-}
-
-static void counting_control_on_start_success(const uint8_t *buf, uint8_t len)
-{
-    counting_history_session_start(buf, len);
-
-    if (data_collection_state_mode() != DATA_COLLECT_MODE_NONE) {
-        data_collection_state_set_status("Counting started...");
-        page_06_data_collection_refresh();
-    } else if (!g_cb_running &&
-               ui_manager_get_current_page() != UI_PAGE_PURE &&
-               !ui_counting_should_keep_current_page()) {
-        ui_manager_switch(UI_PAGE_MAIN);
-    }
-}
-
-static void counting_control_on_error_frame(const char *tag,
-                                            const uint8_t *buf,
-                                            uint8_t len)
-{
-    counting_history_capture_error(tag, buf, len);
-}
-
-static void counting_control_on_start_failure(const char *description)
-{
-    if (data_collection_state_mode() == DATA_COLLECT_MODE_NONE) {
-        return;
-    }
-
-    {
-        char status[160];
-        snprintf(status, sizeof(status), "Start failed: %s", description);
-        data_collection_state_set_status(status);
-    }
-    page_06_data_collection_refresh();
-}
-
-static const counting_control_reply_hooks_t g_counting_control_hooks = {
-    .on_start_success = counting_control_on_start_success,
-    .on_error_frame = counting_control_on_error_frame,
-    .on_start_failure = counting_control_on_start_failure,
-};
-
-static void counting_denom_on_history_frame(const char *tag,
-                                            const uint8_t *buf,
-                                            uint8_t len)
-{
-    counting_history_append_frame(tag, buf, len);
-}
-
-static const counting_denom_reply_hooks_t g_counting_denom_hooks = {
-    .on_history_frame = counting_denom_on_history_frame,
-};
 
 static void counting_detail_on_reject_analysis_ready(void)
 {
@@ -146,7 +80,7 @@ static void counting_detail_on_complete(void)
 }
 
 static const counting_reject_sn_reply_hooks_t g_counting_detail_hooks = {
-    .on_history_frame = counting_denom_on_history_frame,
+    .on_history_frame = counting_history_append_frame,
     .on_reject_analysis_ready = counting_detail_on_reject_analysis_ready,
     .on_history_record_ready = counting_detail_on_history_record_ready,
     .on_detail_complete = counting_detail_on_complete,
@@ -221,21 +155,19 @@ void PCCmdHandle(void)
         /* ================== 0x0A 启动回复 / 0x0F 运行故障 ================== */
         case 0x0F:
         case 0x0A:
-            counting_control_reply_dispatch(cmd,
-                                            &g_counting_session,
-                                            buf,
-                                            len,
-                                            &g_counting_control_hooks);
+            app_counting_runtime_handle_control(cmd,
+                                                &g_counting_session,
+                                                buf,
+                                                len);
             break;
 
         /* ================== 0x0B 面额明细 ================== */
         case 0x0B:
-            counting_denom_reply_handle(&g_counting_detail_state,
-                                        &g_counting_session,
-                                        &sim,
-                                        buf,
-                                        len,
-                                        &g_counting_denom_hooks);
+            app_counting_runtime_handle_denom(&g_counting_detail_state,
+                                              &g_counting_session,
+                                              &sim,
+                                              buf,
+                                              len);
             break;
 
         /* ================== 0x0C 退钞明细 ================== */

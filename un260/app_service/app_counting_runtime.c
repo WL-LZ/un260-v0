@@ -2,15 +2,20 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "lvgl/lvgl.h"
 
+#include "un260/counting/counting_control_reply.h"
+#include "un260/counting/counting_denom_reply.h"
 #include "un260/counting/counting_history_service.h"
 #include "un260/counting/counting_info_reply.h"
+#include "un260/data_collection/data_collection_state.h"
 #include "un260/lv_components/lv_fault_popup.h"
 #include "un260/lv_components/smart_island.h"
 #include "un260/lv_core/lv_page_manager.h"
+#include "un260/lv_core/page_06_settings.h"
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_refre/lvgl_refre.h"
 #include "un260/machine_state/machine_state.h"
@@ -71,6 +76,63 @@ static bool app_counting_runtime_main_page_active(void)
            main_page != NULL && lv_obj_is_valid(main_page);
 }
 
+static bool app_counting_runtime_should_keep_current_page(void)
+{
+    ui_page_t page = ui_manager_get_current_page();
+
+    return page == UI_PAGE_DEBUG ||
+           page == UI_PAGE_IMAGE_GET ||
+           page == UI_PAGE_WAVE_GET ||
+           page == UI_PAGE_SENSOR;
+}
+
+static void app_counting_runtime_on_start_success(const uint8_t *buf, uint8_t len)
+{
+    counting_history_session_start(buf, len);
+
+    if (data_collection_state_mode() != DATA_COLLECT_MODE_NONE) {
+        data_collection_state_set_status("Counting started...");
+        page_06_data_collection_refresh();
+    } else if (!g_cb_running &&
+               ui_manager_get_current_page() != UI_PAGE_PURE &&
+               !app_counting_runtime_should_keep_current_page()) {
+        ui_manager_switch(UI_PAGE_MAIN);
+    }
+}
+
+static void app_counting_runtime_on_error_frame(const char *tag,
+                                                const uint8_t *buf,
+                                                uint8_t len)
+{
+    counting_history_capture_error(tag, buf, len);
+}
+
+static void app_counting_runtime_on_start_failure(const char *description)
+{
+    char status[160];
+
+    if (data_collection_state_mode() == DATA_COLLECT_MODE_NONE) {
+        return;
+    }
+
+    snprintf(status,
+             sizeof(status),
+             "Start failed: %s",
+             description != NULL ? description : "Unknown");
+    data_collection_state_set_status(status);
+    page_06_data_collection_refresh();
+}
+
+static const counting_control_reply_hooks_t g_counting_control_hooks = {
+    .on_start_success = app_counting_runtime_on_start_success,
+    .on_error_frame = app_counting_runtime_on_error_frame,
+    .on_start_failure = app_counting_runtime_on_start_failure,
+};
+
+static const counting_denom_reply_hooks_t g_counting_denom_hooks = {
+    .on_history_frame = counting_history_append_frame,
+};
+
 static void app_counting_runtime_schedule_auto_wave(counting_session_state_t *session)
 {
     session->auto_wave_pending = false;
@@ -115,6 +177,40 @@ void app_counting_runtime_handle_info(counting_session_state_t *session,
         }
         app_counting_runtime_schedule_auto_wave(session);
     }
+}
+
+void app_counting_runtime_handle_control(uint8_t cmd,
+                                         counting_session_state_t *session,
+                                         const uint8_t *buf,
+                                         uint8_t len)
+{
+    if (session == NULL) {
+        return;
+    }
+
+    counting_control_reply_dispatch(cmd,
+                                    session,
+                                    buf,
+                                    len,
+                                    &g_counting_control_hooks);
+}
+
+void app_counting_runtime_handle_denom(counting_detail_state_t *detail_state,
+                                       counting_session_state_t *session,
+                                       counting_sim_t *sim_data,
+                                       const uint8_t *buf,
+                                       uint8_t len)
+{
+    if (detail_state == NULL || session == NULL || sim_data == NULL) {
+        return;
+    }
+
+    counting_denom_reply_handle(detail_state,
+                                session,
+                                sim_data,
+                                buf,
+                                len,
+                                &g_counting_denom_hooks);
 }
 
 void app_counting_runtime_handle_detail_complete(counting_session_state_t *session)
