@@ -17,9 +17,6 @@
 cis_calib_state_t cis_state = CIS_CALIB_IDLE;
 cb_calib_state_t cb_state = CB_CALIB_IDLE;
 calib_target_t g_calib_target = CALIB_TARGET_CIS;
-data_collect_mode_t g_data_collect_mode = DATA_COLLECT_MODE_NONE;
-uint16_t g_data_collect_pcs = 0;
-char g_data_collect_status[128] = "Please select a collection mode.";
 curr_query_state_t curr_query_state = CURR_QUERY_IDLE;
 
 uint8_t g_cb_running = 0;

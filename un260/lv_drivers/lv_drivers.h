@@ -86,15 +86,6 @@ typedef enum {
 extern cb_calib_state_t cb_state;
 extern uint8_t g_cb_running; //判断是否需要回到主界面
 extern calib_target_t g_calib_target;
-typedef enum {
-    DATA_COLLECT_MODE_NONE = 0,
-    DATA_COLLECT_MODE_ALL  = 0x01,
-    DATA_COLLECT_MODE_FALSE = 0x02,
-} data_collect_mode_t;
-
-extern data_collect_mode_t g_data_collect_mode;
-extern uint16_t g_data_collect_pcs;
-extern char g_data_collect_status[128];
 /* 获取币种状态 */
 typedef enum {
     CURR_QUERY_IDLE = 0,

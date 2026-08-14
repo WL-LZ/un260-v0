@@ -28,6 +28,8 @@
 #include "un260/boot/boot_service.h"
 #include "un260/boot/boot_reply.h"
 #include "un260/device_info/device_reply.h"
+#include "un260/data_collection/data_collection_reply.h"
+#include "un260/data_collection/data_collection_state.h"
 #include "un260/diagnostic/diagnostic_reply.h"
 #include "un260/currency/currency_reply.h"
 #include "un260/counting/counting_session_state.h"
@@ -140,9 +142,8 @@ static void counting_control_on_start_success(const uint8_t *buf, uint8_t len)
                      (int)sizeof(g_history_last_start_frame_text));
     history_session_append_line("0x0A", buf, len);
 
-    if (g_data_collect_mode != DATA_COLLECT_MODE_NONE) {
-        snprintf(g_data_collect_status, sizeof(g_data_collect_status),
-                 "Counting started...");
+    if (data_collection_state_mode() != DATA_COLLECT_MODE_NONE) {
+        data_collection_state_set_status("Counting started...");
         page_06_data_collection_refresh();
     } else if (!g_cb_running &&
                ui_manager_get_current_page() != UI_PAGE_PURE &&
@@ -161,12 +162,15 @@ static void counting_control_on_error_frame(const char *tag,
 
 static void counting_control_on_start_failure(const char *description)
 {
-    if (g_data_collect_mode == DATA_COLLECT_MODE_NONE) {
+    if (data_collection_state_mode() == DATA_COLLECT_MODE_NONE) {
         return;
     }
 
-    snprintf(g_data_collect_status, sizeof(g_data_collect_status),
-             "Start failed: %s", description);
+    {
+        char status[160];
+        snprintf(status, sizeof(status), "Start failed: %s", description);
+        data_collection_state_set_status(status);
+    }
     page_06_data_collection_refresh();
 }
 
@@ -837,51 +841,10 @@ void PCCmdHandle(void)
             pccmd_handle_device_reply(cmd, buf, len);
             break;
         case 0xC0:
-        {
-            if (len < 5) break;
-
-            switch (buf[4]) {
-            case 0x01:
-                snprintf(g_data_collect_status, sizeof(g_data_collect_status),
-                        "ALL DATA collection mode ready.");
-                break;
-
-            case 0x02:
-                snprintf(g_data_collect_status, sizeof(g_data_collect_status),
-                        "Collection completed. Data can be copied from USB.");
-                break;
-
-            case 0x03:
-                snprintf(g_data_collect_status, sizeof(g_data_collect_status),
-                        "FALSE REPORT collection mode ready.");
-                break;
-
-            case 0x05:
-                snprintf(g_data_collect_status, sizeof(g_data_collect_status),
-                        "USB ready. You can start counting.");
-                break;
-
-            case 0x06:
-                snprintf(g_data_collect_status, sizeof(g_data_collect_status),
-                        "USB not ready. Collection mode error.");
-                break;
-
-            case 0xFF:
-                g_data_collect_mode = DATA_COLLECT_MODE_NONE;
-                g_data_collect_pcs = 0;
-                snprintf(g_data_collect_status, sizeof(g_data_collect_status),
-                        "Collection mode exited.");
-                break;
-
-            default:
-                snprintf(g_data_collect_status, sizeof(g_data_collect_status),
-                        "Collection reply: 0x%02X", buf[4]);
-                break;
+            if (data_collection_reply_handle(buf, len) != DATA_COLLECTION_REPLY_INVALID) {
+                page_06_data_collection_refresh();
             }
-
-            page_06_data_collection_refresh();
             break;
-        }
                 /* ================== 0x3C 打印状态 ================== */
         case 0x3C:
         {

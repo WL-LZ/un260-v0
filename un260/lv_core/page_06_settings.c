@@ -9,6 +9,7 @@
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/device_info/device_info.h"
+#include "un260/data_collection/data_collection_state.h"
 #include "un260/lv_drivers/lv_drivers.h"
 
 #include <stdint.h>
@@ -994,25 +995,29 @@ static void update_data_collect_btn_style(lv_obj_t* btn, lv_obj_t* label, lv_obj
 
 void page_06_data_collection_refresh(void)
 {
+    data_collect_mode_t mode;
+
     if (!pages[SETTINGS_MENU_DATA_COLLECTION]) {
         return;
     }
 
+    mode = data_collection_state_mode();
+
     update_data_collect_btn_style(dc_btn_all, dc_label_all, dc_check_all,
-                                  g_data_collect_mode == DATA_COLLECT_MODE_ALL);
+                                  mode == DATA_COLLECT_MODE_ALL);
     update_data_collect_btn_style(dc_btn_false, dc_label_false, dc_check_false,
-                                  g_data_collect_mode == DATA_COLLECT_MODE_FALSE);
+                                  mode == DATA_COLLECT_MODE_FALSE);
 
     if (dc_mode_value_label) {
-        lv_label_set_text(dc_mode_value_label, get_data_collect_mode_name(g_data_collect_mode));
+        lv_label_set_text(dc_mode_value_label, get_data_collect_mode_name(mode));
     }
 
     if (dc_pcs_label) {
-        lv_label_set_text_fmt(dc_pcs_label, "PCS:%d", g_data_collect_pcs);
+        lv_label_set_text_fmt(dc_pcs_label, "PCS:%d", data_collection_state_pcs());
     }
 
     if (dc_status_label) {
-        lv_label_set_text(dc_status_label, g_data_collect_status);
+        lv_label_set_text(dc_status_label, data_collection_state_status());
     }
 }
 
@@ -1036,9 +1041,7 @@ static void data_collect_mode_btn_event_cb(lv_event_t* e)
         return;
     }
 
-    g_data_collect_mode = mode;
-    g_data_collect_pcs = 0;
-    lv_snprintf(g_data_collect_status, sizeof(g_data_collect_status), "%s", status);
+    data_collection_state_select_mode(mode, status);
     settings_set_status("LOADING", color_primary());
     page_06_data_collection_refresh();
 }
@@ -1048,18 +1051,16 @@ static void data_collect_start_btn_event_cb(lv_event_t* e)
     uint8_t start_cmd = 0x01;
     (void)e;
 
-    if (g_data_collect_mode == DATA_COLLECT_MODE_NONE) {
-        lv_snprintf(g_data_collect_status, sizeof(g_data_collect_status),
-                    "Please select a collection mode first");
+    if (data_collection_state_mode() == DATA_COLLECT_MODE_NONE) {
+        data_collection_state_set_status("Please select a collection mode first");
         settings_set_status("WARNING", lv_color_hex(0xF59D2A));
         page_06_data_collection_refresh();
         return;
     }
 
     if (settings_detail_send_command(0x0A, &start_cmd, 1)) {
-        g_data_collect_pcs = 0;
-        lv_snprintf(g_data_collect_status, sizeof(g_data_collect_status),
-                    "Counting command sent. Waiting for controller reply...");
+        data_collection_state_reset_pcs();
+        data_collection_state_set_status("Counting command sent. Waiting for controller reply...");
         settings_set_status("LOADING", color_primary());
         page_06_data_collection_refresh();
     }
@@ -1071,9 +1072,7 @@ static void data_collect_disable_btn_event_cb(lv_event_t* e)
     (void)e;
 
     if (settings_detail_send_command(0xC0, &sub, 1)) {
-        g_data_collect_mode = DATA_COLLECT_MODE_NONE;
-        g_data_collect_pcs = 0;
-        lv_snprintf(g_data_collect_status, sizeof(g_data_collect_status), "Exiting collection mode");
+        data_collection_state_exit("Exiting collection mode");
         settings_set_status("READY", lv_color_hex(0x24D6A1));
         page_06_data_collection_refresh();
     }
@@ -1269,9 +1268,8 @@ static void page_06_switch_sub_page(int index)
                            page_06_get_menu_title((page_06_settings_menu_t)index));
 
     if (index == SETTINGS_MENU_DATA_COLLECTION) {
-        if (g_data_collect_mode == DATA_COLLECT_MODE_NONE) {
-            lv_snprintf(g_data_collect_status, sizeof(g_data_collect_status),
-                        "Please select a collection mode.");
+        if (data_collection_state_mode() == DATA_COLLECT_MODE_NONE) {
+            data_collection_state_set_status("Please select a collection mode.");
         }
         page_06_data_collection_refresh();
     }
