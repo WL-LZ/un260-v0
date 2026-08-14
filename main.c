@@ -16,6 +16,7 @@
 #include "un260/lv_core/lv_page_event.h"
 #include "un260/app_service/setting_service.h"
 #include "un260/app_service/app_clock.h"
+#include "un260/app_service/app_boot_runtime.h"
 #include "un260/app_service/app_serial_runtime.h"
 #include "un260/machine_state/machine_state.h"
 #include "un260/protocol/basic_setting_reply_dispatch.h"
@@ -25,7 +26,6 @@
 #include "un260/protocol/auxiliary_reply.h"
 #include "un260/protocol/stream_data_reply.h"
 #include "un260/boot/boot_service.h"
-#include "un260/boot/boot_reply.h"
 #include "un260/device_info/device_reply.h"
 #include "un260/data_collection/data_collection_reply.h"
 #include "un260/data_collection/data_collection_state.h"
@@ -45,7 +45,6 @@
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/ui_history_data.h"
-#include "un260/lv_core/page_08_boot.h"
 #include "un260/lv_components/lv_fault_popup.h"
 #include "un260/lv_components/lv_print_toast.h"
 #include "un260/lv_core/ui_upgrade_service.h"
@@ -583,21 +582,6 @@ static void frame_to_hex_str(const uint8_t *buf, int len, char *out, int out_len
 }
 
 
-static void boot_selftest_finish_cb(lv_timer_t* timer)
-{
-    bool pure_count_enabled;
-
-    boot_selftest_list_finish();     // 自检结束后补全最后一项成功状态
-    sim_data_init();                 // 自检结束后初始化一次 sim
-    g_counting_session.active = false;
-    g_counting_session.wait_start_ack = false;
-    g_counting_session.end_anim_wait_detail = false;
-    g_counting_session.last_result.valid = false;
-    pure_count_enabled = ui_state_pure_count_is_enabled();
-    ui_manager_switch(pure_count_enabled ? UI_PAGE_PURE : UI_PAGE_MAIN); // 按掉电记忆恢复页面
-    lv_timer_del(timer);             // 删除定时器
-}
-
 static void pccmd_handle_device_reply(uint8_t cmd, const uint8_t *buf, uint8_t len)
 {
     device_reply_result_t reply = device_reply_dispatch(cmd, buf, len);
@@ -628,31 +612,6 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
 
     if ((actions & BASIC_SETTING_REPLY_ACTION_SCHEDULE_MODE_CLEAR) != 0) {
         schedule_mode_switch_clear();
-    }
-}
-
-static void pccmd_handle_boot_and_selftest(uint8_t cmd, const uint8_t *buf, uint8_t len)
-{
-    boot_reply_result_t reply = boot_reply_dispatch(cmd, buf, len);
-
-    if (reply.kind == BOOT_REPLY_HANDSHAKE_ACCEPTED) {
-        boot_progress_set(20);
-        boot_send_next_selftest();
-    } else if (reply.kind == BOOT_REPLY_SELF_TEST_RECORDED) {
-        boot_selftest_list_set_result(reply.self_test_index, reply.self_test_result);
-        boot_progress_set((uint8_t)(30 + reply.self_test_index * 10));
-
-        if (reply.self_test_event == BOOT_SELF_TEST_EVENT_NONE) {
-            boot_send_next_selftest();
-        } else if (reply.self_test_event == BOOT_SELF_TEST_EVENT_SUCCESS) {
-            boot_progress_set(100);
-            send_command(fd4, 0x56, (uint8_t[]){0x01}, 1);
-            lv_timer_create(boot_selftest_finish_cb, 2000, NULL);
-        } else if (reply.self_test_event == BOOT_SELF_TEST_EVENT_FAILURE) {
-            // 自检失败也继续读取主控货币列表，避免页面回落本地默认配置
-            send_command(fd4, 0x56, (uint8_t[]){0x01}, 1);
-            show_boot_fault_popup(reply.first_failure_step, reply.first_failure_result);
-        }
     }
 }
 
@@ -723,7 +682,7 @@ void PCCmdHandle(void)
         switch (cmd) {
 
         case 0x01:
-            pccmd_handle_boot_and_selftest(cmd, buf, len);
+            app_boot_runtime_handle_reply(&g_counting_session, cmd, buf, len);
             break;
 
         case 0x17:
@@ -834,7 +793,7 @@ void PCCmdHandle(void)
             diagnostic_reply_dispatch(cmd, buf, len, &g_diagnostic_reply_hooks);
             break;
         case 0x37:
-            pccmd_handle_boot_and_selftest(cmd, buf, len);
+            app_boot_runtime_handle_reply(&g_counting_session, cmd, buf, len);
             break;
         case 0x58:
         case 0x56:
@@ -952,12 +911,9 @@ int main(void) {
     if (!app_serial_runtime_start()) {
         return -1;
     }
-   // machine_handshake_send(); 只发一次握手
-
     while (1) {
         uint32_t now = app_clock_uptime_ms();
         ui_page_t current_page = ui_manager_get_current_page();
-        boot_service_action_t boot_action = BOOT_SERVICE_ACTION_NONE;
         uint64_t ui_start_us;
         uint64_t ui_end_us;
         uint32_t ui_time_us;
@@ -1007,18 +963,7 @@ int main(void) {
             }
         }
 
-        if (current_page == UI_PAGE_BOOT) {
-            boot_action = boot_service_poll(now);
-        }
-        if (boot_action == BOOT_SERVICE_ACTION_SEND_HANDSHAKE) {
-            machine_handshake_send();
-        } else if (boot_action == BOOT_SERVICE_ACTION_HANDSHAKE_TIMEOUT) {
-            show_boot_selftest_error_popup(
-                "Controller handshake timeout.\nPress CONFIRM to enter sensor page.");
-        } else if (boot_action == BOOT_SERVICE_ACTION_SELF_TEST_TIMEOUT) {
-            show_boot_selftest_error_popup(
-                "Self-test timeout.\nPress CONFIRM to enter sensor page.");
-        }
+        app_boot_runtime_poll(now, current_page == UI_PAGE_BOOT);
 
         usleep(1000);
     }
