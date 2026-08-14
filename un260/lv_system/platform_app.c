@@ -121,12 +121,15 @@ void update_label_by_name(ui_element_t* page_cfg_obj, int len,const char* name, 
 int sim_get_sn_valid_count(void)
 {
     int valid_count = 0;
+    int capacity = sim.sn_capacity;
+    const int mix_capacity = (int)(sizeof(sim.denom_mix) / sizeof(sim.denom_mix[0]));
 
-    if (sim.sn_str == NULL || sim.sn_capacity <= 0) {
+    if (sim.sn_str == NULL || capacity <= 0) {
         return 0;
     }
+    if (capacity > mix_capacity) capacity = mix_capacity;
 
-    for (int i = 0; i < sim.sn_capacity; i++) {
+    for (int i = 0; i < capacity; i++) {
         if (sim.sn_str[i] != NULL && sim.denom_mix[i] > 0) {
             valid_count++;
         }
@@ -138,12 +141,15 @@ int sim_get_sn_valid_count(void)
 int sim_get_sn_nth_valid_index(int nth)
 {
     int valid_count = 0;
+    int capacity = sim.sn_capacity;
+    const int mix_capacity = (int)(sizeof(sim.denom_mix) / sizeof(sim.denom_mix[0]));
 
-    if (nth < 0 || sim.sn_str == NULL || sim.sn_capacity <= 0) {
+    if (nth < 0 || sim.sn_str == NULL || capacity <= 0) {
         return -1;
     }
+    if (capacity > mix_capacity) capacity = mix_capacity;
 
-    for (int i = 0; i < sim.sn_capacity; i++) {
+    for (int i = 0; i < capacity; i++) {
         if (sim.sn_str[i] == NULL || sim.denom_mix[i] <= 0) {
             continue;
         }
@@ -973,9 +979,8 @@ void sim_clear_all_sn(counting_sim_t* sim_data)
     page_01_detail_scroll_reset_all();
     ui_refresh_main_page();
     smart_island_refresh_summary();
-    int clear_data_cmd;
-    clear_data_cmd = 0x01;
-    send_command(fd4,0x3b,&clear_data_cmd,1);
+    const uint8_t clear_data_cmd = 0x01;
+    send_command(fd4, 0x3b, &clear_data_cmd, 1);
 }
 
 

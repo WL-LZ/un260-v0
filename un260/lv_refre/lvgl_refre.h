@@ -42,15 +42,6 @@ extern "C" {
     void page_03_batch_mode_status_refre(void);
 
 
-    void page_02_a_page_refre(void);
-    void page_02_b_page_refre(void);
-    void page_02_c_page_refre(void);
-    void page_02_curr_refre(void);
-    void page_02_a_page_num_refre(void);
-    void page_02_b_page_num_refre(void);
-    void page_02_c_page_num_refre(void);
-
-
 #ifdef __cplusplus
 }
 #endif

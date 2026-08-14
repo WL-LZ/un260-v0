@@ -8,9 +8,10 @@
 
 #include "un260/counting/counting_reject_reason.h"
 #include "un260/lv_components/smart_island.h"
+#include "un260/lv_core/page_01_detail_scroll.h"
 #include "un260/lv_core/page_01_main.h"
+#include "un260/lv_core/page_02_list.h"
 #include "un260/lv_drivers/lv_drivers.h"
-#include "un260/lv_refre/lvgl_refre.h"
 
 #define COUNTING_SN_MAX_COUNT 10000
 

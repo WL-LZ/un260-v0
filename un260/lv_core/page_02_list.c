@@ -2,9 +2,9 @@
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_resources/lv_image_declear.h" 
 #include "un260/lv_resources/lv_img_init.h" 
+#include "un260/currency/currency_state.h"
 #include "lv_page_event.h"
-#include "un260/lv_refre/lvgl_refre.h"
-#include "../aic_ui/aic_ui.h"
+#include "aic_ui/aic_ui.h"
 #include "un260/lv_system/platform_app.h"
 #include <stdio.h>
 #include <string.h>
@@ -276,8 +276,13 @@ ui_element_t page_02_list_obj[] = {
 static int page_02_a_valid_count_get(void) // 获取A区有效面额条数
 {
     int valid_count = 0;
+    int denom_count = sim.denom_number;
 
-    for (int i = 0; i < sim.denom_number; i++) {
+    if (denom_count > (int)(sizeof(sim.denom) / sizeof(sim.denom[0]))) {
+        denom_count = (int)(sizeof(sim.denom) / sizeof(sim.denom[0]));
+    }
+
+    for (int i = 0; i < denom_count; i++) {
         if (sim.denom[i].value > 0) {
             valid_count++;
         }
@@ -758,6 +763,80 @@ static void page_02_scroll_section_event_cb(lv_event_t *e) // 处理滚动与点
     }
 }
 
+void page_02_a_page_refre(void)
+{
+    update_label_by_name(page_02_list_obj, page_02_list_len,
+                         "02_a_pcs_amount", "%d", sim.total_pcs);
+    update_label_by_name(page_02_list_obj, page_02_list_len,
+                         "02_a_amount_total", "%.0f", sim.total_amount);
+    page_02_list_section_refresh(PAGE_02_SECTION_A);
+}
+
+void page_02_b_page_refre(void)
+{
+    if (page_02_list_len <= 0) return;
+    page_02_list_section_refresh(PAGE_02_SECTION_B);
+}
+
+void page_02_c_page_refre(void)
+{
+    if (page_02_list_len <= 0) return;
+    page_02_list_section_refresh(PAGE_02_SECTION_C);
+}
+
+void page_02_curr_refre(void)
+{
+    char curr_code[4];
+
+    currency_state_get_active_code(curr_code);
+    update_label_by_name(page_02_list_obj, page_02_list_len,
+                         "02_page_curr", "%s", curr_code);
+}
+
+void page_02_a_page_num_refre(void)
+{
+    char page_text[16];
+
+    snprintf(page_text, sizeof(page_text), "%d/%d",
+             page_02_a_report_status.curent_page,
+             page_02_a_report_status.total_page);
+    update_label_by_name(page_02_list_obj, page_02_list_len,
+                         "02_a_page_refre", "%s", page_text);
+}
+
+void page_02_b_page_num_refre(void)
+{
+    char page_text[16];
+    int valid_total = page_02_b_valid_count_get();
+
+    page_02_b_report_status.total_page = valid_total == 0
+        ? 1
+        : (valid_total + PAGE_02_B_ITEM - 1) / PAGE_02_B_ITEM;
+    if (page_02_b_report_status.curent_page < 1) {
+        page_02_b_report_status.curent_page = 1;
+    } else if (page_02_b_report_status.curent_page >
+               page_02_b_report_status.total_page) {
+        page_02_b_report_status.curent_page = page_02_b_report_status.total_page;
+    }
+
+    snprintf(page_text, sizeof(page_text), "%d/%d",
+             page_02_b_report_status.curent_page,
+             page_02_b_report_status.total_page);
+    update_label_by_name(page_02_list_obj, page_02_list_len,
+                         "02_b_page_refre", "%s", page_text);
+}
+
+void page_02_c_page_num_refre(void)
+{
+    char page_text[16];
+
+    snprintf(page_text, sizeof(page_text), "%d/%d",
+             page_02_c_report_status.curent_page,
+             page_02_c_report_status.total_page);
+    update_label_by_name(page_02_list_obj, page_02_list_len,
+                         "02_c_page_refre", "%s", page_text);
+}
+
 void page_02_list_section_refresh(page_02_section_id_t section_id) // 刷新指定分区滚动内容
 {
     page_02_scroll_section_t *section = page_02_scroll_section_get(section_id);
@@ -823,6 +902,7 @@ void page_02_list_section_page_step(page_02_section_id_t section_id, int step, b
 
 void ui_page_02_list_create(lv_obj_t* parent)
 {
+    (void)parent;
     page_02_report_init();
 
     //creat page_main 
