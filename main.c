@@ -29,6 +29,7 @@
 #include "un260/device_info/device_info.h"
 #include "un260/currency/currency_state.h"
 #include "un260/currency/currency_service.h"
+#include "un260/counting/counting_session_state.h"
 #include "un260/serial_number/serial_number_state.h"
 #include "un260/serial_number/serial_number_service.h"
 #include "un260/lv_core/page_01_main.h"
@@ -66,26 +67,8 @@ static lv_timer_t* g_mode_clear_timer = NULL;
 #define DENOM_QUERY_IDLE_RETRY_MS 2500
 static uint32_t g_ui_upgrade_detect_tick = 0;
 
-static bool g_count_session_active = false;
-static bool g_wait_start_ack_for_next_session = false;
-static bool g_count_end_anim_wait_detail_end = false;
-static bool g_auto_wave_pending = false;
-static bool g_last_result_pending_valid = false;
-static int g_last_result_pending_pcs = 0;
-static float g_last_result_pending_amount = 0.0f;
-static int g_last_result_pending_valid_pcs = 0;
-static int g_last_result_pending_issue_pcs = 0;
-static int g_last_result_pending_suspect_pcs = 0;
-static int g_last_result_pending_damaged_pcs = 0;
-static int g_last_result_pending_expected_issue = 0;
-static int g_current_analysis_valid_pcs = 0;
-static int g_current_count_expected_issue = 0;
+static counting_session_state_t g_counting_session;
 static uint16_t g_reject_pocket_snapshot[0x100] = {0};
-static bool g_history_record_pending_valid = false;
-static bool g_history_record_pending_end_seen = false;
-static uint32_t g_history_record_pending_pcs = 0;
-static uint32_t g_history_record_pending_total_after = 0;
-static float g_history_record_pending_amount = 0.0f;
 static char g_history_last_error_frame_text[160] = {0};
 static char g_history_last_start_frame_text[160] = {0};
 static char g_history_last_end_frame_text[160] = {0};
@@ -151,16 +134,16 @@ static void history_try_commit_pending_record(void)
     counting_sim_t history_sim_snapshot;
     uint32_t total_after;
 
-    if (!g_history_record_pending_valid || !g_history_record_pending_end_seen) {
+    if (!g_counting_session.history_record.valid || !g_counting_session.history_record.end_seen) {
         return;
     }
 
-    total_after = g_history_record_pending_total_after;
+    total_after = g_counting_session.history_record.total_after;
     if (history_copy_sim_snapshot(&history_sim_snapshot, &sim)) {
-        history_sim_snapshot.total_pcs = (int)g_history_record_pending_pcs;
-        history_sim_snapshot.total_amount = g_history_record_pending_amount;
+        history_sim_snapshot.total_pcs = (int)g_counting_session.history_record.pcs;
+        history_sim_snapshot.total_amount = g_counting_session.history_record.amount;
         ui_history_record_append_from_session(&history_sim_snapshot,
-                                              g_history_record_pending_pcs,
+                                              g_counting_session.history_record.pcs,
                                               total_after,
                                               g_history_last_error_frame_text,
                                               g_history_last_start_frame_text,
@@ -169,11 +152,11 @@ static void history_try_commit_pending_record(void)
         history_free_sim_snapshot(&history_sim_snapshot);
     }
 
-    g_history_record_pending_valid = false;
-    g_history_record_pending_end_seen = false;
-    g_history_record_pending_pcs = 0;
-    g_history_record_pending_total_after = 0;
-    g_history_record_pending_amount = 0.0f;
+    g_counting_session.history_record.valid = false;
+    g_counting_session.history_record.end_seen = false;
+    g_counting_session.history_record.pcs = 0;
+    g_counting_session.history_record.total_after = 0;
+    g_counting_session.history_record.amount = 0.0f;
     g_history_last_error_frame_text[0] = '\0';
     g_history_last_start_frame_text[0] = '\0';
     g_history_last_end_frame_text[0] = '\0';
@@ -296,7 +279,7 @@ static void pending_result_recalc_issue_from_reject_detail(void)
     int expected_issue;
     bool use_delta = false;
 
-    if (!g_last_result_pending_valid) {
+    if (!g_counting_session.last_result.valid) {
         return;
     }
 
@@ -321,10 +304,10 @@ static void pending_result_recalc_issue_from_reject_detail(void)
         }
     }
 
-    expected_issue = g_last_result_pending_expected_issue;
+    expected_issue = g_counting_session.last_result.expected_issue;
     if (expected_issue <= 0 && delta_total > 0) {
         expected_issue = delta_total;
-        g_last_result_pending_expected_issue = expected_issue;
+        g_counting_session.last_result.expected_issue = expected_issue;
     }
     if (current_total == expected_issue) {
         selected_by_code = current_by_code;
@@ -364,17 +347,17 @@ static void pending_result_recalc_issue_from_reject_detail(void)
         issue = expected_issue;
     }
 
-    g_last_result_pending_issue_pcs = issue;
-    g_last_result_pending_suspect_pcs = suspect;
-    g_last_result_pending_damaged_pcs = damaged;
-    g_last_result_pending_valid_pcs = g_last_result_pending_pcs - issue;
-    if (g_last_result_pending_valid_pcs < 0) {
-        g_last_result_pending_valid_pcs = 0;
+    g_counting_session.last_result.issue_pcs = issue;
+    g_counting_session.last_result.suspect_pcs = suspect;
+    g_counting_session.last_result.damaged_pcs = damaged;
+    g_counting_session.last_result.valid_pcs = g_counting_session.last_result.pcs - issue;
+    if (g_counting_session.last_result.valid_pcs < 0) {
+        g_counting_session.last_result.valid_pcs = 0;
     }
     memcpy(g_reject_pocket_snapshot, current_by_code, sizeof(g_reject_pocket_snapshot));
-    smart_island_set_count_analysis(g_current_analysis_valid_pcs, suspect, damaged);
+    smart_island_set_count_analysis(g_counting_session.analysis_valid_pcs, suspect, damaged);
     uart_printf(fd6, "count analysis valid=%d expected=%d current=%d delta=%d source=%s suspect=%d damaged=%d\n",
-                g_current_analysis_valid_pcs, expected_issue, current_total, delta_total,
+                g_counting_session.analysis_valid_pcs, expected_issue, current_total, delta_total,
                 use_delta ? "delta" : "current", suspect, damaged);
 }
 
@@ -498,12 +481,12 @@ static void schedule_auto_wave_after_count(void)
 {
     ui_page_t page = ui_manager_get_current_page();
 
-    g_auto_wave_pending = false;
+    g_counting_session.auto_wave_pending = false;
 
     if (Machine_para.work_mode != 0) return;
     if (page != UI_PAGE_WAVE_GET) return;
 
-    g_auto_wave_pending = true;
+    g_counting_session.auto_wave_pending = true;
     uart_printf(fd6, "auto wave scheduled after count\n");
 }
 
@@ -511,8 +494,8 @@ static void trigger_auto_wave_after_detail(void)
 {
     bool sent = false;
 
-    if (!g_auto_wave_pending) return;
-    g_auto_wave_pending = false;
+    if (!g_counting_session.auto_wave_pending) return;
+    g_counting_session.auto_wave_pending = false;
 
     if (Machine_para.work_mode != 0 ||
         ui_manager_get_current_page() != UI_PAGE_WAVE_GET) {
@@ -597,10 +580,10 @@ static void boot_selftest_finish_cb(lv_timer_t* timer)
 
     boot_selftest_list_finish();     // 自检结束后补全最后一项成功状态
     sim_data_init();                 // 自检结束后初始化一次 sim
-    g_count_session_active = false;
-    g_wait_start_ack_for_next_session = false;
-    g_count_end_anim_wait_detail_end = false;
-    g_last_result_pending_valid = false;
+    g_counting_session.active = false;
+    g_counting_session.wait_start_ack = false;
+    g_counting_session.end_anim_wait_detail = false;
+    g_counting_session.last_result.valid = false;
     pure_count_enabled = ui_state_pure_count_is_enabled();
     ui_manager_switch(pure_count_enabled ? UI_PAGE_PURE : UI_PAGE_MAIN); // 按掉电记忆恢复页面
     lv_timer_del(timer);             // 删除定时器
@@ -837,35 +820,35 @@ void PCCmdHandle(void)
             uint8_t  status = p[7];
 
             if (status <= 0x01) {
-                if (g_wait_start_ack_for_next_session) {
+                if (g_counting_session.wait_start_ack) {
                     /* 等待新一把 0x0A 启动成功，忽略结束后的滞留/重放 0x0E 帧 */
                     break;
                 }
 
-                if (!g_count_session_active) {
+                if (!g_counting_session.active) {
                     /* Last 语义：仅在“下一把开始”时，提交上一把结果 */
-                    if (g_last_result_pending_valid) {
-                        sim.last_total_pcs = g_last_result_pending_pcs;
-                        sim.last_total_amount = g_last_result_pending_amount;
-                        sim.last_valid_pcs = g_last_result_pending_valid_pcs;
-                        sim.last_issue_pcs = g_last_result_pending_issue_pcs;
-                        sim.last_suspect_pcs = g_last_result_pending_suspect_pcs;
-                        sim.last_damaged_pcs = g_last_result_pending_damaged_pcs;
-                        Machine_para.last_total_pcs = (uint16_t)g_last_result_pending_pcs;
-                        Machine_para.last_total_amount = (uint32_t)g_last_result_pending_amount;
-                        g_last_result_pending_valid = false;
+                    if (g_counting_session.last_result.valid) {
+                        sim.last_total_pcs = g_counting_session.last_result.pcs;
+                        sim.last_total_amount = g_counting_session.last_result.amount;
+                        sim.last_valid_pcs = g_counting_session.last_result.valid_pcs;
+                        sim.last_issue_pcs = g_counting_session.last_result.issue_pcs;
+                        sim.last_suspect_pcs = g_counting_session.last_result.suspect_pcs;
+                        sim.last_damaged_pcs = g_counting_session.last_result.damaged_pcs;
+                        Machine_para.last_total_pcs = (uint16_t)g_counting_session.last_result.pcs;
+                        Machine_para.last_total_amount = (uint32_t)g_counting_session.last_result.amount;
+                        g_counting_session.last_result.valid = false;
                     }
-                    g_auto_wave_pending = false;
-                    g_count_session_active = true;
-                    g_current_count_expected_issue = 0;
+                    g_counting_session.auto_wave_pending = false;
+                    g_counting_session.active = true;
+                    g_counting_session.expected_issue = 0;
                 }
 
                 sim.total_amount = amount;
                 sim.total_pcs    = qty;
-                if ((int)ret > g_current_count_expected_issue) {
-                    g_current_count_expected_issue = (int)ret;
+                if ((int)ret > g_counting_session.expected_issue) {
+                    g_counting_session.expected_issue = (int)ret;
                 }
-                sim.err_expected = g_current_count_expected_issue;
+                sim.err_expected = g_counting_session.expected_issue;
                 ui_refresh_main_compact_fast();
                 history_session_append_line("0x0E", buf, len);
                 if (!( !fault_popup_get_auto_enabled() && fault_popup_has_pending_start_issue())) {
@@ -877,10 +860,10 @@ void PCCmdHandle(void)
                 int final_issue = 0;
                 float final_amount = 0.0f;
                 uart_printf(fd6, "Count finished\n");
-                g_count_session_active = false;
-                g_wait_start_ack_for_next_session = true;
-                g_count_end_anim_wait_detail_end = true;
-                g_last_result_pending_valid = true;
+                g_counting_session.active = false;
+                g_counting_session.wait_start_ack = true;
+                g_counting_session.end_anim_wait_detail = true;
+                g_counting_session.last_result.valid = true;
                 history_session_append_line("0x0E", buf, len);
                 frame_to_hex_str(buf, len, g_history_last_end_frame_text,
                                  (int)sizeof(g_history_last_end_frame_text));
@@ -892,27 +875,27 @@ void PCCmdHandle(void)
                     final_pcs = (int)qty;
                     final_amount = (float)amount;
                 }
-                final_issue = (int)ret > g_current_count_expected_issue
-                    ? (int)ret : g_current_count_expected_issue;
+                final_issue = (int)ret > g_counting_session.expected_issue
+                    ? (int)ret : g_counting_session.expected_issue;
                 sim.err_expected = final_issue;
 
-                g_last_result_pending_pcs = final_pcs;
-                g_last_result_pending_amount = final_amount;
-                g_last_result_pending_issue_pcs = final_issue;
-                g_last_result_pending_suspect_pcs = final_issue;
-                g_last_result_pending_damaged_pcs = 0;
-                g_last_result_pending_valid_pcs = final_pcs - final_issue;
-                if (g_last_result_pending_valid_pcs < 0) {
-                    g_last_result_pending_valid_pcs = 0;
+                g_counting_session.last_result.pcs = final_pcs;
+                g_counting_session.last_result.amount = final_amount;
+                g_counting_session.last_result.issue_pcs = final_issue;
+                g_counting_session.last_result.suspect_pcs = final_issue;
+                g_counting_session.last_result.damaged_pcs = 0;
+                g_counting_session.last_result.valid_pcs = final_pcs - final_issue;
+                if (g_counting_session.last_result.valid_pcs < 0) {
+                    g_counting_session.last_result.valid_pcs = 0;
                 }
-                g_last_result_pending_expected_issue = final_issue;
-                g_current_analysis_valid_pcs = (int)qty;
-                smart_island_set_count_analysis(g_current_analysis_valid_pcs, final_issue, 0);
-                g_history_record_pending_valid = (final_pcs > 0);
-                g_history_record_pending_end_seen = false;
-                g_history_record_pending_pcs = (uint32_t)final_pcs;
-                g_history_record_pending_total_after = Machine_para.history_total_notes_counted + (uint32_t)final_pcs;
-                g_history_record_pending_amount = final_amount;
+                g_counting_session.last_result.expected_issue = final_issue;
+                g_counting_session.analysis_valid_pcs = (int)qty;
+                smart_island_set_count_analysis(g_counting_session.analysis_valid_pcs, final_issue, 0);
+                g_counting_session.history_record.valid = (final_pcs > 0);
+                g_counting_session.history_record.end_seen = false;
+                g_counting_session.history_record.pcs = (uint32_t)final_pcs;
+                g_counting_session.history_record.total_after = Machine_para.history_total_notes_counted + (uint32_t)final_pcs;
+                g_counting_session.history_record.amount = final_amount;
                 history_try_commit_pending_record();
 
                 if (is_main_page_active()) {
@@ -943,7 +926,7 @@ void PCCmdHandle(void)
                 char curr_code[4];
                 currency_state_get_active_code(curr_code);
                 uart_printf(fd6, "Set %s curr success\n", curr_code);
-                g_count_end_anim_wait_detail_end = false;
+                g_counting_session.end_anim_wait_detail = false;
                 trigger_denom_query();
                 smart_island_refresh_summary();
             }
@@ -1021,8 +1004,8 @@ void PCCmdHandle(void)
                     hide_counting_error_popup();
                     fault_popup_clear_pending();
                     fault_popup_reset_auto_retry();
-                    g_wait_start_ack_for_next_session = false;
-                    g_count_end_anim_wait_detail_end = false;
+                    g_counting_session.wait_start_ack = false;
+                    g_counting_session.end_anim_wait_detail = false;
                     g_history_last_error_frame_text[0] = '\0';
                     g_history_last_start_frame_text[0] = '\0';
                     g_history_last_end_frame_text[0] = '\0';
@@ -1132,7 +1115,7 @@ void PCCmdHandle(void)
 
                 if (g_denom_query_pending) {
                     g_denom_query_pending = false;
-                    if (!g_count_session_active) {
+                    if (!g_counting_session.active) {
                         ui_refresh_main_page();
                     }
                     break;
@@ -1142,7 +1125,7 @@ void PCCmdHandle(void)
                 uint8_t reject_cmd = 0x01;
                 send_command(fd4, 0x0C, &reject_cmd, 1);
                 g_wait_sn_after_reject_end = true;
-                if (!g_count_session_active) {
+                if (!g_counting_session.active) {
                     ui_refresh_main_page();
                 }
                 break;
@@ -1291,14 +1274,14 @@ void PCCmdHandle(void)
                 page_02_b_page_refre();
                 page_02_b_page_num_refre();
                 history_session_append_line("0x0D", buf, len);
-                g_history_record_pending_end_seen = true;
+                g_counting_session.history_record.end_seen = true;
                 history_try_commit_pending_record();
                 if (is_main_page_active()) {
                     ui_refresh_main_page();
                 }
                 /* 详情页这次刷新完成后，再放行点钞结束动画 */
-                if (g_count_end_anim_wait_detail_end) {
-                    g_count_end_anim_wait_detail_end = false;
+                if (g_counting_session.end_anim_wait_detail) {
+                    g_counting_session.end_anim_wait_detail = false;
                     ui_count_end_anim_begin(NULL);
                 }
                 trigger_auto_wave_after_detail();
