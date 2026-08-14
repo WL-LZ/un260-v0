@@ -6,6 +6,7 @@
 
 #include "un260/lv_system/platform_app.h"
 #include "un260/protocol/basic_setting_reply_dispatch.h"
+#include "un260/protocol/setting_reply_dispatch.h"
 
 #define APP_SETTING_MODE_CLEAR_DELAY_MS 120
 
@@ -42,15 +43,44 @@ static void app_setting_runtime_schedule_mode_clear(void)
     lv_timer_set_repeat_count(g_mode_clear_timer, 1);
 }
 
-void app_setting_runtime_handle_basic_reply(uint8_t cmd,
-                                            uint8_t *buf,
-                                            uint8_t len)
+static void app_setting_runtime_handle_basic_reply(uint8_t cmd,
+                                                   uint8_t *buf,
+                                                   uint8_t len)
 {
     basic_setting_reply_action_t actions =
         basic_setting_reply_dispatch(cmd, buf, len);
 
     if ((actions & BASIC_SETTING_REPLY_ACTION_SCHEDULE_MODE_CLEAR) != 0) {
         app_setting_runtime_schedule_mode_clear();
+    }
+}
+
+bool app_setting_runtime_handle_reply(uint8_t cmd, uint8_t *buf, uint8_t len)
+{
+    switch (cmd) {
+    case 0x04:
+    case 0x06:
+    case 0x15:
+    case 0x16:
+    case 0x38:
+    case 0x39:
+    case 0x3A:
+        app_setting_runtime_handle_basic_reply(cmd, buf, len);
+        return true;
+
+    case 0x08:
+    case 0x31:
+    case 0x32:
+    case 0x41:
+    case 0x42:
+    case 0x44:
+    case 0x45:
+    case 0x46:
+        setting_reply_dispatch_detail(cmd, buf, len);
+        return true;
+
+    default:
+        return false;
     }
 }
 
