@@ -47,6 +47,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/cfd/cfd_state.c
     un260/cfd/cfd_service.c
     un260/protocol/mode_codec.c
+    un260/protocol/protocol_frame_parser.c
     un260/protocol/protocol_frame_queue.c
     un260/protocol/protocol_request.c
     un260/protocol/basic_setting_reply_dispatch.c

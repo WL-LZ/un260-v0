@@ -22,6 +22,7 @@
 #include "un260/machine_state/machine_state.h"
 #include "un260/protocol/mode_codec.h"
 #include "un260/protocol/basic_setting_reply_dispatch.h"
+#include "un260/protocol/protocol_frame_parser.h"
 #include "un260/protocol/protocol_frame_queue.h"
 #include "un260/protocol/setting_reply_dispatch.h"
 #include "un260/boot/boot_service.h"
@@ -52,15 +53,6 @@
 static bool uart_running = false;
 #define MAX_CMD_PER_TICK  64   // 每轮处理上限，避免长帧流长时间占用UI
 
-static uint8_t gPCRecvBuff[PROTOCOL_FRAME_MAX_SIZE];
-static int gPCRecvIndex = 0;
-static int gPCRecvLen = 0;
-static int gPCRecvSig = 0;        // 是否正在接收一帧
-static int gPCRecvComplete = 0;   // 一帧接收完成标志
-
-
-// 添加互斥锁保护共享变量
-static pthread_mutex_t recv_mutex = PTHREAD_MUTEX_INITIALIZER;
 static bool g_wait_sn_after_reject_end = false;
 static bool g_denom_query_pending = false;
 static bool g_denom_query_deferred = false;
@@ -601,74 +593,30 @@ static void frame_to_hex_str(const uint8_t *buf, int len, char *out, int out_len
 
 
 void* uart4_thread(void* arg) {
+    protocol_frame_parser_t parser;
+    protocol_frame_view_t frame;
     uint8_t byte;
+
+    (void)arg;
+    protocol_frame_parser_init(&parser);
     //uart_printf(fd6, "UART4 start (queue version)\n");
-    pthread_mutex_lock(&recv_mutex);
-    gPCRecvIndex = 0;
-    gPCRecvLen = 0;
-    gPCRecvSig = 0;
-    gPCRecvComplete = 0;
-    pthread_mutex_unlock(&recv_mutex);
     while (uart_running) {
         int len = uart_recv(fd4, (char*)&byte, 1, 10);
         if (len > 0) {
-            pthread_mutex_lock(&recv_mutex);
-            if (!gPCRecvComplete) {
-                if (gPCRecvSig) {
-                    gPCRecvBuff[gPCRecvIndex++] = byte;
-                    if (gPCRecvIndex == 2) {
-                        if (byte != 0xDF) {
-                            gPCRecvSig = 0;
-                            gPCRecvIndex = 0;
-                            if (byte == 0xFD) {
-                                gPCRecvIndex = 0;
-                                gPCRecvSig = 1;
-                                gPCRecvBuff[gPCRecvIndex++] = byte;
-                            }
-                        }
-                    } else if (gPCRecvIndex == 3) {
-                        gPCRecvLen = byte - 3;
-                        if (byte < 3) {
-                            //uart_printf(fd6, "UART4: invalid len=%d, reset\n", byte);
-                            gPCRecvSig = 0;
-                            gPCRecvIndex = 0;
-                            gPCRecvLen = 0;
-                        }
-                    } else if (gPCRecvIndex > 3) {
-                        gPCRecvLen--;
-                        if (gPCRecvLen == 0) {
+            protocol_frame_parse_result_t result;
 
-                            /* ===== DEBUG: 打印完整帧 ===== */
-                            uart_printf(fd6, "RX: ");
-                            for (int i = 0; i < gPCRecvIndex; i++) {
-                                uart_printf(fd6, "%02X ", gPCRecvBuff[i]);
-                            }
-                            uart_printf(fd6, "\n");
-                            /* ============================ */
+            result = protocol_frame_parser_feed(&parser, byte, &frame);
+            if (result == PROTOCOL_FRAME_PARSE_READY) {
+                uart_printf(fd6, "RX: ");
+                for (int i = 0; i < frame.len; i++) {
+                    uart_printf(fd6, "%02X ", frame.data[i]);
+                }
+                uart_printf(fd6, "\n");
 
-                            // 一帧接收完成，立即入队
-                            if (!protocol_frame_queue_push(gPCRecvBuff, gPCRecvIndex)) {
-                                uart_printf(fd6, "UART4: queue full, drop frame\n");
-                            }
-                            gPCRecvSig = 0;
-                            gPCRecvIndex = 0;
-                            gPCRecvLen = 0;
-                        }
-                    }
-                    if (gPCRecvIndex >= PROTOCOL_FRAME_MAX_SIZE) {
-                        //uart_printf(fd6, "UART4: buffer overflow, reset\n");
-                        gPCRecvSig = 0;
-                        gPCRecvIndex = 0;
-                        gPCRecvLen = 0;
-                    }
-                } else if (byte == 0xFD) {
-                    gPCRecvIndex = 0;
-                    gPCRecvSig = 1;
-                    gPCRecvBuff[gPCRecvIndex++] = byte;
-                    //uart_printf(fd6, "UART4: new frame started\n");
+                if (!protocol_frame_queue_push(frame.data, frame.len)) {
+                    uart_printf(fd6, "UART4: queue full, drop frame\n");
                 }
             }
-            pthread_mutex_unlock(&recv_mutex);
         }
         usleep(100);
     }
