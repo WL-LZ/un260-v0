@@ -23,12 +23,8 @@
 #include "un260/boot/boot_service.h"
 #include "un260/counting/counting_session_state.h"
 #include "un260/counting/counting_denom_query_service.h"
-#include "un260/counting/counting_history_service.h"
-#include "un260/counting/counting_reject_analysis_service.h"
-#include "un260/counting/counting_reject_sn_reply.h"
 #include "un260/lv_system/ui_screenshot.h"
 #include "un260/lv_components/lv_components.h"
-#include "un260/lv_components/smart_island.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/platform_app.h"
@@ -47,45 +43,6 @@ static uint32_t g_ui_upgrade_detect_tick = 0;
 
 static counting_session_state_t g_counting_session;
 static bool is_main_page_active(void);
-
-static void counting_detail_on_reject_analysis_ready(void)
-{
-    counting_reject_analysis_result_t result;
-
-    if (!counting_reject_analysis_update(&g_counting_session, &sim, &result)) {
-        return;
-    }
-    smart_island_set_count_analysis(g_counting_session.analysis_valid_pcs,
-                                    result.suspect_pcs,
-                                    result.damaged_pcs);
-    uart_printf(fd6,
-                "count analysis valid=%d expected=%d current=%u delta=%u source=%s suspect=%d damaged=%d\n",
-                g_counting_session.analysis_valid_pcs,
-                result.expected_issue,
-                result.current_total,
-                result.delta_total,
-                result.source == COUNTING_REJECT_ANALYSIS_SOURCE_DELTA ? "delta" : "current",
-                result.suspect_pcs,
-                result.damaged_pcs);
-}
-
-static void counting_detail_on_history_record_ready(void)
-{
-    counting_history_try_commit(&g_counting_session, &sim);
-}
-
-static void counting_detail_on_complete(void)
-{
-    app_counting_runtime_handle_detail_complete(&g_counting_session);
-}
-
-static const counting_reject_sn_reply_hooks_t g_counting_detail_hooks = {
-    .on_history_frame = counting_history_append_frame,
-    .on_reject_analysis_ready = counting_detail_on_reject_analysis_ready,
-    .on_history_record_ready = counting_detail_on_history_record_ready,
-    .on_detail_complete = counting_detail_on_complete,
-    .is_main_page_active = is_main_page_active,
-};
 
 static void ui_upgrade_popup_poll(uint32_t now)
 {
@@ -173,13 +130,12 @@ void PCCmdHandle(void)
         /* ================== 0x0C 退钞明细 ================== */
         case 0x0D:
         case 0x0C:
-            counting_reject_sn_reply_dispatch(cmd,
-                                              &g_counting_detail_state,
-                                              &g_counting_session,
-                                              &sim,
-                                              buf,
-                                              len,
-                                              &g_counting_detail_hooks);
+            app_counting_runtime_handle_detail(cmd,
+                                               &g_counting_detail_state,
+                                               &g_counting_session,
+                                               &sim,
+                                               buf,
+                                               len);
             break;
         case 0x37:
             app_boot_runtime_handle_reply(&g_counting_session, cmd, buf, len);

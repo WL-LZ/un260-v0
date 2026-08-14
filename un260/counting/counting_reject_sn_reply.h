@@ -17,12 +17,17 @@ typedef enum {
     COUNTING_DETAIL_REPLY_MEMORY_ERROR,
 } counting_detail_reply_result_t;
 
+/* Callbacks run synchronously during dispatch; context is borrowed, not retained. */
 typedef struct {
-    void (*on_history_frame)(const char *tag, const uint8_t *buf, uint8_t len);
-    void (*on_reject_analysis_ready)(void);
-    void (*on_history_record_ready)(void);
-    void (*on_detail_complete)(void);
-    bool (*is_main_page_active)(void);
+    void *context;
+    void (*on_history_frame)(void *context,
+                             const char *tag,
+                             const uint8_t *buf,
+                             uint8_t len);
+    void (*on_reject_analysis_ready)(void *context);
+    void (*on_history_record_ready)(void *context);
+    void (*on_detail_complete)(void *context);
+    bool (*is_main_page_active)(void *context);
 } counting_reject_sn_reply_hooks_t;
 
 counting_detail_reply_result_t counting_reject_sn_reply_dispatch(

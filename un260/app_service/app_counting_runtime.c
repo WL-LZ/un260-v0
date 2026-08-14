@@ -11,6 +11,8 @@
 #include "un260/counting/counting_denom_reply.h"
 #include "un260/counting/counting_history_service.h"
 #include "un260/counting/counting_info_reply.h"
+#include "un260/counting/counting_reject_analysis_service.h"
+#include "un260/counting/counting_reject_sn_reply.h"
 #include "un260/data_collection/data_collection_state.h"
 #include "un260/lv_components/lv_fault_popup.h"
 #include "un260/lv_components/smart_island.h"
@@ -19,6 +21,11 @@
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_refre/lvgl_refre.h"
 #include "un260/machine_state/machine_state.h"
+
+typedef struct {
+    counting_session_state_t *session;
+    counting_sim_t *sim_data;
+} app_counting_detail_context_t;
 
 static void app_counting_runtime_format_amount(char *dest,
                                                size_t dest_size,
@@ -133,6 +140,67 @@ static const counting_denom_reply_hooks_t g_counting_denom_hooks = {
     .on_history_frame = counting_history_append_frame,
 };
 
+static void app_counting_runtime_on_detail_history(void *context,
+                                                   const char *tag,
+                                                   const uint8_t *buf,
+                                                   uint8_t len)
+{
+    (void)context;
+    counting_history_append_frame(tag, buf, len);
+}
+
+static void app_counting_runtime_on_reject_analysis(void *context)
+{
+    app_counting_detail_context_t *detail_context = context;
+    counting_reject_analysis_result_t result;
+
+    if (detail_context == NULL ||
+        !counting_reject_analysis_update(detail_context->session,
+                                         detail_context->sim_data,
+                                         &result)) {
+        return;
+    }
+
+    smart_island_set_count_analysis(detail_context->session->analysis_valid_pcs,
+                                    result.suspect_pcs,
+                                    result.damaged_pcs);
+    uart_printf(fd6,
+                "count analysis valid=%d expected=%d current=%u delta=%u source=%s suspect=%d damaged=%d\n",
+                detail_context->session->analysis_valid_pcs,
+                result.expected_issue,
+                result.current_total,
+                result.delta_total,
+                result.source == COUNTING_REJECT_ANALYSIS_SOURCE_DELTA ?
+                    "delta" : "current",
+                result.suspect_pcs,
+                result.damaged_pcs);
+}
+
+static void app_counting_runtime_on_history_record(void *context)
+{
+    app_counting_detail_context_t *detail_context = context;
+
+    if (detail_context != NULL) {
+        counting_history_try_commit(detail_context->session,
+                                    detail_context->sim_data);
+    }
+}
+
+static void app_counting_runtime_on_detail_complete(void *context)
+{
+    app_counting_detail_context_t *detail_context = context;
+
+    if (detail_context != NULL) {
+        app_counting_runtime_handle_detail_complete(detail_context->session);
+    }
+}
+
+static bool app_counting_runtime_is_main_page_active(void *context)
+{
+    (void)context;
+    return app_counting_runtime_main_page_active();
+}
+
 static void app_counting_runtime_schedule_auto_wave(counting_session_state_t *session)
 {
     session->auto_wave_pending = false;
@@ -211,6 +279,38 @@ void app_counting_runtime_handle_denom(counting_detail_state_t *detail_state,
                                 buf,
                                 len,
                                 &g_counting_denom_hooks);
+}
+
+void app_counting_runtime_handle_detail(uint8_t cmd,
+                                        counting_detail_state_t *detail_state,
+                                        counting_session_state_t *session,
+                                        counting_sim_t *sim_data,
+                                        const uint8_t *buf,
+                                        uint8_t len)
+{
+    app_counting_detail_context_t context;
+    counting_reject_sn_reply_hooks_t hooks = { 0 };
+
+    if (detail_state == NULL || session == NULL || sim_data == NULL) {
+        return;
+    }
+
+    context.session = session;
+    context.sim_data = sim_data;
+    hooks.context = &context;
+    hooks.on_history_frame = app_counting_runtime_on_detail_history;
+    hooks.on_reject_analysis_ready = app_counting_runtime_on_reject_analysis;
+    hooks.on_history_record_ready = app_counting_runtime_on_history_record;
+    hooks.on_detail_complete = app_counting_runtime_on_detail_complete;
+    hooks.is_main_page_active = app_counting_runtime_is_main_page_active;
+
+    counting_reject_sn_reply_dispatch(cmd,
+                                      detail_state,
+                                      session,
+                                      sim_data,
+                                      buf,
+                                      len,
+                                      &hooks);
 }
 
 void app_counting_runtime_handle_detail_complete(counting_session_state_t *session)

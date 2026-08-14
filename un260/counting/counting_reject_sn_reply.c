@@ -21,7 +21,7 @@ static void counting_detail_record_history(
     uint8_t len)
 {
     if (hooks != NULL && hooks->on_history_frame != NULL) {
-        hooks->on_history_frame(tag, buf, len);
+        hooks->on_history_frame(hooks->context, tag, buf, len);
     }
 }
 
@@ -29,7 +29,7 @@ static bool counting_detail_is_main_page_active(
     const counting_reject_sn_reply_hooks_t *hooks)
 {
     return hooks != NULL && hooks->is_main_page_active != NULL &&
-           hooks->is_main_page_active();
+           hooks->is_main_page_active(hooks->context);
 }
 
 static uint8_t counting_reject_page_count(uint16_t item_count)
@@ -139,7 +139,7 @@ static counting_detail_reply_result_t counting_reject_reply_handle(
         page_02_c_report_status.curent_page = 1;
         counting_reject_refresh_pages(sim_data);
         if (hooks != NULL && hooks->on_reject_analysis_ready != NULL) {
-            hooks->on_reject_analysis_ready();
+            hooks->on_reject_analysis_ready(hooks->context);
         }
         uart_printf(fd6, "0x0C reject detail receive end, parsed=%u expected=%u\n",
                     sim_data->err_num, sim_data->err_expected);
@@ -237,7 +237,7 @@ static counting_detail_reply_result_t counting_sn_reply_handle(
         counting_detail_record_history(hooks, "0x0D", buf, len);
         session->history_record.end_seen = true;
         if (hooks != NULL && hooks->on_history_record_ready != NULL) {
-            hooks->on_history_record_ready();
+            hooks->on_history_record_ready(hooks->context);
         }
         if (counting_detail_is_main_page_active(hooks)) {
             ui_refresh_main_page();
@@ -247,7 +247,7 @@ static counting_detail_reply_result_t counting_sn_reply_handle(
             ui_count_end_anim_begin(NULL);
         }
         if (hooks != NULL && hooks->on_detail_complete != NULL) {
-            hooks->on_detail_complete();
+            hooks->on_detail_complete(hooks->context);
         }
         return COUNTING_DETAIL_REPLY_END;
     }

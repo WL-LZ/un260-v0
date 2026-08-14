@@ -20,6 +20,12 @@ void app_counting_runtime_handle_denom(counting_detail_state_t *detail_state,
                                        counting_sim_t *sim_data,
                                        const uint8_t *buf,
                                        uint8_t len);
+void app_counting_runtime_handle_detail(uint8_t cmd,
+                                        counting_detail_state_t *detail_state,
+                                        counting_session_state_t *session,
+                                        counting_sim_t *sim_data,
+                                        const uint8_t *buf,
+                                        uint8_t len);
 void app_counting_runtime_handle_detail_complete(
     counting_session_state_t *session);
 
