@@ -27,6 +27,10 @@ void machine_state_sync_batch_num(uint8_t num);
 void machine_state_confirm_batch_enable(bool enabled);
 bool machine_state_batch_enabled(void);
 uint8_t machine_state_batch_num(void);
+void machine_state_confirm_batch_amount(uint32_t amount);
+uint32_t machine_state_batch_amount(void);
+void machine_state_confirm_batch_mode(uint8_t mode);
+uint8_t machine_state_batch_mode(void);
 
 void machine_state_confirm_aging_running(bool running);
 bool machine_state_aging_running(void);

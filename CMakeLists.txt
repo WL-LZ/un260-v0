@@ -57,6 +57,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/protocol/protocol_request.c
     un260/protocol/basic_setting_reply_dispatch.c
     un260/protocol/setting_reply_dispatch.c
+    un260/protocol/startup_sync_reply.c
     un260/machine_state/machine_state.c
     un260/lv_core/lv_page_event.c
     un260/lv_core/lv_page_manager.c

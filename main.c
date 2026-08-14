@@ -20,11 +20,11 @@
 #include "un260/lv_core/lv_page_event.h"
 #include "un260/app_service/setting_service.h"
 #include "un260/machine_state/machine_state.h"
-#include "un260/protocol/mode_codec.h"
 #include "un260/protocol/basic_setting_reply_dispatch.h"
 #include "un260/protocol/protocol_frame_queue.h"
 #include "un260/protocol/protocol_rx_service.h"
 #include "un260/protocol/setting_reply_dispatch.h"
+#include "un260/protocol/startup_sync_reply.h"
 #include "un260/boot/boot_service.h"
 #include "un260/device_info/device_info.h"
 #include "un260/currency/currency_state.h"
@@ -34,8 +34,6 @@
 #include "un260/counting/counting_denom_reply.h"
 #include "un260/counting/counting_info_reply.h"
 #include "un260/counting/counting_reject_sn_reply.h"
-#include "un260/serial_number/serial_number_state.h"
-#include "un260/serial_number/serial_number_service.h"
 #include "un260/lv_core/page_01_main.h"
 #include "un260/lv_system/ui_screenshot.h"
 #include "un260/lv_core/page_19_history.h"
@@ -950,122 +948,10 @@ void PCCmdHandle(void)
         case 0x37:
             pccmd_handle_boot_and_selftest(cmd, buf, len);
             break;
-        /* ================== 0x58 用户偏好参数 ================== */
         case 0x58:
-        {
-            if (len < 6) break;
-
-            uint8_t sub = buf[4];
-            if (sub == 0x00) {
-                uart_printf(fd6, "0x58 user preference receive start\n");
-                break;
-            }
-            if (sub == 0xFF) {
-                uart_printf(fd6, "0x58 user preference receive end\n");
-                break;
-            }
-
-            switch (sub) {
-            case 0x01: /* 工作模式 */
-            {
-                uint8_t machine_mode;
-                if (mode_codec_decode(buf[5], &machine_mode)) {
-                    machine_state_confirm_mode(machine_mode);
-                }
-                break;
-            }
-
-            case 0x02: /* 预置数量 */
-                machine_state_sync_batch_num(buf[5]);
-                break;
-
-            case 0x03: /* 预置金额 */
-                if (len < 10) break;
-                Machine_para.batch_amount = ((uint32_t)buf[5] << 24) |
-                                            ((uint32_t)buf[6] << 16) |
-                                            ((uint32_t)buf[7] << 8)  |
-                                            (uint32_t)buf[8];
-                break;
-
-            case 0x04: /* 退钞口最大容量 */
-                machine_state_confirm_reject_pocket_max(buf[5]);
-                break;
-
-            case 0x05: /* 蜂鸣器 */
-                machine_state_confirm_buzzer(buf[5] == 0x01);
-                break;
-
-            case 0x06: /* 点钞速度 */
-            {
-                uint8_t v = buf[5];
-                if (v >= 1 && v <= SPEED_MODE) {
-                    machine_state_confirm_speed(v - 1);
-                }
-                break;
-            }
-
-            case 0x07: /* 冠字号 */
-                serial_number_state_confirm(buf[5] == 0x01, buf[5] == 0x01 ?
-                                            0x01 : SERIAL_NUMBER_LEVEL_OFF);
-                break;
-
-            case 0x08: /* 货币索引 */
-                currency_state_confirm_active_index(buf[5]);
-                break;
-
-            case 0x09: /* 预置模式 */
-                if (buf[5] == 0x01) {
-                    Machine_para.batch_mode = PCS_BATCH_MODE;
-                } else if (buf[5] == 0x02) {
-                    Machine_para.batch_mode = AMOUNT_BATCH_MODE;
-                }
-                break;
-
-            case 0x0A: /* 重张档位 */
-            {
-                uint8_t v = buf[5];
-                if (v >= DOUBLE_NOTE_LEVEL_MIN && v <= DOUBLE_NOTE_LEVEL_MAX) {
-                    machine_state_confirm_double_note_level(v);
-                }
-                break;
-            }
-
-            default:
-                break;
-            }
-
-            break;
-        }
-        /* ================== 0x56 货币查询 ================== */
         case 0x56:
-        {
-            if (len < 9) break;
-
-            uint8_t idx = buf[4];
-            uint8_t c1 = buf[5];
-            uint8_t c2 = buf[6];
-            uint8_t c3 = buf[7];
-
-            if (idx == 0x00 && c1 == 0x00 && c2 == 0x00 && c3 == 0x00) {
-                currency_state_begin_list_sync();
-                uart_printf(fd6, "0x56 currency query start\n");
-                break;
-            }
-
-            if (idx == 0xFF && c1 == 0xFF && c2 == 0xFF && c3 == 0xFF) {
-                currency_state_finish_list_sync();
-                uart_printf(fd6, "0x56 currency query end, count=%d\n", currency_state_count());
-                break;
-            }
-
-            if (idx >= 1 && idx <= MAX_CURRENCIES) {
-                int pos = (int)idx - 1;
-                char curr_code[4] = { (char)c1, (char)c2, (char)c3, '\0' };
-                currency_state_append_list_code(idx, curr_code);
-                uart_printf(fd6, "0x56 currency[%d]=%s\n", pos, curr_code);
-            }
+            startup_sync_reply_dispatch(cmd, buf, len);
             break;
-        }
         case 0x39:
             pccmd_handle_basic_setting(cmd, buf, len);
             break;

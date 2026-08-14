@@ -94,6 +94,28 @@ uint8_t machine_state_batch_num(void)
     return g_batch_num;
 }
 
+void machine_state_confirm_batch_amount(uint32_t amount)
+{
+    Machine_para.batch_amount = amount;
+}
+
+uint32_t machine_state_batch_amount(void)
+{
+    return Machine_para.batch_amount;
+}
+
+void machine_state_confirm_batch_mode(uint8_t mode)
+{
+    if (mode == PCS_BATCH_MODE || mode == AMOUNT_BATCH_MODE) {
+        Machine_para.batch_mode = mode;
+    }
+}
+
+uint8_t machine_state_batch_mode(void)
+{
+    return (uint8_t)Machine_para.batch_mode;
+}
+
 void machine_state_confirm_aging_running(bool running)
 {
     g_aging_running = running;
@@ -126,6 +148,11 @@ uint8_t machine_state_flap_position(void)
 
 void machine_state_confirm_reject_pocket_max(uint8_t capacity)
 {
+    if (capacity < REJECT_POCKET_MIN_CAPACITY) {
+        capacity = REJECT_POCKET_MIN_CAPACITY;
+    } else if (capacity > REJECT_POCKET_MAX_CAPACITY) {
+        capacity = REJECT_POCKET_MAX_CAPACITY;
+    }
     g_reject_pocket_max = capacity;
 }
 
