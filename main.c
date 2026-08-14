@@ -30,6 +30,7 @@
 #include "un260/currency/currency_state.h"
 #include "un260/currency/currency_service.h"
 #include "un260/counting/counting_session_state.h"
+#include "un260/counting/counting_control_reply.h"
 #include "un260/counting/counting_info_reply.h"
 #include "un260/serial_number/serial_number_state.h"
 #include "un260/serial_number/serial_number_service.h"
@@ -129,6 +130,52 @@ static void history_session_append_line(const char *tag, const uint8_t *buf, int
         }
     }
 }
+
+static void counting_control_on_start_success(const uint8_t *buf, uint8_t len)
+{
+    g_history_last_error_frame_text[0] = '\0';
+    g_history_last_start_frame_text[0] = '\0';
+    g_history_last_end_frame_text[0] = '\0';
+    history_session_reset();
+    frame_to_hex_str(buf, len, g_history_last_start_frame_text,
+                     (int)sizeof(g_history_last_start_frame_text));
+    history_session_append_line("0x0A", buf, len);
+
+    if (g_data_collect_mode != DATA_COLLECT_MODE_NONE) {
+        snprintf(g_data_collect_status, sizeof(g_data_collect_status),
+                 "Counting started...");
+        page_06_data_collection_refresh();
+    } else if (!g_cb_running &&
+               ui_manager_get_current_page() != UI_PAGE_PURE &&
+               !ui_counting_should_keep_current_page()) {
+        ui_manager_switch(UI_PAGE_MAIN);
+    }
+}
+
+static void counting_control_on_error_frame(const char *tag,
+                                            const uint8_t *buf,
+                                            uint8_t len)
+{
+    history_capture_error_frame(buf, len);
+    history_session_append_line(tag, buf, len);
+}
+
+static void counting_control_on_start_failure(const char *description)
+{
+    if (g_data_collect_mode == DATA_COLLECT_MODE_NONE) {
+        return;
+    }
+
+    snprintf(g_data_collect_status, sizeof(g_data_collect_status),
+             "Start failed: %s", description);
+    page_06_data_collection_refresh();
+}
+
+static const counting_control_reply_hooks_t g_counting_control_hooks = {
+    .on_start_success = counting_control_on_start_success,
+    .on_error_frame = counting_control_on_error_frame,
+    .on_start_failure = counting_control_on_start_failure,
+};
 
 static void history_try_commit_pending_record(void)
 {
@@ -360,21 +407,6 @@ static void pending_result_recalc_issue_from_reject_detail(void)
     uart_printf(fd6, "count analysis valid=%d expected=%d current=%d delta=%d source=%s suspect=%d damaged=%d\n",
                 g_counting_session.analysis_valid_pcs, expected_issue, current_total, delta_total,
                 use_delta ? "delta" : "current", suspect, damaged);
-}
-
-/* UI显示使用协议错误类型（短文本），不使用调试长文案 */
-static const char* get_start_ui_error_desc(uint8_t code)
-{
-    if (code == 0x00) {
-        return ui_text_get(UI_TEXT_WIDGET_FAULT_NO_NOTE_MAIN);
-    }
-
-    if (code < sizeof(g_start_error_desc) / sizeof(g_start_error_desc[0]) &&
-        g_start_error_desc[code] != NULL) {
-        return g_start_error_desc[code];
-    }
-
-    return ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_COUNT_ERROR);
 }
 
 static void sim_clear_sn_only(counting_sim_t* sim_data)
@@ -901,122 +933,17 @@ void PCCmdHandle(void)
         case 0x08:
             setting_reply_dispatch_detail(cmd, buf, len);
             break;
-        /* ================== 0x0F 点钞过程中清分机状态 ================== */
+        /* ================== 0x0A 启动回复 / 0x0F 运行故障 ================== */
         case 0x0F:
-        {
-            if (len < 6) break;
-
-            uint8_t fault = buf[4];
-
-            if (fault == 0x00) {
-                hide_fault_popup();
-                fault_popup_clear_pending();
-                fault_popup_reset_auto_retry();
-                g_sys_err_last_code = 0x00;
-                smart_island_restore_idle();
-                break;
-            }
-
-            fault_popup_report_runtime_fault(fault);
-            history_capture_error_frame(buf, len);
-            history_session_append_line("0x0F", buf, len);
-            uart_printf(fd6, "0x0F fault=0x%02X %s\n", fault, get_system_error_desc(fault));
-            smart_island_notify_warning_level(get_system_error_desc(fault), SMART_ISLAND_WARNING_LEVEL_ERROR);
+        case 0x0A:
+            counting_control_reply_dispatch(cmd,
+                                            &g_counting_session,
+                                            buf,
+                                            len,
+                                            &g_counting_control_hooks);
             break;
-        }
-        /* ================== 0x0a 返回主界面 ================== */
-        case 0x0a:
-        {
-            if (len < 7) break;
 
-            uint8_t type = buf[4];
-            uint8_t val  = buf[5];
-
-            if (type == 0x01) {
-                if (val == 0x01) {
-                    hide_counting_error_popup();
-                    fault_popup_clear_pending();
-                    fault_popup_reset_auto_retry();
-                    g_counting_session.wait_start_ack = false;
-                    g_counting_session.end_anim_wait_detail = false;
-                    g_history_last_error_frame_text[0] = '\0';
-                    g_history_last_start_frame_text[0] = '\0';
-                    g_history_last_end_frame_text[0] = '\0';
-                    history_session_reset();
-                    frame_to_hex_str(buf, len, g_history_last_start_frame_text,
-                                     (int)sizeof(g_history_last_start_frame_text));
-                    history_session_append_line("0x0A", buf, len);
-
-                    if (g_data_collect_mode != DATA_COLLECT_MODE_NONE) {
-                        snprintf(g_data_collect_status,
-                                sizeof(g_data_collect_status),
-                                "Counting started...");
-                        page_06_data_collection_refresh();
-                    }
-                    else if (!g_cb_running &&
-                             ui_manager_get_current_page() != UI_PAGE_PURE &&
-                             !ui_counting_should_keep_current_page()) {
-                        ui_manager_switch(UI_PAGE_MAIN);
-                    }
-                    smart_island_notify_count_start();
-                } else if (val == 0x02) {
-                    fault_popup_report_start_no_note();
-                    history_capture_error_frame(buf, len);
-                    history_session_append_line("0x0A", buf, len);
-                    uart_printf(fd6, "0x0A start fail (no note)\n");
-                    smart_island_notify_warning_level(
-                        ui_text_get(UI_TEXT_WIDGET_FAULT_NO_NOTE_MAIN),
-                        SMART_ISLAND_WARNING_LEVEL_WARNING);
-
-                    if (g_data_collect_mode != DATA_COLLECT_MODE_NONE) {
-                        snprintf(g_data_collect_status,
-                                sizeof(g_data_collect_status),
-                                "Start failed: No banknotes detected");
-                        page_06_data_collection_refresh();
-                    }
-                } else {
-                    fault_popup_report_start_fault(type, val);
-                    history_capture_error_frame(buf, len);
-                    history_session_append_line("0x0A", buf, len);
-                    uart_printf(fd6, "0x0A start fail (normal): val=%02X desc=%s\n",
-                                val, get_counting_error_desc(type, val));
-                    smart_island_notify_warning_level(get_start_ui_error_desc(val), SMART_ISLAND_WARNING_LEVEL_ERROR);
-
-                    if (g_data_collect_mode != DATA_COLLECT_MODE_NONE) {
-                        snprintf(g_data_collect_status,
-                                sizeof(g_data_collect_status),
-                                "Start failed: %s",
-                                get_counting_error_desc(type, val));
-                        page_06_data_collection_refresh();
-                    }
-                }
-            } else if (type == 0x02) {
-                fault_popup_report_start_fault(type, val);
-                history_capture_error_frame(buf, len);
-                history_session_append_line("0x0A", buf, len);
-                uart_printf(fd6, "0x0A start fail (fault): code=%02X desc=%s\n",
-                            val, get_counting_error_desc(type, val));
-                smart_island_notify_warning_level(get_start_ui_error_desc(val), SMART_ISLAND_WARNING_LEVEL_ERROR);
-
-                if (g_data_collect_mode != DATA_COLLECT_MODE_NONE) {
-                    snprintf(g_data_collect_status,
-                            sizeof(g_data_collect_status),
-                            "Start failed: %s",
-                            get_counting_error_desc(type, val));
-                    page_06_data_collection_refresh();
-                }
-            } else {
-                fault_popup_report_start_fault(type, val);
-                history_capture_error_frame(buf, len);
-                history_session_append_line("0x0A", buf, len);
-                uart_printf(fd6, "0x0A start fail (unknown type): type=%02X val=%02X\n",
-                            type, val);
-                smart_island_notify_warning_level(ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_COUNT_ERROR), SMART_ISLAND_WARNING_LEVEL_ERROR);
-            }
-
-            break;
-        }
-                /* ================== 0x0B 面额明细 ================== */
+        /* ================== 0x0B 面额明细 ================== */
         case 0x0B:
         {
             if (len < 15) break;
