@@ -4,7 +4,6 @@
 #include "lvgl/lvgl.h"
 #include "un260/lv_core/lv_page_manager.h" 
 #include "un260/lv_core/page_01_detail_scroll.h"
-#include "un260/currency/currency_service.h"
 #include "un260/lv_system/ui_state_runtime.h"
 #ifdef __cplusplus
 extern "C" {  
@@ -52,8 +51,6 @@ extern "C" {
     void page_02_c_page_num_refre(void);
 
 
-    void page_07_curr_img_refre(void);
-    void page_07_curr_apply_switch_result(const currency_switch_result_t* result);
 #ifdef __cplusplus
 }
 #endif

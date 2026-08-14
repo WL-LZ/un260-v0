@@ -11,8 +11,8 @@
 #include "un260/currency/currency_reply.h"
 #include "un260/lv_components/smart_island.h"
 #include "un260/lv_core/lv_page_manager.h"
+#include "un260/lv_core/page_07_curr.h"
 #include "un260/lv_drivers/lv_drivers.h"
-#include "un260/lv_refre/lvgl_refre.h"
 #include "un260/lv_system/platform_app.h"
 
 static bool app_currency_runtime_boot_ready(void)

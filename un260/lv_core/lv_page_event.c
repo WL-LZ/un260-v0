@@ -19,6 +19,7 @@
 #include "un260/lv_system/ui_qr_data.h"
 #include "un260/lv_core/page_01_main.h"
 #include "un260/lv_core/page_02_list.h"
+#include "un260/lv_core/page_07_curr.h"
 #include "un260/app_service/setting_service.h"
 #include "un260/machine_state/machine_state.h"
 #include "un260/currency/currency_state.h"
