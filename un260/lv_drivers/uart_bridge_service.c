@@ -2,11 +2,13 @@
 
 #include <pthread.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <unistd.h>
 
 #include "lv_drivers.h"
 
 #define UART_BRIDGE_BUFFER_SIZE 256
+#define UART_BRIDGE_LOG_PREVIEW_BYTES 32U
 
 static pthread_mutex_t g_state_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_t g_thread;
@@ -37,16 +39,17 @@ static void *uart_bridge_service_thread(void *arg)
         int len = uart_recv(g_source_fd, (char *)buffer, sizeof(buffer), 100);
 
         if (len > 0) {
+            char prefix[40];
             int sent;
 
-            uart_printf(g_log_fd, "UART5 recive %d 字节: ", len);
-            for (int i = 0; i < len; i++) {
-                uart_printf(g_log_fd, "%02X ", buffer[i]);
-            }
-            uart_printf(g_log_fd, "\n");
+            snprintf(prefix, sizeof(prefix), "UART5 RX[%d]: ", len);
+            uart_log_hex(g_log_fd, prefix, buffer, (size_t)len,
+                         UART_BRIDGE_LOG_PREVIEW_BYTES);
 
             sent = uart_send(g_target_fd, (const char *)buffer, len);
-            uart_printf(g_log_fd, "UART5: sent UART4，长度=%d\n", sent);
+            if (sent != len) {
+                uart_printf(g_log_fd, "UART5: forward failed, sent=%d/%d\n", sent, len);
+            }
         }
         usleep(1000);
     }

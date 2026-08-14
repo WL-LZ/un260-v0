@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -10,6 +11,21 @@
 
 static pthread_mutex_t g_uart_tx_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t g_uart_log_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+#define UART_HEX_LOG_BUFFER_SIZE 1024U
+
+static void uart_log_write(int fd, const char *data, size_t data_len)
+{
+    int write_result;
+
+    pthread_mutex_lock(&g_uart_log_mutex);
+    write_result = uart_write_all(fd, data, data_len);
+    pthread_mutex_unlock(&g_uart_log_mutex);
+
+    if (write_result != (int)data_len) {
+        fprintf(stderr, "UART log write failed: %d/%zu\n", write_result, data_len);
+    }
+}
 
 int uart_write_all(int fd, const void *data, size_t data_len)
 {
@@ -62,7 +78,6 @@ void uart_printf(int fd, const char *fmt, ...)
     va_list args;
     int formatted_len;
     size_t output_len;
-    int write_result;
 
     if (fd < 0 || fmt == NULL) {
         return;
@@ -80,11 +95,52 @@ void uart_printf(int fd, const char *fmt, ...)
         output_len = sizeof(buf) - 1;
     }
 
-    pthread_mutex_lock(&g_uart_log_mutex);
-    write_result = uart_write_all(fd, buf, output_len);
-    pthread_mutex_unlock(&g_uart_log_mutex);
+    uart_log_write(fd, buf, output_len);
+}
 
-    if (write_result != (int)output_len) {
-        fprintf(stderr, "UART log write failed: %d/%zu\n", write_result, output_len);
+void uart_log_hex(int fd,
+                  const char *prefix,
+                  const uint8_t *data,
+                  size_t data_len,
+                  size_t preview_limit)
+{
+    static const char hex[] = "0123456789ABCDEF";
+    char buf[UART_HEX_LOG_BUFFER_SIZE];
+    size_t pos = 0;
+    size_t shown;
+    size_t rendered = 0;
+    bool truncated;
+
+    if (fd < 0 || (data == NULL && data_len > 0)) {
+        return;
     }
+
+    if (prefix != NULL) {
+        while (*prefix != '\0' && pos + 1 < sizeof(buf)) {
+            buf[pos++] = *prefix++;
+        }
+    }
+
+    shown = data_len < preview_limit ? data_len : preview_limit;
+    while (rendered < shown && pos + 3 < sizeof(buf)) {
+        if (rendered > 0) {
+            buf[pos++] = ' ';
+        }
+        buf[pos++] = hex[data[rendered] >> 4];
+        buf[pos++] = hex[data[rendered] & 0x0F];
+        rendered++;
+    }
+
+    truncated = rendered < data_len;
+    if (truncated && pos + 4 < sizeof(buf)) {
+        buf[pos++] = ' ';
+        buf[pos++] = '.';
+        buf[pos++] = '.';
+        buf[pos++] = '.';
+    }
+    if (pos + 1 < sizeof(buf)) {
+        buf[pos++] = '\n';
+    }
+
+    uart_log_write(fd, buf, pos);
 }

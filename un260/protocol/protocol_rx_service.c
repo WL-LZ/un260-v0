@@ -2,6 +2,7 @@
 
 #include <pthread.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <unistd.h>
 
 #include "protocol_frame_parser.h"
@@ -14,6 +15,9 @@ static bool g_started;
 static bool g_running;
 static int g_uart_fd = -1;
 static int g_log_fd = -1;
+
+#define PROTOCOL_RX_LOG_PREVIEW_BYTES 32U
+#define PROTOCOL_RX_DROP_REPORT_STEP  100U
 
 static bool protocol_rx_service_should_run(void)
 {
@@ -30,6 +34,7 @@ static void *protocol_rx_service_thread(void *arg)
     protocol_frame_parser_t parser;
     protocol_frame_view_t frame;
     uint8_t byte;
+    unsigned int dropped_frames = 0;
 
     (void)arg;
     protocol_frame_parser_init(&parser);
@@ -42,18 +47,35 @@ static void *protocol_rx_service_thread(void *arg)
 
             result = protocol_frame_parser_feed(&parser, byte, &frame);
             if (result == PROTOCOL_FRAME_PARSE_READY) {
-                uart_printf(g_log_fd, "RX: ");
-                for (int i = 0; i < frame.len; i++) {
-                    uart_printf(g_log_fd, "%02X ", frame.data[i]);
-                }
-                uart_printf(g_log_fd, "\n");
-
                 if (!protocol_frame_queue_push(frame.data, frame.len)) {
-                    uart_printf(g_log_fd, "UART4: queue full, drop frame\n");
+                    dropped_frames++;
+                    if (dropped_frames == 1 ||
+                        (dropped_frames % PROTOCOL_RX_DROP_REPORT_STEP) == 0) {
+                        uart_printf(g_log_fd,
+                                    "UART4: queue full, dropped=%u\n",
+                                    dropped_frames);
+                    }
+                } else {
+                    char prefix[32];
+
+                    snprintf(prefix, sizeof(prefix), "RX[%u]: ",
+                             (unsigned int)frame.len);
+                    uart_log_hex(g_log_fd, prefix, frame.data, frame.len,
+                                 PROTOCOL_RX_LOG_PREVIEW_BYTES);
+                    if (dropped_frames > 0) {
+                        uart_printf(g_log_fd,
+                                    "UART4: queue recovered, dropped=%u\n",
+                                    dropped_frames);
+                        dropped_frames = 0;
+                    }
                 }
             }
         }
         usleep(100);
+    }
+
+    if (dropped_frames > 0) {
+        uart_printf(g_log_fd, "UART4: receive stopped, dropped=%u\n", dropped_frames);
     }
 
     return NULL;

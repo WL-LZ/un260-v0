@@ -200,6 +200,7 @@ void uart_close(int fd)
 int protocol_send(uint8_t cmd_g, const uint8_t *cmd_s, uint16_t cmd_s_len)
 {
     uint8_t buf[PROTOCOL_FRAME_MAX_SIZE];
+    char log_prefix[40];
     int frame_len;
 
     frame_len = protocol_frame_build(buf, sizeof(buf), cmd_g, cmd_s, cmd_s_len);
@@ -209,10 +210,8 @@ int protocol_send(uint8_t cmd_g, const uint8_t *cmd_s, uint16_t cmd_s_len)
         return -1;
     }
 
-    uart_printf(fd6, "Send CMD: 0x%02X, Data:", cmd_g);
-    for (int j = 0; j < frame_len; j++) {
-        uart_printf(fd6, " %02X", buf[j]);
-    }
+    snprintf(log_prefix, sizeof(log_prefix), "Send CMD 0x%02X: ", cmd_g);
+    uart_log_hex(fd6, log_prefix, buf, (size_t)frame_len, (size_t)frame_len);
 
     return uart_send(fd4, (const char *)buf, frame_len);
 }
