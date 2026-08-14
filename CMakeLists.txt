@@ -86,6 +86,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_core/lv_page_event.c
     un260/lv_core/lv_page_manager.c
     un260/lv_core/page_01_main.c
+    un260/lv_core/page_01_detail_scroll.c
     un260/lv_core/page_02_list.c
     un260/lv_core/page_03_menu.c
     un260/lv_core/page_05_set_password.c

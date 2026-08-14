@@ -3,6 +3,7 @@
 #include"un260/lv_drivers/lv_drivers.h"
 #include "lvgl/lvgl.h"
 #include "un260/lv_core/lv_page_manager.h" 
+#include "un260/lv_core/page_01_detail_scroll.h"
 #include "un260/currency/currency_service.h"
 #ifdef __cplusplus
 extern "C" {  
@@ -21,16 +22,6 @@ extern "C" {
 
     void page_01_mode_switch_refre(void);
     void page_01_create_mian_scrollable_container(void);
-    void page_01_scroll_hint_on_enter(void);
-    void page_01_scroll_hint_force_hide(void);
-    bool page_01_is_small_denom_mode(void);
-    void page_01_detail_scroll_before_section_switch(void);
-    void page_01_detail_scroll_after_section_switch(void);
-    void page_01_detail_scroll_sync_current_section(void);
-    void page_01_detail_scroll_reset_all(void);
-    int page_01_detail_scroll_first_row_get(int section);
-    int page_01_detail_row_gap_get(int section);
-
     void page_01_add_refre(void);
     void page_01_work_refre(void);
     void page_01_batch_refre(void);
