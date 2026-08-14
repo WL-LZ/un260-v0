@@ -15,6 +15,7 @@
 #include "un260/app_service/setting_service.h"
 #include "un260/app_service/app_clock.h"
 #include "un260/app_service/app_boot_runtime.h"
+#include "un260/app_service/app_currency_runtime.h"
 #include "un260/app_service/app_protocol_runtime.h"
 #include "un260/app_service/app_serial_runtime.h"
 #include "un260/app_service/app_setting_runtime.h"
@@ -23,7 +24,6 @@
 #include "un260/protocol/protocol_frame_queue.h"
 #include "un260/boot/boot_service.h"
 #include "un260/data_collection/data_collection_state.h"
-#include "un260/currency/currency_reply.h"
 #include "un260/counting/counting_session_state.h"
 #include "un260/counting/counting_control_reply.h"
 #include "un260/counting/counting_denom_query_service.h"
@@ -320,41 +320,11 @@ void PCCmdHandle(void)
 
         /* ================== 0x03 设置货币 ================== */
         case 0x03:
-        {
-            currency_reply_result_t reply = currency_reply_handle(buf, len);
-
-            if (reply.kind == CURRENCY_REPLY_SWITCH_SUCCESS) {
-                set_curr(get_curr_item(reply.switch_result.target_code));
-                sim_clear_all_sn(&sim);
-                page_07_curr_apply_switch_result(&reply.switch_result);
-                uart_printf(fd6, "Set %s curr success\n", reply.active_code);
-                g_counting_session.end_anim_wait_detail = false;
-                counting_denom_query_trigger(
-                    &g_counting_detail_state,
-                    app_clock_uptime_ms(),
-                    boot_service_get_stage() == BOOT_STAGE_DONE ||
-                    boot_service_get_stage() == BOOT_STAGE_FAIL);
-                smart_island_refresh_summary();
-            } else if (reply.kind == CURRENCY_REPLY_SWITCH_FAILURE) {
-                page_07_curr_apply_switch_result(&reply.switch_result);
-                uart_printf(fd6, "Set %s curr fail\n", reply.active_code);
-            } else if (reply.kind == CURRENCY_REPLY_BOOT_ACTIVE) {
-                uart_printf(fd6, "Boot curr: %s\n", reply.active_code);
-                memset(sim.denom, 0, sizeof(sim.denom));
-                sim.denom_number = 0;
-                counting_denom_query_invalidate(&g_counting_detail_state);
-                if (is_main_page_active()) {
-                    ui_refresh_main_page();
-                }
-                counting_denom_query_trigger(
-                    &g_counting_detail_state,
-                    app_clock_uptime_ms(),
-                    boot_service_get_stage() == BOOT_STAGE_DONE ||
-                    boot_service_get_stage() == BOOT_STAGE_FAIL);
-                smart_island_refresh_summary();
-            }
+            app_currency_runtime_handle_reply(&g_counting_detail_state,
+                                              &g_counting_session,
+                                              buf,
+                                              len);
             break;
-        }
         /* ================== 0x0A 启动回复 / 0x0F 运行故障 ================== */
         case 0x0F:
         case 0x0A:
