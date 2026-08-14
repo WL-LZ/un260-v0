@@ -5,6 +5,7 @@
 #include "un260/lv_core/lv_page_manager.h" 
 #include "un260/lv_core/page_01_detail_scroll.h"
 #include "un260/currency/currency_service.h"
+#include "un260/lv_system/ui_state_runtime.h"
 #ifdef __cplusplus
 extern "C" {  
 #endif
@@ -53,15 +54,6 @@ extern "C" {
 
     void page_07_curr_img_refre(void);
     void page_07_curr_apply_switch_result(const currency_switch_result_t* result);
-    void ui_state_apply_common_runtime(void);
-    void ui_state_save_popup_auto_state(void);
-    void ui_state_save_pure_count_state(void);
-    bool ui_state_pure_count_is_enabled(void);
-    int ui_state_page01_detail_section_get(void);
-    void ui_state_save_page01_detail_section(void);
-
-
-
 #ifdef __cplusplus
 }
 #endif

@@ -9,7 +9,7 @@
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/user_cfg.h"
-#include "un260/lv_system/ui_state_store.h"
+#include "un260/lv_system/ui_state_runtime.h"
 #include "un260/machine_state/machine_state.h"
 #include "un260/currency/currency_state.h"
 #include "un260/currency/currency_service.h"
@@ -17,8 +17,6 @@
 #include "un260/lv_core/page_02_list.h"
 #include "un260/lv_core/lv_page_declear.h"
 #include "un260/lv_components/lv_components.h"
-#include "un260/lv_components/lv_fault_popup.h"
-#include "un260/lv_components/smart_island.h"
 #include "un260/lv_resources/lv_img_init.h"
 #include "lv_port_indev.h"
 
@@ -815,9 +813,6 @@ typedef struct {
     lv_obj_t* fav_icon;
     int abs_idx;
 } curr_grid_item_t;
-static ui_persist_state_t g_ui_state;
-static bool g_ui_state_loaded = false;
-
 static curr_card_t g_curr_cards[CURR_MAX_ITEMS];
 static curr_grid_item_t g_curr_grid_items[CURR_MAX_ITEMS];
 static char g_curr_fav_codes[CURR_MAX_ITEMS][4];
@@ -868,28 +863,10 @@ static lv_obj_t* g_curr_grid_scroll = NULL;
 static lv_obj_t* g_curr_empty_label = NULL;
 
 static void curr_refresh_right_views(void);
-static void ui_state_set_defaults(void);
-static void ui_state_load_from_file(void);
 static void ui_state_save_to_file(void);
 
-static void page07_state_pull_from_runtime(void);
+static void page07_state_pull_from_runtime(ui_state_page07_t* state);
 static void page07_state_apply_to_runtime(void);
-static void page01_state_pull_from_runtime(void);
-static void page01_state_apply_to_runtime(void);
-
-static void page05_state_pull_from_runtime(void);
-static void page05_state_apply_to_runtime(void);
-
-static void page06_state_pull_from_runtime(void);
-static void page06_state_apply_to_runtime(void);
-static void page18_state_pull_from_runtime(void);
-static void page18_state_apply_to_runtime(void);
-void ui_state_apply_common_runtime(void);
-void ui_state_save_popup_auto_state(void);
-void ui_state_save_pure_count_state(void);
-bool ui_state_pure_count_is_enabled(void);
-int ui_state_page01_detail_section_get(void);
-void ui_state_save_page01_detail_section(void);
 
 static void curr_apply_selected_style(void);
 static void curr_style_back_button(void);
@@ -898,108 +875,49 @@ void page_07_curr_apply_switch_result(const currency_switch_result_t* result);
 static bool curr_has_currency_code(const char* code);
 static bool curr_add_favorite_code(const char* code);
 static int curr_find_abs_idx_by_code(const char* code);
-static void ui_state_set_defaults(void) //默认掉电配置
+static void page07_state_pull_from_runtime(ui_state_page07_t* state)
 {
-    memset(&g_ui_state, 0, sizeof(g_ui_state));
-    g_ui_state.magic = UI_STATE_STORE_MAGIC;
-    g_ui_state.version = UI_STATE_STORE_VERSION;
+    if (!state) return;
 
-    g_ui_state.page01.detail_section = PAGE_01_DETAIL_SECTION_A;
-    g_ui_state.page07.view_mode = CURR_VIEW_MODE_CARD;
-    g_ui_state.page07.fav_only = 0;
-    g_ui_state.page07.selected_abs_idx = 0;
-    g_ui_state.page07.fav_count = 0;
-    g_ui_state.page06.reserved06_enable = 1;
-    g_ui_state.page18.reserved18_enable = 0;
-}
-
-static void page01_state_pull_from_runtime(void)
-{
-    g_ui_state.page01.detail_section = (int)page_01_detail_section_get();
-}
-
-static void page01_state_apply_to_runtime(void)
-{
-    int section = g_ui_state.page01.detail_section;
-
-    if (section < PAGE_01_DETAIL_SECTION_A || section > PAGE_01_DETAIL_SECTION_C) {
-        section = PAGE_01_DETAIL_SECTION_A;
-    }
-
-    page_01_detail_section_set((page_01_detail_section_t)section, false);
-}
-
-static void page07_state_pull_from_runtime(void)
-{
-    int i;
-
-    g_ui_state.page07.view_mode = g_curr_view_mode;
-    g_ui_state.page07.fav_only = g_curr_fav_only ? 1 : 0;
-    g_ui_state.page07.selected_abs_idx = g_curr_sel_abs_idx;
-    g_ui_state.page07.fav_count = g_curr_fav_cnt;
-
-    memset(g_ui_state.page07.fav_codes, 0, sizeof(g_ui_state.page07.fav_codes));
-    for (i = 0; i < g_curr_fav_cnt && i < CURR_MAX_ITEMS; i++) {
-        memcpy(g_ui_state.page07.fav_codes[i], g_curr_fav_codes[i], 4);
+    memset(state, 0, sizeof(*state));
+    state->view_mode = g_curr_view_mode;
+    state->fav_only = g_curr_fav_only ? 1 : 0;
+    state->selected_abs_idx = g_curr_sel_abs_idx;
+    state->fav_count = g_curr_fav_cnt;
+    for (int i = 0; i < g_curr_fav_cnt && i < CURR_MAX_ITEMS; i++) {
+        memcpy(state->fav_codes[i], g_curr_fav_codes[i], 4);
     }
 }
+
 static void page07_state_apply_to_runtime(void)
 {
-    int i;
+    ui_state_page07_t state;
     char curr_code[4];
 
-    g_curr_view_mode = g_ui_state.page07.view_mode;
+    ui_state_page07_get(&state);
+    g_curr_view_mode = state.view_mode;
     if (g_curr_view_mode != CURR_VIEW_MODE_CARD && g_curr_view_mode != CURR_VIEW_MODE_GRID) {
         g_curr_view_mode = CURR_VIEW_MODE_CARD;
         ui_state_save_to_file();
     }
-
-    g_curr_fav_only = (g_ui_state.page07.fav_only != 0);
+    g_curr_fav_only = state.fav_only != 0;
 
     g_curr_fav_cnt = 0;
     memset(g_curr_fav_codes, 0, sizeof(g_curr_fav_codes));
-    for (i = 0; i < g_ui_state.page07.fav_count && i < CURR_MAX_ITEMS; i++) {
-        if (!curr_has_currency_code(g_ui_state.page07.fav_codes[i])) continue;
-        memcpy(g_curr_fav_codes[g_curr_fav_cnt], g_ui_state.page07.fav_codes[i], 4);
+    for (int i = 0; i < state.fav_count && i < CURR_MAX_ITEMS; i++) {
+        if (!curr_has_currency_code(state.fav_codes[i])) continue;
+        memcpy(g_curr_fav_codes[g_curr_fav_cnt], state.fav_codes[i], 4);
         g_curr_fav_cnt++;
     }
 
     currency_state_get_active_code(curr_code);
-    if (g_ui_state.page07.selected_abs_idx >= 0 &&
-        g_ui_state.page07.selected_abs_idx < currency_state_count()) {
-        g_curr_sel_abs_idx = g_ui_state.page07.selected_abs_idx;
+    if (state.selected_abs_idx >= 0 && state.selected_abs_idx < currency_state_count()) {
+        g_curr_sel_abs_idx = state.selected_abs_idx;
     } else {
         g_curr_sel_abs_idx = curr_find_abs_idx_by_code(curr_code);
     }
 }
-static void page05_state_pull_from_runtime(void)
-{
-    
-}
 
-static void page05_state_apply_to_runtime(void)
-{
-}
-
-static void page06_state_pull_from_runtime(void)
-{
-    g_ui_state.page06.reserved06_enable = fault_popup_get_auto_enabled() ? 1 : 0;
-}
-
-static void page06_state_apply_to_runtime(void)
-{
-    fault_popup_set_auto_enabled(g_ui_state.page06.reserved06_enable != 0);
-}   //留接口
-
-static void page18_state_pull_from_runtime(void)
-{
-    g_ui_state.page18.reserved18_enable = smart_island_pure_count_is_enabled() ? 1 : 0;
-}
-
-static void page18_state_apply_to_runtime(void)
-{
-    smart_island_set_pure_count_enabled(g_ui_state.page18.reserved18_enable != 0);
-}
 static int curr_abs_i32(int v)
 {
     return (v >= 0) ? v : -v;
@@ -1022,82 +940,12 @@ static bool curr_has_currency_code(const char* code)
     return code != NULL && code[0] != '\0' && currency_state_find_code(code, NULL);
 }
 
-static void ui_state_load_from_file(void)
-{
-    ui_state_set_defaults();
-    (void)ui_state_store_load(&g_ui_state);
-    g_ui_state_loaded = true;
-}
-
-void ui_state_apply_common_runtime(void)
-{
-    if (!g_ui_state_loaded) {
-        ui_state_load_from_file();
-    }
-
-    page01_state_apply_to_runtime();
-    page05_state_apply_to_runtime();
-    page06_state_apply_to_runtime();
-    page18_state_apply_to_runtime();
-}
-
-void ui_state_save_popup_auto_state(void)
-{
-    if (!g_ui_state_loaded) {
-        ui_state_load_from_file();
-    }
-
-    page06_state_pull_from_runtime();
-    ui_state_save_to_file();
-}
-
-void ui_state_save_pure_count_state(void)
-{
-    if (!g_ui_state_loaded) {
-        ui_state_load_from_file();
-    }
-
-    page18_state_pull_from_runtime();
-    ui_state_save_to_file();
-}
-
-bool ui_state_pure_count_is_enabled(void)
-{
-    if (!g_ui_state_loaded) {
-        ui_state_load_from_file();
-    }
-
-    page18_state_apply_to_runtime();
-    return smart_island_pure_count_is_enabled();
-}
-
-int ui_state_page01_detail_section_get(void)
-{
-    if (!g_ui_state_loaded) {
-        ui_state_load_from_file();
-    }
-
-    return g_ui_state.page01.detail_section;
-}
-
-void ui_state_save_page01_detail_section(void)
-{
-    if (!g_ui_state_loaded) {
-        ui_state_load_from_file();
-    }
-
-    page01_state_pull_from_runtime();
-    ui_state_save_to_file();
-}
-
 static void ui_state_save_to_file(void)
 {
-    page01_state_pull_from_runtime();
-    page07_state_pull_from_runtime();
-    page05_state_pull_from_runtime();
-    page06_state_pull_from_runtime();
-    page18_state_pull_from_runtime();
-    (void)ui_state_store_save(&g_ui_state);
+    ui_state_page07_t state;
+
+    page07_state_pull_from_runtime(&state);
+    ui_state_save_page07(&state);
 }
 
 static bool curr_is_favorite_code(const char* code)
@@ -2243,10 +2091,6 @@ void page_07_curr_img_reset(void)
 void page_07_curr_img_refre(void)
 {
     if (curr_page == NULL || currency_state_count() <= 0) return;
-
-    if (!g_ui_state_loaded) {
-        ui_state_load_from_file();
-    }
 
     page07_state_apply_to_runtime();
 
