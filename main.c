@@ -26,6 +26,7 @@
 #include "un260/protocol/setting_reply_dispatch.h"
 #include "un260/protocol/startup_sync_reply.h"
 #include "un260/boot/boot_service.h"
+#include "un260/boot/boot_reply.h"
 #include "un260/device_info/device_info.h"
 #include "un260/diagnostic/diagnostic_reply.h"
 #include "un260/currency/currency_reply.h"
@@ -640,63 +641,28 @@ static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
     }
 }
 
-static void pccmd_handle_boot_and_selftest(uint8_t cmd, uint8_t *buf, uint8_t len)
+static void pccmd_handle_boot_and_selftest(uint8_t cmd, const uint8_t *buf, uint8_t len)
 {
-    switch (cmd) {
-    /* ================== 0x01 握手 ================== */
-    case 0x01:
-    {
-        if (buf[4] == 0x01) {
-            boot_progress_set(20);
-            boot_service_confirm_handshake();
-            boot_service_reset_self_test_results();
-            boot_service_set_stage(BOOT_STAGE_SENSOR);
+    boot_reply_result_t reply = boot_reply_dispatch(cmd, buf, len);
+
+    if (reply.kind == BOOT_REPLY_HANDSHAKE_ACCEPTED) {
+        boot_progress_set(20);
+        boot_send_next_selftest();
+    } else if (reply.kind == BOOT_REPLY_SELF_TEST_RECORDED) {
+        boot_selftest_list_set_result(reply.self_test_index, reply.self_test_result);
+        boot_progress_set((uint8_t)(30 + reply.self_test_index * 10));
+
+        if (reply.self_test_event == BOOT_SELF_TEST_EVENT_NONE) {
             boot_send_next_selftest();
-        }
-        break;
-    }
-    /* ================== 0x37 自检 ================== */
-    case 0x37:
-    {
-        if (boot_service_get_stage() == BOOT_STAGE_FAIL || boot_service_get_stage() == BOOT_STAGE_DONE) {
-            break;
-        }
-
-        if (len < 6) break;
-
-        uint8_t test_type = buf[4];
-        uint8_t result = buf[5];
-
-        uint8_t index;
-        bool valid_step = boot_service_record_self_test_result(test_type, result, &index);
-
-        if (valid_step) {
-            boot_selftest_list_set_result(index, result);
-        }
-
-        if (valid_step) {
-            boot_progress_set((uint8_t)(30 + index * 10));
-        }
-
-        boot_service_advance_stage();
-
-        uint8_t first_failure_step;
-        uint8_t first_failure_result;
-        boot_self_test_event_t self_test_event = boot_service_take_self_test_event(&first_failure_step, &first_failure_result);
-        if (self_test_event == BOOT_SELF_TEST_EVENT_NONE) {
-            boot_send_next_selftest();
-        } else if (self_test_event == BOOT_SELF_TEST_EVENT_SUCCESS) {
+        } else if (reply.self_test_event == BOOT_SELF_TEST_EVENT_SUCCESS) {
             boot_progress_set(100);
             send_command(fd4, 0x56, (uint8_t[]){0x01}, 1);
             lv_timer_create(boot_selftest_finish_cb, 2000, NULL);
-        } else if (self_test_event == BOOT_SELF_TEST_EVENT_FAILURE) {
-            boot_service_set_stage(BOOT_STAGE_FAIL);
+        } else if (reply.self_test_event == BOOT_SELF_TEST_EVENT_FAILURE) {
             // 自检失败也继续读取主控货币列表，避免页面回落本地默认配置
             send_command(fd4, 0x56, (uint8_t[]){0x01}, 1);
-            show_boot_fault_popup(first_failure_step, first_failure_result);
+            show_boot_fault_popup(reply.first_failure_step, reply.first_failure_result);
         }
-    }
-    break;
     }
 }
 

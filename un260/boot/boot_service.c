@@ -194,14 +194,23 @@ void boot_service_reset_self_test_results(void)
 bool boot_service_record_self_test_result(uint8_t protocol_step, uint8_t result, uint8_t *index)
 {
     uint8_t item_index;
-    bool valid_step = boot_self_test_protocol_step_to_index(protocol_step, &item_index);
+    selftest_type_t expected_step;
 
-    if (valid_step) {
-        g_self_test_results[item_index].received = true;
-        g_self_test_results[item_index].result = result;
-        if (index != NULL) {
-            *index = item_index;
-        }
+    if (g_self_test_sequence_index == 0 ||
+        g_self_test_sequence_index > sizeof(g_self_test_sequence) / sizeof(g_self_test_sequence[0])) {
+        return false;
+    }
+    expected_step = g_self_test_sequence[g_self_test_sequence_index - 1];
+    if (protocol_step != (uint8_t)expected_step ||
+        !boot_self_test_protocol_step_to_index(protocol_step, &item_index) ||
+        g_self_test_results[item_index].received) {
+        return false;
+    }
+
+    g_self_test_results[item_index].received = true;
+    g_self_test_results[item_index].result = result;
+    if (index != NULL) {
+        *index = item_index;
     }
 
     if (result != 0x01 && !g_self_test_has_failure) {
@@ -210,7 +219,7 @@ bool boot_service_record_self_test_result(uint8_t protocol_step, uint8_t result,
         g_self_test_first_failure_result = result;
     }
 
-    return valid_step;
+    return true;
 }
 
 boot_self_test_event_t boot_service_take_self_test_event(uint8_t *failure_step, uint8_t *failure_result)
