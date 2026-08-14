@@ -37,6 +37,7 @@
 #include "un260/counting/counting_denom_reply.h"
 #include "un260/counting/counting_history_service.h"
 #include "un260/counting/counting_info_reply.h"
+#include "un260/counting/counting_reject_analysis_service.h"
 #include "un260/counting/counting_reject_sn_reply.h"
 #include "un260/lv_core/page_01_main.h"
 #include "un260/lv_system/ui_screenshot.h"
@@ -61,9 +62,7 @@ static lv_timer_t* g_mode_clear_timer = NULL;
 static uint32_t g_ui_upgrade_detect_tick = 0;
 
 static counting_session_state_t g_counting_session;
-static uint16_t g_reject_pocket_snapshot[0x100] = {0};
 static void frame_to_hex_str(const uint8_t *buf, int len, char *out, int out_len);
-static void pending_result_recalc_issue_from_reject_detail(void);
 static bool is_main_page_active(void);
 static void trigger_auto_wave_after_detail(void);
 
@@ -131,7 +130,23 @@ static const counting_denom_reply_hooks_t g_counting_denom_hooks = {
 
 static void counting_detail_on_reject_analysis_ready(void)
 {
-    pending_result_recalc_issue_from_reject_detail();
+    counting_reject_analysis_result_t result;
+
+    if (!counting_reject_analysis_update(&g_counting_session, &sim, &result)) {
+        return;
+    }
+    smart_island_set_count_analysis(g_counting_session.analysis_valid_pcs,
+                                    result.suspect_pcs,
+                                    result.damaged_pcs);
+    uart_printf(fd6,
+                "count analysis valid=%d expected=%d current=%u delta=%u source=%s suspect=%d damaged=%d\n",
+                g_counting_session.analysis_valid_pcs,
+                result.expected_issue,
+                result.current_total,
+                result.delta_total,
+                result.source == COUNTING_REJECT_ANALYSIS_SOURCE_DELTA ? "delta" : "current",
+                result.suspect_pcs,
+                result.damaged_pcs);
 }
 
 static void counting_detail_on_history_record_ready(void)
@@ -182,109 +197,6 @@ const char* get_currency_error_desc(uint8_t code)
         return g_currency_error_desc[code];
     }
     return "Unknown Error";
-}
-
-static bool currency_error_is_damaged(uint8_t code)
-{
-    if (code == 0x18 || code == 0x19 || code == 0x1A || code == 0x2C) return true; /* Long/Short/GAP/Limpness */
-    if (code == 0x24 || code == 0x25 || code == 0x27 || code == 0x28 || code == 0x29) return true; /* Hole/DogEar/Tape/Tears/Crumples */
-    if (code == 0x26 || code == 0x2A || code == 0x2B) return true; /* DIRT/De_ink/Soiling */
-    return false;
-}
-
-static void pending_result_recalc_issue_from_reject_detail(void)
-{
-    uint16_t current_by_code[0x100] = {0};
-    uint16_t delta_by_code[0x100] = {0};
-    const uint16_t *selected_by_code;
-    int suspect = 0;
-    int damaged = 0;
-    int issue = 0;
-    int current_total = 0;
-    int delta_total = 0;
-    int expected_issue;
-    bool use_delta = false;
-
-    if (!g_counting_session.last_result.valid) {
-        return;
-    }
-
-    if (sim.err_num == 0 || sim.err_pcs == NULL || sim.err_code == NULL) {
-        return;
-    }
-
-    for (int i = 0; i < sim.err_num; i++) {
-        int pcs = sim.err_pcs[i];
-        uint8_t code = sim.err_code[i];
-
-        if (pcs > 0) {
-            current_by_code[code] += (uint16_t)pcs;
-        }
-    }
-
-    for (int code = 0; code < 0x100; code++) {
-        current_total += current_by_code[code];
-        if (current_by_code[code] > g_reject_pocket_snapshot[code]) {
-            delta_by_code[code] = current_by_code[code] - g_reject_pocket_snapshot[code];
-            delta_total += delta_by_code[code];
-        }
-    }
-
-    expected_issue = g_counting_session.last_result.expected_issue;
-    if (expected_issue <= 0 && delta_total > 0) {
-        expected_issue = delta_total;
-        g_counting_session.last_result.expected_issue = expected_issue;
-    }
-    if (current_total == expected_issue) {
-        selected_by_code = current_by_code;
-    } else if (delta_total == expected_issue) {
-        selected_by_code = delta_by_code;
-        use_delta = true;
-    } else if (delta_total > 0 && delta_total <= expected_issue) {
-        selected_by_code = delta_by_code;
-        use_delta = true;
-    } else {
-        selected_by_code = current_by_code;
-    }
-
-    for (int code = 0; code < 0x100; code++) {
-        int pcs = selected_by_code[code];
-
-        if (pcs <= 0) continue;
-        if (currency_error_is_damaged((uint8_t)code)) {
-            damaged += pcs;
-        } else {
-            suspect += pcs;
-        }
-    }
-
-    issue = suspect + damaged;
-    if (issue < expected_issue) {
-        suspect += expected_issue - issue;
-        issue = expected_issue;
-    } else if (issue > expected_issue) {
-        int overflow = issue - expected_issue;
-        int reduce = suspect < overflow ? suspect : overflow;
-        suspect -= reduce;
-        overflow -= reduce;
-        if (overflow > 0) {
-            damaged = damaged > overflow ? damaged - overflow : 0;
-        }
-        issue = expected_issue;
-    }
-
-    g_counting_session.last_result.issue_pcs = issue;
-    g_counting_session.last_result.suspect_pcs = suspect;
-    g_counting_session.last_result.damaged_pcs = damaged;
-    g_counting_session.last_result.valid_pcs = g_counting_session.last_result.pcs - issue;
-    if (g_counting_session.last_result.valid_pcs < 0) {
-        g_counting_session.last_result.valid_pcs = 0;
-    }
-    memcpy(g_reject_pocket_snapshot, current_by_code, sizeof(g_reject_pocket_snapshot));
-    smart_island_set_count_analysis(g_counting_session.analysis_valid_pcs, suspect, damaged);
-    uart_printf(fd6, "count analysis valid=%d expected=%d current=%d delta=%d source=%s suspect=%d damaged=%d\n",
-                g_counting_session.analysis_valid_pcs, expected_issue, current_total, delta_total,
-                use_delta ? "delta" : "current", suspect, damaged);
 }
 
 static void format_amount_with_comma_fast(char* dest, size_t dest_size, float amount)

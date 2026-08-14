@@ -47,6 +47,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/counting/counting_denom_reply.c
     un260/counting/counting_history_service.c
     un260/counting/counting_info_reply.c
+    un260/counting/counting_reject_analysis_service.c
     un260/counting/counting_reject_sn_reply.c
     un260/device_info/device_info.c
     un260/device_info/device_reply.c
