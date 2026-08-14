@@ -105,6 +105,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_system/user_cfg.c
     un260/lv_system/machine_time.c
     un260/lv_drivers/lv_drivers.c
+    un260/lv_drivers/uart_bridge_service.c
     #font
 	un260/font/lv_font_montserrat_8.c 
     un260/font/lv_font_montserrat_10.c

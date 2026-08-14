@@ -1,5 +1,4 @@
 #include <unistd.h>
-#include <pthread.h>
 #include <time.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -14,6 +13,7 @@
 #include "aic_ui.h"
 #include "aic_dec.h"
 #include "un260/lv_drivers/lv_drivers.h"
+#include "un260/lv_drivers/uart_bridge_service.h"
 #include "un260/lv_refre/lvgl_refre.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/lv_page_declear.h"
@@ -50,7 +50,6 @@
 
 //-------------------- 全局变量 --------------------
  int fd4 = -1, fd5 = -1, fd6 = -1;
-static bool uart_running = false;
 #define MAX_CMD_PER_TICK  64   // 每轮处理上限，避免长帧流长时间占用UI
 
 static bool g_wait_sn_after_reject_end = false;
@@ -591,33 +590,6 @@ static void frame_to_hex_str(const uint8_t *buf, int len, char *out, int out_len
     if (pos > 0) out[pos - 1] = '\0'; // 去掉最后一个空格
 }
 
-
-void* uart5_thread(void* arg) {
-    uint8_t buf[256];
-
-    uart_printf(fd6, "UART5 start\n");
-
-    while (uart_running) {
-        int len = uart_recv(fd5, (char*)buf, sizeof(buf), 100);
-        if (len > 0) {
-
-            uart_printf(fd6, "UART5 recive %d 字节: ", len);
-            for(int i = 0; i < len; i++) {
-                uart_printf(fd6, "%02X ", buf[i]);
-            }
-            uart_printf(fd6, "\n");
-
-            if (fd4 >= 0) {
-                int ret = uart_send(fd4, (const char*)buf, len);
-                uart_printf(fd6, "UART5: sent UART4，长度=%d\n", ret);
-            }
-        }
-        usleep(1000); // 1ms
-    }
-
-    uart_printf(fd6, "UART5 end\n");
-    return NULL;
-}
 
 static void boot_selftest_finish_cb(lv_timer_t* timer)
 {
@@ -1772,26 +1744,21 @@ int main(void) {
 
     printf("UART配置完成\n");
 
-    uart_running = true;
-    pthread_t thread5;
     if (!protocol_rx_service_start(fd4, fd6)) {
         printf("UART4接收服务启动失败\n");
-        uart_running = false;
         uart_close(fd4);
         uart_close(fd5);
         uart_close(fd6);
         return -1;
     }
-    if (pthread_create(&thread5, NULL, uart5_thread, NULL) != 0) {
-        printf("UART5线程启动失败\n");
-        uart_running = false;
+    if (!uart_bridge_service_start(fd5, fd4, fd6)) {
+        printf("UART5转发服务启动失败\n");
         protocol_rx_service_stop();
         uart_close(fd4);
         uart_close(fd5);
         uart_close(fd6);
         return -1;
     }
-    pthread_detach(thread5);
    // machine_handshake_send(); 只发一次握手
 
     // 启动阶段避免阻塞，防止 LVGL 动画计时器错过播放窗口
@@ -1886,7 +1853,7 @@ int main(void) {
 
         usleep(1000);
     }
-    uart_running = false;
+    uart_bridge_service_stop();
     protocol_rx_service_stop();
     if (fd4 >= 0) uart_close(fd4);
     if (fd5 >= 0) uart_close(fd5);
