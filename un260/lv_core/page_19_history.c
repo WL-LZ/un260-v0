@@ -4,6 +4,7 @@
 #include <string.h>
 #include <ctype.h>
 
+#include "un260/counting/counting_reject_reason.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/lv_page_event.h"
 #include "un260/lv_components/lv_print_toast.h"
@@ -865,7 +866,7 @@ static int history_detail_parse_reject_rows(const ui_history_record_t *rec, char
         if (err_code == 0x00 || err_code == 0xFF) {
             continue;
         }
-        reason = get_currency_error_desc((uint8_t)err_code);
+        reason = counting_reject_reason_get((uint8_t)err_code);
 
         lv_snprintf(out[parsed][0], sizeof(out[parsed][0]), "%02d", parsed + 1);
         lv_snprintf(out[parsed][1], sizeof(out[parsed][1]), "%u", pcs);

@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "un260/counting/counting_reject_reason.h"
 #include "un260/lv_components/lv_print_toast.h"
 #include "un260/lv_system/ui_history_data.h"
 #include "un260/lv_system/machine_time.h"
@@ -733,7 +734,7 @@ static void history_export_parse_reject_entries(const ui_history_record_t *rec,
             if (code == 0x00 || code == 0xFF) {
                 continue;
             }
-            reason = get_currency_error_desc((uint8_t)code);
+            reason = counting_reject_reason_get((uint8_t)code);
             tmp[parsed].no = (unsigned)(parsed + 1);
             tmp[parsed].pcs = pcs;
             lv_snprintf(tmp[parsed].reason, sizeof(tmp[parsed].reason), "%s", reason ? reason : "--");

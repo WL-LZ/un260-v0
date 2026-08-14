@@ -325,10 +325,6 @@ static const char* get_start_title(uint8_t code)
     if (code == 0x00) {
         return ui_text_get(UI_TEXT_WIDGET_FAULT_START_FAILED);
     }
-
-    if (code < 0x32 && g_currency_error_desc[code] != NULL) {
-        return ui_text_get(UI_TEXT_WIDGET_FAULT_START_COUNT_ERROR);
-    }
     return ui_text_get(UI_TEXT_WIDGET_FAULT_START_COUNT_ERROR);
 }
 

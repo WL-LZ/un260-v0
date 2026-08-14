@@ -11,7 +11,6 @@ extern "C" {
 
 #include "uart_io.h"
 
-extern const char* g_currency_error_desc[0x32];
 extern const char* g_start_error_desc[0x12];
 
 /* 打开串口设备 */

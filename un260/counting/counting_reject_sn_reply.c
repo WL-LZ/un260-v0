@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "un260/counting/counting_reject_reason.h"
 #include "un260/lv_components/smart_island.h"
 #include "un260/lv_core/page_01_main.h"
 #include "un260/lv_drivers/lv_drivers.h"
@@ -167,7 +168,7 @@ static counting_detail_reply_result_t counting_reject_reply_handle(
 
     {
         int index = sim_data->err_num;
-        const char *description = get_currency_error_desc(err_code);
+        const char *description = counting_reject_reason_get(err_code);
         size_t description_len = strlen(description);
         char *description_copy = malloc(description_len + 1);
 

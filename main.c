@@ -177,15 +177,6 @@ static void ui_upgrade_popup_poll(uint32_t now)
 }
 
 //-------------------- 工具函数 --------------------
-const char* get_currency_error_desc(uint8_t code)
-{
-    if (code < sizeof(g_currency_error_desc) / sizeof(g_currency_error_desc[0]) &&
-        g_currency_error_desc[code] != NULL) {
-        return g_currency_error_desc[code];
-    }
-    return "Unknown Error";
-}
-
 static void format_amount_with_comma_fast(char* dest, size_t dest_size, float amount)
 {
     char temp[32];
