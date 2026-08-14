@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "counting_denom_query_service.h"
 #include "un260/lv_drivers/lv_drivers.h"
 
 static void counting_denom_record_history(const counting_denom_reply_hooks_t *hooks,
@@ -33,13 +34,13 @@ static counting_denom_reply_result_t counting_denom_handle_end(
     uint8_t len,
     const counting_denom_reply_hooks_t *hooks)
 {
+    bool query_was_pending;
+
     uart_printf(fd6, "0x0B denom detail receive end\n");
-    detail->query_got_frame = true;
-    detail->query_retry = 0;
+    query_was_pending = counting_denom_query_complete(detail);
     counting_denom_record_history(hooks, buf, len);
 
-    if (detail->query_pending) {
-        detail->query_pending = false;
+    if (query_was_pending) {
         if (!session->active) {
             ui_refresh_main_page();
         }
@@ -78,7 +79,7 @@ static counting_denom_reply_result_t counting_denom_handle_data(
         return COUNTING_DENOM_REPLY_IGNORED;
     }
 
-    detail->query_got_frame = true;
+    counting_denom_query_mark_frame_received(detail);
     counting_denom_record_history(hooks, buf, len);
 
     for (int i = 0; i < sim_data->denom_number; i++) {
@@ -116,7 +117,7 @@ counting_denom_reply_result_t counting_denom_reply_handle(
     if (counting_denom_payload_is(buf, 0x00)) {
         memset(sim_data->denom, 0, sizeof(sim_data->denom));
         sim_data->denom_number = 0;
-        detail->query_got_frame = true;
+        counting_denom_query_mark_frame_received(detail);
         counting_denom_record_history(hooks, buf, len);
         uart_printf(fd6, "0x0B denom detail receive start\n");
         return COUNTING_DENOM_REPLY_START;

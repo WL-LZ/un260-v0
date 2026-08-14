@@ -33,6 +33,7 @@
 #include "un260/currency/currency_reply.h"
 #include "un260/counting/counting_session_state.h"
 #include "un260/counting/counting_control_reply.h"
+#include "un260/counting/counting_denom_query_service.h"
 #include "un260/counting/counting_denom_reply.h"
 #include "un260/counting/counting_info_reply.h"
 #include "un260/counting/counting_reject_sn_reply.h"
@@ -58,9 +59,6 @@
 static counting_detail_state_t g_counting_detail_state;
 static lv_timer_t* g_mode_clear_timer = NULL;
 #define UI_UPGRADE_DETECT_INTERVAL_MS 500
-#define DENOM_QUERY_TIMEOUT_MS 1500
-#define DENOM_QUERY_MAX_RETRY 2
-#define DENOM_QUERY_IDLE_RETRY_MS 2500
 static uint32_t g_ui_upgrade_detect_tick = 0;
 
 static counting_session_state_t g_counting_session;
@@ -515,36 +513,6 @@ static void trigger_auto_wave_after_detail(void)
     uart_printf(fd6, "auto wave after count: sent=%d\n", sent ? 1 : 0);
 }
 
-// Clear cached denomination rows; next view refresh will wait for master 0x0B data.
-static void clear_master_denom_cache(void)
-{
-    memset(sim.denom, 0, sizeof(sim.denom));
-    sim.denom_number = 0;
-    g_counting_detail_state.query_got_frame = false;
-}
-
-static void request_denom_list(void)
-{
-    uint8_t sub = 0x01;
-    send_command(fd4, 0x0B, &sub, 1);
-    g_counting_detail_state.query_pending = true;
-    g_counting_detail_state.query_got_frame = false;
-    g_counting_detail_state.query_tick = app_clock_uptime_ms();
-    uart_printf(fd6, "request denom list: 0x0B 0x01\n");
-}
-
-static void trigger_denom_query(void)
-{
-    g_counting_detail_state.query_retry = 0;
-    /* Avoid injecting extra command during boot self-test/param-read flow. */
-    if (boot_service_get_stage() != BOOT_STAGE_DONE && boot_service_get_stage() != BOOT_STAGE_FAIL) {
-        g_counting_detail_state.query_deferred = true;
-        uart_printf(fd6, "defer denom query until boot done\n");
-        return;
-    }
-    request_denom_list();
-}
-
 static void mode_switch_clear_timer_cb(lv_timer_t* timer)
 {
     LV_UNUSED(timer);
@@ -731,18 +699,28 @@ void PCCmdHandle(void)
                 page_07_curr_apply_switch_result(&reply.switch_result);
                 uart_printf(fd6, "Set %s curr success\n", reply.active_code);
                 g_counting_session.end_anim_wait_detail = false;
-                trigger_denom_query();
+                counting_denom_query_trigger(
+                    &g_counting_detail_state,
+                    app_clock_uptime_ms(),
+                    boot_service_get_stage() == BOOT_STAGE_DONE ||
+                    boot_service_get_stage() == BOOT_STAGE_FAIL);
                 smart_island_refresh_summary();
             } else if (reply.kind == CURRENCY_REPLY_SWITCH_FAILURE) {
                 page_07_curr_apply_switch_result(&reply.switch_result);
                 uart_printf(fd6, "Set %s curr fail\n", reply.active_code);
             } else if (reply.kind == CURRENCY_REPLY_BOOT_ACTIVE) {
                 uart_printf(fd6, "Boot curr: %s\n", reply.active_code);
-                clear_master_denom_cache();
+                memset(sim.denom, 0, sizeof(sim.denom));
+                sim.denom_number = 0;
+                counting_denom_query_invalidate(&g_counting_detail_state);
                 if (is_main_page_active()) {
                     ui_refresh_main_page();
                 }
-                trigger_denom_query();
+                counting_denom_query_trigger(
+                    &g_counting_detail_state,
+                    app_clock_uptime_ms(),
+                    boot_service_get_stage() == BOOT_STAGE_DONE ||
+                    boot_service_get_stage() == BOOT_STAGE_FAIL);
                 smart_island_refresh_summary();
             }
             break;
@@ -929,39 +907,12 @@ int main(void) {
         ui_count_end_anim_poll();
         ui_upgrade_popup_poll(now);
 
-        if (g_counting_detail_state.query_pending &&
-            (now - g_counting_detail_state.query_tick) >= DENOM_QUERY_TIMEOUT_MS) {
-            g_counting_detail_state.query_pending = false;
-            if (!g_counting_detail_state.query_got_frame) {
-                if (g_counting_detail_state.query_retry < DENOM_QUERY_MAX_RETRY) {
-                    g_counting_detail_state.query_retry++;
-                    uart_printf(fd6, "0x0B query timeout, retry %u/%u\n",
-                                g_counting_detail_state.query_retry, DENOM_QUERY_MAX_RETRY);
-                    request_denom_list();
-                } else {
-                    uart_printf(fd6, "0x0B query timeout, keep master-only mode (no local fallback)\n");
-                }
-            }
-        }
-
-        if (g_counting_detail_state.query_deferred &&
-            !g_counting_detail_state.query_pending &&
-            (boot_service_get_stage() == BOOT_STAGE_DONE || boot_service_get_stage() == BOOT_STAGE_FAIL)) {
-            g_counting_detail_state.query_deferred = false;
-            request_denom_list();
-        }
-
-        if (!g_counting_detail_state.query_pending &&
-            !g_counting_detail_state.query_got_frame &&
-            is_main_page_active() &&
-            (boot_service_get_stage() == BOOT_STAGE_DONE || boot_service_get_stage() == BOOT_STAGE_FAIL)) {
-            if ((now - g_counting_detail_state.query_idle_retry_tick) >= DENOM_QUERY_IDLE_RETRY_MS) {
-                g_counting_detail_state.query_idle_retry_tick = now;
-                g_counting_detail_state.query_retry = 0;
-                uart_printf(fd6, "0x0B idle retry on main page\n");
-                request_denom_list();
-            }
-        }
+        counting_denom_query_poll(
+            &g_counting_detail_state,
+            now,
+            boot_service_get_stage() == BOOT_STAGE_DONE ||
+            boot_service_get_stage() == BOOT_STAGE_FAIL,
+            is_main_page_active());
 
         app_boot_runtime_poll(now, current_page == UI_PAGE_BOOT);
 
