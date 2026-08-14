@@ -10,17 +10,16 @@
 #include "aic_ui.h"
 #include "aic_dec.h"
 #include "un260/lv_drivers/lv_drivers.h"
-#include "un260/lv_drivers/uart_bridge_service.h"
 #include "un260/lv_refre/lvgl_refre.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/lv_page_declear.h"
 #include "un260/lv_core/lv_page_event.h"
 #include "un260/app_service/setting_service.h"
 #include "un260/app_service/app_clock.h"
+#include "un260/app_service/app_serial_runtime.h"
 #include "un260/machine_state/machine_state.h"
 #include "un260/protocol/basic_setting_reply_dispatch.h"
 #include "un260/protocol/protocol_frame_queue.h"
-#include "un260/protocol/protocol_rx_service.h"
 #include "un260/protocol/setting_reply_dispatch.h"
 #include "un260/protocol/startup_sync_reply.h"
 #include "un260/protocol/auxiliary_reply.h"
@@ -55,7 +54,6 @@
 //-------------------- UART 打印函数 --------------------
 
 //-------------------- 全局变量 --------------------
- int fd4 = -1, fd5 = -1, fd6 = -1;
 #define MAX_CMD_PER_TICK  64   // 每轮处理上限，避免长帧流长时间占用UI
 
 static counting_detail_state_t g_counting_detail_state;
@@ -936,16 +934,6 @@ void lv_show_center_msgbox(const char* title_text, const char* info_text)
     lv_obj_add_event_cb(scr, msgbox_close_cb, LV_EVENT_CLICKED, NULL);
 }
 
-static void close_uart_devices(void)
-{
-    uart_close(fd4);
-    uart_close(fd5);
-    uart_close(fd6);
-    fd4 = -1;
-    fd5 = -1;
-    fd6 = -1;
-}
-
 //-------------------- 主函数 --------------------
 int main(void) {
     lv_init();
@@ -961,43 +949,10 @@ int main(void) {
     ui_manager_switch(UI_PAGE_BOOT_ANIM);
     perf_stats_init();
 
-    printf("=== 初始化UART4、UART5和UART6 ===\n");
-
-    fd4 = uart_open("/dev/ttyS4");
-    fd5 = uart_open("/dev/ttyS5");
-    fd6 = uart_open("/dev/ttyS6");
-
-    if (fd4 < 0 || fd5 < 0 || fd6 < 0) {
-        printf("UART打开失败: fd4=%d fd5=%d fd6=%d\n", fd4, fd5, fd6);
-        close_uart_devices();
-        return -1;
-    }
-
-    if (uart_config(fd4, 115200, 8, 'N', 1) < 0 ||
-        uart_config(fd5, 115200, 8, 'N', 1) < 0 ||
-        uart_config(fd6, 115200, 8, 'N', 1) < 0) {
-        printf("UART配置失败\n");
-        close_uart_devices();
-        return -1;
-    }
-
-    printf("UART配置完成\n");
-
-    if (!protocol_rx_service_start(fd4, fd6)) {
-        printf("UART4接收服务启动失败\n");
-        close_uart_devices();
-        return -1;
-    }
-    if (!uart_bridge_service_start(fd5, fd4, fd6)) {
-        printf("UART5转发服务启动失败\n");
-        protocol_rx_service_stop();
-        close_uart_devices();
+    if (!app_serial_runtime_start()) {
         return -1;
     }
    // machine_handshake_send(); 只发一次握手
-
-    // 启动阶段避免阻塞，防止 LVGL 动画计时器错过播放窗口
-    uart_printf(fd6, "UART6 ready\n");
 
     while (1) {
         uint32_t now = app_clock_uptime_ms();
@@ -1087,9 +1042,7 @@ int main(void) {
 
         usleep(1000);
     }
-    uart_bridge_service_stop();
-    protocol_rx_service_stop();
-    close_uart_devices();
+    app_serial_runtime_stop();
 
     return 0;
 }
