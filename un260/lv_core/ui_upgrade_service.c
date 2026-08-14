@@ -12,6 +12,8 @@
 #include <unistd.h>
 #include <stdint.h>
 
+#include "un260/app_service/app_clock.h"
+
 #define UI_UPGRADE_USB_MNT             "/mnt/usb"
 #define UI_UPGRADE_FILE_PATH           "/mnt/usb/update/test_lvgl"
 #define UI_UPGRADE_RUNNING_FILE_PATH   "/proc/self/exe"
@@ -42,10 +44,7 @@ static ui_upgrade_hash_cache_t g_ui_upgrade_pkg_hash_cache;
 
 static unsigned long ui_upgrade_service_now_ms(void)
 {
-    struct timespec ts;
-
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (unsigned long)ts.tv_sec * 1000UL + (unsigned long)(ts.tv_nsec / 1000000UL);
+    return (unsigned long)app_clock_monotonic_ms();
 }
 
 static bool ui_upgrade_service_file_exists(const char* path)

@@ -1,8 +1,5 @@
 #include <unistd.h>
-#include <time.h>
 #include <stdio.h>
-#include <stdarg.h>
-#include <sys/time.h>
 #include <stdbool.h>
 #include <string.h>
 #include <fcntl.h>
@@ -19,6 +16,7 @@
 #include "un260/lv_core/lv_page_declear.h"
 #include "un260/lv_core/lv_page_event.h"
 #include "un260/app_service/setting_service.h"
+#include "un260/app_service/app_clock.h"
 #include "un260/machine_state/machine_state.h"
 #include "un260/protocol/basic_setting_reply_dispatch.h"
 #include "un260/protocol/protocol_frame_queue.h"
@@ -334,8 +332,6 @@ bool check_aa_header(const char* data, int len) {
     return (len >= 2 && (unsigned char)data[0] == 0xFD && (unsigned char)data[1] == 0xDF);
 }
 
-uint32_t custom_tick_get(void);
-
 const char* get_currency_error_desc(uint8_t code)
 {
     if (code < sizeof(g_currency_error_desc) / sizeof(g_currency_error_desc[0]) &&
@@ -536,7 +532,7 @@ static void request_denom_list(void)
     send_command(fd4, 0x0B, &sub, 1);
     g_counting_detail_state.query_pending = true;
     g_counting_detail_state.query_got_frame = false;
-    g_counting_detail_state.query_tick = custom_tick_get();
+    g_counting_detail_state.query_tick = app_clock_uptime_ms();
     uart_printf(fd6, "request denom list: 0x0B 0x01\n");
 }
 
@@ -940,20 +936,14 @@ void lv_show_center_msgbox(const char* title_text, const char* info_text)
     lv_obj_add_event_cb(scr, msgbox_close_cb, LV_EVENT_CLICKED, NULL);
 }
 
-//-------------------- 自定义Tick --------------------
-uint32_t custom_tick_get(void) {
-    static uint64_t start_ms = 0;
-    if (start_ms == 0) {
-        struct timeval tv_start;
-        gettimeofday(&tv_start, NULL);
-        start_ms = (tv_start.tv_sec * 1000000 + tv_start.tv_usec) / 1000;
-    }
-
-    struct timeval tv_now;
-    gettimeofday(&tv_now, NULL);
-    uint64_t now_ms = (tv_now.tv_sec * 1000000 + tv_now.tv_usec) / 1000;
-
-    return (uint32_t)(now_ms - start_ms);
+static void close_uart_devices(void)
+{
+    uart_close(fd4);
+    uart_close(fd5);
+    uart_close(fd6);
+    fd4 = -1;
+    fd5 = -1;
+    fd6 = -1;
 }
 
 //-------------------- 主函数 --------------------
@@ -979,9 +969,7 @@ int main(void) {
 
     if (fd4 < 0 || fd5 < 0 || fd6 < 0) {
         printf("UART打开失败: fd4=%d fd5=%d fd6=%d\n", fd4, fd5, fd6);
-        uart_close(fd4);
-        uart_close(fd5);
-        uart_close(fd6);
+        close_uart_devices();
         return -1;
     }
 
@@ -989,9 +977,7 @@ int main(void) {
         uart_config(fd5, 115200, 8, 'N', 1) < 0 ||
         uart_config(fd6, 115200, 8, 'N', 1) < 0) {
         printf("UART配置失败\n");
-        uart_close(fd4);
-        uart_close(fd5);
-        uart_close(fd6);
+        close_uart_devices();
         return -1;
     }
 
@@ -999,17 +985,13 @@ int main(void) {
 
     if (!protocol_rx_service_start(fd4, fd6)) {
         printf("UART4接收服务启动失败\n");
-        uart_close(fd4);
-        uart_close(fd5);
-        uart_close(fd6);
+        close_uart_devices();
         return -1;
     }
     if (!uart_bridge_service_start(fd5, fd4, fd6)) {
         printf("UART5转发服务启动失败\n");
         protocol_rx_service_stop();
-        uart_close(fd4);
-        uart_close(fd5);
-        uart_close(fd6);
+        close_uart_devices();
         return -1;
     }
    // machine_handshake_send(); 只发一次握手
@@ -1018,17 +1000,16 @@ int main(void) {
     uart_printf(fd6, "UART6 ready\n");
 
     while (1) {
-        uint32_t now = custom_tick_get();
+        uint32_t now = app_clock_uptime_ms();
         ui_page_t current_page = ui_manager_get_current_page();
-        struct timeval ui_tv_start;
-        struct timeval ui_tv_end;
+        uint64_t ui_start_us;
+        uint64_t ui_end_us;
         uint32_t ui_time_us;
 
-        gettimeofday(&ui_tv_start, NULL);
+        ui_start_us = app_clock_monotonic_us();
         lv_timer_handler();
-        gettimeofday(&ui_tv_end, NULL);
-        ui_time_us = (uint32_t)((ui_tv_end.tv_sec - ui_tv_start.tv_sec) * 1000000UL +
-                                (ui_tv_end.tv_usec - ui_tv_start.tv_usec));
+        ui_end_us = app_clock_monotonic_us();
+        ui_time_us = app_clock_elapsed_us32(ui_start_us, ui_end_us);
         perf_stats_report_ui_time_us(ui_time_us);
         PCCmdHandle();
         page_setting_req_poll();
@@ -1108,9 +1089,7 @@ int main(void) {
     }
     uart_bridge_service_stop();
     protocol_rx_service_stop();
-    if (fd4 >= 0) uart_close(fd4);
-    if (fd5 >= 0) uart_close(fd5);
-    if (fd6 >= 0) uart_close(fd6);
+    close_uart_devices();
 
     return 0;
 }

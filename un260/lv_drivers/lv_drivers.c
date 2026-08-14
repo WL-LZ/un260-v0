@@ -1,5 +1,6 @@
 #include "lv_drivers.h"
 #include "uart_io.h"
+#include "un260/app_service/app_clock.h"
 #include "un260/protocol/protocol_frame.h"
 #include "un260/protocol/protocol_frame_builder.h"
 #include "un260/protocol/protocol_send.h"
@@ -203,7 +204,7 @@ int send_command(int fd, uint8_t cmd_g, const uint8_t *cmd_s, uint16_t cmd_s_len
 
 void machine_handshake_send(void)
 {
-    uint32_t now = custom_tick_get();
+    uint32_t now = app_clock_uptime_ms();
     uint8_t payload = 0x01;
 
     boot_service_start(now);

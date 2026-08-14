@@ -1,14 +1,12 @@
 #include "protocol_request.h"
 
 #include <stddef.h>
-#include <time.h>
+
+#include "un260/app_service/app_clock.h"
 
 uint64_t protocol_request_now_ms(void)
 {
-    struct timespec ts;
-
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)ts.tv_sec * 1000ULL + (uint64_t)(ts.tv_nsec / 1000000ULL);
+    return app_clock_monotonic_ms();
 }
 
 bool protocol_request_begin(protocol_request_t *request)
