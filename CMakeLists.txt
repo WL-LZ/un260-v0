@@ -43,6 +43,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/counting/counting_info_reply.c
     un260/counting/counting_reject_sn_reply.c
     un260/device_info/device_info.c
+    un260/diagnostic/diagnostic_reply.c
     un260/currency/currency_state.c
     un260/currency/currency_service.c
     un260/currency/currency_reply.c

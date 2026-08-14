@@ -27,6 +27,7 @@
 #include "un260/protocol/startup_sync_reply.h"
 #include "un260/boot/boot_service.h"
 #include "un260/device_info/device_info.h"
+#include "un260/diagnostic/diagnostic_reply.h"
 #include "un260/currency/currency_reply.h"
 #include "un260/counting/counting_session_state.h"
 #include "un260/counting/counting_control_reply.h"
@@ -596,24 +597,6 @@ static void boot_selftest_finish_cb(lv_timer_t* timer)
     lv_timer_del(timer);             // 删除定时器
 }
 
-static int sensor_idx_to_ch(uint8_t idx)
-{
-    switch (idx) {
-    case 0x01: return 0;  // QTH
-    case 0x02: return 1;  // QTL
-    case 0x03: return 2;  // RJH
-    case 0x04: return 3;  // RJL
-    case 0x05: return 4;  // PS1L
-    case 0x06: return 5;  // PS1R
-    case 0x07: return 6;  // PS2
-    case 0x08: return 7;  // PS5L
-    case 0x09: return 8;  // PS5R
-    case 0x0A: return 9;  // ST
-    case 0x0B: return 10;  // SD
-    default:   return -1;
-    }
-}
-
 static void pccmd_handle_upgrade(uint8_t cmd, uint8_t *buf, uint8_t len)
 {
     switch (cmd) {
@@ -639,65 +622,14 @@ static void pccmd_handle_upgrade(uint8_t cmd, uint8_t *buf, uint8_t len)
     }
 }
 
-static void pccmd_handle_diagnostic(uint8_t cmd, uint8_t *buf, uint8_t len)
+static void diagnostic_on_calibration_changed(void)
 {
-    switch (cmd) {
-    /* ================== 0x1D 传感器电压 ================== */
-    case 0x1D:
-    {
-        if (len < 7) break;
-
-        uint8_t idx = buf[4];
-        uint8_t val = buf[5];
-
-        if (idx == 0x00 && val == 0x00) {
-            memset(g_sensor_voltage.valid, 0, sizeof(g_sensor_voltage.valid));
-            break;
-        }
-
-        if (idx == 0xFF && val == 0xFF) {
-            break;
-        }
-
-        int ch = sensor_idx_to_ch(idx);
-        if (ch >= 0) {
-            g_sensor_voltage.raw[ch] = val;
-            g_sensor_voltage.valid[ch] = true;
-            g_sensor_voltage.update_count++;
-        }
-
-        break;
-    }
-
-
-    /* ================== 0x5B CIS 校准 ================== */
-    case 0x5B:
-    {
-        if (len < 5) break;
-
-        if (g_calib_target == CALIB_TARGET_CB) {
-            switch (buf[4]) {
-            case 0x01: cb_state = CB_CALIB_RUNNING; break;
-            case 0x02: cb_state = CB_CALIB_SUCCESS; break;
-            case 0x05: cb_state = CB_CALIB_FAIL_IR; break;
-            default:   break;
-            }
-        } else {
-            switch (buf[4]) {
-            case 0x01: cis_state = CIS_CALIB_RUNNING; break;
-            case 0x02: cis_state = CIS_CALIB_SUCCESS; break;
-            case 0x03: cis_state = CIS_CALIB_FAIL_UPPER; break;
-            case 0x04: cis_state = CIS_CALIB_FAIL_LOWER; break;
-            case 0x05: cis_state = CIS_CALIB_FAIL_IR; break;
-            default:   break;
-            }
-        }
-
-        cis_calib_ui_refresh();
-        break;
-    }
-    }
+    cis_calib_ui_refresh();
 }
+
+static const diagnostic_reply_hooks_t g_diagnostic_reply_hooks = {
+    .on_calibration_changed = diagnostic_on_calibration_changed,
+};
 
 static void pccmd_handle_basic_setting(uint8_t cmd, uint8_t *buf, uint8_t len)
 {
@@ -914,10 +846,8 @@ void PCCmdHandle(void)
                                               &g_counting_detail_hooks);
             break;
         case 0x1D:
-            pccmd_handle_diagnostic(cmd, buf, len);
-            break;
         case 0x5B:
-            pccmd_handle_diagnostic(cmd, buf, len);
+            diagnostic_reply_dispatch(cmd, buf, len, &g_diagnostic_reply_hooks);
             break;
         case 0x37:
             pccmd_handle_boot_and_selftest(cmd, buf, len);
