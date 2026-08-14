@@ -27,7 +27,7 @@
 #include "un260/protocol/startup_sync_reply.h"
 #include "un260/boot/boot_service.h"
 #include "un260/boot/boot_reply.h"
-#include "un260/device_info/device_info.h"
+#include "un260/device_info/device_reply.h"
 #include "un260/diagnostic/diagnostic_reply.h"
 #include "un260/currency/currency_reply.h"
 #include "un260/counting/counting_session_state.h"
@@ -598,28 +598,18 @@ static void boot_selftest_finish_cb(lv_timer_t* timer)
     lv_timer_del(timer);             // 删除定时器
 }
 
-static void pccmd_handle_upgrade(uint8_t cmd, uint8_t *buf, uint8_t len)
+static void pccmd_handle_device_reply(uint8_t cmd, const uint8_t *buf, uint8_t len)
 {
-    switch (cmd) {
-    /* ================== 0xA1 主控升级状态 ================== */
-    case 0xA1:
-    {
-        if (len < 6) break;
-        uint8_t res = buf[4];
-        ui_page_14_main_upgrade_on_reply(0xA1, res);
-        uart_printf(fd6, "0xA1 res=0x%02X\n", res);
-        break;
-    }
+    device_reply_result_t reply = device_reply_dispatch(cmd, buf, len);
 
-    /* ================== 0xB0 图像升级状态 ================== */
-    case 0xB0:
-    {
-        if (len < 6) break;
-        uint8_t res = buf[4];
-        ui_page_15_image_upgrade_on_reply(0xB0, res);
-        uart_printf(fd6, "0xB0 res=0x%02X\n", res);
-        break;
-    }
+    if (reply.kind == DEVICE_REPLY_VERSION_UPDATED) {
+        uart_printf(fd6, "Version Info Received\n");
+    } else if (reply.kind == DEVICE_REPLY_MAIN_UPGRADE_STATUS) {
+        ui_page_14_main_upgrade_on_reply(0xA1, reply.status);
+        uart_printf(fd6, "0xA1 res=0x%02X\n", reply.status);
+    } else if (reply.kind == DEVICE_REPLY_IMAGE_UPGRADE_STATUS) {
+        ui_page_15_image_upgrade_on_reply(0xB0, reply.status);
+        uart_printf(fd6, "0xB0 res=0x%02X\n", reply.status);
     }
 }
 
@@ -690,27 +680,9 @@ void PCCmdHandle(void)
             pccmd_handle_boot_and_selftest(cmd, buf, len);
             break;
 
-        /* ================== 0x17 版本信息 ================== */
         case 0x17:
-        {
-            if (len < 18) {
-                uart_printf(fd6, "0x17: frame too short (%d)\n", len);
-                break;
-            }
-
-            uint8_t *p = &buf[4];
-            device_info_remote_versions_t versions = {
-                .main_app = { p[0], p[1], p[2] },
-                .image_app = { p[3], p[4], p[5] },
-                .fpga = { p[6], p[7] },
-                .main_boot = { p[8], p[9], p[10] },
-                .image_boot = { p[11], p[12], p[13] },
-            };
-            device_info_confirm_remote_versions(&versions);
-
-            uart_printf(fd6, "Version Info Received\n");
+            pccmd_handle_device_reply(cmd, buf, len);
             break;
-        }
 
         /* ================== 0x0E 点钞信息 ================== */
         case 0x0E:
@@ -861,11 +833,8 @@ void PCCmdHandle(void)
             break;
 
         case 0xA1:
-            pccmd_handle_upgrade(cmd, buf, len);
-            break;
-
         case 0xB0:
-            pccmd_handle_upgrade(cmd, buf, len);
+            pccmd_handle_device_reply(cmd, buf, len);
             break;
         case 0xC0:
         {
