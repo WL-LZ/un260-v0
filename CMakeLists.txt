@@ -39,6 +39,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/app_service/setting_service.c
     un260/boot/boot_service.c
     un260/counting/counting_control_reply.c
+    un260/counting/counting_denom_reply.c
     un260/counting/counting_info_reply.c
     un260/device_info/device_info.c
     un260/currency/currency_state.c

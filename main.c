@@ -31,6 +31,7 @@
 #include "un260/currency/currency_service.h"
 #include "un260/counting/counting_session_state.h"
 #include "un260/counting/counting_control_reply.h"
+#include "un260/counting/counting_denom_reply.h"
 #include "un260/counting/counting_info_reply.h"
 #include "un260/serial_number/serial_number_state.h"
 #include "un260/serial_number/serial_number_service.h"
@@ -55,13 +56,7 @@
  int fd4 = -1, fd5 = -1, fd6 = -1;
 #define MAX_CMD_PER_TICK  64   // 每轮处理上限，避免长帧流长时间占用UI
 
-static bool g_wait_sn_after_reject_end = false;
-static bool g_denom_query_pending = false;
-static bool g_denom_query_deferred = false;
-static bool g_denom_query_got_frame = false;
-static uint32_t g_denom_query_tick = 0;
-static uint8_t g_denom_query_retry = 0;
-static uint32_t g_denom_query_idle_retry_tick = 0;
+static counting_detail_state_t g_counting_detail_state;
 static lv_timer_t* g_mode_clear_timer = NULL;
 #define UI_UPGRADE_DETECT_INTERVAL_MS 500
 #define DENOM_QUERY_TIMEOUT_MS 1500
@@ -175,6 +170,17 @@ static const counting_control_reply_hooks_t g_counting_control_hooks = {
     .on_start_success = counting_control_on_start_success,
     .on_error_frame = counting_control_on_error_frame,
     .on_start_failure = counting_control_on_start_failure,
+};
+
+static void counting_denom_on_history_frame(const char *tag,
+                                            const uint8_t *buf,
+                                            uint8_t len)
+{
+    history_session_append_line(tag, buf, len);
+}
+
+static const counting_denom_reply_hooks_t g_counting_denom_hooks = {
+    .on_history_frame = counting_denom_on_history_frame,
 };
 
 static void history_try_commit_pending_record(void)
@@ -545,25 +551,25 @@ static void clear_master_denom_cache(void)
 {
     memset(sim.denom, 0, sizeof(sim.denom));
     sim.denom_number = 0;
-    g_denom_query_got_frame = false;
+    g_counting_detail_state.query_got_frame = false;
 }
 
 static void request_denom_list(void)
 {
     uint8_t sub = 0x01;
     send_command(fd4, 0x0B, &sub, 1);
-    g_denom_query_pending = true;
-    g_denom_query_got_frame = false;
-    g_denom_query_tick = custom_tick_get();
+    g_counting_detail_state.query_pending = true;
+    g_counting_detail_state.query_got_frame = false;
+    g_counting_detail_state.query_tick = custom_tick_get();
     uart_printf(fd6, "request denom list: 0x0B 0x01\n");
 }
 
 static void trigger_denom_query(void)
 {
-    g_denom_query_retry = 0;
+    g_counting_detail_state.query_retry = 0;
     /* Avoid injecting extra command during boot self-test/param-read flow. */
     if (boot_service_get_stage() != BOOT_STAGE_DONE && boot_service_get_stage() != BOOT_STAGE_FAIL) {
-        g_denom_query_deferred = true;
+        g_counting_detail_state.query_deferred = true;
         uart_printf(fd6, "defer denom query until boot done\n");
         return;
     }
@@ -945,88 +951,13 @@ void PCCmdHandle(void)
 
         /* ================== 0x0B 面额明细 ================== */
         case 0x0B:
-        {
-            if (len < 15) break;
-
-            /* start frame: 00...00 (11 bytes payload are 0) */
-            bool all_zero = true;
-            for (int i = 4; i < 15; i++) {
-                if (buf[i] != 0x00) { all_zero = false; break; }
-            }
-            if (all_zero) {
-                memset(sim.denom, 0, sizeof(sim.denom));
-                sim.denom_number = 0;
-                g_denom_query_got_frame = true;
-                history_session_append_line("0x0B", buf, len);
-                uart_printf(fd6, "0x0B denom detail receive start\n");
-                break;
-            }
-
-            /* end frame: FF...FF (11 bytes payload are 0xFF) */
-            bool all_ff = true;
-            for (int i = 4; i < 15; i++) {
-                if (buf[i] != 0xFF) { all_ff = false; break; }
-            }
-            if (all_ff) {
-                uart_printf(fd6, "0x0B denom detail receive end\n");
-                g_denom_query_got_frame = true;
-                g_denom_query_retry = 0;
-                history_session_append_line("0x0B", buf, len);
-
-                if (g_denom_query_pending) {
-                    g_denom_query_pending = false;
-                    if (!g_counting_session.active) {
-                        ui_refresh_main_page();
-                    }
-                    break;
-                }
-
-                /* 串行时序：先请求 0x0C，等 0x0C 结束后再请求 0x0D */
-                uint8_t reject_cmd = 0x01;
-                send_command(fd4, 0x0C, &reject_cmd, 1);
-                g_wait_sn_after_reject_end = true;
-                if (!g_counting_session.active) {
-                    ui_refresh_main_page();
-                }
-                break;
-            }
-
-            /* normal data frame: denom(8 ascii) + pcs(3 ascii) */
-            char denom_str[9] = {0};
-            memcpy(denom_str, &buf[4], 8);
-            int denom = atoi(denom_str);
-
-            char pcs_str[4] = {0};
-            memcpy(pcs_str, &buf[12], 3);
-            int pcs = atoi(pcs_str);
-
-            if (denom <= 0) break;
-            g_denom_query_got_frame = true;
-            history_session_append_line("0x0B", buf, len);
-
-            int found = 0;
-            for (int i = 0; i < sim.denom_number; i++) {
-                if (sim.denom[i].value == denom) {
-                    sim.denom[i].pcs += pcs;
-                    sim.denom[i].amount = denom * sim.denom[i].pcs;
-                    found = 1;
-                    break;
-                }
-            }
-
-            /* NEW: append if not found */
-            if (!found) {
-                if (sim.denom_number < (int)(sizeof(sim.denom) / sizeof(sim.denom[0]))) {
-                    int i = sim.denom_number;
-                    sim.denom[i].value = denom;
-                    sim.denom[i].pcs = pcs;
-                    sim.denom[i].amount = denom * pcs;
-                    sim.denom_number++;
-                }
-            }
-
+            counting_denom_reply_handle(&g_counting_detail_state,
+                                        &g_counting_session,
+                                        &sim,
+                                        buf,
+                                        len,
+                                        &g_counting_denom_hooks);
             break;
-        }
 
         /* ================== 0x0C 退钞明细 ================== */
         case 0x0C:
@@ -1059,10 +990,10 @@ void PCCmdHandle(void)
                 if (is_main_page_active()) {
                     ui_refresh_main_page(); // C区在退钞明细结束时也自动刷新
                 }
-                if (g_wait_sn_after_reject_end) {
+                if (g_counting_detail_state.wait_sn_after_reject_end) {
                     uint8_t sn_req[2] = { 0x01, 0x01 };
                     send_command(fd4, 0x0D, sn_req, 2);
-                    g_wait_sn_after_reject_end = false;
+                    g_counting_detail_state.wait_sn_after_reject_end = false;
                 }
                 break;
             }
@@ -1626,14 +1557,14 @@ int main(void) {
         ui_count_end_anim_poll();
         ui_upgrade_popup_poll(now);
 
-        if (g_denom_query_pending &&
-            (now - g_denom_query_tick) >= DENOM_QUERY_TIMEOUT_MS) {
-            g_denom_query_pending = false;
-            if (!g_denom_query_got_frame) {
-                if (g_denom_query_retry < DENOM_QUERY_MAX_RETRY) {
-                    g_denom_query_retry++;
+        if (g_counting_detail_state.query_pending &&
+            (now - g_counting_detail_state.query_tick) >= DENOM_QUERY_TIMEOUT_MS) {
+            g_counting_detail_state.query_pending = false;
+            if (!g_counting_detail_state.query_got_frame) {
+                if (g_counting_detail_state.query_retry < DENOM_QUERY_MAX_RETRY) {
+                    g_counting_detail_state.query_retry++;
                     uart_printf(fd6, "0x0B query timeout, retry %u/%u\n",
-                                g_denom_query_retry, DENOM_QUERY_MAX_RETRY);
+                                g_counting_detail_state.query_retry, DENOM_QUERY_MAX_RETRY);
                     request_denom_list();
                 } else {
                     uart_printf(fd6, "0x0B query timeout, keep master-only mode (no local fallback)\n");
@@ -1641,20 +1572,20 @@ int main(void) {
             }
         }
 
-        if (g_denom_query_deferred &&
-            !g_denom_query_pending &&
+        if (g_counting_detail_state.query_deferred &&
+            !g_counting_detail_state.query_pending &&
             (boot_service_get_stage() == BOOT_STAGE_DONE || boot_service_get_stage() == BOOT_STAGE_FAIL)) {
-            g_denom_query_deferred = false;
+            g_counting_detail_state.query_deferred = false;
             request_denom_list();
         }
 
-        if (!g_denom_query_pending &&
-            !g_denom_query_got_frame &&
+        if (!g_counting_detail_state.query_pending &&
+            !g_counting_detail_state.query_got_frame &&
             is_main_page_active() &&
             (boot_service_get_stage() == BOOT_STAGE_DONE || boot_service_get_stage() == BOOT_STAGE_FAIL)) {
-            if ((now - g_denom_query_idle_retry_tick) >= DENOM_QUERY_IDLE_RETRY_MS) {
-                g_denom_query_idle_retry_tick = now;
-                g_denom_query_retry = 0;
+            if ((now - g_counting_detail_state.query_idle_retry_tick) >= DENOM_QUERY_IDLE_RETRY_MS) {
+                g_counting_detail_state.query_idle_retry_tick = now;
+                g_counting_detail_state.query_retry = 0;
                 uart_printf(fd6, "0x0B idle retry on main page\n");
                 request_denom_list();
             }
