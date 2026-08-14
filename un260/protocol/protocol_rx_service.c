@@ -18,6 +18,7 @@ static int g_log_fd = -1;
 
 #define PROTOCOL_RX_LOG_PREVIEW_BYTES 32U
 #define PROTOCOL_RX_DROP_REPORT_STEP  100U
+#define PROTOCOL_RX_INVALID_REPORT_STEP 100U
 
 static bool protocol_rx_service_should_run(void)
 {
@@ -35,6 +36,7 @@ static void *protocol_rx_service_thread(void *arg)
     protocol_frame_view_t frame;
     uint8_t byte;
     unsigned int dropped_frames = 0;
+    unsigned int invalid_frames = 0;
 
     (void)arg;
     protocol_frame_parser_init(&parser);
@@ -69,6 +71,15 @@ static void *protocol_rx_service_thread(void *arg)
                         dropped_frames = 0;
                     }
                 }
+            } else if (result != PROTOCOL_FRAME_PARSE_INCOMPLETE) {
+                invalid_frames++;
+                if (invalid_frames == 1 ||
+                    (invalid_frames % PROTOCOL_RX_INVALID_REPORT_STEP) == 0) {
+                    uart_printf(g_log_fd,
+                                "UART4: invalid frame result=%d count=%u\n",
+                                result,
+                                invalid_frames);
+                }
             }
         }
         usleep(100);
@@ -76,6 +87,9 @@ static void *protocol_rx_service_thread(void *arg)
 
     if (dropped_frames > 0) {
         uart_printf(g_log_fd, "UART4: receive stopped, dropped=%u\n", dropped_frames);
+    }
+    if (invalid_frames > 0) {
+        uart_printf(g_log_fd, "UART4: receive stopped, invalid=%u\n", invalid_frames);
     }
 
     return NULL;

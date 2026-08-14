@@ -2,6 +2,8 @@
 
 #include <stddef.h>
 
+#include "protocol_frame_validator.h"
+
 static void protocol_frame_parser_reset(protocol_frame_parser_t *parser)
 {
     parser->index = 0;
@@ -71,6 +73,13 @@ protocol_frame_parse_result_t protocol_frame_parser_feed(protocol_frame_parser_t
 
     parser->remaining--;
     if (parser->remaining == 0) {
+        if (!protocol_frame_is_valid(parser->buffer, parser->index)) {
+            protocol_frame_parser_reset(parser);
+            if (byte == PROTOCOL_FRAME_HEADER_FIRST) {
+                protocol_frame_parser_start(parser);
+            }
+            return PROTOCOL_FRAME_PARSE_INVALID_FRAME;
+        }
         frame->data = parser->buffer;
         frame->len = (uint8_t)parser->index;
         protocol_frame_parser_reset(parser);

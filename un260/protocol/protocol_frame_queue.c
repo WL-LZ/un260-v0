@@ -3,6 +3,8 @@
 #include <pthread.h>
 #include <string.h>
 
+#include "protocol_frame_validator.h"
+
 static protocol_frame_t g_frames[PROTOCOL_FRAME_QUEUE_CAPACITY];
 static int g_head;
 static int g_tail;
@@ -13,7 +15,7 @@ bool protocol_frame_queue_push(const uint8_t *data, int len)
 {
     bool pushed = false;
 
-    if (data == NULL || len <= 0 || len > PROTOCOL_FRAME_MAX_SIZE) {
+    if (len < 0 || !protocol_frame_is_valid(data, (size_t)len)) {
         return false;
     }
 

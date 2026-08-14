@@ -10,6 +10,7 @@ typedef enum {
     PROTOCOL_FRAME_PARSE_READY,
     PROTOCOL_FRAME_PARSE_INVALID_LENGTH,
     PROTOCOL_FRAME_PARSE_OVERFLOW,
+    PROTOCOL_FRAME_PARSE_INVALID_FRAME,
 } protocol_frame_parse_result_t;
 
 typedef struct {
