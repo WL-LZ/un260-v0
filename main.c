@@ -35,11 +35,11 @@
 #include "un260/counting/counting_control_reply.h"
 #include "un260/counting/counting_denom_query_service.h"
 #include "un260/counting/counting_denom_reply.h"
+#include "un260/counting/counting_history_service.h"
 #include "un260/counting/counting_info_reply.h"
 #include "un260/counting/counting_reject_sn_reply.h"
 #include "un260/lv_core/page_01_main.h"
 #include "un260/lv_system/ui_screenshot.h"
-#include "un260/lv_core/page_19_history.h"
 #include "un260/lv_components/lv_components.h"
 #include "un260/lv_components/smart_island.h"
 #include "un260/lv_system/user_cfg.h"
@@ -50,7 +50,6 @@
 #include "un260/lv_components/lv_print_toast.h"
 #include "un260/lv_core/ui_upgrade_service.h"
 #include "aic_ui/perf_stats.h"
-#include <stdlib.h>
 //-------------------- UART 打印函数 --------------------
 
 //-------------------- 全局变量 --------------------
@@ -63,15 +62,7 @@ static uint32_t g_ui_upgrade_detect_tick = 0;
 
 static counting_session_state_t g_counting_session;
 static uint16_t g_reject_pocket_snapshot[0x100] = {0};
-static char g_history_last_error_frame_text[160] = {0};
-static char g_history_last_start_frame_text[160] = {0};
-static char g_history_last_end_frame_text[160] = {0};
-static char g_history_session_log_text[4096] = {0};
-static size_t g_history_session_log_len = 0;
 static void frame_to_hex_str(const uint8_t *buf, int len, char *out, int out_len);
-static bool history_copy_sim_snapshot(counting_sim_t *dst, const counting_sim_t *src);
-static void history_free_sim_snapshot(counting_sim_t *sim_data);
-static void history_try_commit_pending_record(void);
 static void pending_result_recalc_issue_from_reject_detail(void);
 static bool is_main_page_active(void);
 static void trigger_auto_wave_after_detail(void);
@@ -86,56 +77,9 @@ static bool ui_counting_should_keep_current_page(void)
            page == UI_PAGE_SENSOR;
 }
 
-static void history_capture_error_frame(const uint8_t *buf, int len)
-{
-    if (buf == NULL || len <= 0) {
-        g_history_last_error_frame_text[0] = '\0';
-        return;
-    }
-
-    frame_to_hex_str(buf, len, g_history_last_error_frame_text,
-                     (int)sizeof(g_history_last_error_frame_text));
-}
-
-static void history_session_reset(void)
-{
-    g_history_last_start_frame_text[0] = '\0';
-    g_history_last_end_frame_text[0] = '\0';
-    g_history_session_log_text[0] = '\0';
-    g_history_session_log_len = 0;
-}
-
-static void history_session_append_line(const char *tag, const uint8_t *buf, int len)
-{
-    char hex[256];
-    int written;
-
-    if (tag == NULL || buf == NULL || len <= 0) {
-        return;
-    }
-
-    frame_to_hex_str(buf, len, hex, (int)sizeof(hex));
-    written = snprintf(g_history_session_log_text + g_history_session_log_len,
-                       sizeof(g_history_session_log_text) - g_history_session_log_len,
-                       "%s %s\n", tag, hex);
-    if (written > 0) {
-        g_history_session_log_len += (size_t)written;
-        if (g_history_session_log_len >= sizeof(g_history_session_log_text)) {
-            g_history_session_log_len = sizeof(g_history_session_log_text) - 1;
-            g_history_session_log_text[g_history_session_log_len] = '\0';
-        }
-    }
-}
-
 static void counting_control_on_start_success(const uint8_t *buf, uint8_t len)
 {
-    g_history_last_error_frame_text[0] = '\0';
-    g_history_last_start_frame_text[0] = '\0';
-    g_history_last_end_frame_text[0] = '\0';
-    history_session_reset();
-    frame_to_hex_str(buf, len, g_history_last_start_frame_text,
-                     (int)sizeof(g_history_last_start_frame_text));
-    history_session_append_line("0x0A", buf, len);
+    counting_history_session_start(buf, len);
 
     if (data_collection_state_mode() != DATA_COLLECT_MODE_NONE) {
         data_collection_state_set_status("Counting started...");
@@ -151,8 +95,7 @@ static void counting_control_on_error_frame(const char *tag,
                                             const uint8_t *buf,
                                             uint8_t len)
 {
-    history_capture_error_frame(buf, len);
-    history_session_append_line(tag, buf, len);
+    counting_history_capture_error(tag, buf, len);
 }
 
 static void counting_control_on_start_failure(const char *description)
@@ -179,7 +122,7 @@ static void counting_denom_on_history_frame(const char *tag,
                                             const uint8_t *buf,
                                             uint8_t len)
 {
-    history_session_append_line(tag, buf, len);
+    counting_history_append_frame(tag, buf, len);
 }
 
 static const counting_denom_reply_hooks_t g_counting_denom_hooks = {
@@ -193,7 +136,7 @@ static void counting_detail_on_reject_analysis_ready(void)
 
 static void counting_detail_on_history_record_ready(void)
 {
-    history_try_commit_pending_record();
+    counting_history_try_commit(&g_counting_session, &sim);
 }
 
 static void counting_detail_on_complete(void)
@@ -209,101 +152,6 @@ static const counting_reject_sn_reply_hooks_t g_counting_detail_hooks = {
     .is_main_page_active = is_main_page_active,
 };
 
-static void history_try_commit_pending_record(void)
-{
-    counting_sim_t history_sim_snapshot;
-    uint32_t total_after;
-
-    if (!g_counting_session.history_record.valid || !g_counting_session.history_record.end_seen) {
-        return;
-    }
-
-    total_after = g_counting_session.history_record.total_after;
-    if (history_copy_sim_snapshot(&history_sim_snapshot, &sim)) {
-        history_sim_snapshot.total_pcs = (int)g_counting_session.history_record.pcs;
-        history_sim_snapshot.total_amount = g_counting_session.history_record.amount;
-        ui_history_record_append_from_session(&history_sim_snapshot,
-                                              g_counting_session.history_record.pcs,
-                                              total_after,
-                                              g_history_last_error_frame_text,
-                                              g_history_last_start_frame_text,
-                                              g_history_last_end_frame_text,
-                                              g_history_session_log_text);
-        history_free_sim_snapshot(&history_sim_snapshot);
-    }
-
-    g_counting_session.history_record.valid = false;
-    g_counting_session.history_record.end_seen = false;
-    g_counting_session.history_record.pcs = 0;
-    g_counting_session.history_record.total_after = 0;
-    g_counting_session.history_record.amount = 0.0f;
-    g_history_last_error_frame_text[0] = '\0';
-    g_history_last_start_frame_text[0] = '\0';
-    g_history_last_end_frame_text[0] = '\0';
-    history_session_reset();
-
-    if (ui_manager_get_current_page() == UI_PAGE_HISTORY) {
-        ui_page_19_history_refresh();
-    }
-}
-
-static bool history_copy_sim_snapshot(counting_sim_t *dst, const counting_sim_t *src)
-{
-    int i;
-
-    if (dst == NULL || src == NULL) {
-        return false;
-    }
-
-    *dst = *src;
-    dst->sn_str = NULL;
-    dst->sn_capacity = 0;
-
-    if (src->sn_str == NULL || src->sn_capacity <= 0) {
-        return true;
-    }
-
-    dst->sn_str = calloc((size_t)src->sn_capacity, sizeof(char *));
-    if (dst->sn_str == NULL) {
-        return false;
-    }
-
-    dst->sn_capacity = src->sn_capacity;
-    for (i = 0; i < src->sn_capacity; i++) {
-        if (src->sn_str[i] == NULL) {
-            continue;
-        }
-        dst->sn_str[i] = malloc(strlen(src->sn_str[i]) + 1);
-        if (dst->sn_str[i] == NULL) {
-            for (int j = 0; j < i; j++) {
-                free(dst->sn_str[j]);
-            }
-            free(dst->sn_str);
-            dst->sn_str = NULL;
-            dst->sn_capacity = 0;
-            return false;
-        }
-        strcpy(dst->sn_str[i], src->sn_str[i]);
-    }
-
-    return true;
-}
-
-static void history_free_sim_snapshot(counting_sim_t *sim_data)
-{
-    int i;
-
-    if (sim_data == NULL || sim_data->sn_str == NULL) {
-        return;
-    }
-
-    for (i = 0; i < sim_data->sn_capacity; i++) {
-        free(sim_data->sn_str[i]);
-    }
-    free(sim_data->sn_str);
-    sim_data->sn_str = NULL;
-    sim_data->sn_capacity = 0;
-}
 static void ui_upgrade_popup_poll(uint32_t now)
 {
     ui_upgrade_detect_info_t detect_info;
@@ -665,20 +513,18 @@ void PCCmdHandle(void)
 
             if (result.kind == COUNTING_INFO_REPLY_LIVE) {
                 ui_refresh_main_compact_fast();
-                history_session_append_line("0x0E", buf, len);
+                counting_history_append_frame("0x0E", buf, len);
                 if (!(!fault_popup_get_auto_enabled() && fault_popup_has_pending_start_issue())) {
                     smart_island_notify_count_start();
                     smart_island_refresh_summary();
                 }
             } else if (result.kind == COUNTING_INFO_REPLY_FINISHED) {
                 uart_printf(fd6, "Count finished\n");
-                history_session_append_line("0x0E", buf, len);
-                frame_to_hex_str(buf, len, g_history_last_end_frame_text,
-                                 (int)sizeof(g_history_last_end_frame_text));
+                counting_history_capture_end(buf, len);
                 smart_island_set_count_analysis(g_counting_session.analysis_valid_pcs,
                                                 result.final_issue,
                                                 0);
-                history_try_commit_pending_record();
+                counting_history_try_commit(&g_counting_session, &sim);
 
                 if (is_main_page_active()) {
                     ui_refresh_main_page();
