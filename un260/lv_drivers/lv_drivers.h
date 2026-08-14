@@ -44,8 +44,6 @@ extern void machine_handshake_send(void);
 extern int fd4;
 extern int fd5;
 extern int fd6;
-#define CHECK1 0xFD
-#define CHECK2 0xDF
 typedef uint8_t Machine_Mode_t;
 extern void debug_append_rx_log(const char* data); // 接收数据时调用
 

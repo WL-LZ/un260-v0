@@ -3,11 +3,7 @@
 
 #include <stdint.h>
 
-#include "protocol_frame_queue.h"
-
-#define PROTOCOL_FRAME_HEADER_FIRST  0xFD
-#define PROTOCOL_FRAME_HEADER_SECOND 0xDF
-#define PROTOCOL_FRAME_MIN_SIZE      5
+#include "protocol_frame.h"
 
 typedef enum {
     PROTOCOL_FRAME_PARSE_INCOMPLETE = 0,
@@ -18,7 +14,7 @@ typedef enum {
 
 typedef struct {
     const uint8_t *data;
-    int len;
+    uint8_t len;
 } protocol_frame_view_t;
 
 typedef struct {

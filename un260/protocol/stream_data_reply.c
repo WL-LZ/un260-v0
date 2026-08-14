@@ -2,9 +2,7 @@
 
 #include <stddef.h>
 
-#include "protocol_frame_parser.h"
-
-#define STREAM_FRAME_PAYLOAD_OFFSET 4U
+#include "protocol_frame.h"
 
 stream_data_reply_view_t stream_data_reply_parse(const uint8_t *frame,
                                                  uint8_t frame_len)
@@ -32,7 +30,7 @@ stream_data_reply_view_t stream_data_reply_parse(const uint8_t *frame,
         return view;
     }
 
-    view.payload = &frame[STREAM_FRAME_PAYLOAD_OFFSET];
+    view.payload = &frame[PROTOCOL_FRAME_PAYLOAD_OFFSET];
     view.payload_len = (uint16_t)(frame_len - PROTOCOL_FRAME_MIN_SIZE);
     return view;
 }

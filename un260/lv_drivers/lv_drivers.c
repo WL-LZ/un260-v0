@@ -1,4 +1,6 @@
 #include "lv_drivers.h"
+#include "un260/protocol/protocol_frame.h"
+#include "un260/protocol/protocol_frame_builder.h"
 #include "un260/protocol/protocol_send.h"
 #include "un260/boot/boot_service.h"
 #include <stdio.h>
@@ -199,30 +201,22 @@ void uart_close(int fd)
 //通用发送指令
 int protocol_send(uint8_t cmd_g, const uint8_t *cmd_s, uint16_t cmd_s_len)
 {
-    uint8_t buf[256];
-    int i = 0;
+    uint8_t buf[PROTOCOL_FRAME_MAX_SIZE];
+    int frame_len;
 
-    buf[i++] = CHECK1;
-    buf[i++] = CHECK2;
-
-    // 整帧总长度 = 头(2) + 长度字段(1) + CMD-G(1) + CMD-Sx(N) + CRC(1)
-    uint16_t len = 2 + 1 + 1 + cmd_s_len + 1;
-    buf[i++] = (uint8_t)len;   // 第3字节是整帧长度
-    buf[i++] = cmd_g;
-
-    if (cmd_s && cmd_s_len > 0) {
-        memcpy(&buf[i], cmd_s, cmd_s_len);
-        i += cmd_s_len;
+    frame_len = protocol_frame_build(buf, sizeof(buf), cmd_g, cmd_s, cmd_s_len);
+    if (frame_len < 0) {
+        uart_printf(fd6, "Send CMD: 0x%02X, invalid payload len=%u\n",
+                    cmd_g, (unsigned int)cmd_s_len);
+        return -1;
     }
 
-    buf[i++] = 0x0A; // CRC
-
     uart_printf(fd6, "Send CMD: 0x%02X, Data:", cmd_g);
-    for (size_t j = 0; j < i; j++) {
+    for (int j = 0; j < frame_len; j++) {
         uart_printf(fd6, " %02X", buf[j]);
     }
 
-    return uart_send(fd4, (const char *)buf, i);
+    return uart_send(fd4, (const char *)buf, frame_len);
 }
 
 int send_command(int fd, uint8_t cmd_g, const uint8_t *cmd_s, uint16_t cmd_s_len)

@@ -72,7 +72,7 @@ protocol_frame_parse_result_t protocol_frame_parser_feed(protocol_frame_parser_t
     parser->remaining--;
     if (parser->remaining == 0) {
         frame->data = parser->buffer;
-        frame->len = parser->index;
+        frame->len = (uint8_t)parser->index;
         protocol_frame_parser_reset(parser);
         return PROTOCOL_FRAME_PARSE_READY;
     }

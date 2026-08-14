@@ -20,7 +20,7 @@ bool protocol_frame_queue_push(const uint8_t *data, int len)
     pthread_mutex_lock(&g_mutex);
     if (g_count < PROTOCOL_FRAME_QUEUE_CAPACITY) {
         memcpy(g_frames[g_tail].data, data, (size_t)len);
-        g_frames[g_tail].len = len;
+        g_frames[g_tail].len = (uint8_t)len;
         g_tail = (g_tail + 1) % PROTOCOL_FRAME_QUEUE_CAPACITY;
         g_count++;
         pushed = true;
