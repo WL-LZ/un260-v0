@@ -9,6 +9,8 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "uart_io.h"
+
 extern const char* g_currency_error_desc[0x32];
 extern const char* g_start_error_desc[0x12];
 
@@ -29,15 +31,9 @@ int uart_config(int fd, int baud, int dataBit, char parity, int stopBit);
  */
 int uart_recv(int fd, char *rcv_buf, int data_len, int timeout);
 
-/* 发送数据
- * 返回值：发送字节数，-1 表示错误
- */
-int uart_send(int fd, const char *send_buf, int data_len);
-
 /* 关闭串口 */
 void uart_close(int fd);
 int send_command(int fd, uint8_t cmd_g, const uint8_t *cmd_s, uint16_t cmd_s_len);
-void uart_printf(int fd, const char *fmt, ...);
 
 extern void machine_handshake_send(void);
 

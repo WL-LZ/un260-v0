@@ -1,4 +1,5 @@
 #include "lv_drivers.h"
+#include "uart_io.h"
 #include "un260/protocol/protocol_frame.h"
 #include "un260/protocol/protocol_frame_builder.h"
 #include "un260/protocol/protocol_send.h"
@@ -11,7 +12,6 @@
 #include <sys/select.h>
 #include <sys/time.h>
 #include <unistd.h>
-#include <stdarg.h>
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/page_08_boot.h"
@@ -106,7 +106,11 @@ int uart_open(const char *device)
         perror("uart_open");
         return -1;
     }
-    fcntl(fd, F_SETFL, 0);  // 阻塞模式
+    if (fcntl(fd, F_SETFL, 0) < 0) {  // 阻塞模式
+        perror("uart_open fcntl");
+        close(fd);
+        return -1;
+    }
     return fd;
 }
 
@@ -147,10 +151,12 @@ int uart_config(int fd, int baud, int dataBit, char parity, int stopBit)
         case 9600: speed = B9600; break;
         case 115200: speed = B115200; break;
         case 921600: speed = B921600; break;
-        default: speed = B115200; break;
+        default: return -1;
     }
-    cfsetispeed(&tty, speed);
-    cfsetospeed(&tty, speed);
+    if (cfsetispeed(&tty, speed) != 0 || cfsetospeed(&tty, speed) != 0) {
+        perror("uart_config speed");
+        return -1;
+    }
 
 
     tty.c_cc[VTIME] = 1; // 0.1s
@@ -184,17 +190,9 @@ int uart_recv(int fd, char *rcv_buf, int data_len, int timeout)
     else return -1;
 }
 
-/* 发送数据 */
-int uart_send(int fd, const char *send_buf, int data_len)
-{
-    ssize_t ret = write(fd, send_buf, data_len);
-    tcflush(fd, TCOFLUSH);
-    return (ret == data_len) ? ret : -1;
-}
-
 void uart_close(int fd)
 {
-    if (fd > 0) close(fd);
+    if (fd >= 0) close(fd);
 }
 
 
@@ -225,22 +223,6 @@ int send_command(int fd, uint8_t cmd_g, const uint8_t *cmd_s, uint16_t cmd_s_len
     return protocol_send(cmd_g, cmd_s, cmd_s_len);
 }
 
-
-void uart_printf(int fd, const char *fmt, ...) {
-    char buf[256];
-    va_list args;
-    va_start(args, fmt);
-    int len = vsnprintf(buf, sizeof(buf), fmt, args);
-    va_end(args);
-
-    if (len > 0) {
-        if (len > sizeof(buf)) len = sizeof(buf);
-        int n = write(fd, buf, len);
-        if (n != len) {
-            printf("UART写失败 %d/%d\n", n, len);
-        }
-    }
-}
 
 void machine_handshake_send(void)
 {

@@ -979,12 +979,21 @@ int main(void) {
 
     if (fd4 < 0 || fd5 < 0 || fd6 < 0) {
         printf("UART打开失败: fd4=%d fd5=%d fd6=%d\n", fd4, fd5, fd6);
+        uart_close(fd4);
+        uart_close(fd5);
+        uart_close(fd6);
         return -1;
     }
 
-    uart_config(fd4, 115200, 8, 'N', 1);
-    uart_config(fd5, 115200, 8, 'N', 1);
-    uart_config(fd6, 115200, 8, 'N', 1);
+    if (uart_config(fd4, 115200, 8, 'N', 1) < 0 ||
+        uart_config(fd5, 115200, 8, 'N', 1) < 0 ||
+        uart_config(fd6, 115200, 8, 'N', 1) < 0) {
+        printf("UART配置失败\n");
+        uart_close(fd4);
+        uart_close(fd5);
+        uart_close(fd6);
+        return -1;
+    }
 
     printf("UART配置完成\n");
 
