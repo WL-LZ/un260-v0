@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #include "un260/counting/counting_reject_reason.h"
+#include "un260/history/history_export_sn_parser.h"
 #include "un260/lv_components/lv_print_toast.h"
 #include "un260/lv_system/ui_history_data.h"
 #include "un260/lv_system/machine_time.h"
@@ -301,12 +302,6 @@ typedef struct {
 
 typedef struct {
     unsigned no;
-    char sn[64];
-    unsigned denom;
-} history_export_sn_entry_t;
-
-typedef struct {
-    unsigned no;
     unsigned pcs;
     char reason[128];
 } history_export_reject_entry_t;
@@ -433,12 +428,6 @@ static void history_export_parse_sn_entries(const ui_history_record_t *rec,
                                             history_export_sn_entry_t **entries,
                                             int *count)
 {
-    char lines[256][160];
-    int line_count;
-    int i;
-    history_export_sn_entry_t *tmp = NULL;
-    int tmp_count = 0;
-
     if (entries == NULL || count == NULL) {
         return;
     }
@@ -448,238 +437,11 @@ static void history_export_parse_sn_entries(const ui_history_record_t *rec,
     if (rec == NULL) {
         return;
     }
-
-    if (rec->sn_detail_text[0] != '\0') {
-        const char *p = rec->sn_detail_text;
-
-        while (*p != '\0') {
-            char line[256];
-            size_t len = 0;
-            char *tab1;
-            char *tab2;
-            char *no_text;
-            char *denom_text;
-            char *sn_text;
-            unsigned no = 0;
-            unsigned denom = 0;
-
-            while (p[len] != '\0' && p[len] != '\n' && p[len] != '\r') {
-                len++;
-            }
-            if (len == 0) {
-                while (*p == '\n' || *p == '\r') {
-                    p++;
-                }
-                continue;
-            }
-            if (len >= sizeof(line)) {
-                len = sizeof(line) - 1;
-            }
-            memcpy(line, p, len);
-            line[len] = '\0';
-
-            tab1 = strchr(line, '\t');
-            if (tab1 == NULL) {
-                goto history_export_sn_next_line_detail;
-            }
-            *tab1++ = '\0';
-            tab2 = strchr(tab1, '\t');
-            if (tab2 == NULL) {
-                goto history_export_sn_next_line_detail;
-            }
-            *tab2++ = '\0';
-
-            no_text = line;
-            denom_text = tab1;
-            sn_text = tab2;
-            no = (unsigned)strtoul(no_text, NULL, 10);
-            denom = (unsigned)strtoul(denom_text, NULL, 10);
-
-            {
-                history_export_sn_entry_t *next = (history_export_sn_entry_t *)realloc(tmp, (size_t)(tmp_count + 1) * sizeof(*tmp));
-                if (next == NULL) {
-                    break;
-                }
-                tmp = next;
-            }
-            tmp[tmp_count].no = no;
-            lv_snprintf(tmp[tmp_count].sn, sizeof(tmp[tmp_count].sn), "%s", sn_text);
-            tmp[tmp_count].denom = denom;
-            tmp_count++;
-
-history_export_sn_next_line_detail:
-            p += len;
-            while (*p == '\n' || *p == '\r') {
-                p++;
-            }
-        }
-
-        if (tmp_count > 0) {
-            *entries = tmp;
-            *count = tmp_count;
-            return;
-        }
-
-        free(tmp);
-        tmp = NULL;
-    }
-
-    if (rec->session_log[0] != '\0') {
-        line_count = history_export_split_lines(rec->session_log, lines, 256);
-        for (i = 0; i < line_count; i++) {
-            uint8_t raw[256];
-            int raw_len = 0;
-            const char *space;
-            char ascii_buf[256];
-            int ascii_len;
-            char *p;
-            unsigned denom = 0;
-
-            if (strncmp(lines[i], "0x0D", 4) != 0) {
-                continue;
-            }
-
-            space = strchr(lines[i], ' ');
-            if (space == NULL) {
-                continue;
-            }
-            if (!history_export_hex_to_bytes(space + 1, raw, (int)sizeof(raw), &raw_len) || raw_len < 8) {
-                continue;
-            }
-            if (raw[4] == 0x00 || raw[4] == 0xFF) {
-                continue;
-            }
-
-            ascii_len = raw_len - 6;
-            if (ascii_len <= 0) {
-                continue;
-            }
-            if (ascii_len >= (int)sizeof(ascii_buf)) {
-                ascii_len = (int)sizeof(ascii_buf) - 1;
-            }
-            memcpy(ascii_buf, &raw[5], (size_t)ascii_len);
-            ascii_buf[ascii_len] = '\0';
-
-            p = ascii_buf;
-            while (*p == ' ') p++;
-            while (*p && isdigit((unsigned char)*p)) {
-                denom = denom * 10 + (unsigned)(*p - '0');
-                p++;
-            }
-            while (*p == ' ') p++;
-            if (*p == '\0') {
-                continue;
-            }
-
-            {
-                history_export_sn_entry_t *next = (history_export_sn_entry_t *)realloc(tmp, (size_t)(tmp_count + 1) * sizeof(*tmp));
-                if (next == NULL) {
-                    break;
-                }
-                tmp = next;
-            }
-            tmp[tmp_count].no = (unsigned)(tmp_count + 1);
-            lv_snprintf(tmp[tmp_count].sn, sizeof(tmp[tmp_count].sn), "%s", p);
-            tmp[tmp_count].denom = denom;
-            tmp_count++;
-        }
-
-        if (tmp_count > 0) {
-            *entries = tmp;
-            *count = tmp_count;
-            return;
-        }
-
-        free(tmp);
-        tmp = NULL;
-    }
-
-    if (rec->sn_detail_text[0] != '\0') {
-        const char *p = rec->sn_detail_text;
-
-        while (*p != '\0') {
-            char line[256];
-            size_t len = 0;
-            char *tab1;
-            char *tab2 = NULL;
-            char *sn_text = "";
-            char *denom_text = "";
-            char *endp = NULL;
-            bool new_format = false;
-            unsigned no = 0;
-            unsigned denom = 0;
-
-            while (p[len] != '\0' && p[len] != '\n' && p[len] != '\r') {
-                len++;
-            }
-            if (len == 0) {
-                while (*p == '\n' || *p == '\r') {
-                    p++;
-                }
-                continue;
-            }
-            if (len >= sizeof(line)) {
-                len = sizeof(line) - 1;
-            }
-            memcpy(line, p, len);
-            line[len] = '\0';
-
-            tab1 = strchr(line, '\t');
-            if (tab1 == NULL) {
-                goto history_export_sn_next_line;
-            }
-            *tab1++ = '\0';
-            tab2 = strchr(tab1, '\t');
-            if (tab2 == NULL) {
-                goto history_export_sn_next_line;
-            }
-            *tab2++ = '\0';
-
-            (void)strtoul(tab1, &endp, 10);
-            if (endp != tab1 && endp != NULL && *endp == '\0') {
-                new_format = true;
-            }
-
-            no = (unsigned)strtoul(line, NULL, 10);
-            if (new_format) {
-                denom_text = tab1;
-                sn_text = tab2;
-            } else {
-                sn_text = tab1;
-                denom_text = tab2;
-            }
-            denom = (unsigned)strtoul(denom_text, NULL, 10);
-
-            {
-                history_export_sn_entry_t *next = (history_export_sn_entry_t *)realloc(tmp, (size_t)(tmp_count + 1) * sizeof(*tmp));
-                if (next == NULL) {
-                    break;
-                }
-                tmp = next;
-            }
-            tmp[tmp_count].no = no;
-            lv_snprintf(tmp[tmp_count].sn, sizeof(tmp[tmp_count].sn), "%s", sn_text);
-            tmp[tmp_count].denom = denom;
-            tmp_count++;
-
-history_export_sn_next_line:
-            p += len;
-            while (*p == '\n' || *p == '\r') {
-                p++;
-            }
-        }
-
-        if (tmp_count > 0) {
-            *entries = tmp;
-            *count = tmp_count;
-            return;
-        }
-
-        free(tmp);
-        tmp = NULL;
-    }
-
-    return;
+    (void)history_export_sn_parse(rec->sn_detail_text,
+                                  rec->session_log,
+                                  rec->sn_text,
+                                  entries,
+                                  count);
 }
 
 static void history_export_parse_reject_entries(const ui_history_record_t *rec,
