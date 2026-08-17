@@ -12,7 +12,6 @@
 #include "un260/history/history_export_text.h"
 #include "un260/lv_components/lv_print_toast.h"
 #include "un260/lv_system/ui_history_data.h"
-#include "un260/lv_system/machine_time.h"
 #include "un260/currency/currency_state.h"
 
 #define UI_HISTORY_EXPORT_USB_DIR          "/mnt/usb"
@@ -52,10 +51,7 @@ static bool history_export_usb_ready(void)
 
 static void history_export_unlock_timer_cb(lv_timer_t *timer)
 {
-    LV_UNUSED(timer);
-
-    if (g_history_export_unlock_timer) {
-        lv_timer_del(g_history_export_unlock_timer);
+    if (timer == g_history_export_unlock_timer) {
         g_history_export_unlock_timer = NULL;
     }
     g_history_export_lock = false;
@@ -72,6 +68,8 @@ static void history_export_start_lock(void)
     g_history_export_unlock_timer = lv_timer_create(history_export_unlock_timer_cb, UI_HISTORY_EXPORT_LOCK_MS, NULL);
     if (g_history_export_unlock_timer) {
         lv_timer_set_repeat_count(g_history_export_unlock_timer, 1);
+    } else {
+        g_history_export_lock = false;
     }
 }
 
@@ -119,30 +117,6 @@ static void history_export_sanitize_token(char *dst, size_t dst_size, const char
     } else {
         dst[j] = '\0';
     }
-}
-
-static void history_export_build_name(char *buf, size_t size)
-{
-    char curr_raw[8] = {0};
-    char curr[8] = {0};
-    machine_time_value_t now;
-
-    if (buf == NULL || size == 0) {
-        return;
-    }
-
-    history_export_get_currency_code(curr_raw, sizeof(curr_raw));
-    history_export_sanitize_token(curr, sizeof(curr), curr_raw);
-    machine_time_get(&now);
-
-    lv_snprintf(buf, size, "HISTORY_%s_%04u-%02u-%02u_%02u-%02u-%02u",
-                curr,
-                (unsigned)now.year,
-                (unsigned)now.month,
-                (unsigned)now.day,
-                (unsigned)now.hour,
-                (unsigned)now.minute,
-                (unsigned)now.second);
 }
 
 static void history_export_get_mode_text(char *buf, size_t size)
@@ -310,7 +284,7 @@ static int history_export_split_lines(const char *src, char out[][160], int max_
     return count;
 }
 
-static void history_export_parse_denom_entries(const ui_history_record_t *rec,
+static bool history_export_parse_denom_entries(const ui_history_record_t *rec,
                                                history_export_denom_entry_t **entries,
                                                int *count)
 {
@@ -320,23 +294,23 @@ static void history_export_parse_denom_entries(const ui_history_record_t *rec,
     history_export_denom_entry_t *tmp = NULL;
 
     if (entries == NULL || count == NULL) {
-        return;
+        return false;
     }
     *entries = NULL;
     *count = 0;
 
     if (rec == NULL) {
-        return;
+        return false;
     }
 
     line_count = history_export_split_lines(rec->denom_text, lines, 64);
     if (line_count <= 0) {
-        return;
+        return true;
     }
 
     tmp = (history_export_denom_entry_t *)calloc((size_t)line_count, sizeof(*tmp));
     if (tmp == NULL) {
-        return;
+        return false;
     }
 
     for (i = 0; i < line_count; i++) {
@@ -352,29 +326,30 @@ static void history_export_parse_denom_entries(const ui_history_record_t *rec,
 
     *entries = tmp;
     *count = line_count;
+    return true;
 }
 
-static void history_export_parse_sn_entries(const ui_history_record_t *rec,
+static bool history_export_parse_sn_entries(const ui_history_record_t *rec,
                                             history_export_sn_entry_t **entries,
                                             int *count)
 {
     if (entries == NULL || count == NULL) {
-        return;
+        return false;
     }
     *entries = NULL;
     *count = 0;
 
     if (rec == NULL) {
-        return;
+        return false;
     }
-    (void)history_export_sn_parse(rec->sn_detail_text,
-                                  rec->session_log,
-                                  rec->sn_text,
-                                  entries,
-                                  count);
+    return history_export_sn_parse(rec->sn_detail_text,
+                                   rec->session_log,
+                                   rec->sn_text,
+                                   entries,
+                                   count);
 }
 
-static void history_export_parse_reject_entries(const ui_history_record_t *rec,
+static bool history_export_parse_reject_entries(const ui_history_record_t *rec,
                                                 history_export_reject_entry_t **entries,
                                                 int *count)
 {
@@ -385,20 +360,20 @@ static void history_export_parse_reject_entries(const ui_history_record_t *rec,
     history_export_reject_entry_t *tmp = NULL;
 
     if (entries == NULL || count == NULL) {
-        return;
+        return false;
     }
     *entries = NULL;
     *count = 0;
 
     if (rec == NULL) {
-        return;
+        return false;
     }
 
     line_count = history_export_split_lines(rec->session_log, lines, 32);
     if (line_count > 0) {
         tmp = (history_export_reject_entry_t *)calloc((size_t)line_count, sizeof(*tmp));
         if (tmp == NULL) {
-            return;
+            return false;
         }
 
         for (i = 0; i < line_count; i++) {
@@ -436,7 +411,7 @@ static void history_export_parse_reject_entries(const ui_history_record_t *rec,
         if (parsed > 0) {
             *entries = tmp;
             *count = parsed;
-            return;
+            return true;
         }
 
         free(tmp);
@@ -445,12 +420,12 @@ static void history_export_parse_reject_entries(const ui_history_record_t *rec,
 
     line_count = history_export_split_lines(rec->error_frame_text, lines, 32);
     if (line_count <= 0) {
-        return;
+        return true;
     }
 
     tmp = (history_export_reject_entry_t *)calloc((size_t)line_count, sizeof(*tmp));
     if (tmp == NULL) {
-        return;
+        return false;
     }
 
     for (i = 0; i < line_count; i++) {
@@ -466,6 +441,7 @@ static void history_export_parse_reject_entries(const ui_history_record_t *rec,
 
     *entries = tmp;
     *count = parsed;
+    return true;
 }
 
 static void history_export_calc_totals(const ui_history_record_t *rec,
@@ -824,28 +800,63 @@ static bool history_export_write_selected_record(const ui_history_record_t *rec)
     int denom_count = 0;
     int sn_count = 0;
     int reject_count = 0;
-    char export_name[96];
-    char csv_path[256];
-    char html_path[256];
-    bool ok;
+    char export_name[96] = {0};
+    char csv_path[256] = {0};
+    char html_path[256] = {0};
+    char csv_tmp_path[sizeof(csv_path) + 5] = {0};
+    char html_tmp_path[sizeof(html_path) + 5] = {0};
+    int written;
+    bool ok = false;
 
     if (rec == NULL || !rec->valid) {
         return false;
     }
 
-    history_export_parse_denom_entries(rec, &denoms, &denom_count);
-    history_export_parse_sn_entries(rec, &sns, &sn_count);
-    history_export_parse_reject_entries(rec, &rejects, &reject_count);
-
-    history_export_build_name_for_record(export_name, sizeof(export_name), rec);
-    lv_snprintf(csv_path, sizeof(csv_path), "%s/%s.csv", UI_HISTORY_EXPORT_USB_DIR, export_name);
-    lv_snprintf(html_path, sizeof(html_path), "%s/%s.html", UI_HISTORY_EXPORT_USB_DIR, export_name);
-
-    ok = history_export_write_csv_file(csv_path, rec, denoms, denom_count, sns, sn_count, rejects, reject_count);
-    if (ok) {
-        ok = history_export_write_html_file(html_path, rec, denoms, denom_count, sns, sn_count, rejects, reject_count);
+    if (!history_export_parse_denom_entries(rec, &denoms, &denom_count) ||
+        !history_export_parse_sn_entries(rec, &sns, &sn_count) ||
+        !history_export_parse_reject_entries(rec, &rejects, &reject_count)) {
+        goto cleanup;
     }
 
+    history_export_build_name_for_record(export_name, sizeof(export_name), rec);
+    written = lv_snprintf(csv_path, sizeof(csv_path), "%s/%s.csv",
+                          UI_HISTORY_EXPORT_USB_DIR, export_name);
+    if (written < 0 || (size_t)written >= sizeof(csv_path)) {
+        goto cleanup;
+    }
+    written = lv_snprintf(html_path, sizeof(html_path), "%s/%s.html",
+                          UI_HISTORY_EXPORT_USB_DIR, export_name);
+    if (written < 0 || (size_t)written >= sizeof(html_path)) {
+        goto cleanup;
+    }
+    written = lv_snprintf(csv_tmp_path, sizeof(csv_tmp_path), "%s.tmp", csv_path);
+    if (written < 0 || (size_t)written >= sizeof(csv_tmp_path)) {
+        goto cleanup;
+    }
+    written = lv_snprintf(html_tmp_path, sizeof(html_tmp_path), "%s.tmp", html_path);
+    if (written < 0 || (size_t)written >= sizeof(html_tmp_path)) {
+        goto cleanup;
+    }
+
+    if (!history_export_write_csv_file(csv_tmp_path, rec, denoms, denom_count,
+                                       sns, sn_count, rejects, reject_count) ||
+        !history_export_write_html_file(html_tmp_path, rec, denoms, denom_count,
+                                        sns, sn_count, rejects, reject_count)) {
+        goto cleanup;
+    }
+    if (rename(csv_tmp_path, csv_path) != 0 ||
+        rename(html_tmp_path, html_path) != 0) {
+        goto cleanup;
+    }
+    ok = true;
+
+cleanup:
+    if (csv_tmp_path[0] != '\0') {
+        unlink(csv_tmp_path);
+    }
+    if (html_tmp_path[0] != '\0') {
+        unlink(html_tmp_path);
+    }
     free(denoms);
     free(sns);
     free(rejects);
