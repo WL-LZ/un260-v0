@@ -12,8 +12,5 @@ bool protocol_frame_is_valid(const uint8_t *data, size_t len)
         data[1] != PROTOCOL_FRAME_HEADER_SECOND) {
         return false;
     }
-    if ((size_t)data[2] != len) {
-        return false;
-    }
-    return data[len - 1U] == PROTOCOL_FRAME_TRAILER;
+    return (size_t)data[2] == len;
 }
