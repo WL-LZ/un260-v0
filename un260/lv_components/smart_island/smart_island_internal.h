@@ -4,6 +4,7 @@
 #include "un260/lv_components/smart_island.h"
 #include "un260/lv_components/lv_fault_popup.h"
 
+#define SMART_ISLAND_WIDTH                261
 #define SMART_ISLAND_ACTION_PAGE_CAPACITY 4U
 
 typedef struct {
@@ -119,5 +120,14 @@ typedef struct {
 } smart_island_context_t;
 
 extern smart_island_context_t g_si_ctx;
+
+/* 子模块之间共享的内部接口，不对 smart_island.h 使用者公开。 */
+void smart_island_result_stop_timer(void);
+void smart_island_warning_stop(void);
+bool smart_island_warning_fault_show(void);
+void smart_island_warning_fault_clear(void);
+void smart_island_reset_page_positions(void);
+void smart_island_reset_compact_header_position(void);
+void smart_island_reset_time_position(void);
 
 #endif /* SMART_ISLAND_INTERNAL_H */

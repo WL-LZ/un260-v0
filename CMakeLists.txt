@@ -33,6 +33,8 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_components/lv_upgrade_popup.c
     un260/lv_components/lv_qr_popup.c
     un260/lv_components/smart_island.c
+    un260/lv_components/smart_island/smart_island_warning.c
+    un260/lv_components/smart_island/smart_island_result.c
     un260/lv_components/lv_selftest_list.c
     un260/lv_components/qrcodegen.c
     un260/lv_components/lv_capsule_pagination.c
