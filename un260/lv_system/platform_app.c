@@ -19,11 +19,11 @@ page_02_report_status_t page_02_a_report_status = { 0 };
 page_02_report_status_t page_02_b_report_status = { 0 };
 page_02_report_status_t page_02_c_report_status = { 0 };
 
-lv_timer_t* sim_timer = NULL;
+static lv_timer_t *s_sim_timer = NULL;
 lv_obj_t* page_01_main_scroll_container = NULL;
 lv_obj_t* page_01_main_page_pcs_label = NULL;
 lv_obj_t* page_01_main_page_amount_label = NULL;
-lv_timer_t* safe_reset_timer = NULL;
+static lv_timer_t *s_safe_reset_timer = NULL;
 static bool g_count_end_anim_pending = false;
 static bool g_count_end_anim_armed = false;
 static char g_count_end_anim_text[128];
@@ -357,7 +357,7 @@ void sim_data_init(void)
 }
 
 
-void sim_timer_cb(lv_timer_t* timer)
+static void sim_timer_cb(lv_timer_t* timer)
 {
     (void)timer;
     counting_sim_t* sim_data = &sim;
@@ -403,44 +403,68 @@ void sim_timer_cb(lv_timer_t* timer)
     ui_refresh_main_page();
 }
 
-void safe_reset_cb(lv_timer_t* timer)
+static void safe_reset_cb(lv_timer_t* timer)
 {
-    //sim_data_init();
+    if (timer == s_safe_reset_timer) {
+        s_safe_reset_timer = NULL;
+    }
     sim_clear_all_sn(&sim);
     ui_refresh_main_page();
-    safe_reset_timer = NULL;
+}
+
+static void sim_timer_stop(void)
+{
+    if (s_sim_timer == NULL) {
+        return;
+    }
+
+    lv_timer_del(s_sim_timer);
+    s_sim_timer = NULL;
+}
+
+static void safe_reset_timer_stop(void)
+{
+    if (s_safe_reset_timer == NULL) {
+        return;
+    }
+
+    lv_timer_del(s_safe_reset_timer);
+    s_safe_reset_timer = NULL;
+}
+
+static void safe_reset_timer_schedule(void)
+{
+    safe_reset_timer_stop();
+    s_safe_reset_timer = lv_timer_create(safe_reset_cb, 5, NULL);
+    if (s_safe_reset_timer != NULL) {
+        lv_timer_set_repeat_count(s_safe_reset_timer, 1);
+    }
 }
 void start_counting_sim(void) {
     counting_sim_t* sim_data = &sim;
     
     // 如果计时器已存在但被暂停，则恢复它
-    if (sim_timer && sim_data->is_paused) {
+    if (s_sim_timer && sim_data->is_paused) {
         resume_counting_sim();
         return;
     }
-    else if (!sim_timer) {
+    else if (!s_sim_timer) {
         sim_data_init();
-        sim_timer = lv_timer_create(sim_timer_cb, 200, NULL);
+        s_sim_timer = lv_timer_create(sim_timer_cb, 200, NULL);
     }
 }
 
 
 void stop_counting_sim(void)
 {
-    if (!sim_timer) return;
+    if (!s_sim_timer) return;
     
-    lv_timer_del(sim_timer);
-    sim_timer = NULL;
+    sim_timer_stop();
     
     counting_sim_t* sim_data = &sim;
     sim_data->is_paused = false;  // 重置暂停标志
 
-    if(safe_reset_timer)
-    {
-        lv_timer_del(safe_reset_timer);
-    }
-    safe_reset_timer = lv_timer_create(safe_reset_cb, 5, NULL);
-    lv_timer_set_repeat_count(safe_reset_timer, 1);
+    safe_reset_timer_schedule();
 }
 //处理金额格式
 void format_amount_with_comma(char* dest, size_t dest_size, float amount) {
@@ -820,15 +844,8 @@ void ui_count_end_anim_poll(void)
 
 void cleanup_counting_sim(void)
 {
-    if (sim_timer) {
-        lv_timer_del(sim_timer);
-        sim_timer = NULL;
-    }
-
-    if (safe_reset_timer) {
-        lv_timer_del(safe_reset_timer);
-        safe_reset_timer = NULL;
-    }
+    sim_timer_stop();
+    safe_reset_timer_stop();
 
     ui_count_end_anim_cancel();
 
@@ -842,11 +859,11 @@ void cleanup_counting_sim(void)
 
 void pause_counting_sim(void)
 {
-    if (!sim_timer) return;  
+    if (!s_sim_timer) return;
     
     counting_sim_t* sim_data = &sim;
     if (!sim_data->is_paused) {
-        lv_timer_pause(sim_timer);  
+        lv_timer_pause(s_sim_timer);
         sim_data->is_paused = true;  
 #if LV_DEBUG
         printf("计数模拟已暂停\n");
@@ -856,11 +873,11 @@ void pause_counting_sim(void)
 
 void resume_counting_sim(void)
 {
-    if (!sim_timer) return;  
+    if (!s_sim_timer) return;
     
     counting_sim_t* sim_data = &sim;
     if (sim_data->is_paused) {
-        lv_timer_resume(sim_timer); 
+        lv_timer_resume(s_sim_timer);
         sim_data->is_paused = false; 
 #if LV_DEBUG
         printf("计数模拟已恢复\n");

@@ -17,13 +17,10 @@ extern page_02_report_status_t page_02_c_report_status;
 extern bool is_amount_active;
 
 extern counting_sim_t sim;
-extern lv_timer_t* sim_timer;
 
 extern lv_obj_t* page_01_main_scroll_container;
 extern lv_obj_t* page_01_main_page_pcs_label;
 extern lv_obj_t* page_01_main_page_amount_label;
-
-extern lv_timer_t* safe_reset_timer;
 
 void start_counting_sim(void);
 void stop_counting_sim(void);
@@ -38,7 +35,6 @@ int sim_get_sn_valid_count(void);
 int sim_get_sn_nth_valid_index(int nth);
 void page_01_main_detail_refresh_rows_only(void);
 void cleanup_counting_sim(void);
-void sim_timer_cb(lv_timer_t* timer);
 void update_label_by_name(ui_element_t* page_cfg_obj, int len, const char* name, const char* fmt, ...);
 lv_obj_t* find_obj_by_name(const char* name, ui_element_t* page_cfg_obj, int len);
 void sim_clear_all_sn(counting_sim_t* sim_data);
