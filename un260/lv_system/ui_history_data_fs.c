@@ -18,6 +18,7 @@
 #define UI_HISTORY_SLOT_PATH_FMT     "/etc/ui_state/count_history/%02u.rec"
 #define UI_HISTORY_MAGIC             0x48495354u
 #define UI_HISTORY_VERSION           2u
+#define UI_HISTORY_LINE_BUFFER_SIZE  8192u
 
 static ui_history_store_t g_history_store;
 static bool g_history_loaded = false;
@@ -51,40 +52,40 @@ static void history_apply_runtime_total(void)
     Machine_para.history_total_notes_counted = g_history_store.total_notes_counted;
 }
 
-static void history_escape_text(char *dst, size_t dst_size, const char *src)
+static void history_write_escaped_field(FILE *fp,
+                                        const char *prefix,
+                                        const char *key,
+                                        const char *value)
 {
     size_t i;
-    size_t j = 0;
 
-    if (dst == NULL || dst_size == 0) {
+    if (fp == NULL || prefix == NULL || key == NULL) {
         return;
     }
 
-    dst[0] = '\0';
-    if (src == NULL) {
+    if (fprintf(fp, "%s%s=", prefix, key) < 0) {
         return;
     }
 
-    for (i = 0; src[i] != '\0' && j + 1 < dst_size; i++) {
-        char ch = src[i];
+    if (value == NULL) {
+        value = "";
+    }
+
+    for (i = 0; value[i] != '\0'; i++) {
+        char ch = value[i];
+
         if (ch == '\\') {
-            if (j + 2 >= dst_size) break;
-            dst[j++] = '\\';
-            dst[j++] = '\\';
+            if (fputs("\\\\", fp) == EOF) return;
         } else if (ch == '\n') {
-            if (j + 2 >= dst_size) break;
-            dst[j++] = '\\';
-            dst[j++] = 'n';
+            if (fputs("\\n", fp) == EOF) return;
         } else if (ch == '\r') {
-            if (j + 2 >= dst_size) break;
-            dst[j++] = '\\';
-            dst[j++] = 'r';
+            if (fputs("\\r", fp) == EOF) return;
         } else {
-            dst[j++] = ch;
+            if (fputc((unsigned char)ch, fp) == EOF) return;
         }
     }
 
-    dst[j] = '\0';
+    (void)fputc('\n', fp);
 }
 
 static void history_unescape_text(char *dst, size_t dst_size, const char *src)
@@ -270,46 +271,10 @@ static void history_record_defaults(ui_history_record_t *rec)
     memset(rec, 0, sizeof(*rec));
 }
 
-static int history_index_for_slot(uint8_t slot_no)
-{
-    char path[128];
-    FILE *fp;
-    char line[1024];
-    int index = -1;
-    char prefix[32];
-
-    if (slot_no == 0 || slot_no > UI_HISTORY_MAX_RECORDS) {
-        return -1;
-    }
-
-    fp = fopen(UI_HISTORY_INDEX_PATH, "r");
-    if (fp == NULL) {
-        return -1;
-    }
-
-    lv_snprintf(prefix, sizeof(prefix), "slot%02u_", (unsigned)slot_no);
-    while (fgets(line, sizeof(line), fp) != NULL) {
-        if (strncmp(line, prefix, strlen(prefix)) == 0 &&
-            strstr(line, "_valid=") != NULL) {
-            index = 0;
-            break;
-        }
-    }
-
-    fclose(fp);
-
-    if (index >= 0) {
-        return index;
-    }
-
-    (void)path;
-    return -1;
-}
-
 static void history_write_kv(FILE *fp, uint8_t slot_no, const ui_history_record_t *rec)
 {
-    char buf[4096];
-    char esc[4096];
+    char buf[128];
+    char prefix[32];
 
     if (fp == NULL || rec == NULL) {
         return;
@@ -335,33 +300,14 @@ static void history_write_kv(FILE *fp, uint8_t slot_no, const ui_history_record_
                 (unsigned)rec->hour, (unsigned)rec->minute, (unsigned)rec->second);
     fputs(buf, fp);
 
-    history_escape_text(esc, sizeof(esc), rec->denom_text);
-    lv_snprintf(buf, sizeof(buf), "slot%02u_denom=%s\n", (unsigned)slot_no, esc);
-    fputs(buf, fp);
-
-    history_escape_text(esc, sizeof(esc), rec->sn_text);
-    lv_snprintf(buf, sizeof(buf), "slot%02u_sn=%s\n", (unsigned)slot_no, esc);
-    fputs(buf, fp);
-
-    history_escape_text(esc, sizeof(esc), rec->sn_detail_text);
-    lv_snprintf(buf, sizeof(buf), "slot%02u_sn_detail=%s\n", (unsigned)slot_no, esc);
-    fputs(buf, fp);
-
-    history_escape_text(esc, sizeof(esc), rec->error_frame_text);
-    lv_snprintf(buf, sizeof(buf), "slot%02u_err=%s\n", (unsigned)slot_no, esc);
-    fputs(buf, fp);
-
-    history_escape_text(esc, sizeof(esc), rec->start_frame_text);
-    lv_snprintf(buf, sizeof(buf), "slot%02u_start=%s\n", (unsigned)slot_no, esc);
-    fputs(buf, fp);
-
-    history_escape_text(esc, sizeof(esc), rec->end_frame_text);
-    lv_snprintf(buf, sizeof(buf), "slot%02u_end=%s\n", (unsigned)slot_no, esc);
-    fputs(buf, fp);
-
-    history_escape_text(esc, sizeof(esc), rec->session_log);
-    lv_snprintf(buf, sizeof(buf), "slot%02u_log=%s\n", (unsigned)slot_no, esc);
-    fputs(buf, fp);
+    lv_snprintf(prefix, sizeof(prefix), "slot%02u_", (unsigned)slot_no);
+    history_write_escaped_field(fp, prefix, "denom", rec->denom_text);
+    history_write_escaped_field(fp, prefix, "sn", rec->sn_text);
+    history_write_escaped_field(fp, prefix, "sn_detail", rec->sn_detail_text);
+    history_write_escaped_field(fp, prefix, "err", rec->error_frame_text);
+    history_write_escaped_field(fp, prefix, "start", rec->start_frame_text);
+    history_write_escaped_field(fp, prefix, "end", rec->end_frame_text);
+    history_write_escaped_field(fp, prefix, "log", rec->session_log);
 }
 
 static int history_write_file(const char *path, const ui_history_record_t *rec, uint32_t total_notes,
@@ -371,6 +317,7 @@ static int history_write_file(const char *path, const ui_history_record_t *rec, 
     int fd;
     char tmp[160];
     int i;
+    bool write_failed;
 
     if (history_ensure_dir() != 0 || path == NULL || rec == NULL) {
         return -1;
@@ -409,26 +356,23 @@ static int history_write_file(const char *path, const ui_history_record_t *rec, 
         fprintf(fp, "%stime=%04u-%02u-%02u %02u:%02u:%02u\n", prefix,
                 (unsigned)item->year, (unsigned)item->month, (unsigned)item->day,
                 (unsigned)item->hour, (unsigned)item->minute, (unsigned)item->second);
-        char esc[4096];
-        history_escape_text(esc, sizeof(esc), item->denom_text);
-        fprintf(fp, "%sdenom=%s\n", prefix, esc);
-        history_escape_text(esc, sizeof(esc), item->sn_text);
-        fprintf(fp, "%ssn=%s\n", prefix, esc);
-        history_escape_text(esc, sizeof(esc), item->sn_detail_text);
-        fprintf(fp, "%ssn_detail=%s\n", prefix, esc);
-        history_escape_text(esc, sizeof(esc), item->error_frame_text);
-        fprintf(fp, "%serr=%s\n", prefix, esc);
-        history_escape_text(esc, sizeof(esc), item->start_frame_text);
-        fprintf(fp, "%sstart=%s\n", prefix, esc);
-        history_escape_text(esc, sizeof(esc), item->end_frame_text);
-        fprintf(fp, "%send=%s\n", prefix, esc);
-        history_escape_text(esc, sizeof(esc), item->session_log);
-        fprintf(fp, "%slog=%s\n", prefix, esc);
+        history_write_escaped_field(fp, prefix, "denom", item->denom_text);
+        history_write_escaped_field(fp, prefix, "sn", item->sn_text);
+        history_write_escaped_field(fp, prefix, "sn_detail", item->sn_detail_text);
+        history_write_escaped_field(fp, prefix, "err", item->error_frame_text);
+        history_write_escaped_field(fp, prefix, "start", item->start_frame_text);
+        history_write_escaped_field(fp, prefix, "end", item->end_frame_text);
+        history_write_escaped_field(fp, prefix, "log", item->session_log);
     }
 
-    fflush(fp);
-    fsync(fd);
-    fclose(fp);
+    write_failed = ferror(fp) != 0;
+    if (fflush(fp) != 0) write_failed = true;
+    if (!write_failed && fsync(fd) != 0) write_failed = true;
+    if (fclose(fp) != 0) write_failed = true;
+    if (write_failed) {
+        unlink(tmp);
+        return -1;
+    }
 
     if (rename(tmp, path) != 0) {
         unlink(tmp);
@@ -444,6 +388,7 @@ static void history_write_slot_file(const ui_history_record_t *rec)
     FILE *fp;
     int fd;
     char tmp[160];
+    bool write_failed;
 
     if (rec == NULL || rec->slot_no == 0 || rec->slot_no > UI_HISTORY_MAX_RECORDS) {
         return;
@@ -462,9 +407,14 @@ static void history_write_slot_file(const ui_history_record_t *rec)
     }
 
     history_write_kv(fp, rec->slot_no, rec);
-    fflush(fp);
-    fsync(fd);
-    fclose(fp);
+    write_failed = ferror(fp) != 0;
+    if (fflush(fp) != 0) write_failed = true;
+    if (!write_failed && fsync(fd) != 0) write_failed = true;
+    if (fclose(fp) != 0) write_failed = true;
+    if (write_failed) {
+        unlink(tmp);
+        return;
+    }
     if (rename(tmp, path) != 0) {
         unlink(tmp);
     }
@@ -511,7 +461,6 @@ static void history_save_all(void)
 static void history_parse_key_value(int record_index, const char *key, const char *value)
 {
     ui_history_record_t *rec;
-    const char *p;
 
     if (record_index < 0 || record_index >= UI_HISTORY_MAX_RECORDS) {
         return;
@@ -562,14 +511,12 @@ static void history_parse_key_value(int record_index, const char *key, const cha
         history_unescape_text(rec->session_log, sizeof(rec->session_log), value);
     }
 
-    p = strchr(value, '\n');
-    LV_UNUSED(p);
 }
 
 static void history_load_from_file(void)
 {
     FILE *fp;
-    char line[4096];
+    char line[UI_HISTORY_LINE_BUFFER_SIZE];
 
     history_store_reset();
 
