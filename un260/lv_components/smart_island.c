@@ -125,7 +125,6 @@ static smart_island_content_t g_smart_island_content;
 static smart_island_action_cb_t g_smart_island_action_cb = NULL;
 
 static lv_timer_t *g_smart_island_result_timer = NULL;
-static lv_timer_t *g_smart_island_warning_timer = NULL;
 static smart_island_warning_level_t g_smart_island_warning_level = SMART_ISLAND_WARNING_LEVEL_WARNING;
 static bool g_smart_island_warning_marquee_running = false;
 static uint8_t g_smart_island_warning_marquee_step = 0;
@@ -188,7 +187,6 @@ static const char *smart_island_get_work_mode_text(void);
 static bool smart_island_batch_enabled(void);
 static void smart_island_clear_object_refs(void);
 static void smart_island_stop_result_timer(void); 
-static void smart_island_stop_warning_timer(void); 
 static void smart_island_update_pages_visible(void); 
 static void smart_island_pulse_stop(void); 
 static void smart_island_visual_apply_now(smart_island_visual_t visual); 
@@ -221,7 +219,6 @@ static void smart_island_warning_marquee_start(void);
 static void smart_island_warning_marquee_stop(void);
 static void smart_island_warning_apply_static_layout(void);
 static void smart_island_warning_marquee_finish_cb(lv_anim_t *a);
-static void smart_island_warning_marquee_timeout_cb(lv_timer_t *timer);
 static void smart_island_warning_marquee_run_step(void);
 static void smart_island_warning_flash_finish_cb(lv_anim_t *a);
 static void smart_island_bg_color_apply_anim(uint32_t dst_hex);
@@ -485,21 +482,6 @@ static void smart_island_warning_marquee_finish_cb(lv_anim_t *a)
     if (!g_smart_island_warning_marquee_running) return;
     g_smart_island_warning_marquee_step++;
     smart_island_warning_marquee_run_step();
-}
-
-static void smart_island_warning_marquee_timeout_cb(lv_timer_t *timer)
-{
-    bool pocket_confirmed;
-
-    LV_UNUSED(timer);
-    smart_island_stop_warning_timer();
-    pocket_confirmed = smart_island_warning_pocket_confirm();
-    if (!fault_popup_is_showing()) {
-        smart_island_restore_idle();
-        if (!pocket_confirmed) {
-            fault_popup_schedule_auto_confirm();
-        }
-    }
 }
 
 static void smart_island_warning_flash_finish_cb(lv_anim_t *a)
@@ -1048,14 +1030,6 @@ static void smart_island_stop_result_timer(void)
     if (g_smart_island_result_timer) {
         lv_timer_del(g_smart_island_result_timer);
         g_smart_island_result_timer = NULL;
-    }
-}
-
-static void smart_island_stop_warning_timer(void) 
-{
-    if (g_smart_island_warning_timer) {
-        lv_timer_del(g_smart_island_warning_timer);
-        g_smart_island_warning_timer = NULL;
     }
 }
 
@@ -2158,7 +2132,7 @@ static void smart_island_action_btn_create(void)
 }
 void smart_island_create(lv_obj_t *parent) 
 {
-    if (parent == NULL) return;
+    if (parent == NULL || !lv_obj_is_valid(parent)) return;
 
     if (g_smart_island_created && g_smart_island && lv_obj_is_valid(g_smart_island)) {
         lv_obj_t *cur_parent = lv_obj_get_parent(g_smart_island);
@@ -2172,6 +2146,10 @@ void smart_island_create(lv_obj_t *parent)
             smart_island_modal_update();
         }
         return;
+    }
+
+    if (g_smart_island_created) {
+        smart_island_destroy();
     }
 
     memset(&g_smart_island_content, 0, sizeof(g_smart_island_content));
@@ -2361,7 +2339,6 @@ void smart_island_create(lv_obj_t *parent)
 void smart_island_destroy(void) 
 {
     smart_island_stop_result_timer();
-    smart_island_stop_warning_timer();
     smart_island_warning_marquee_stop();
     smart_island_pulse_stop();
     if (g_smart_island && lv_obj_is_valid(g_smart_island)) lv_obj_del(g_smart_island);
@@ -2438,7 +2415,6 @@ void smart_island_set_scene(smart_island_scene_t scene, const char *title, const
 {
     g_smart_island_scene = scene;
     smart_island_stop_result_timer();
-    if (scene != SMART_ISLAND_SCENE_WARNING) smart_island_stop_warning_timer();
 
     if (title && title[0] != '\0') lv_snprintf(g_smart_island_content.title, sizeof(g_smart_island_content.title), "%s", title);
     else g_smart_island_content.title[0] = '\0';
@@ -2527,8 +2503,6 @@ void smart_island_notify_warning_level(const char *warn_text, smart_island_warni
 
     lv_snprintf(g_smart_island_warning_text, sizeof(g_smart_island_warning_text), "%s",
         next_warning_text);
-
-    smart_island_stop_warning_timer();
 
     smart_island_set_scene(
         SMART_ISLAND_SCENE_WARNING,
