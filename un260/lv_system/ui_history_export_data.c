@@ -9,6 +9,7 @@
 
 #include "un260/counting/counting_reject_reason.h"
 #include "un260/history/history_export_sn_parser.h"
+#include "un260/history/history_export_text.h"
 #include "un260/lv_components/lv_print_toast.h"
 #include "un260/lv_system/ui_history_data.h"
 #include "un260/lv_system/machine_time.h"
@@ -144,79 +145,6 @@ static void history_export_build_name(char *buf, size_t size)
                 (unsigned)now.second);
 }
 
-static void history_export_escape_html(char *dst, size_t dst_size, const char *src)
-{
-    size_t i;
-    size_t j = 0;
-
-    if (dst == NULL || dst_size == 0) {
-        return;
-    }
-
-    dst[0] = '\0';
-    if (src == NULL) {
-        return;
-    }
-
-    for (i = 0; src[i] != '\0' && j + 1 < dst_size; i++) {
-        char ch = src[i];
-        const char *rep = NULL;
-
-        switch (ch) {
-        case '&': rep = "&amp;"; break;
-        case '<': rep = "&lt;"; break;
-        case '>': rep = "&gt;"; break;
-        case '"': rep = "&quot;"; break;
-        case '\'': rep = "&#39;"; break;
-        case '\n': rep = "<br/>"; break;
-        case '\r': rep = ""; break;
-        default:
-            dst[j++] = ch;
-            continue;
-        }
-
-        if (rep != NULL) {
-            size_t k;
-            for (k = 0; rep[k] != '\0' && j + 1 < dst_size; k++) {
-                dst[j++] = rep[k];
-            }
-        }
-    }
-
-    dst[j] = '\0';
-}
-
-static void history_export_make_csv_text(char *dst, size_t dst_size, const char *src)
-{
-    size_t i;
-    size_t j = 0;
-
-    if (dst == NULL || dst_size == 0) {
-        return;
-    }
-
-    dst[0] = '\0';
-    if (src == NULL) {
-        return;
-    }
-
-    for (i = 0; src[i] != '\0' && j + 1 < dst_size; i++) {
-        char ch = src[i];
-        if (ch == '\r' || ch == '\n') {
-            if (j > 0 && dst[j - 1] != ' ') {
-                dst[j++] = ' ';
-            }
-            continue;
-        }
-        if (ch == '"') {
-            ch = '\'';
-        }
-        dst[j++] = ch;
-    }
-
-    dst[j] = '\0';
-}
-
 static void history_export_get_mode_text(char *buf, size_t size)
 {
     if (buf == NULL || size == 0) {
@@ -300,10 +228,12 @@ typedef struct {
     unsigned amount;
 } history_export_denom_entry_t;
 
+#define HISTORY_EXPORT_REJECT_REASON_SIZE 128
+
 typedef struct {
     unsigned no;
     unsigned pcs;
-    char reason[128];
+    char reason[HISTORY_EXPORT_REJECT_REASON_SIZE];
 } history_export_reject_entry_t;
 
 static int history_export_hex_value(char ch)
@@ -604,38 +534,6 @@ static bool history_export_flush_and_verify(FILE *fp, const char *file_path)
     return (st.st_size > 0);
 }
 
-static void history_export_escape_js_str(char *dst, size_t dst_size, const char *src)
-{
-    size_t i;
-    size_t j = 0;
-
-    if (dst == NULL || dst_size == 0) {
-        return;
-    }
-
-    dst[0] = '\0';
-    if (src == NULL) {
-        return;
-    }
-
-    for (i = 0; src[i] != '\0' && j + 1 < dst_size; i++) {
-        char ch = src[i];
-        if (ch == '\\' || ch == '"') {
-            if (j + 2 >= dst_size) {
-                break;
-            }
-            dst[j++] = '\\';
-            dst[j++] = ch;
-        } else if (ch == '\n' || ch == '\r') {
-            dst[j++] = ' ';
-        } else {
-            dst[j++] = ch;
-        }
-    }
-
-    dst[j] = '\0';
-}
-
 static void history_export_build_name_for_record(char *buf, size_t size, const ui_history_record_t *rec)
 {
     char curr_raw[8] = {0};
@@ -667,6 +565,8 @@ static bool history_export_write_csv_file(const char *file_path, const ui_histor
     FILE *fp;
     int i;
     char mode_buf[8];
+    char currency_csv[16];
+    char text_csv[257];
     uint32_t total_pcs = 0;
     uint32_t total_amount = 0;
 
@@ -675,6 +575,10 @@ static bool history_export_write_csv_file(const char *file_path, const ui_histor
     }
 
     history_export_calc_totals(rec, denoms, denom_count, &total_pcs, &total_amount);
+    if (!history_export_csv_escape(currency_csv, sizeof(currency_csv),
+                                   rec->currency[0] ? rec->currency : "CUR")) {
+        return false;
+    }
 
     fp = fopen(file_path, "w");
     if (fp == NULL) {
@@ -685,7 +589,7 @@ static bool history_export_write_csv_file(const char *file_path, const ui_histor
     fprintf(fp, "Un260 Intelligent Cash Counter Report\n");
     fprintf(fp, "Machine Mode,%s\n", mode_buf);
     fprintf(fp, "Export Time,%02u:%02u:%02u\n", (unsigned)rec->hour, (unsigned)rec->minute, (unsigned)rec->second);
-    fprintf(fp, "Currency,%s\n", rec->currency[0] ? rec->currency : "CUR");
+    fprintf(fp, "Currency,\"%s\"\n", currency_csv);
     fprintf(fp, "Total Pcs,%u\n", (unsigned)total_pcs);
     fprintf(fp, "Total Amount,%u\n", (unsigned)total_amount);
     fprintf(fp, "Reject Pcs,%d\n\n", reject_count);
@@ -701,7 +605,12 @@ static bool history_export_write_csv_file(const char *file_path, const ui_histor
     fprintf(fp, "NO,SN,DENOM\n");
     if (sn_count > 0) {
         for (i = 0; i < sn_count; i++) {
-            fprintf(fp, "%u,%s,%u\n", sns[i].no, sns[i].sn, sns[i].denom);
+            if (!history_export_csv_escape(text_csv, sizeof(text_csv), sns[i].sn)) {
+                fclose(fp);
+                return false;
+            }
+            fprintf(fp, "%u,\"%s\",%u\n",
+                    sns[i].no, text_csv, sns[i].denom);
         }
     } else {
         fprintf(fp, "None\n");
@@ -710,7 +619,13 @@ static bool history_export_write_csv_file(const char *file_path, const ui_histor
     fprintf(fp, "NO,PCS,REASON\n");
     if (reject_count > 0) {
         for (i = 0; i < reject_count; i++) {
-            fprintf(fp, "%u,%u,%s\n", rejects[i].no, rejects[i].pcs, rejects[i].reason);
+            if (!history_export_csv_escape(text_csv, sizeof(text_csv),
+                                           rejects[i].reason)) {
+                fclose(fp);
+                return false;
+            }
+            fprintf(fp, "%u,%u,\"%s\"\n",
+                    rejects[i].no, rejects[i].pcs, text_csv);
         }
     } else {
         fprintf(fp, "None\n");
@@ -736,7 +651,10 @@ static bool history_export_write_html_file(const char *file_path, const ui_histo
     char batch_buf[24];
     char speed_buf[16];
     char curr_buf[8];
-    char reason_js[192];
+    char curr_html[64];
+    char sn_html[HISTORY_EXPORT_SN_TEXT_SIZE * 6 + 1];
+    char reason_html[HISTORY_EXPORT_REJECT_REASON_SIZE * 6 + 1];
+    char reason_js[sizeof(reason_html) * 2 + 1];
 
     if (file_path == NULL || file_path[0] == '\0' || rec == NULL) {
         return false;
@@ -756,6 +674,10 @@ static bool history_export_write_html_file(const char *file_path, const ui_histo
     history_export_get_speed_text(speed_buf, sizeof(speed_buf));
     lv_snprintf(batch_buf, sizeof(batch_buf), "%s", "BAT:OFF");
     lv_snprintf(curr_buf, sizeof(curr_buf), "%s", rec->currency[0] ? rec->currency : "CUR");
+    if (!history_export_html_escape(curr_html, sizeof(curr_html), curr_buf)) {
+        fclose(fp);
+        return false;
+    }
 
     fprintf(fp,
         "<!DOCTYPE html>\n"
@@ -796,7 +718,7 @@ static bool history_export_write_html_file(const char *file_path, const ui_histo
         "<div class=\"panel-header\"><h2>Denomination</h2><div class=\"panel-note\">Face value distribution</div></div>\n"
         "<div class=\"table-wrap\"><table><thead><tr><th>Denom</th><th class=\"text-right\">PCS</th><th class=\"text-right\">Amount</th></tr></thead><tbody>\n",
         rec->year, rec->month, rec->day, rec->hour, rec->minute, rec->second,
-        curr_buf, (double)total_amount, (unsigned)total_pcs, reject_count,
+        curr_html, (double)total_amount, (unsigned)total_pcs, reject_count,
         mode_buf, sort_buf, work_buf, add_buf, batch_buf, speed_buf);
 
     for (i = 0; i < denom_count; i++) {
@@ -844,9 +766,13 @@ static bool history_export_write_html_file(const char *file_path, const ui_histo
 
     if (sn_count > 0) {
         for (i = 0; i < sn_count; i++) {
+            if (!history_export_html_escape(sn_html, sizeof(sn_html), sns[i].sn)) {
+                fclose(fp);
+                return false;
+            }
             fprintf(fp,
                     "<tr data-sn=\"%s\"><td>%02u</td><td class=\"num-font sn-cell\">%s</td><td class=\"text-right num-font\">%u</td></tr>\n",
-                    sns[i].sn, sns[i].no, sns[i].sn, sns[i].denom);
+                    sn_html, sns[i].no, sn_html, sns[i].denom);
             sn_no++;
         }
     }
@@ -863,7 +789,12 @@ static bool history_export_write_html_file(const char *file_path, const ui_histo
         (double)total_amount, (unsigned)total_pcs, reject_count, reject_count);
 
     for (i = 0; i < reject_count; i++) {
-        history_export_escape_js_str(reason_js, sizeof(reason_js), rejects[i].reason);
+        if (!history_export_html_escape(reason_html, sizeof(reason_html),
+                                        rejects[i].reason) ||
+            !history_export_js_escape(reason_js, sizeof(reason_js), reason_html)) {
+            fclose(fp);
+            return false;
+        }
         fprintf(fp, "%s{no:%u,pcs:%u,reason:\"%s\"}",
                 i > 0 ? "," : "",
                 rejects[i].no,

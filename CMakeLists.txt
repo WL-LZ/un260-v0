@@ -63,6 +63,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/data_collection/data_collection_reply.c
     un260/diagnostic/diagnostic_reply.c
     un260/history/history_export_sn_parser.c
+    un260/history/history_export_text.c
     un260/currency/currency_state.c
     un260/currency/currency_service.c
     un260/currency/currency_reply.c
