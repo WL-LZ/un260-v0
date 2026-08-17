@@ -6,14 +6,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "un260/counting/counting_data_store.h"
 #include "un260/counting/counting_reject_reason.h"
 #include "un260/lv_components/smart_island.h"
 #include "un260/lv_core/page_01_detail_scroll.h"
 #include "un260/lv_core/page_01_main.h"
 #include "un260/lv_core/page_02_list.h"
 #include "un260/lv_drivers/lv_drivers.h"
-
-#define COUNTING_SN_MAX_COUNT 10000
 
 static void counting_detail_record_history(
     const counting_reject_sn_reply_hooks_t *hooks,
@@ -50,67 +49,6 @@ static void counting_reject_refresh_pages(const counting_sim_t *sim_data)
     page_02_c_report_status.total_page = counting_reject_page_count(sim_data->err_num);
     page_02_c_page_refre();
     page_02_c_page_num_refre();
-}
-
-static void counting_sn_clear(counting_sim_t *sim_data)
-{
-    if (sim_data == NULL) {
-        return;
-    }
-
-    if (sim_data->sn_str != NULL) {
-        int capacity = sim_data->sn_capacity;
-        if (capacity < 0 || capacity > COUNTING_SN_MAX_COUNT) {
-            capacity = 0;
-        }
-        for (int i = 0; i < capacity; i++) {
-            free(sim_data->sn_str[i]);
-        }
-        free(sim_data->sn_str);
-        sim_data->sn_str = NULL;
-    }
-
-    memset(sim_data->denom_mix, 0, sizeof(sim_data->denom_mix));
-    sim_data->sn_capacity = 0;
-    page_01_detail_scroll_reset_all();
-}
-
-static bool counting_sn_ensure_capacity(counting_sim_t *sim_data, int new_total)
-{
-    int old_capacity;
-    int new_capacity;
-    char **new_ptr;
-
-    if (sim_data == NULL || new_total <= 0 || new_total > COUNTING_SN_MAX_COUNT) {
-        return false;
-    }
-
-    old_capacity = sim_data->sn_str != NULL ? sim_data->sn_capacity : 0;
-    if (old_capacity < 0 || old_capacity > COUNTING_SN_MAX_COUNT) {
-        return false;
-    }
-    if (new_total <= old_capacity) {
-        return true;
-    }
-
-    new_capacity = old_capacity > 0 ? old_capacity : 64;
-    while (new_capacity < new_total) {
-        if (new_capacity > COUNTING_SN_MAX_COUNT / 2) {
-            new_capacity = COUNTING_SN_MAX_COUNT;
-        } else {
-            new_capacity *= 2;
-        }
-    }
-
-    new_ptr = realloc(sim_data->sn_str, sizeof(*new_ptr) * (size_t)new_capacity);
-    if (new_ptr == NULL) {
-        return false;
-    }
-    memset(new_ptr + old_capacity, 0,
-           sizeof(*new_ptr) * (size_t)(new_capacity - old_capacity));
-    sim_data->sn_str = new_ptr;
-    sim_data->sn_capacity = new_capacity;
-    return true;
 }
 
 static counting_detail_reply_result_t counting_reject_reply_handle(
@@ -161,7 +99,8 @@ static counting_detail_reply_result_t counting_reject_reply_handle(
         return COUNTING_DETAIL_REPLY_IGNORED;
     }
 
-    if (!sim_ensure_err_capacity(sim_data, (int)sim_data->err_num + 1)) {
+    if (!counting_data_ensure_error_capacity(
+            sim_data, (int)sim_data->err_num + 1)) {
         uart_printf(fd6, "0x0C: err capacity fail idx=%u\n", sim_data->err_num);
         return COUNTING_DETAIL_REPLY_MEMORY_ERROR;
     }
@@ -226,7 +165,8 @@ static counting_detail_reply_result_t counting_sn_reply_handle(
     payload_end = len - 1;
 
     if (counting_sn_payload_is(buf, payload_end, 0x00)) {
-        counting_sn_clear(sim_data);
+        counting_data_clear_serials(sim_data);
+        page_01_detail_scroll_reset_all();
         counting_detail_record_history(hooks, "0x0D", buf, len);
         return COUNTING_DETAIL_REPLY_START;
     }
@@ -258,7 +198,7 @@ static counting_detail_reply_result_t counting_sn_reply_handle(
         return COUNTING_DETAIL_REPLY_IGNORED;
     }
     index = (int)sequence - 1;
-    if (index < 0 || index >= COUNTING_SN_MAX_COUNT) {
+    if (index < 0 || index >= COUNTING_DATA_MAX_ITEMS) {
         return COUNTING_DETAIL_REPLY_IGNORED;
     }
 
@@ -300,7 +240,7 @@ static counting_detail_reply_result_t counting_sn_reply_handle(
         return COUNTING_DETAIL_REPLY_IGNORED;
     }
 
-    if (!counting_sn_ensure_capacity(sim_data, index + 1)) {
+    if (!counting_data_ensure_serial_capacity(sim_data, index + 1)) {
         uart_printf(fd6, "0x0D: SN capacity fail idx=%d\n", index);
         return COUNTING_DETAIL_REPLY_MEMORY_ERROR;
     }

@@ -12,6 +12,7 @@
 #include "un260/lv_components/smart_island.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/currency/currency_state.h"
+#include "un260/counting/counting_data_store.h"
 // 全局变量定义
 counting_sim_t sim = { 0 };
 page_02_report_status_t page_02_a_report_status = { 0 };
@@ -71,56 +72,6 @@ const int DZD_value_num = sizeof(DZD_value) / sizeof(DZD_value[0]);
 const int INR_value_num = sizeof(INR_value) / sizeof(INR_value[0]);
 const int PKR_value_num = sizeof(PKR_value) / sizeof(PKR_value[0]);
 const int IQD_value_num = sizeof(IQD_value) / sizeof(IQD_value[0]);
-static void sim_release_sn_data(counting_sim_t *sim_data)
-{
-    int capacity;
-
-    if (sim_data == NULL) {
-        return;
-    }
-
-    capacity = sim_data->sn_capacity;
-    if (capacity < 0 || capacity > COUNTING_SIM_MAX_ITEMS) {
-        capacity = 0;
-    }
-    if (sim_data->sn_str != NULL) {
-        for (int i = 0; i < capacity; i++) {
-            free(sim_data->sn_str[i]);
-        }
-        free(sim_data->sn_str);
-    }
-    sim_data->sn_str = NULL;
-    sim_data->sn_capacity = 0;
-    memset(sim_data->denom_mix, 0, sizeof(sim_data->denom_mix));
-}
-
-static void sim_release_error_data(counting_sim_t *sim_data)
-{
-    int capacity;
-
-    if (sim_data == NULL) {
-        return;
-    }
-
-    capacity = sim_data->err_capacity;
-    if (capacity < 0 || capacity > COUNTING_SIM_MAX_ITEMS) {
-        capacity = 0;
-    }
-    if (sim_data->err_str != NULL) {
-        for (int i = 0; i < capacity; i++) {
-            free(sim_data->err_str[i]);
-        }
-        free(sim_data->err_str);
-    }
-    free(sim_data->err_pcs);
-    free(sim_data->err_code);
-    sim_data->err_str = NULL;
-    sim_data->err_pcs = NULL;
-    sim_data->err_code = NULL;
-    sim_data->err_capacity = 0;
-    sim_data->err_num = 0;
-}
-
 static bool sim_append_generated_serials(counting_sim_t *sim_data, int new_total)
 {
     static const char charset[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -295,8 +246,8 @@ void sim_data_init(void)
     printf("Current currency enum: %d\n", currency_state_active_currency());
 
     counting_sim_t* sim_data = &sim;
-    sim_release_sn_data(sim_data);
-    sim_release_error_data(sim_data);
+    counting_data_clear_serials(sim_data);
+    counting_data_clear_errors(sim_data);
     memset(sim_data, 0, sizeof(counting_sim_t));
     const int* arr = NULL;
     int count = 0;
@@ -949,8 +900,8 @@ void sim_clear_all_sn(counting_sim_t* sim_data)
     int denom_count;
 
     if (sim_data == NULL) return;
-    sim_release_error_data(sim_data);
-    sim_release_sn_data(sim_data);
+    counting_data_clear_errors(sim_data);
+    counting_data_clear_serials(sim_data);
 
     // 重置所有计数
     denom_count = sim_data->denom_number;
@@ -979,47 +930,6 @@ void sim_clear_all_sn(counting_sim_t* sim_data)
 void sim_clear_err_only(counting_sim_t* sim_data)
 {
     if (!sim_data) return;
-    sim_release_error_data(sim_data);
+    counting_data_clear_errors(sim_data);
     /* Keep expected reject count from 0x0E for main-page reject display. */
-}
-
-bool sim_ensure_err_capacity(counting_sim_t* sim_data, int new_total)
-{
-    if (!sim_data || new_total <= 0) return false;
-    if (sim_data->err_str == NULL || sim_data->err_pcs == NULL || sim_data->err_code == NULL) {
-        sim_data->err_capacity = 0;
-    }
-
-    if (new_total <= sim_data->err_capacity) return true;
-
-    int new_cap = sim_data->err_capacity > 0 ? sim_data->err_capacity : 32;
-    while (new_cap < new_total) {
-        new_cap *= 2;
-        if (new_cap > 10000) {
-            new_cap = 10000;
-            break;
-        }
-    }
-    if (new_cap < new_total) return false;
-
-    int old_cap = sim_data->err_capacity;
-    char** new_err_str = realloc(sim_data->err_str, sizeof(char*) * new_cap);
-    if (new_err_str == NULL) return false;
-    sim_data->err_str = new_err_str;
-
-    uint8_t* new_err_pcs = realloc(sim_data->err_pcs, sizeof(uint8_t) * new_cap);
-    if (new_err_pcs == NULL) return false;
-    sim_data->err_pcs = new_err_pcs;
-
-    uint8_t* new_err_code = realloc(sim_data->err_code, sizeof(uint8_t) * new_cap);
-    if (new_err_code == NULL) return false;
-    sim_data->err_code = new_err_code;
-
-    if (new_cap > old_cap) {
-        memset(sim_data->err_str + old_cap, 0, sizeof(char*) * (new_cap - old_cap));
-        memset(sim_data->err_pcs + old_cap, 0, sizeof(uint8_t) * (new_cap - old_cap));
-        memset(sim_data->err_code + old_cap, 0, sizeof(uint8_t) * (new_cap - old_cap));
-    }
-    sim_data->err_capacity = new_cap;
-    return true;
 }

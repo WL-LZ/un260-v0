@@ -1,0 +1,160 @@
+#include "counting_data_store.h"
+
+#include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
+
+static bool counting_data_capacity_is_valid(int capacity)
+{
+    return capacity >= 0 && capacity <= COUNTING_DATA_MAX_ITEMS;
+}
+
+static int counting_data_next_capacity(int current, int required)
+{
+    int capacity = current > 0 ? current : 32;
+
+    while (capacity < required) {
+        if (capacity > COUNTING_DATA_MAX_ITEMS / 2) {
+            return COUNTING_DATA_MAX_ITEMS;
+        }
+        capacity *= 2;
+    }
+    return capacity;
+}
+
+void counting_data_clear_serials(counting_sim_t *sim_data)
+{
+    int capacity;
+
+    if (sim_data == NULL) {
+        return;
+    }
+
+    capacity = counting_data_capacity_is_valid(sim_data->sn_capacity)
+        ? sim_data->sn_capacity : 0;
+    if (sim_data->sn_str != NULL) {
+        for (int i = 0; i < capacity; i++) {
+            free(sim_data->sn_str[i]);
+        }
+        free(sim_data->sn_str);
+    }
+    sim_data->sn_str = NULL;
+    sim_data->sn_capacity = 0;
+    memset(sim_data->denom_mix, 0, sizeof(sim_data->denom_mix));
+}
+
+bool counting_data_ensure_serial_capacity(counting_sim_t *sim_data,
+                                          int required_count)
+{
+    char **new_serials;
+    int old_capacity;
+    int new_capacity;
+
+    if (sim_data == NULL || required_count <= 0 ||
+        required_count > COUNTING_DATA_MAX_ITEMS) {
+        return false;
+    }
+
+    old_capacity = sim_data->sn_str != NULL ? sim_data->sn_capacity : 0;
+    if (!counting_data_capacity_is_valid(old_capacity)) {
+        return false;
+    }
+    if (required_count <= old_capacity) {
+        return true;
+    }
+
+    new_capacity = counting_data_next_capacity(old_capacity, required_count);
+    new_serials = calloc((size_t)new_capacity, sizeof(*new_serials));
+    if (new_serials == NULL) {
+        return false;
+    }
+    if (old_capacity > 0) {
+        memcpy(new_serials, sim_data->sn_str,
+               sizeof(*new_serials) * (size_t)old_capacity);
+    }
+
+    free(sim_data->sn_str);
+    sim_data->sn_str = new_serials;
+    sim_data->sn_capacity = new_capacity;
+    return true;
+}
+
+void counting_data_clear_errors(counting_sim_t *sim_data)
+{
+    int capacity;
+
+    if (sim_data == NULL) {
+        return;
+    }
+
+    capacity = counting_data_capacity_is_valid(sim_data->err_capacity)
+        ? sim_data->err_capacity : 0;
+    if (sim_data->err_str != NULL) {
+        for (int i = 0; i < capacity; i++) {
+            free(sim_data->err_str[i]);
+        }
+        free(sim_data->err_str);
+    }
+    free(sim_data->err_pcs);
+    free(sim_data->err_code);
+    sim_data->err_str = NULL;
+    sim_data->err_pcs = NULL;
+    sim_data->err_code = NULL;
+    sim_data->err_capacity = 0;
+    sim_data->err_num = 0;
+}
+
+bool counting_data_ensure_error_capacity(counting_sim_t *sim_data,
+                                         int required_count)
+{
+    char **new_text;
+    uint8_t *new_pcs;
+    uint8_t *new_code;
+    int old_capacity;
+    int new_capacity;
+
+    if (sim_data == NULL || required_count <= 0 ||
+        required_count > COUNTING_DATA_MAX_ITEMS) {
+        return false;
+    }
+
+    old_capacity = sim_data->err_capacity;
+    if (!counting_data_capacity_is_valid(old_capacity) ||
+        (old_capacity > 0 && (sim_data->err_str == NULL ||
+                              sim_data->err_pcs == NULL ||
+                              sim_data->err_code == NULL))) {
+        return false;
+    }
+    if (required_count <= old_capacity) {
+        return true;
+    }
+
+    new_capacity = counting_data_next_capacity(old_capacity, required_count);
+    new_text = calloc((size_t)new_capacity, sizeof(*new_text));
+    new_pcs = calloc((size_t)new_capacity, sizeof(*new_pcs));
+    new_code = calloc((size_t)new_capacity, sizeof(*new_code));
+    if (new_text == NULL || new_pcs == NULL || new_code == NULL) {
+        free(new_text);
+        free(new_pcs);
+        free(new_code);
+        return false;
+    }
+
+    if (old_capacity > 0) {
+        memcpy(new_text, sim_data->err_str,
+               sizeof(*new_text) * (size_t)old_capacity);
+        memcpy(new_pcs, sim_data->err_pcs,
+               sizeof(*new_pcs) * (size_t)old_capacity);
+        memcpy(new_code, sim_data->err_code,
+               sizeof(*new_code) * (size_t)old_capacity);
+    }
+
+    free(sim_data->err_str);
+    free(sim_data->err_pcs);
+    free(sim_data->err_code);
+    sim_data->err_str = new_text;
+    sim_data->err_pcs = new_pcs;
+    sim_data->err_code = new_code;
+    sim_data->err_capacity = new_capacity;
+    return true;
+}
