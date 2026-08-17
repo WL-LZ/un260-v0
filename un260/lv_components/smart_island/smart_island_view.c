@@ -3,6 +3,7 @@
 #include "un260/currency/currency_state.h"
 #include "un260/machine_state/machine_state.h"
 #include "un260/lv_system/machine_time.h"
+#include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/user_cfg.h"
 #include <string.h>
@@ -40,6 +41,7 @@ static void smart_island_rebuild_scene_texts(void);
 static void smart_island_get_currency_code(char *buf, size_t size);
 static const char *smart_island_get_work_mode_text(void);
 static bool smart_island_batch_enabled(void);
+static void smart_island_apply_progress(void);
 static void smart_island_clear_object_refs(void);
 static void smart_island_pulse_stop(void);
 static void smart_island_visual_apply_now(smart_island_visual_t visual);
@@ -263,6 +265,34 @@ static bool smart_island_batch_enabled(void)
     return machine_state_batch_enabled() && batch_num > 0 && batch_num != 200;
 }
 
+static void smart_island_apply_progress(void)
+{
+    lv_obj_t *progress = g_si_ctx.objects.progress;
+    int batch_num = (int)machine_state_batch_num();
+
+    if (progress == NULL || !lv_obj_is_valid(progress)) {
+        return;
+    }
+
+    if (g_si_ctx.view.scene == SMART_ISLAND_SCENE_UPDATE) {
+        lv_obj_clear_flag(progress, LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
+
+    if (g_si_ctx.view.scene == SMART_ISLAND_SCENE_COUNTING &&
+        machine_state_batch_enabled() && batch_num > 0 && batch_num != 200) {
+        int total_pcs = sim.total_pcs > 0 ? sim.total_pcs : 0;
+        int percent = total_pcs >= batch_num ? 100 : (total_pcs * 100) / batch_num;
+
+        lv_obj_clear_flag(progress, LV_OBJ_FLAG_HIDDEN);
+        lv_bar_set_value(progress, percent, LV_ANIM_ON);
+        return;
+    }
+
+    lv_obj_add_flag(progress, LV_OBJ_FLAG_HIDDEN);
+    lv_bar_set_value(progress, 0, LV_ANIM_OFF);
+}
+
 static void smart_island_apply_idle_line_text(char *dst, size_t dst_size, const char *text)
 {
     if (dst == NULL || dst_size == 0U) {
@@ -368,8 +398,13 @@ static void smart_island_rebuild_scene_texts(void)
 
     switch (g_si_ctx.view.scene) {
     case SMART_ISLAND_SCENE_COUNTING:
-        lv_snprintf(g_si_ctx.text.compact, sizeof(g_si_ctx.text.compact), "%s",
-            ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_COUNTING_TITLE));
+        if (sim.total_pcs > 0) {
+            lv_snprintf(g_si_ctx.text.compact, sizeof(g_si_ctx.text.compact),
+                ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_COUNTING_PCS_FMT), sim.total_pcs);
+        } else {
+            lv_snprintf(g_si_ctx.text.compact, sizeof(g_si_ctx.text.compact), "%s",
+                ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_COUNTING_TITLE));
+        }
         lv_snprintf(g_si_ctx.text.info_title, sizeof(g_si_ctx.text.info_title), "%s",
             ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_COUNTING_INFO_TITLE));
         if (sim.total_pcs > 0 && sim.total_amount > 0.0f) {
@@ -778,10 +813,7 @@ static void smart_island_apply_scene_style(void)
         lv_obj_add_flag(g_si_ctx.objects.time, LV_OBJ_FLAG_HIDDEN);
     }
 
-    if (g_si_ctx.objects.progress && lv_obj_is_valid(g_si_ctx.objects.progress)) {
-        if (g_si_ctx.view.scene == SMART_ISLAND_SCENE_UPDATE) lv_obj_clear_flag(g_si_ctx.objects.progress, LV_OBJ_FLAG_HIDDEN);
-        else lv_obj_add_flag(g_si_ctx.objects.progress, LV_OBJ_FLAG_HIDDEN);
-    }
+    smart_island_apply_progress();
 
     smart_island_apply_quality_indicator();
     smart_island_update_pages_visible();
@@ -817,15 +849,13 @@ static void smart_island_visual_apply_now(smart_island_visual_t visual)
 static void smart_island_visual_apply_anim(smart_island_visual_t visual)
 {
     lv_anim_t a;
-    lv_coord_t dst_x = SMART_ISLAND_X, dst_y = SMART_ISLAND_Y;
-    lv_coord_t dst_w = SMART_ISLAND_W, dst_h = SMART_ISLAND_COMPACT_H;
+    lv_coord_t dst_y = SMART_ISLAND_Y;
+    lv_coord_t dst_h = SMART_ISLAND_COMPACT_H;
     uint32_t anim_time = SMART_ISLAND_EXPAND_TIME;
 
     if (g_si_ctx.objects.root == NULL || !lv_obj_is_valid(g_si_ctx.objects.root)) return;
 
     if (visual == SMART_ISLAND_VISUAL_MINI) {
-        dst_w = SMART_ISLAND_MINI_W;
-        dst_x = SMART_ISLAND_X + (SMART_ISLAND_W - dst_w) / 2;
         anim_time = SMART_ISLAND_COLLAPSE_TIME;
     } else if (visual == SMART_ISLAND_VISUAL_EXPANDED) {
         dst_y = SMART_ISLAND_Y - (SMART_ISLAND_ACTION_EXPAND_H - SMART_ISLAND_COMPACT_H);

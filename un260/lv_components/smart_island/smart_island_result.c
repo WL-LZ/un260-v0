@@ -1,8 +1,8 @@
 #include "un260/lv_components/smart_island/smart_island_internal.h"
 #include "un260/lv_components/lv_fault_popup.h"
-#include "un260/lv_refre/lvgl_refre.h"
+#include "un260/lv_system/platform_app.h"
 
-#define SMART_ISLAND_RESULT_HOLD_MS 1000U
+#define SMART_ISLAND_RESULT_HOLD_MS 1800U
 
 static void smart_island_result_timer_cb(lv_timer_t *timer)
 {
