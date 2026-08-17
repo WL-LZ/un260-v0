@@ -18,6 +18,7 @@
 #include "un260/lv_components/smart_island.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/page_06_settings.h"
+#include "un260/lv_core/page_31_get_wave.h"
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_refre/lvgl_refre.h"
 #include "un260/machine_state/machine_state.h"

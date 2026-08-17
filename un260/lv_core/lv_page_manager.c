@@ -1,5 +1,6 @@
 
 #include "lvgl/lvgl.h"
+#include "un260/lv_components/smart_island.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/page_04_set.h"
 #include "un260/lv_system/platform_app.h"
@@ -151,11 +152,10 @@ static void create_new_page(ui_page_t page)
     case UI_PAGE_PASSWORD_CHANGE: ui_page_29_set_password_create(lv_scr_act()); break;
     case UI_PAGE_FACTORY_SETTING: ui_page_30_set_factory_create(lv_scr_act()); break;
     case UI_PAGE_WAVE_GET: ui_page_31_get_wave_create(lv_scr_act()); break;
+    case UI_PAGE_DETAIL: break;
+    case UI_PAGE_COUNT: break;
     }
 }
-
-
-static lv_obj_t* page_objects[UI_PAGE_COUNT] = { NULL };
 
 typedef struct {
     ui_page_t from;
@@ -183,55 +183,6 @@ static void ui_manager_notify_page_switch(ui_page_t from, ui_page_t to)
         }
     }
 }
-
-static void hide_current_page(void)
-{
-    if (current_page >= 0 && current_page < UI_PAGE_COUNT && page_objects[current_page]) {
-        // 如果当前是主页面，暂停计数
-        if (current_page == UI_PAGE_MAIN) {
-            pause_counting_sim();
-        }
-
-        // 隐藏当前页面
-        lv_obj_add_flag(page_objects[current_page], LV_OBJ_FLAG_HIDDEN);
-    }
-}
-
-//static void show_page(ui_page_t page)
-//{
-//    // 如果页面对象不存在，创建它
-//    if (page >= 0 && page < UI_PAGE_COUNT && !page_objects[page]) {
-//        switch (page) {
-//        case UI_PAGE_MAIN:
-//            ui_main_create(lv_scr_act());
-//            page_objects[UI_PAGE_MAIN] = main_page;
-//            break;
-//        case UI_PAGE_LIST:
-//            ui_page_02_list_create(lv_scr_act());
-//            page_objects[UI_PAGE_LIST] = list_page;
-//            break;
-//        case UI_PAGE_MENU:
-//            ui_page_03_menu_create(lv_scr_act());
-//            page_objects[UI_PAGE_MENU] = menu_page;
-//            break;
-//        case UI_PAGE_SETTING:
-//            ui_setting_create(lv_scr_act());
-//            page_objects[UI_PAGE_SETTING] = setting_page;
-//            break;
-//        }
-//    }
-//
-//    // 显示页面
-//    if (page >= 0 && page < UI_PAGE_COUNT && page_objects[page]) {
-//        lv_obj_clear_flag(page_objects[page], LV_OBJ_FLAG_HIDDEN);
-//
-//        // 如果是主页面，恢复计数
-//        if (page == UI_PAGE_MAIN) {
-//            resume_counting_sim();
-//        }
-//    }
-//}
-
 
 void ui_manager_switch(ui_page_t page)
 {
