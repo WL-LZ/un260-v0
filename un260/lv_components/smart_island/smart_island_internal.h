@@ -6,6 +6,10 @@
 
 #define SMART_ISLAND_WIDTH                261
 #define SMART_ISLAND_ACTION_PAGE_CAPACITY 4U
+#define SMART_ISLAND_ACTION_PAGE_COUNT    SMART_ISLAND_ACTION_PAGE_CAPACITY
+#define SMART_ISLAND_ACTION_PAGE_DEFAULT_COUNT 3U
+#define SMART_ISLAND_ACTION_EXPAND_H      112
+#define SMART_ISLAND_PAGE_INDICATOR_Y     -6
 
 typedef struct {
     lv_obj_t *root;
@@ -129,5 +133,17 @@ void smart_island_warning_fault_clear(void);
 void smart_island_reset_page_positions(void);
 void smart_island_reset_compact_header_position(void);
 void smart_island_reset_time_position(void);
+void smart_island_update_idle_time(void);
+void smart_island_update_pages_visible(void);
+const char *smart_island_text_or_default(const char *text, ui_text_id_t text_id);
+void smart_island_anim_x_cb(void *var, int32_t value);
+void smart_island_anim_translate_x_cb(void *var, int32_t value);
+
+void smart_island_enable_gesture_on_obj(lv_obj_t *obj);
+void smart_island_modal_click_cb(lv_event_t *event);
+void smart_island_click_cb(lv_event_t *event);
+void smart_island_action_btn_create(void);
+void smart_island_action_page_refresh_language_texts(void);
+void smart_island_page_indicator_sync(bool anim_en);
 
 #endif /* SMART_ISLAND_INTERNAL_H */
