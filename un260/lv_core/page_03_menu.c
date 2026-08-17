@@ -83,13 +83,6 @@ static void pcs_batch_label_anim_cb(void* var, int32_t v)
     lv_obj_set_y(label, v);
 }
 
-// 控制字体缩放
-static void font_scale_anim_cb(void* var, int32_t v)
-{
-    lv_obj_t* label = (lv_obj_t*)var;
-    lv_obj_set_style_transform_zoom(label, v, 0);
-}
-
 ui_element_t page_03_menu_obj[] = {
     { "page_02_menu_bg.png", LV_OBJ_TYPE_IMAGE, NULL,
         { 0, 0, 1280, 400, 0, 0, 0 },

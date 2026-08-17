@@ -61,7 +61,6 @@ static bool page_02_scroll_section_small_data(page_02_scroll_section_t *section)
 static uint16_t page_02_scroll_section_last_page_first_row_get(page_02_scroll_section_t *section); // 获取最后一页的起始行
 static lv_coord_t page_02_scroll_section_real_bottom_scroll_y_get(page_02_scroll_section_t *section); // 获取真实内容底部的滚动位置
 static lv_coord_t page_02_scroll_section_max_scroll_y_get(page_02_scroll_section_t *section); // 获取分区允许的最大滚动距离
-static void page_02_scroll_section_pull_limit(page_02_scroll_section_t *section); // 限制最后一页过拉距离
 
 ui_element_t page_02_list_obj[] = {
 
@@ -500,11 +499,6 @@ static lv_coord_t page_02_scroll_section_max_scroll_y_get(page_02_scroll_section
 
     return page_02_scroll_section_last_page_first_row_get(section) * PAGE_02_SCROLL_ROW_GAP
         + PAGE_02_SCROLL_EDGE_BUFFER;
-}
-
-static void page_02_scroll_section_pull_limit(page_02_scroll_section_t *section) // 限制最后一页过拉距离
-{
-    (void)section;
 }
 
 static void page_02_scroll_section_row_bind(page_02_scroll_section_t *section, uint16_t pool_row, int data_index) // 绑定滚动行内容

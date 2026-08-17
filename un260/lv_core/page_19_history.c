@@ -117,7 +117,6 @@ static int history_detail_parse_denom_rows(const ui_history_record_t *rec, char 
 static int history_detail_parse_sn_rows(const ui_history_record_t *rec, char out[][3][96], int max_rows);
 static int history_detail_parse_reject_rows(const ui_history_record_t *rec, char out[][3][96], int max_rows);
 static bool history_hex_to_bytes(const char *text, uint8_t *buf, int buf_size, int *out_len);
-static int history_count_lines(const char *text);
 
 static void history_format_u32_commas(char *buf, size_t size, uint32_t value)
 {
@@ -309,14 +308,6 @@ static void history_nav_refresh(void)
     lv_obj_add_flag(g_history_page.user_nav_label, LV_OBJ_FLAG_HIDDEN);
 }
 
-static void history_detail_set_lines(lv_obj_t *obj, const char *text)
-{
-    if (obj == NULL || !lv_obj_is_valid(obj)) {
-        return;
-    }
-    lv_label_set_text(obj, text ? text : "");
-}
-
 static void history_detail_section_create(history_detail_section_ui_t *section, lv_obj_t *parent, int section_id)
 {
     int i;
@@ -364,32 +355,6 @@ static void history_detail_section_create(history_detail_section_ui_t *section, 
                                                           &lv_font_instrument_sans_medium_14, lv_color_hex(0x18495A), LV_TEXT_ALIGN_LEFT);
     }
     history_detail_section_set_header(section, section_id);
-}
-
-static int history_count_lines(const char *text)
-{
-    int count = 0;
-    int in_line = 0;
-
-    if (text == NULL || text[0] == '\0') {
-        return 0;
-    }
-
-    for (const char *p = text; *p != '\0'; p++) {
-        if (*p == '\n' || *p == '\r') {
-            if (in_line) {
-                count++;
-                in_line = 0;
-            }
-        } else {
-            in_line = 1;
-        }
-    }
-
-    if (in_line) {
-        count++;
-    }
-    return count;
 }
 
 static int history_detail_split_lines(const char *src, char out[][96], int max_lines)

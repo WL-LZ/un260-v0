@@ -444,34 +444,28 @@ void stop_counting_sim(void)
 }
 //处理金额格式
 void format_amount_with_comma(char* dest, size_t dest_size, float amount) {
-    
     char temp[32];
-    snprintf(temp, sizeof(temp), "%.0f", amount);
+    int len;
+    int dest_index = 0;
 
-    int len = strlen(temp);
-    int comma_count = (len - 1) / 3;  
-
-    
-    if (len <= 3) {
-        strncpy(dest, temp, dest_size - 1);
-        dest[dest_size - 1] = '\0';
+    if (dest == NULL || dest_size == 0) {
         return;
     }
 
-   
-    int dest_index = 0;
-    int digit_count = 0;
+    snprintf(temp, sizeof(temp), "%.0f", amount);
+    len = (int)strlen(temp);
+    
+    if (len <= 3) {
+        lv_snprintf(dest, dest_size, "%s", temp);
+        return;
+    }
 
-   
     for (int i = 0; i < len; i++) {
-        if (dest_index >= dest_size - 1) break;
+        if ((size_t)dest_index + 1 >= dest_size) break;
 
         dest[dest_index++] = temp[i];
-        digit_count++;
-
-       
         if (i < len - 1 && (len - i - 1) % 3 == 0) {
-            if (dest_index < dest_size - 1) {
+            if ((size_t)dest_index + 1 < dest_size) {
                 dest[dest_index++] = ',';
             }
         }
