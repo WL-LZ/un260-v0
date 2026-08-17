@@ -70,8 +70,6 @@ void cleanup_counting_sim(void);
 void sim_timer_cb(lv_timer_t* timer);
 void update_label_by_name(ui_element_t* page_cfg_obj, int len, const char* name, const char* fmt, ...);
 lv_obj_t* find_obj_by_name(const char* name, ui_element_t* page_cfg_obj, int len);
-void save_counting_data(void);
-void restore_counting_data(void);
 void sim_clear_all_sn(counting_sim_t* sim_data);
 curr_item_t get_curr_item(const char* code);
 void set_curr(curr_item_t curr);

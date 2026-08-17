@@ -27,6 +27,10 @@ static bool g_count_end_anim_pending = false;
 static bool g_count_end_anim_armed = false;
 static char g_count_end_anim_text[128];
 
+#define COUNTING_SIM_SN_LENGTH 11
+#define COUNTING_SIM_MAX_ITEMS \
+    ((int)(sizeof(sim.denom_mix) / sizeof(sim.denom_mix[0])))
+
 //金额模拟
 const int USD_value[] = { 100,50,20,10,5,2,1 };
 const int CNY_value[] = { 100,50,20,10,5,1 };
@@ -67,9 +71,106 @@ const int DZD_value_num = sizeof(DZD_value) / sizeof(DZD_value[0]);
 const int INR_value_num = sizeof(INR_value) / sizeof(INR_value[0]);
 const int PKR_value_num = sizeof(PKR_value) / sizeof(PKR_value[0]);
 const int IQD_value_num = sizeof(IQD_value) / sizeof(IQD_value[0]);
-// 用于在页面切换时保存计数数据的临时存储
-static counting_sim_t saved_sim_data;
-static bool has_saved_data = false;
+static void sim_release_sn_data(counting_sim_t *sim_data)
+{
+    int capacity;
+
+    if (sim_data == NULL) {
+        return;
+    }
+
+    capacity = sim_data->sn_capacity;
+    if (capacity < 0 || capacity > COUNTING_SIM_MAX_ITEMS) {
+        capacity = 0;
+    }
+    if (sim_data->sn_str != NULL) {
+        for (int i = 0; i < capacity; i++) {
+            free(sim_data->sn_str[i]);
+        }
+        free(sim_data->sn_str);
+    }
+    sim_data->sn_str = NULL;
+    sim_data->sn_capacity = 0;
+    memset(sim_data->denom_mix, 0, sizeof(sim_data->denom_mix));
+}
+
+static void sim_release_error_data(counting_sim_t *sim_data)
+{
+    int capacity;
+
+    if (sim_data == NULL) {
+        return;
+    }
+
+    capacity = sim_data->err_capacity;
+    if (capacity < 0 || capacity > COUNTING_SIM_MAX_ITEMS) {
+        capacity = 0;
+    }
+    if (sim_data->err_str != NULL) {
+        for (int i = 0; i < capacity; i++) {
+            free(sim_data->err_str[i]);
+        }
+        free(sim_data->err_str);
+    }
+    free(sim_data->err_pcs);
+    free(sim_data->err_code);
+    sim_data->err_str = NULL;
+    sim_data->err_pcs = NULL;
+    sim_data->err_code = NULL;
+    sim_data->err_capacity = 0;
+    sim_data->err_num = 0;
+}
+
+static bool sim_append_generated_serials(counting_sim_t *sim_data, int new_total)
+{
+    static const char charset[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    char **new_sn_str;
+    int old_capacity;
+
+    if (sim_data == NULL || new_total <= 0 ||
+        new_total > COUNTING_SIM_MAX_ITEMS || sim_data->denom_number == 0) {
+        return false;
+    }
+
+    old_capacity = sim_data->sn_str != NULL ? sim_data->sn_capacity : 0;
+    if (old_capacity < 0 || old_capacity > new_total) {
+        return false;
+    }
+    if (new_total == old_capacity) {
+        return true;
+    }
+
+    new_sn_str = calloc((size_t)new_total, sizeof(*new_sn_str));
+    if (new_sn_str == NULL) {
+        return false;
+    }
+    if (old_capacity > 0) {
+        memcpy(new_sn_str, sim_data->sn_str,
+               sizeof(*new_sn_str) * (size_t)old_capacity);
+    }
+
+    for (int i = old_capacity; i < new_total; i++) {
+        new_sn_str[i] = malloc(COUNTING_SIM_SN_LENGTH + 1U);
+        if (new_sn_str[i] == NULL) {
+            for (int j = old_capacity; j < i; j++) {
+                free(new_sn_str[j]);
+            }
+            free(new_sn_str);
+            return false;
+        }
+        for (int j = 0; j < COUNTING_SIM_SN_LENGTH; j++) {
+            new_sn_str[i][j] = charset[lv_rand(0, sizeof(charset) - 2U)];
+        }
+        new_sn_str[i][COUNTING_SIM_SN_LENGTH] = '\0';
+        sim_data->denom_mix[i] =
+            sim_data->denom[lv_rand(0, sim_data->denom_number - 1)].value;
+    }
+
+    free(sim_data->sn_str);
+    sim_data->sn_str = new_sn_str;
+    sim_data->sn_capacity = new_total;
+    return true;
+}
 
 //获取obj对象
 lv_obj_t* find_obj_by_name(const char* name, ui_element_t* page_cfg_obj, int len) {
@@ -194,6 +295,8 @@ void sim_data_init(void)
     printf("Current currency enum: %d\n", currency_state_active_currency());
 
     counting_sim_t* sim_data = &sim;
+    sim_release_sn_data(sim_data);
+    sim_release_error_data(sim_data);
     memset(sim_data, 0, sizeof(counting_sim_t));
     const int* arr = NULL;
     int count = 0;
@@ -318,7 +421,11 @@ void sim_timer_cb(lv_timer_t* timer)
     sim_data->err_num = 1;
     int ridx = lv_rand(0, sim_data->denom_number - 1);
     int delta = lv_rand(1, 5);
-    sim_data->denom[ridx].pcs += delta;
+    if (delta > UINT8_MAX - sim_data->denom[ridx].pcs) {
+        sim_data->denom[ridx].pcs = UINT8_MAX;
+    } else {
+        sim_data->denom[ridx].pcs += (uint8_t)delta;
+    }
     sim_data->denom[ridx].amount = sim_data->denom[ridx].value * sim_data->denom[ridx].pcs;
     
     int total_pcs = 0;
@@ -328,73 +435,14 @@ void sim_timer_cb(lv_timer_t* timer)
         total_pcs += sim_data->denom[i].pcs;
         total_amount += sim_data->denom[i].amount;
     }
-    
-    
-    char buf[12];  
-    const char charset[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    int charset_size = sizeof(charset) - 1;
-    
     if (total_pcs > sim_data->total_pcs)
     {
-        char** temp_sn_str = malloc(sizeof(char*) * total_pcs);
-        if (temp_sn_str == NULL)
-        {
+        if (!sim_append_generated_serials(sim_data, total_pcs)) {
 #if LV_DEBUG
-            printf("Failed to allocate memory for temp_sn_str\n");
+            printf("Failed to grow simulated serial data to %d\n", total_pcs);
 #endif
             return;
         }
-        
-        int old_total_pcs = sim_data->total_pcs;
-        
-       
-        if (sim_data->sn_str != NULL)
-        {
-            for (int i = 0; i < old_total_pcs; i++)
-            {
-                temp_sn_str[i] = sim_data->sn_str[i];
-            }
-            free(sim_data->sn_str);
-        }
-        else
-        {
-            
-            for (int i = 0; i < old_total_pcs; i++)
-            {
-                temp_sn_str[i] = NULL;
-            }
-        }
-        
-        for (int i = old_total_pcs; i < total_pcs; i++)
-        {
-            sim_data->denom_mix[i] = sim_data->denom[lv_rand(0, sim.denom_number - 1)].value;
-            temp_sn_str[i] = malloc(12);
-            if (temp_sn_str[i] == NULL)
-            {
-#if LV_DEBUG
-                printf("Failed to allocate memory for sn_str[%d]\n", i);
-#endif
-                for (int j = old_total_pcs; j < i; j++)
-                {
-                    if (temp_sn_str[j] != NULL)  
-                    {
-                        free(temp_sn_str[j]);
-                    }
-                }
-                free(temp_sn_str);
-                return;
-            }
-            
-            // 生成随机冠字号
-            for (int j = 0; j < 11; j++)
-            {
-                buf[j] = charset[lv_rand(0, charset_size - 1)];
-            }
-            buf[11] = '\0';
-            strcpy(temp_sn_str[i], buf);
-        }
-        
-        sim_data->sn_str = temp_sn_str;
     }
     
     sim_data->total_pcs = total_pcs;
@@ -875,32 +923,6 @@ void resume_counting_sim(void)
     }
 }
 
-void save_counting_data(void) {
-    if (sim_timer != NULL) {
-        // 复制当前数据到保存区
-        memcpy(&saved_sim_data, &sim, sizeof(counting_sim_t));
-        has_saved_data = true;
-#if LV_DEBUG
-        printf("计数数据已保存，总数量: %d, 总金额: %.2f\n", 
-               saved_sim_data.total_pcs, saved_sim_data.total_amount);
-#endif
-    }
-}
-
-// 恢复保存的计数数据
-void restore_counting_data(void) {
-    if (has_saved_data) {
-        // 恢复保存的数据
-        memcpy(&sim, &saved_sim_data, sizeof(counting_sim_t));
-        has_saved_data = false;
-#if LV_DEBUG
-        printf("计数数据已恢复，总数量: %d, 总金额: %.2f\n", 
-               sim.total_pcs, sim.total_amount);
-#endif
-    }
-}
-
-
 //切换mode
 void mode_switch(void)
 {
@@ -924,48 +946,18 @@ void page_02_report_init(void)
 // 清空所有冠字号的函数
 void sim_clear_all_sn(counting_sim_t* sim_data)
 {
-    if (sim_data->err_str != NULL)
-    {
-        for (int i = 0; i < sim_data->err_num; i++)
-        {
-            if (sim_data->err_str[i] != NULL)
-            {
-                free(sim_data->err_str[i]);
-                sim_data->err_str[i] = NULL;
-            }
-        }
-        free(sim_data->err_str);
-        sim_data->err_str = NULL;
-    }
-    if (sim_data->err_pcs != NULL)
-    {
-        free(sim_data->err_pcs);
-        sim_data->err_pcs = NULL;
-    }
-    if (sim_data->err_code != NULL)
-    {
-        free(sim_data->err_code);
-        sim_data->err_code = NULL;
-    }
-    sim_data->err_capacity = 0;
+    int denom_count;
 
-    if (sim_data->sn_str != NULL)
-    {
-        for (int i = 0; i < sim_data->total_pcs; i++)
-        {
-            if (sim_data->sn_str[i] != NULL)
-            {
-                free(sim_data->sn_str[i]);
-                sim_data->sn_str[i] = NULL;
-            }
-        }
-        free(sim_data->sn_str);
-        sim_data->sn_str = NULL;
-    }
-    sim_data->sn_capacity = 0;
+    if (sim_data == NULL) return;
+    sim_release_error_data(sim_data);
+    sim_release_sn_data(sim_data);
 
     // 重置所有计数
-    for (int i = 0; i < sim_data->denom_number; i++)
+    denom_count = sim_data->denom_number;
+    if (denom_count > (int)(sizeof(sim_data->denom) / sizeof(sim_data->denom[0]))) {
+        denom_count = (int)(sizeof(sim_data->denom) / sizeof(sim_data->denom[0]));
+    }
+    for (int i = 0; i < denom_count; i++)
     {
         sim_data->denom[i].pcs = 0;
         sim_data->denom[i].amount = 0;
@@ -987,26 +979,7 @@ void sim_clear_all_sn(counting_sim_t* sim_data)
 void sim_clear_err_only(counting_sim_t* sim_data)
 {
     if (!sim_data) return;
-    if (sim_data->err_str != NULL) {
-        for (int i = 0; i < sim_data->err_num; i++) {
-            if (sim_data->err_str[i] != NULL) {
-                free(sim_data->err_str[i]);
-                sim_data->err_str[i] = NULL;
-            }
-        }
-        free(sim_data->err_str);
-        sim_data->err_str = NULL;
-    }
-    if (sim_data->err_pcs != NULL) {
-        free(sim_data->err_pcs);
-        sim_data->err_pcs = NULL;
-    }
-    if (sim_data->err_code != NULL) {
-        free(sim_data->err_code);
-        sim_data->err_code = NULL;
-    }
-    sim_data->err_num = 0;
-    sim_data->err_capacity = 0;
+    sim_release_error_data(sim_data);
     /* Keep expected reject count from 0x0E for main-page reject display. */
 }
 
