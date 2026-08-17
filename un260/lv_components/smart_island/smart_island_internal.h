@@ -3,6 +3,7 @@
 
 #include "un260/lv_components/smart_island.h"
 #include "un260/lv_components/lv_fault_popup.h"
+#include <stddef.h>
 
 #define SMART_ISLAND_WIDTH                261
 #define SMART_ISLAND_ACTION_PAGE_CAPACITY 4U
@@ -10,6 +11,7 @@
 #define SMART_ISLAND_ACTION_PAGE_DEFAULT_COUNT 3U
 #define SMART_ISLAND_ACTION_EXPAND_H      112
 #define SMART_ISLAND_PAGE_INDICATOR_Y     -6
+#define SMART_ISLAND_BG_IDLE              0x111111U
 
 typedef struct {
     lv_obj_t *root;
@@ -145,5 +147,12 @@ void smart_island_click_cb(lv_event_t *event);
 void smart_island_action_btn_create(void);
 void smart_island_action_page_refresh_language_texts(void);
 void smart_island_page_indicator_sync(bool anim_en);
+
+void smart_island_view_destroy_objects(void);
+void smart_island_view_apply_visual(smart_island_visual_t visual, bool anim_en);
+void smart_island_view_refresh_scene(void);
+void smart_island_view_set_idle_line(char *dst,
+                                     size_t dst_size,
+                                     const char *text);
 
 #endif /* SMART_ISLAND_INTERNAL_H */
