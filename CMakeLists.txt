@@ -100,6 +100,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_core/page_06_settings.c
     un260/lv_core/settings_detail_ui.c
     un260/lv_core/page_07_curr.c
+    un260/lv_core/page_07_curr/page_07_curr_model.c
     un260/lv_core/page_08_boot.c
     un260/lv_core/page_09_cis_cala.c 
     un260/lv_core/page_10_debug.c 
