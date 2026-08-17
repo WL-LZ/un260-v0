@@ -2051,7 +2051,10 @@ bool smart_island_action_page_set_count(uint8_t count)
 }
 bool smart_island_action_page_set_lang_item(uint8_t index, uint8_t action_id, ui_text_id_t text_id) 
 {
-    if (index >= SMART_ISLAND_ACTION_PAGE_COUNT) return false;
+    if (index >= SMART_ISLAND_ACTION_PAGE_COUNT ||
+        (unsigned int)text_id >= (unsigned int)UI_TEXT_MAX) {
+        return false;
+    }
     g_smart_island_action_ids[index] = action_id;
     g_smart_island_action_text_ids[index] = text_id;
     g_smart_island_action_texts[index][0] = '\0';
@@ -2397,6 +2400,7 @@ void smart_island_refresh_time(void)
 }
 void smart_island_set_visual(smart_island_visual_t visual, bool anim_en) 
 {
+    if ((unsigned int)visual > (unsigned int)SMART_ISLAND_VISUAL_EXPANDED) return;
     if (g_smart_island == NULL || !lv_obj_is_valid(g_smart_island)) return;
 
     if (g_smart_island_scene == SMART_ISLAND_SCENE_RESULT && visual == SMART_ISLAND_VISUAL_EXPANDED) {
@@ -2413,6 +2417,8 @@ void smart_island_set_visual(smart_island_visual_t visual, bool anim_en)
 
 void smart_island_set_scene(smart_island_scene_t scene, const char *title, const char *subtitle) 
 {
+    if ((unsigned int)scene > (unsigned int)SMART_ISLAND_SCENE_QR) return;
+
     g_smart_island_scene = scene;
     smart_island_stop_result_timer();
 
@@ -2478,6 +2484,10 @@ void smart_island_notify_warning_level(const char *warn_text, smart_island_warni
 {
     char next_warning_text[sizeof(g_smart_island_warning_text)];
 
+    if ((unsigned int)level > (unsigned int)SMART_ISLAND_WARNING_LEVEL_ERROR) {
+        return;
+    }
+
     if (warn_text && warn_text[0] != '\0') {
         lv_snprintf(next_warning_text, sizeof(next_warning_text), "%s", warn_text);
     } else {
@@ -2525,13 +2535,13 @@ void smart_island_notify_warning(const char *warn_text)
 }
 void smart_island_notify_update(uint16_t progress, const char *text) 
 {
+    if (progress > 100U) progress = 100U;
     g_smart_island_content.progress = progress;
     smart_island_set_scene(SMART_ISLAND_SCENE_UPDATE,
         text,
         ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_UPDATE_SUBTITLE));
     if (g_smart_island_progress && lv_obj_is_valid(g_smart_island_progress)) {
         lv_obj_clear_flag(g_smart_island_progress, LV_OBJ_FLAG_HIDDEN);
-        if (progress > 100) progress = 100;
         lv_bar_set_value(g_smart_island_progress, progress, LV_ANIM_ON);
     }
     smart_island_open_info_page();
@@ -2569,6 +2579,8 @@ bool smart_island_is_expanded(void) { return g_smart_island_visual == SMART_ISLA
 
 void smart_island_set_page(smart_island_page_t page, bool anim_en) 
 {
+    if ((unsigned int)page > (unsigned int)SMART_ISLAND_PAGE_ACTION) return;
+
     if (g_smart_island_scene == SMART_ISLAND_SCENE_RESULT) {
         g_smart_island_page = SMART_ISLAND_PAGE_INFO;
         smart_island_set_visual(SMART_ISLAND_VISUAL_COMPACT, false);
