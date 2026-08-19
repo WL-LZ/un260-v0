@@ -7,7 +7,7 @@
 #include "un260/lv_system/user_cfg.h"
 #include "un260/machine_state/machine_state.h"
 #include "un260/protocol/mode_codec.h"
-#include "un260/serial_number/serial_number_state.h"
+#include "un260/serial_number/serial_number.h"
 
 static startup_sync_reply_result_t startup_sync_handle_user_preference(
     const uint8_t *buf,

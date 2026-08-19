@@ -3,8 +3,7 @@
 #include "un260/lv_core/settings_detail_ui.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/user_cfg.h"
-#include "un260/serial_number/serial_number_state.h"
-#include "un260/serial_number/serial_number_service.h"
+#include "un260/serial_number/serial_number.h"
 
 #include <stddef.h>
 #include <stdint.h>

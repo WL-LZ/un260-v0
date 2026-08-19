@@ -5,8 +5,7 @@
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/machine_state/machine_state.h"
 #include "un260/print/print_config.h"
-#include "un260/serial_number/serial_number_service.h"
-#include "un260/serial_number/serial_number_state.h"
+#include "un260/serial_number/serial_number.h"
 #include "un260/lv_system/user_cfg.h"
 
 
