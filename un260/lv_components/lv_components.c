@@ -1,6 +1,7 @@
 #include "lv_components.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_core/lv_page_manager.h"
+#include "un260/lv_core/page_03_menu.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/user_cfg.h"
@@ -398,7 +399,7 @@ static void update_switch_visual(bool enable, bool animate) {
             lv_obj_set_x(batch_switch.switch_knob, target_x);
         }
     }
-    page_03_batch_mode_status_refre();
+    page_03_menu_refresh_batch_mode();
 #if LV_DEBUG
     printf("batch_switch_status: %s\n", machine_state_batch_enabled() ? "ON" : "OFF");
 #endif // LV_DEBUG
@@ -442,7 +443,7 @@ void batch_switch_on_0x06_result(bool success, const setting_batch_result_t *res
             }
         }
         update_switch_visual(machine_state_batch_enabled(), true);
-        page_03_batch_num_refre();
+        page_03_menu_refresh_batch_number();
         page_01_batch_refre();
         return;
     }

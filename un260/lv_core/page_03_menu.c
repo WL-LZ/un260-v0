@@ -68,6 +68,107 @@ static void page_03_create_decor(void);
 static void page_03_apply_modern_style(void);
 static void page_03_create_preview(void);
 static void page_03_create_batch_num_area(void);
+static void page_03_create_batch_label_switcher(void);
+
+static bool page_03_get_batch_labels(lv_obj_t** amount, lv_obj_t** pcs)
+{
+    if (!menu_page || !lv_obj_is_valid(menu_page)) {
+        *amount = NULL;
+        *pcs = NULL;
+        return false;
+    }
+
+    *amount = find_obj_by_name("03_amount_batch_label", page_03_menu_obj,
+                               page_03_menu_len);
+    *pcs = find_obj_by_name("03_pcs_batch_label", page_03_menu_obj,
+                            page_03_menu_len);
+    return *amount != NULL && lv_obj_is_valid(*amount) &&
+           *pcs != NULL && lv_obj_is_valid(*pcs);
+}
+
+void page_03_menu_refresh_batch_mode(void)
+{
+    lv_obj_t* amount;
+    lv_obj_t* pcs;
+    bool amount_active = machine_state_batch_mode() == AMOUNT_BATCH_MODE;
+    lv_color_t active_color = machine_state_batch_enabled()
+                              ? lv_color_hex(0x4285F4)
+                              : lv_color_hex(0x888888);
+
+    if (!page_03_get_batch_labels(&amount, &pcs)) {
+        return;
+    }
+
+    lv_obj_set_style_text_color(amount, amount_active ? active_color
+                                                       : lv_color_hex(0x888888), 0);
+    lv_obj_set_style_text_opa(amount, amount_active ? 255 : 40, 0);
+    lv_obj_set_style_text_color(pcs, amount_active ? lv_color_hex(0x888888)
+                                                   : active_color, 0);
+    lv_obj_set_style_text_opa(pcs, amount_active ? 40 : 255, 0);
+}
+
+void page_03_menu_refresh_batch_number(void)
+{
+    if (!menu_page || !lv_obj_is_valid(menu_page)) {
+        return;
+    }
+
+    if (!machine_state_batch_enabled()) {
+        update_label_by_name(page_03_menu_obj, page_03_menu_len,
+                             "03_batch_num_label", "%s", "OFF");
+    } else {
+        int batch_num = machine_state_batch_num();
+        update_label_by_name(page_03_menu_obj, page_03_menu_len,
+                             "03_batch_num_label", "%d",
+                             batch_num > 0 ? batch_num : 200);
+    }
+    page_03_batch_num_edit_reset();
+}
+
+static void page_03_create_batch_label_switcher(void)
+{
+    lv_obj_t* amount;
+    lv_obj_t* pcs;
+    lv_obj_t* container = lv_obj_create(menu_page);
+    bool amount_active = machine_state_batch_mode() == AMOUNT_BATCH_MODE;
+
+    lv_obj_remove_style_all(container);
+    lv_obj_set_pos(container, 52, 37);
+    lv_obj_set_size(container, 460, 146);
+    lv_obj_set_style_bg_color(container, lv_color_hex(0xfffffdd6), 0);
+    lv_obj_set_style_radius(container, 10, 0);
+    lv_obj_add_flag(container, LV_OBJ_FLAG_GESTURE_BUBBLE);
+    lv_obj_clear_flag(container, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollbar_mode(container, LV_SCROLLBAR_MODE_OFF);
+
+    if (!page_03_get_batch_labels(&amount, &pcs)) {
+        LV_LOG_WARN("amount_obj or pcs_obj not found. Check names or UI structure.");
+        return;
+    }
+
+    is_amount_active = amount_active;
+    lv_obj_set_parent(amount, container);
+    lv_obj_set_size(amount, 210, 35);
+    lv_obj_set_pos(amount, 118, amount_active ? 63 : 95);
+    lv_label_set_long_mode(amount, LV_LABEL_LONG_CLIP);
+    lv_obj_set_style_text_align(amount, LV_TEXT_ALIGN_CENTER, 0);
+
+    lv_obj_set_parent(pcs, container);
+    lv_obj_set_size(pcs, 160, 35);
+    lv_obj_set_pos(pcs, 143, amount_active ? 95 : 63);
+    lv_label_set_long_mode(pcs, LV_LABEL_LONG_CLIP);
+    lv_obj_set_style_text_align(pcs, LV_TEXT_ALIGN_CENTER, 0);
+
+    page_03_menu_refresh_batch_mode();
+    lv_obj_add_event_cb(container, page_03_batch_label_input_event_cb,
+                        LV_EVENT_PRESSED, NULL);
+    lv_obj_add_event_cb(container, page_03_batch_label_input_event_cb,
+                        LV_EVENT_PRESSING, NULL);
+    lv_obj_add_event_cb(container, page_03_batch_label_input_event_cb,
+                        LV_EVENT_RELEASED, NULL);
+    lv_obj_add_event_cb(container, page_03_batch_label_input_event_cb,
+                        LV_EVENT_GESTURE, NULL);
+}
 
 static void page_03_delete_batch_tip_cb(lv_timer_t* timer)
 {
@@ -1163,9 +1264,9 @@ void ui_page_03_menu_create(lv_obj_t* parent)
     lv_ui_obj_init(menu_page, page_03_menu_obj, page_03_menu_len);
     page_03_create_decor();
     page_03_create_batch_num_area();//BATCH_NUM_MIX
-    page_03_create_batch_label_switcher(menu_page);
+    page_03_create_batch_label_switcher();
     //刷新batch_num
-    page_03_batch_num_refre();
+    page_03_menu_refresh_batch_number();
     //batch开关
     create_batch_num_switch(menu_page);
     lv_obj_t* obj = get_batch_switch_container();

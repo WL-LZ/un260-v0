@@ -24,11 +24,6 @@ extern "C" {
     void page_01_bottom_a_refresh_work(bool anim_en);
     void page_01_bottom_a_refresh_fo(bool anim_en);
 
-    void page_03_create_batch_label_switcher(lv_obj_t* parent);
-    void page_03_batch_num_refre(void);
-    void page_03_batch_mode_status_refre(void);
-
-
 #ifdef __cplusplus
 }
 #endif

@@ -539,7 +539,7 @@ void page_03_batch_label_input_event_cb(lv_event_t* e)
     default:
         break;
     }
-    page_03_batch_mode_status_refre();
+    page_03_menu_refresh_batch_mode();
 #endif
 }
 
