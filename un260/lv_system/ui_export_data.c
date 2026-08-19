@@ -644,10 +644,7 @@ static bool ui_export_data_write_csv_file(const char *file_path)
 
 static void ui_export_data_unlock_timer_cb(lv_timer_t *timer)
 {
-    LV_UNUSED(timer);
-
-    if (g_ui_export_data_unlock_timer) {
-        lv_timer_del(g_ui_export_data_unlock_timer);
+    if (timer == g_ui_export_data_unlock_timer) {
         g_ui_export_data_unlock_timer = NULL;
     }
     g_ui_export_data_lock = false;
@@ -664,15 +661,21 @@ static void ui_export_data_start_lock(void)
     g_ui_export_data_unlock_timer = lv_timer_create(ui_export_data_unlock_timer_cb, UI_EXPORT_LOCK_MS, NULL);
     if (g_ui_export_data_unlock_timer) {
         lv_timer_set_repeat_count(g_ui_export_data_unlock_timer, 1);
+    } else {
+        g_ui_export_data_lock = false;
     }
 }
 
 bool ui_export_data_request(void)
 {
     struct stat st;
-    char export_name[96];
-    char csv_path[256];
-    char html_path[256];
+    char export_name[96] = {0};
+    char csv_path[256] = {0};
+    char html_path[256] = {0};
+    char csv_tmp_path[sizeof(csv_path) + 5] = {0};
+    char html_tmp_path[sizeof(html_path) + 5] = {0};
+    int written;
+    bool ok = false;
 
     if (g_ui_export_data_lock) {
         ui_export_data_show_normal_toast(UI_EXPORT_TOAST_TEXT_EXPORTING);
@@ -698,20 +701,46 @@ bool ui_export_data_request(void)
     }
 
     ui_export_data_build_export_name(export_name, sizeof(export_name));
-    lv_snprintf(csv_path, sizeof(csv_path), "%s/%s.csv", UI_EXPORT_USB_DIR, export_name);
-    lv_snprintf(html_path, sizeof(html_path), "%s/%s.html", UI_EXPORT_USB_DIR, export_name);
-
-    if (!ui_export_data_write_csv_file(csv_path)) {
-        ui_export_data_show_alarm_toast(UI_EXPORT_TOAST_TEXT_EXPORT_FAILED);
-        return false;
+    written = lv_snprintf(csv_path, sizeof(csv_path), "%s/%s.csv",
+                          UI_EXPORT_USB_DIR, export_name);
+    if (written < 0 || (size_t)written >= sizeof(csv_path)) {
+        goto cleanup;
+    }
+    written = lv_snprintf(html_path, sizeof(html_path), "%s/%s.html",
+                          UI_EXPORT_USB_DIR, export_name);
+    if (written < 0 || (size_t)written >= sizeof(html_path)) {
+        goto cleanup;
+    }
+    written = lv_snprintf(csv_tmp_path, sizeof(csv_tmp_path), "%s.tmp", csv_path);
+    if (written < 0 || (size_t)written >= sizeof(csv_tmp_path)) {
+        goto cleanup;
+    }
+    written = lv_snprintf(html_tmp_path, sizeof(html_tmp_path), "%s.tmp", html_path);
+    if (written < 0 || (size_t)written >= sizeof(html_tmp_path)) {
+        goto cleanup;
     }
 
-    if (!ui_export_data_write_html_file(html_path)) {
-        ui_export_data_show_alarm_toast(UI_EXPORT_TOAST_TEXT_EXPORT_FAILED);
-        return false;
+    if (!ui_export_data_write_csv_file(csv_tmp_path) ||
+        !ui_export_data_write_html_file(html_tmp_path)) {
+        goto cleanup;
     }
+    if (rename(csv_tmp_path, csv_path) != 0 ||
+        rename(html_tmp_path, html_path) != 0) {
+        goto cleanup;
+    }
+    ok = true;
 
-    return true;
+cleanup:
+    if (csv_tmp_path[0] != '\0') {
+        unlink(csv_tmp_path);
+    }
+    if (html_tmp_path[0] != '\0') {
+        unlink(html_tmp_path);
+    }
+    if (!ok) {
+        ui_export_data_show_alarm_toast(UI_EXPORT_TOAST_TEXT_EXPORT_FAILED);
+    }
+    return ok;
 }
 
 ui_export_text_result_t ui_export_text_lines(const char *file_prefix,
@@ -727,6 +756,7 @@ ui_export_text_result_t ui_export_text_lines(const char *file_prefix,
     FILE *fp;
     size_t prefix_pos = 0;
     int suffix = 0;
+    int written;
 
     if (lines == NULL || line_count == 0U) {
         return UI_EXPORT_TEXT_EMPTY;
@@ -759,16 +789,21 @@ ui_export_text_result_t ui_export_text_lines(const char *file_prefix,
         return UI_EXPORT_TEXT_FAILED;
     }
 
-    do {
+    for (suffix = 0; suffix <= 99; suffix++) {
         if (suffix == 0) {
-            lv_snprintf(file_path, sizeof(file_path), "%s/%s_%s.txt",
-                        UI_EXPORT_USB_DIR, safe_prefix, timestamp);
+            written = lv_snprintf(file_path, sizeof(file_path), "%s/%s_%s.txt",
+                                  UI_EXPORT_USB_DIR, safe_prefix, timestamp);
         } else {
-            lv_snprintf(file_path, sizeof(file_path), "%s/%s_%s_%02d.txt",
-                        UI_EXPORT_USB_DIR, safe_prefix, timestamp, suffix);
+            written = lv_snprintf(file_path, sizeof(file_path), "%s/%s_%s_%02d.txt",
+                                  UI_EXPORT_USB_DIR, safe_prefix, timestamp, suffix);
         }
-        suffix++;
-    } while (suffix <= 99 && access(file_path, F_OK) == 0);
+        if (written < 0 || (size_t)written >= sizeof(file_path)) {
+            return UI_EXPORT_TEXT_FAILED;
+        }
+        if (access(file_path, F_OK) != 0) {
+            break;
+        }
+    }
 
     if (suffix > 99) {
         return UI_EXPORT_TEXT_FAILED;
