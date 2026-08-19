@@ -43,6 +43,67 @@ ui_element_group_t all_ui_groups[] = {
 };
 
 static ui_page_t current_page = (ui_page_t)-1;
+
+typedef void (*ui_page_create_fn_t)(lv_obj_t *parent);
+typedef void (*ui_page_destroy_fn_t)(void);
+
+typedef struct {
+    ui_page_create_fn_t create;
+    ui_page_destroy_fn_t destroy;
+} ui_page_registration_t;
+
+static void ui_manager_create_main(lv_obj_t *parent)
+{
+    ui_main_create(parent);
+    resume_counting_sim();
+}
+
+static void ui_manager_create_debug(lv_obj_t *parent)
+{
+    LV_UNUSED(parent);
+    ui_page_10_debug_create();
+}
+
+static const ui_page_registration_t g_page_registry[UI_PAGE_COUNT] = {
+    [UI_PAGE_BOOT_ANIM] = { ui_page_00_boot_anim_create, ui_page_00_boot_anim_destroy },
+    [UI_PAGE_MAIN] = { ui_manager_create_main, ui_main_destroy },
+    [UI_PAGE_LIST] = { ui_page_02_list_create, ui_page_02_list_destroy },
+    [UI_PAGE_MENU] = { ui_page_03_menu_create, ui_page_03_menu_destroy },
+    [UI_PAGE_SETTING] = { ui_page_06_settings_create, ui_page_06_settings_destroy },
+    [UI_PAGE_SET_PASSAGE] = { ui_page_05_set_password_create, ui_page_05_set_password_destroy },
+    [UI_PAGE_CURR] = { ui_page_07_curr_create, ui_page_07_curr_destroy },
+    [UI_PAGE_BOOT] = { ui_page_08_curr_create, ui_page_08_curr_destroy },
+    [UI_PAGE_CIS_CALIB] = { ui_page_cis_calib_create, ui_page_cis_calib_destroy },
+    [UI_PAGE_DEBUG] = { ui_manager_create_debug, ui_page_10_debug_destroy },
+    [UI_PAGE_TIMESET] = { ui_page_11_timeset_create, ui_page_11_timeset_destroy },
+    [UI_PAGE_SENSOR] = { ui_page_12_sensor_create, ui_page_12_sensor_destroy },
+    [UI_PAGE_UPGRADE] = { ui_page_13_upgrade_create, ui_page_13_upgrade_destroy },
+    [UI_PAGE_MAIN_UPGRADE] = { ui_page_14_main_upgrade_create, ui_page_14_main_upgrade_destroy },
+    [UI_PAGE_IMAGE_UPGRADE] = { ui_page_15_image_upgrade_create, ui_page_15_image_upgrade_destroy },
+    [UI_PAGE_UI_UPGRADE] = { ui_page_16_ui_upgrade_create, ui_page_16_ui_upgrade_destroy },
+    [UI_PAGE_MOTOR_TEST] = { ui_page_17_motor_test_create, ui_page_17_motor_test_destroy },
+    [UI_PAGE_PURE] = { ui_page_18_pure_create, ui_page_18_pure_destroy },
+    [UI_PAGE_HISTORY] = { ui_page_19_history_create, ui_page_19_history_destroy },
+    [UI_PAGE_PRINT_SETTING] = { ui_page_20_set_print_create, ui_page_20_set_print_destroy },
+    [UI_PAGE_LANGUAGE_SETTING] = { ui_page_21_set_language_create, ui_page_21_set_language_destroy },
+    [UI_PAGE_DOUBLE_NOTE_SETTING] = { ui_page_22_set_double_note_create, ui_page_22_set_double_note_destroy },
+    [UI_PAGE_FLAP_SETTING] = { ui_page_23_set_flap_create, ui_page_23_set_flap_destroy },
+    [UI_PAGE_REJECT_POCKET_SETTING] = { ui_page_24_set_reject_pocket_create, ui_page_24_set_reject_pocket_destroy },
+    [UI_PAGE_SERIAL_NUMBER_SETTING] = { ui_page_25_set_serial_number_create, ui_page_25_set_serial_number_destroy },
+    [UI_PAGE_AGING_SETTING] = { ui_page_26_set_aging_create, ui_page_26_set_aging_destroy },
+    [UI_PAGE_CFD_LEVEL_SETTING] = { ui_page_27_set_cfd_level_create, ui_page_27_set_cfd_level_destroy },
+    [UI_PAGE_IMAGE_GET] = { ui_page_28_get_image_create, ui_page_28_get_image_destroy },
+    [UI_PAGE_PASSWORD_CHANGE] = { ui_page_29_set_password_create, ui_page_29_set_password_destroy },
+    [UI_PAGE_FACTORY_SETTING] = { ui_page_30_set_factory_create, ui_page_30_set_factory_destroy },
+    [UI_PAGE_WAVE_GET] = { ui_page_31_get_wave_create, ui_page_31_get_wave_destroy },
+};
+
+static bool ui_manager_page_is_registered(ui_page_t page)
+{
+    return page >= UI_PAGE_BOOT_ANIM && page < UI_PAGE_COUNT &&
+           g_page_registry[page].create != NULL;
+}
+
 //销毁当前页面
 static void destroy_current_page(void)
 {
@@ -53,40 +114,9 @@ static void destroy_current_page(void)
             return; // 直接返回，不执行销毁
         }
     }
-    switch (current_page) {
-    case UI_PAGE_BOOT_ANIM: ui_page_00_boot_anim_destroy(); break;     
-    case UI_PAGE_MAIN:    ui_main_destroy();    break;
-    case UI_PAGE_LIST:    ui_page_02_list_destroy();    break;
-    case UI_PAGE_MENU:    ui_page_03_menu_destroy(); break;
-    case UI_PAGE_SET_PASSAGE: ui_page_05_set_password_destroy(); break;
-    case UI_PAGE_SETTING: ui_page_06_settings_destroy(); break;
-    case UI_PAGE_CURR: ui_page_07_curr_destroy(); break;
-    case UI_PAGE_BOOT: ui_page_08_curr_destroy(); break;
-    case UI_PAGE_DETAIL:   break;
-    case UI_PAGE_COUNT:   break;
-    case UI_PAGE_CIS_CALIB: ui_page_cis_calib_destroy(); break;
-    case UI_PAGE_TIMESET: ui_page_11_timeset_destroy(); break;
-    case UI_PAGE_DEBUG: ui_page_10_debug_destroy(); break;
-    case UI_PAGE_SENSOR: ui_page_12_sensor_destroy(); break;
-    case UI_PAGE_UPGRADE: ui_page_13_upgrade_destroy(); break;
-    case UI_PAGE_MAIN_UPGRADE: ui_page_14_main_upgrade_destroy(); break;
-    case UI_PAGE_IMAGE_UPGRADE: ui_page_15_image_upgrade_destroy(); break;
-    case UI_PAGE_UI_UPGRADE: ui_page_16_ui_upgrade_destroy(); break;
-    case UI_PAGE_MOTOR_TEST: ui_page_17_motor_test_destroy(); break;
-    case UI_PAGE_PURE: ui_page_18_pure_destroy(); break;
-    case UI_PAGE_HISTORY: ui_page_19_history_destroy(); break;
-    case UI_PAGE_PRINT_SETTING: ui_page_20_set_print_destroy(); break;
-    case UI_PAGE_LANGUAGE_SETTING: ui_page_21_set_language_destroy(); break;
-    case UI_PAGE_DOUBLE_NOTE_SETTING: ui_page_22_set_double_note_destroy(); break;
-    case UI_PAGE_FLAP_SETTING: ui_page_23_set_flap_destroy(); break;
-    case UI_PAGE_REJECT_POCKET_SETTING: ui_page_24_set_reject_pocket_destroy(); break;
-    case UI_PAGE_SERIAL_NUMBER_SETTING: ui_page_25_set_serial_number_destroy(); break;
-    case UI_PAGE_AGING_SETTING: ui_page_26_set_aging_destroy(); break;
-    case UI_PAGE_CFD_LEVEL_SETTING: ui_page_27_set_cfd_level_destroy(); break;
-    case UI_PAGE_IMAGE_GET: ui_page_28_get_image_destroy(); break;
-    case UI_PAGE_PASSWORD_CHANGE: ui_page_29_set_password_destroy(); break;
-    case UI_PAGE_FACTORY_SETTING: ui_page_30_set_factory_destroy(); break;
-    case UI_PAGE_WAVE_GET: ui_page_31_get_wave_destroy(); break;
+    if (current_page >= UI_PAGE_BOOT_ANIM && current_page < UI_PAGE_COUNT &&
+        g_page_registry[current_page].destroy != NULL) {
+        g_page_registry[current_page].destroy();
     }
 }
 
@@ -118,41 +148,7 @@ static void create_new_page(ui_page_t page)
 
         return; // 直接返回，不执行创建
     }
-    switch (page) {
-    case UI_PAGE_BOOT_ANIM: ui_page_00_boot_anim_create(lv_scr_act()); break;
-    case UI_PAGE_MAIN:    ui_main_create(lv_scr_act()); resume_counting_sim();   break;
-    case UI_PAGE_LIST:    ui_page_02_list_create(lv_scr_act());    break;
-    case UI_PAGE_MENU:    ui_page_03_menu_create(lv_scr_act()); break;
-    case UI_PAGE_SET_PASSAGE: ui_page_05_set_password_create(lv_scr_act()); break;
-    case UI_PAGE_SETTING: ui_page_06_settings_create(lv_scr_act()); break;
-    case UI_PAGE_CURR: ui_page_07_curr_create(lv_scr_act()); break;
-    case UI_PAGE_BOOT: ui_page_08_curr_create(lv_scr_act()); break;
-    case UI_PAGE_CIS_CALIB: ui_page_cis_calib_create(lv_scr_act()); break;
-    case UI_PAGE_DEBUG: ui_page_10_debug_create(); break;
-    case UI_PAGE_TIMESET: ui_page_11_timeset_create(lv_scr_act()); break;
-    case UI_PAGE_SENSOR: ui_page_12_sensor_create(lv_scr_act()); break;
-    case UI_PAGE_UPGRADE: ui_page_13_upgrade_create(lv_scr_act()); break;
-    case UI_PAGE_MAIN_UPGRADE: ui_page_14_main_upgrade_create(lv_scr_act()); break;
-    case UI_PAGE_IMAGE_UPGRADE: ui_page_15_image_upgrade_create(lv_scr_act()); break;
-    case UI_PAGE_UI_UPGRADE: ui_page_16_ui_upgrade_create(lv_scr_act()); break;
-    case UI_PAGE_MOTOR_TEST: ui_page_17_motor_test_create(lv_scr_act()); break;
-    case UI_PAGE_PURE: ui_page_18_pure_create(lv_scr_act()); break;
-    case UI_PAGE_HISTORY: ui_page_19_history_create(lv_scr_act()); break;
-    case UI_PAGE_PRINT_SETTING: ui_page_20_set_print_create(lv_scr_act()); break;
-    case UI_PAGE_LANGUAGE_SETTING: ui_page_21_set_language_create(lv_scr_act()); break;
-    case UI_PAGE_DOUBLE_NOTE_SETTING: ui_page_22_set_double_note_create(lv_scr_act()); break;
-    case UI_PAGE_FLAP_SETTING: ui_page_23_set_flap_create(lv_scr_act()); break;
-    case UI_PAGE_REJECT_POCKET_SETTING: ui_page_24_set_reject_pocket_create(lv_scr_act()); break;
-    case UI_PAGE_SERIAL_NUMBER_SETTING: ui_page_25_set_serial_number_create(lv_scr_act()); break;
-    case UI_PAGE_AGING_SETTING: ui_page_26_set_aging_create(lv_scr_act()); break;
-    case UI_PAGE_CFD_LEVEL_SETTING: ui_page_27_set_cfd_level_create(lv_scr_act()); break;
-    case UI_PAGE_IMAGE_GET: ui_page_28_get_image_create(lv_scr_act()); break;
-    case UI_PAGE_PASSWORD_CHANGE: ui_page_29_set_password_create(lv_scr_act()); break;
-    case UI_PAGE_FACTORY_SETTING: ui_page_30_set_factory_create(lv_scr_act()); break;
-    case UI_PAGE_WAVE_GET: ui_page_31_get_wave_create(lv_scr_act()); break;
-    case UI_PAGE_DETAIL: break;
-    case UI_PAGE_COUNT: break;
-    }
+    g_page_registry[page].create(lv_scr_act());
 }
 
 typedef struct {
@@ -187,6 +183,7 @@ void ui_manager_switch(ui_page_t page)
     ui_page_t from = current_page;
 
     if (page == current_page) return;
+    if (!ui_manager_page_is_registered(page)) return;
     ui_manager_notify_page_switch(from, page);
     destroy_current_page();
     create_new_page(page);
