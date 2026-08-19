@@ -1,18 +1,27 @@
 #include "page_12_sensor.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/settings_detail_ui.h"
-#include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_system/ui_text.h"
-#include "un260/lv_system/user_cfg.h"
 #include "un260/diagnostic/sensor_state.h"
+
+#include <string.h>
 
 #define SENSOR_SCALE_Y_DEFAULT 330
 #define SENSOR_QUERY_PERIOD_MS 300
 
-static lv_obj_t* sensor_page = NULL;
-static lv_timer_t* sensor_poll_timer = NULL;
-static lv_obj_t* value_labels[SENSOR_VOLTAGE_CH_NUM] = { 0 };
-static uint32_t last_update_count = 0;
+typedef struct {
+    lv_obj_t *page;
+    lv_obj_t *value_labels[SENSOR_VOLTAGE_CH_NUM];
+    lv_timer_t *poll_timer;
+    uint32_t last_update_count;
+} sensor_page_context_t;
+
+static sensor_page_context_t g_sensor_page;
+
+static void sensor_page_context_reset(void)
+{
+    memset(&g_sensor_page, 0, sizeof(g_sensor_page));
+}
 
 static const char* sensor_names[SENSOR_VOLTAGE_CH_NUM] = {
     "QTH", "QTL", "RJH", "RJL", "PS1L", "PS1R", "PS2", "PS5L", "PS5R", "ST", "SD"
@@ -34,20 +43,22 @@ static void sensor_refresh_view(void)
     sensor_voltage_snapshot_t snapshot;
 
     sensor_state_get_snapshot(&snapshot);
-    if (last_update_count == snapshot.update_count) return;
-    last_update_count = snapshot.update_count;
+    if (g_sensor_page.last_update_count == snapshot.update_count) return;
+    g_sensor_page.last_update_count = snapshot.update_count;
 
     for (int i = 0; i < SENSOR_VOLTAGE_CH_NUM; i++) {
-        if (!value_labels[i] || !lv_obj_is_valid(value_labels[i])) continue;
+        lv_obj_t *value_label = g_sensor_page.value_labels[i];
+
+        if (!value_label || !lv_obj_is_valid(value_label)) continue;
 
         if (snapshot.valid[i]) {
             const uint8_t raw = snapshot.raw[i];
             const float v = sensor_raw_to_volt(raw);
-            lv_label_set_text_fmt(value_labels[i], "%.3f V", v);
-            lv_obj_set_style_text_color(value_labels[i], lv_color_hex(0x1C8E4D), 0);
+            lv_label_set_text_fmt(value_label, "%.3f V", v);
+            lv_obj_set_style_text_color(value_label, lv_color_hex(0x1C8E4D), 0);
         } else {
-            lv_label_set_text(value_labels[i], "-- V");
-            lv_obj_set_style_text_color(value_labels[i], lv_color_hex(0xdee2de), 0);
+            lv_label_set_text(value_label, "-- V");
+            lv_obj_set_style_text_color(value_label, lv_color_hex(0xdee2de), 0);
         }
     }
 }
@@ -67,12 +78,14 @@ static void sensor_esc_cb(lv_event_t* e)
 
 void ui_page_12_sensor_create(lv_obj_t* parent)
 {
-    (void)parent;
-    if (sensor_page) return;
+    if (g_sensor_page.page && lv_obj_is_valid(g_sensor_page.page)) return;
+
+    ui_page_12_sensor_destroy();
 
     lv_obj_t* content = NULL;
-    sensor_page = settings_detail_create_page(parent, ui_text_get(UI_TEXT_SETTINGS_SENSOR_VOLTAGE),
-                                              sensor_esc_cb, &content);
+    g_sensor_page.page = settings_detail_create_page(
+        parent, ui_text_get(UI_TEXT_SETTINGS_SENSOR_VOLTAGE),
+        sensor_esc_cb, &content);
 
     lv_obj_t* grid = lv_obj_create(content);
     lv_obj_set_pos(grid, 20, 20);
@@ -102,32 +115,31 @@ void ui_page_12_sensor_create(lv_obj_t* parent)
         lv_obj_set_style_text_color(name, lv_color_hex(0x355779), 0);
         lv_obj_align(name, LV_ALIGN_TOP_LEFT, 0, 0);
 
-        value_labels[i] = lv_label_create(card);
-        lv_label_set_text(value_labels[i], "-- V");
-        lv_obj_set_style_text_font(value_labels[i], &lv_font_instrument_sans_medium_20, 0);
-        lv_obj_set_style_text_color(value_labels[i], lv_color_hex(0x8B9AAF), 0);
-        lv_obj_align(value_labels[i], LV_ALIGN_BOTTOM_LEFT, 0, 0);
+        g_sensor_page.value_labels[i] = lv_label_create(card);
+        lv_label_set_text(g_sensor_page.value_labels[i], "-- V");
+        lv_obj_set_style_text_font(g_sensor_page.value_labels[i],
+                                   &lv_font_instrument_sans_medium_20, 0);
+        lv_obj_set_style_text_color(g_sensor_page.value_labels[i],
+                                    lv_color_hex(0x8B9AAF), 0);
+        lv_obj_align(g_sensor_page.value_labels[i], LV_ALIGN_BOTTOM_LEFT, 0, 0);
     }
 
-    last_update_count = 0;
     sensor_refresh_view();
     sensor_send_query();
-    sensor_poll_timer = lv_timer_create(sensor_poll_timer_cb, SENSOR_QUERY_PERIOD_MS, NULL);
+    g_sensor_page.poll_timer = lv_timer_create(sensor_poll_timer_cb,
+                                               SENSOR_QUERY_PERIOD_MS, NULL);
 }
 
 void ui_page_12_sensor_destroy(void)
 {
-    if (sensor_poll_timer) {
-        lv_timer_del(sensor_poll_timer);
-        sensor_poll_timer = NULL;
+    if (g_sensor_page.poll_timer) {
+        lv_timer_del(g_sensor_page.poll_timer);
+        g_sensor_page.poll_timer = NULL;
     }
 
-    if (sensor_page) {
-        lv_obj_del(sensor_page);
-        sensor_page = NULL;
+    if (g_sensor_page.page && lv_obj_is_valid(g_sensor_page.page)) {
+        lv_obj_del(g_sensor_page.page);
     }
 
-    for (int i = 0; i < SENSOR_VOLTAGE_CH_NUM; i++) {
-        value_labels[i] = NULL;
-    }
+    sensor_page_context_reset();
 }
