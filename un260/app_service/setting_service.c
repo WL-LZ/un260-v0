@@ -69,10 +69,24 @@ static bool setting_basic_request_take_timeout(setting_basic_request_slot_t *slo
     return slot != NULL && protocol_request_take_timeout(&slot->request);
 }
 
-static protocol_request_t g_batch_request = PROTOCOL_REQUEST_INITIALIZER(SETTING_REQUEST_TIMEOUT_MS);
-static setting_batch_request_type_t g_batch_req_type = SETTING_BATCH_REQUEST_NONE;
-static setting_batch_snapshot_t g_batch_req_target = { false, 0 };
-static setting_batch_snapshot_t g_batch_req_previous = { false, 0 };
+typedef struct {
+    protocol_request_t request;
+    setting_batch_request_type_t type;
+    setting_batch_snapshot_t target;
+    setting_batch_snapshot_t previous;
+#if SETTING_BATCH_TRACE_ENABLE
+    uint32_t trace_next_seq;
+    uint32_t trace_active_seq;
+    uint64_t trace_tx_ms;
+#endif
+} setting_batch_request_slot_t;
+
+static setting_batch_request_slot_t g_batch_request = {
+    .request = PROTOCOL_REQUEST_INITIALIZER(SETTING_REQUEST_TIMEOUT_MS),
+    .type = SETTING_BATCH_REQUEST_NONE,
+    .target = { false, 0 },
+    .previous = { false, 0 },
+};
 
 typedef struct {
     protocol_request_t request;
@@ -150,10 +164,6 @@ static void setting_value_request_clear(setting_value_request_slot_t *slot)
 }
 
 #if SETTING_BATCH_TRACE_ENABLE
-static uint32_t g_batch_trace_next_seq = 0;
-static uint32_t g_batch_trace_active_seq = 0;
-static uint64_t g_batch_trace_tx_ms = 0;
-
 static const char *setting_batch_trace_source(setting_batch_request_type_t type)
 {
     if (type == SETTING_BATCH_REQUEST_NUMBER) return "NUMBER";
@@ -168,13 +178,17 @@ static const char *setting_batch_trace_status(uint8_t status)
 
 static void setting_batch_trace_tx(void)
 {
-    g_batch_trace_active_seq = ++g_batch_trace_next_seq;
-    g_batch_trace_tx_ms = protocol_request_now_ms();
+    g_batch_request.trace_active_seq = ++g_batch_request.trace_next_seq;
+    g_batch_request.trace_tx_ms = protocol_request_now_ms();
     printf("[BATCH_TRACE] TX seq=%u time_ms=%llu source=%s payload=%u target_enable=%u target_num=%u previous_enable=%u previous_num=%u\n",
-           g_batch_trace_active_seq, (unsigned long long)g_batch_trace_tx_ms,
-           setting_batch_trace_source(g_batch_req_type), (unsigned)g_batch_req_target.num,
-           (unsigned)g_batch_req_target.enable, (unsigned)g_batch_req_target.num,
-           (unsigned)g_batch_req_previous.enable, (unsigned)g_batch_req_previous.num);
+           g_batch_request.trace_active_seq,
+           (unsigned long long)g_batch_request.trace_tx_ms,
+           setting_batch_trace_source(g_batch_request.type),
+           (unsigned)g_batch_request.target.num,
+           (unsigned)g_batch_request.target.enable,
+           (unsigned)g_batch_request.target.num,
+           (unsigned)g_batch_request.previous.enable,
+           (unsigned)g_batch_request.previous.num);
 }
 
 static void setting_batch_trace_reject(setting_batch_request_type_t source, uint8_t payload)
@@ -183,23 +197,61 @@ static void setting_batch_trace_reject(setting_batch_request_type_t source, uint
 
     printf("[BATCH_TRACE] REJECT time_ms=%llu source=%s payload=%u active_seq=%u active_source=%s active_target_enable=%u active_target_num=%u\n",
            (unsigned long long)now_ms, setting_batch_trace_source(source), (unsigned)payload,
-           g_batch_trace_active_seq, setting_batch_trace_source(g_batch_req_type),
-           (unsigned)g_batch_req_target.enable, (unsigned)g_batch_req_target.num);
+           g_batch_request.trace_active_seq,
+           setting_batch_trace_source(g_batch_request.type),
+           (unsigned)g_batch_request.target.enable,
+           (unsigned)g_batch_request.target.num);
 }
 
 static void setting_batch_trace_rx(uint8_t status)
 {
     uint64_t now_ms = protocol_request_now_ms();
-    uint64_t latency_ms = now_ms - g_batch_trace_tx_ms;
+    uint64_t latency_ms = now_ms - g_batch_request.trace_tx_ms;
 
     printf("[BATCH_TRACE] RX seq=%u time_ms=%llu latency_ms=%llu status=%s source=%s payload=%u target_enable=%u target_num=%u previous_enable=%u previous_num=%u\n",
-           g_batch_trace_active_seq, (unsigned long long)now_ms, (unsigned long long)latency_ms,
+           g_batch_request.trace_active_seq, (unsigned long long)now_ms,
+           (unsigned long long)latency_ms,
            setting_batch_trace_status(status),
-           setting_batch_trace_source(g_batch_req_type), (unsigned)g_batch_req_target.num,
-           (unsigned)g_batch_req_target.enable, (unsigned)g_batch_req_target.num,
-           (unsigned)g_batch_req_previous.enable, (unsigned)g_batch_req_previous.num);
+           setting_batch_trace_source(g_batch_request.type),
+           (unsigned)g_batch_request.target.num,
+           (unsigned)g_batch_request.target.enable,
+           (unsigned)g_batch_request.target.num,
+           (unsigned)g_batch_request.previous.enable,
+           (unsigned)g_batch_request.previous.num);
 }
 #endif
+
+static bool setting_batch_request_begin(setting_batch_request_type_t type,
+                                        bool target_enable,
+                                        uint8_t sent_num,
+                                        bool previous_enable,
+                                        uint8_t previous_num)
+{
+    if (protocol_request_is_pending(&g_batch_request.request)) {
+#if SETTING_BATCH_TRACE_ENABLE
+        setting_batch_trace_reject(type, sent_num);
+#endif
+        return false;
+    }
+
+    g_batch_request.type = type;
+    g_batch_request.target.enable = target_enable;
+    g_batch_request.target.num = sent_num;
+    g_batch_request.previous.enable = previous_enable;
+    g_batch_request.previous.num = previous_num;
+    if (!protocol_request_begin(&g_batch_request.request)) return false;
+
+#if SETTING_BATCH_TRACE_ENABLE
+    setting_batch_trace_tx();
+#endif
+    if (protocol_send(0x06, &sent_num, 1) < 0) {
+        protocol_request_finish(&g_batch_request.request);
+        g_batch_request.type = SETTING_BATCH_REQUEST_NONE;
+        return false;
+    }
+
+    return true;
+}
 
 bool setting_service_request_mode(uint8_t target)
 {
@@ -366,61 +418,21 @@ uint32_t setting_service_take_basic_timeouts(void)
 
 bool setting_service_request_batch_number(uint8_t num, bool previous_enable, uint8_t previous_num)
 {
-    uint8_t batch_cmd = num;
-
-    if (protocol_request_is_pending(&g_batch_request)) {
-#if SETTING_BATCH_TRACE_ENABLE
-        setting_batch_trace_reject(SETTING_BATCH_REQUEST_NUMBER, batch_cmd);
-#endif
-        return false;
-    }
-    g_batch_req_type = SETTING_BATCH_REQUEST_NUMBER;
-    g_batch_req_target.enable = true;
-    g_batch_req_target.num = num;
-    g_batch_req_previous.enable = previous_enable;
-    g_batch_req_previous.num = previous_num;
-    if (!protocol_request_begin(&g_batch_request)) return false;
-#if SETTING_BATCH_TRACE_ENABLE
-    setting_batch_trace_tx();
-#endif
-    if (protocol_send(0x06, &batch_cmd, 1) < 0) {
-        protocol_request_finish(&g_batch_request);
-        g_batch_req_type = SETTING_BATCH_REQUEST_NONE;
-        return false;
-    }
-    return true;
+    return setting_batch_request_begin(SETTING_BATCH_REQUEST_NUMBER,
+                                       true, num,
+                                       previous_enable, previous_num);
 }
 
 bool setting_service_request_batch_switch(bool target_enable, uint8_t sent_num, bool previous_enable, uint8_t previous_num)
 {
-    uint8_t batch_cmd = sent_num;
-
-    if (protocol_request_is_pending(&g_batch_request)) {
-#if SETTING_BATCH_TRACE_ENABLE
-        setting_batch_trace_reject(SETTING_BATCH_REQUEST_SWITCH, batch_cmd);
-#endif
-        return false;
-    }
-    g_batch_req_type = SETTING_BATCH_REQUEST_SWITCH;
-    g_batch_req_target.enable = target_enable;
-    g_batch_req_target.num = sent_num;
-    g_batch_req_previous.enable = previous_enable;
-    g_batch_req_previous.num = previous_num;
-    if (!protocol_request_begin(&g_batch_request)) return false;
-#if SETTING_BATCH_TRACE_ENABLE
-    setting_batch_trace_tx();
-#endif
-    if (protocol_send(0x06, &batch_cmd, 1) < 0) {
-        protocol_request_finish(&g_batch_request);
-        g_batch_req_type = SETTING_BATCH_REQUEST_NONE;
-        return false;
-    }
-    return true;
+    return setting_batch_request_begin(SETTING_BATCH_REQUEST_SWITCH,
+                                       target_enable, sent_num,
+                                       previous_enable, previous_num);
 }
 
 bool setting_service_batch_take_result(uint8_t status, setting_batch_result_t *result)
 {
-    if (!protocol_request_can_take_result(&g_batch_request)) {
+    if (!protocol_request_can_take_result(&g_batch_request.request)) {
 #if SETTING_BATCH_TRACE_ENABLE
         if (status == 0x01 || status == 0x02) {
             printf("[BATCH_TRACE] RX_UNMATCHED time_ms=%llu status=%s\n",
@@ -440,7 +452,7 @@ bool setting_service_batch_take_result(uint8_t status, setting_batch_result_t *r
 #if SETTING_BATCH_TRACE_ENABLE
         printf("[BATCH_TRACE] RX_RESULT_NULL time_ms=%llu status=%s pending=1 active_seq=%u\n",
                (unsigned long long)protocol_request_now_ms(), setting_batch_trace_status(status),
-               g_batch_trace_active_seq);
+               g_batch_request.trace_active_seq);
 #endif
         return false;
     }
@@ -448,22 +460,23 @@ bool setting_service_batch_take_result(uint8_t status, setting_batch_result_t *r
 #if SETTING_BATCH_TRACE_ENABLE
     setting_batch_trace_rx(status);
 #endif
-    result->type = g_batch_req_type;
-    result->target = g_batch_req_target;
-    result->previous = g_batch_req_previous;
-    protocol_request_finish(&g_batch_request);
-    g_batch_req_type = SETTING_BATCH_REQUEST_NONE;
+    result->type = g_batch_request.type;
+    result->target = g_batch_request.target;
+    result->previous = g_batch_request.previous;
+    protocol_request_finish(&g_batch_request.request);
+    g_batch_request.type = SETTING_BATCH_REQUEST_NONE;
     return true;
 }
 
 bool setting_service_batch_take_timeout(setting_batch_result_t *result)
 {
-    if (!result || !protocol_request_take_timeout(&g_batch_request)) return false;
+    if (!result ||
+        !protocol_request_take_timeout(&g_batch_request.request)) return false;
 
-    result->type = g_batch_req_type;
-    result->target = g_batch_req_target;
-    result->previous = g_batch_req_previous;
-    g_batch_req_type = SETTING_BATCH_REQUEST_NONE;
+    result->type = g_batch_request.type;
+    result->target = g_batch_request.target;
+    result->previous = g_batch_request.previous;
+    g_batch_request.type = SETTING_BATCH_REQUEST_NONE;
     return true;
 }
 
