@@ -22,7 +22,6 @@ lv_obj_t* page_debug = NULL;
 lv_obj_t* page_sensor = NULL;
 lv_obj_t* page_upgrade = NULL;
 lv_obj_t* page_motor_test = NULL;
-lv_obj_t* pure_page = NULL;
 lv_obj_t* boot_anim_page = NULL;
 lv_obj_t* print_setting_page = NULL;
 lv_obj_t* language_setting_page = NULL;

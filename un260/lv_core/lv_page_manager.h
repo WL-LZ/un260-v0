@@ -18,7 +18,6 @@ extern "C" {
     extern lv_obj_t* page_sensor;
     extern lv_obj_t* page_upgrade;
     extern lv_obj_t* page_motor_test;
-    extern lv_obj_t* pure_page;
     extern lv_obj_t* boot_anim_page;
     extern lv_obj_t* print_setting_page;
     extern lv_obj_t* language_setting_page;
