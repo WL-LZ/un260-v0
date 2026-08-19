@@ -17,6 +17,7 @@
 #include "un260/lv_components/lv_fault_popup.h"
 #include "un260/lv_components/smart_island.h"
 #include "un260/lv_core/lv_page_manager.h"
+#include "un260/lv_core/page_01_main.h"
 #include "un260/lv_core/page_06_settings.h"
 #include "un260/lv_core/page_31_get_wave.h"
 #include "un260/lv_drivers/lv_drivers.h"
@@ -82,7 +83,7 @@ static void app_counting_runtime_refresh_compact(const counting_sim_t *sim_data)
 static bool app_counting_runtime_main_page_active(void)
 {
     return ui_manager_get_current_page() == UI_PAGE_MAIN &&
-           main_page != NULL && lv_obj_is_valid(main_page);
+           page_01_main_is_created();
 }
 
 static bool app_counting_runtime_should_keep_current_page(void)

@@ -11,6 +11,7 @@
 #include "un260/currency/currency_reply.h"
 #include "un260/lv_components/smart_island.h"
 #include "un260/lv_core/lv_page_manager.h"
+#include "un260/lv_core/page_01_main.h"
 #include "un260/lv_core/page_07_curr.h"
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_system/platform_app.h"
@@ -25,7 +26,7 @@ static bool app_currency_runtime_boot_ready(void)
 static bool app_currency_runtime_main_page_active(void)
 {
     return ui_manager_get_current_page() == UI_PAGE_MAIN &&
-           main_page != NULL && lv_obj_is_valid(main_page);
+           page_01_main_is_created();
 }
 
 static void app_currency_runtime_trigger_denom_query(

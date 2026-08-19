@@ -14,6 +14,7 @@
 #include "un260/counting/counting_denom_query_service.h"
 #include "un260/counting/counting_session_state.h"
 #include "un260/lv_core/lv_page_manager.h"
+#include "un260/lv_core/page_01_main.h"
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/protocol/protocol_frame.h"
@@ -28,7 +29,7 @@ static counting_session_state_t g_counting_session;
 static bool app_command_runtime_main_page_active(void)
 {
     return ui_manager_get_current_page() == UI_PAGE_MAIN &&
-           main_page != NULL && lv_obj_is_valid(main_page);
+           page_01_main_is_created();
 }
 
 static void app_command_runtime_dispatch(uint8_t cmd,

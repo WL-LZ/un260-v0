@@ -10,7 +10,6 @@ extern "C" {
 #endif
 
     void page_01_mode_switch_refre(void);
-    void page_01_create_mian_scrollable_container(void);
     void page_01_add_refre(void);
     void page_01_work_refre(void);
     void page_01_batch_refre(void);

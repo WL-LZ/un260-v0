@@ -20,6 +20,8 @@
 #include "un260/lv_system/ui_export_data.h"
 #include <stdint.h>
 
+static lv_obj_t* main_page = NULL;
+
 // 添加数组元素计数变量
 int page_01_main_len = 0;
 
@@ -59,6 +61,58 @@ static page_01_detail_section_t s_detail_section = PAGE_01_DETAIL_SECTION_A;
 static void page_01_detail_section_btn_style_apply(void);
 static void page_01_detail_section_btn_event_cb(lv_event_t* e);
 static void page_01_detail_section_btn_text_refresh(void);
+static void page_01_create_main_scrollable_container(void);
+
+static void page_01_create_main_scrollable_container(void)
+{
+    if (page_01_main_scroll_container) return;
+
+    page_01_main_scroll_container = lv_obj_create(main_page);
+    lv_obj_set_pos(page_01_main_scroll_container, 720, 54);
+    lv_obj_set_size(page_01_main_scroll_container, 300, 240);
+    lv_obj_set_style_bg_opa(page_01_main_scroll_container, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(page_01_main_scroll_container, 0, 0);
+    lv_obj_set_style_pad_all(page_01_main_scroll_container, 0, 0);
+    lv_obj_set_scrollbar_mode(page_01_main_scroll_container, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_set_scroll_dir(page_01_main_scroll_container, LV_DIR_VER);
+    lv_obj_add_flag(page_01_main_scroll_container, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(page_01_main_scroll_container, page_01_detail_area_event_cb,
+                        LV_EVENT_PRESSED, NULL);
+    lv_obj_add_event_cb(page_01_main_scroll_container, page_01_detail_area_event_cb,
+                        LV_EVENT_PRESSING, NULL);
+    lv_obj_add_event_cb(page_01_main_scroll_container, page_01_detail_area_event_cb,
+                        LV_EVENT_RELEASED, NULL);
+    lv_obj_add_event_cb(page_01_main_scroll_container, page_01_detail_area_event_cb,
+                        LV_EVENT_PRESS_LOST, NULL);
+
+    for (int i = 1; i <= 10; i++) {
+        char name[32];
+        lv_obj_t* obj;
+
+        snprintf(name, sizeof(name), "denom_%d_label", i);
+        obj = find_obj_by_name(name, page_01_main_obj, page_01_main_len);
+        if (obj) {
+            lv_obj_set_parent(obj, page_01_main_scroll_container);
+            lv_obj_set_pos(obj, 8, (i - 1) * 32);
+        }
+
+        snprintf(name, sizeof(name), "pcs_%d_label", i);
+        obj = find_obj_by_name(name, page_01_main_obj, page_01_main_len);
+        if (obj) {
+            lv_obj_set_parent(obj, page_01_main_scroll_container);
+            lv_obj_set_pos(obj, 106, (i - 1) * 32);
+        }
+
+        snprintf(name, sizeof(name), "amount_%d_label", i);
+        obj = find_obj_by_name(name, page_01_main_obj, page_01_main_len);
+        if (obj) {
+            lv_obj_set_parent(obj, page_01_main_scroll_container);
+            lv_obj_set_pos(obj, 213, (i - 1) * 32);
+        }
+    }
+
+    page_01_detail_scroll_attach(main_page, page_01_main_scroll_container);
+}
 
 static void page_01_smart_island_action_cb(uint8_t action_id)
 {
@@ -1148,8 +1202,9 @@ ui_element_t page_01_main_obj[] = {
 void ui_main_create(lv_obj_t* parent)
 {
     //creat page_main 
-    if (main_page) return;
-    main_page = lv_obj_create(lv_scr_act());
+    if (page_01_main_is_created()) return;
+    ui_main_destroy();
+    main_page = lv_obj_create(parent ? parent : lv_scr_act());
     lv_obj_remove_style_all(main_page);
     lv_obj_set_pos(main_page, 0, 0);
     lv_obj_set_size(main_page, 1280, 400);
@@ -1175,7 +1230,7 @@ void ui_main_create(lv_obj_t* parent)
     // 创建滚动容器并将标签放入容器
    // sim_data_init();           // 初始化面额列表、count=0、amount=0
     ui_refresh_main_page();    // 把面额+"0"+"0.00"写到每一行
-    page_01_create_mian_scrollable_container();
+    page_01_create_main_scrollable_container();
     page_01_add_refre();
     page_01_work_refre();
     page_01_batch_refre();
@@ -1210,7 +1265,7 @@ void ui_main_create(lv_obj_t* parent)
 
 void ui_main_destroy(void)
 {
-    if (main_page) {
+    if (page_01_main_is_created()) {
         // 安全清理所有资源和定时器
         cleanup_counting_sim();
         page_01_bottom_a_destroy();
@@ -1223,10 +1278,53 @@ void ui_main_destroy(void)
     }
 }
 
+bool page_01_main_is_created(void)
+{
+    return main_page != NULL && lv_obj_is_valid(main_page);
+}
+
+void page_01_main_suspend(void)
+{
+    if (!page_01_main_is_created()) {
+        return;
+    }
+
+    pause_counting_sim();
+    lv_obj_add_flag(main_page, LV_OBJ_FLAG_HIDDEN);
+}
+
+bool page_01_main_resume(void)
+{
+    if (!page_01_main_is_created()) {
+        return false;
+    }
+
+    lv_obj_clear_flag(main_page, LV_OBJ_FLAG_HIDDEN);
+    resume_counting_sim();
+    smart_island_create(main_page);
+    if (page_01_main_scroll_container && lv_obj_is_valid(page_01_main_scroll_container)) {
+        lv_obj_scroll_to_y(page_01_main_scroll_container, 0, LV_ANIM_OFF);
+    }
+    page_01_add_refre();
+    page_01_work_refre();
+    page_01_batch_refre();
+    page_01_face_refre();
+    page_01_cfd_refre();
+    page_01_speed_refre();
+    page_01_err_num_refre();
+    page_01_curr_img_refre();
+    ui_refresh_main_page();
+    if (page_01_main_scroll_container && lv_obj_is_valid(page_01_main_scroll_container)) {
+        lv_obj_scroll_to_y(page_01_main_scroll_container, 0, LV_ANIM_OFF);
+    }
+    page_01_scroll_hint_on_enter();
+    return true;
+}
+
 //// 更新页面上的所有多语言文本
 void page_01_update_language_texts(void) //刷新主界面多语言文本
 {
-    if (!main_page) return;
+    if (!page_01_main_is_created()) return;
 
     page_01_detail_section_btn_text_refresh();
     page_01_bottom_a_refresh_mode(false);

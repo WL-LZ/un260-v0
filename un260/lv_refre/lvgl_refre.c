@@ -48,62 +48,6 @@ void page_01_mode_switch_refre()
     page_01_bottom_a_refresh_mode(false);
 }
 
-void page_01_create_mian_scrollable_container(void)
-{
-    if (page_01_main_scroll_container) return;
-    lv_obj_t* parent = find_obj_by_name("back_img", page_01_main_obj, page_01_main_len);
-    if (!parent)
-        parent = lv_scr_act();
-    page_01_main_scroll_container = lv_obj_create(main_page);
-    lv_obj_set_pos(page_01_main_scroll_container, 720, 54);
-    lv_obj_set_size(page_01_main_scroll_container, 300, 240);
-    lv_obj_set_style_bg_opa(page_01_main_scroll_container, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(page_01_main_scroll_container, 0, 0);
-    lv_obj_set_style_pad_all(page_01_main_scroll_container, 0, 0);
-    lv_obj_set_scrollbar_mode(page_01_main_scroll_container, LV_SCROLLBAR_MODE_OFF);
-    lv_obj_set_scroll_dir(page_01_main_scroll_container, LV_DIR_VER);
-    lv_obj_add_flag(page_01_main_scroll_container, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_add_event_cb(page_01_main_scroll_container, page_01_detail_area_event_cb, LV_EVENT_PRESSED, NULL);
-    lv_obj_add_event_cb(page_01_main_scroll_container, page_01_detail_area_event_cb, LV_EVENT_PRESSING, NULL);
-    lv_obj_add_event_cb(page_01_main_scroll_container, page_01_detail_area_event_cb, LV_EVENT_RELEASED, NULL);
-    lv_obj_add_event_cb(page_01_main_scroll_container, page_01_detail_area_event_cb, LV_EVENT_PRESS_LOST, NULL);
-
-    //将右边详情放到容器里面
-    for (int i = 1; i <= 10; i++)
-    {
-        char name[32];
-        lv_obj_t* obj;
-
-        snprintf(name, sizeof(name), "denom_%d_label", i);
-        obj = find_obj_by_name(name, page_01_main_obj, page_01_main_len);
-        if (obj)
-        {
-            lv_obj_set_parent(obj, page_01_main_scroll_container);
-            lv_obj_set_pos(obj, 8, (i - 1) * 32);
-        }
-
-        snprintf(name, sizeof(name), "pcs_%d_label", i);
-        obj = find_obj_by_name(name, page_01_main_obj, page_01_main_len);
-        if (obj)
-        {
-            lv_obj_set_parent(obj, page_01_main_scroll_container);
-            lv_obj_set_pos(obj, 106, (i - 1) * 32);
-        }
-
-
-        snprintf(name, sizeof(name), "amount_%d_label", i);
-        obj = find_obj_by_name(name, page_01_main_obj, page_01_main_len);
-        if (obj)
-        {
-            lv_obj_set_parent(obj, page_01_main_scroll_container);
-            lv_obj_set_pos(obj, 213, (i - 1) * 32);
-        }
-    }
-
-    page_01_detail_scroll_attach(main_page, page_01_main_scroll_container);
-}
-
-
 void page_03_create_batch_label_switcher(lv_obj_t* parent)
 {
     // 创建容器

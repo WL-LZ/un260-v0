@@ -12,6 +12,9 @@ typedef enum {
 
 void ui_main_create(lv_obj_t* parent);
 void ui_main_destroy(void);
+bool page_01_main_is_created(void);
+void page_01_main_suspend(void);
+bool page_01_main_resume(void);
 void page_01_update_language_texts(void);
 void page_01_detail_section_set(page_01_detail_section_t section, bool refresh);
 page_01_detail_section_t page_01_detail_section_get(void);

@@ -373,9 +373,6 @@ void ui_page_18_pure_request_exit(void)
 
     g_pure_page.exiting = true;
     smart_island_close();
-    if (main_page && lv_obj_is_valid(main_page)) {
-        smart_island_create(main_page);
-    }
     ui_manager_switch(UI_PAGE_MAIN);
     g_pure_page.exiting = false;
 }

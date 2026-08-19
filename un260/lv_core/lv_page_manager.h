@@ -5,7 +5,6 @@
 extern "C" {
 #endif
 #include "un260/lv_resources/lv_img_init.h" 
-    extern lv_obj_t* main_page;
     typedef enum {
         UI_PAGE_BOOT_ANIM = 0,
         UI_PAGE_MAIN,
