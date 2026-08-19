@@ -430,7 +430,6 @@ void ui_page_20_set_print_create(lv_obj_t* parent)
     print_page = settings_detail_create_page(parent,
                                              ui_text_get(UI_TEXT_SETTINGS_PRINT_TITLE),
                                              print_esc_cb, &content);
-    print_setting_page = print_page;
 
     lv_obj_t* card = settings_detail_create_card(content, 38, 18, 730, 306);
 
@@ -474,7 +473,6 @@ void ui_page_20_set_print_destroy(void)
     }
 
     print_page = NULL;
-    print_setting_page = NULL;
     value_space_top = NULL;
     value_head1 = NULL;
     value_head2 = NULL;

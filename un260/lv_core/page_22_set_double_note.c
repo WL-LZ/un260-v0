@@ -325,7 +325,6 @@ void ui_page_22_set_double_note_create(lv_obj_t* parent)
     double_note_page = settings_detail_create_page(parent,
                                                    ui_text_get(UI_TEXT_SETTINGS_DOUBLE_NOTE_TITLE),
                                                    double_note_esc_cb, &content);
-    double_note_setting_page = double_note_page;
 
     double_note_create_panel(content);
     double_note_create_preview(content);
@@ -340,7 +339,6 @@ void ui_page_22_set_double_note_destroy(void)
     }
 
     double_note_page = NULL;
-    double_note_setting_page = NULL;
     preview_level_label = NULL;
     preview_desc_label = NULL;
 

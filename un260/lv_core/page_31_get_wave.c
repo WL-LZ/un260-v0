@@ -381,7 +381,6 @@ void ui_page_31_get_wave_create(lv_obj_t* parent)
     wave_page = settings_detail_create_page(parent,
                                             ui_text_get(UI_TEXT_SETTINGS_WAVE_GET_TITLE),
                                             wave_esc_cb, &content);
-    wave_get_page = wave_page;
 
     wave_create_left_panel(content);
     wave_create_preview(content);
@@ -398,7 +397,6 @@ void ui_page_31_get_wave_destroy(void)
     }
 
     wave_page = NULL;
-    wave_get_page = NULL;
     wave_chart_host = NULL;
     wave_line = NULL;
     wave_placeholder = NULL;

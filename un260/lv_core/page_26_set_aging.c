@@ -280,7 +280,6 @@ void ui_page_26_set_aging_create(lv_obj_t* parent)
     aging_page = settings_detail_create_page(parent,
                                              ui_text_get(UI_TEXT_SETTINGS_AGING_TITLE),
                                              aging_esc_cb, &content);
-    aging_setting_page = aging_page;
 
     aging_create_panel(content);
     aging_create_preview(content);
@@ -297,7 +296,6 @@ void ui_page_26_set_aging_destroy(void)
     }
 
     aging_page = NULL;
-    aging_setting_page = NULL;
     start_btn = NULL;
     start_label = NULL;
     status_label = NULL;

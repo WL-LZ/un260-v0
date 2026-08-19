@@ -320,7 +320,6 @@ void ui_page_25_set_serial_number_create(lv_obj_t* parent)
     serial_page = settings_detail_create_page(parent,
                                               ui_text_get(UI_TEXT_SETTINGS_SERIAL_LEVEL_TITLE),
                                               serial_level_esc_cb, &content);
-    serial_number_setting_page = serial_page;
 
     serial_level_create_panel(content);
     serial_level_create_preview(content);
@@ -335,7 +334,6 @@ void ui_page_25_set_serial_number_destroy(void)
     }
 
     serial_page = NULL;
-    serial_number_setting_page = NULL;
     preview_level_label = NULL;
     preview_desc_label = NULL;
 

@@ -299,7 +299,6 @@ void ui_page_24_set_reject_pocket_create(lv_obj_t* parent)
     reject_page = settings_detail_create_page(parent,
                                               ui_text_get(UI_TEXT_SETTINGS_REJECT_POCKET_TITLE),
                                               reject_esc_cb, &content);
-    reject_pocket_setting_page = reject_page;
 
     reject_create_panel(content);
     reject_create_preview(content);
@@ -315,7 +314,6 @@ void ui_page_24_set_reject_pocket_destroy(void)
     }
 
     reject_page = NULL;
-    reject_pocket_setting_page = NULL;
     value_box = NULL;
     value_label = NULL;
     preview_value_label = NULL;

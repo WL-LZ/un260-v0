@@ -248,7 +248,6 @@ void ui_page_30_set_factory_create(lv_obj_t* parent)
     factory_page = settings_detail_create_page(parent,
                                                ui_text_get(UI_TEXT_SETTINGS_FACTORY_TITLE),
                                                factory_esc_cb, &content);
-    factory_setting_page = factory_page;
 
     factory_create_panel(content);
     factory_create_preview(content);
@@ -265,7 +264,6 @@ void ui_page_30_set_factory_destroy(void)
     }
 
     factory_page = NULL;
-    factory_setting_page = NULL;
     sweep_line = NULL;
     factory_reboot_timer = NULL;
     anim_tick = 0;

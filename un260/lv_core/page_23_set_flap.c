@@ -341,7 +341,6 @@ void ui_page_23_set_flap_create(lv_obj_t* parent)
     flap_page = settings_detail_create_page(parent,
                                             ui_text_get(UI_TEXT_SETTINGS_FLAP_TITLE),
                                             flap_esc_cb, &content);
-    flap_setting_page = flap_page;
 
     flap_create_panel(content);
     flap_create_preview(content);
@@ -355,7 +354,6 @@ void ui_page_23_set_flap_destroy(void)
     }
 
     flap_page = NULL;
-    flap_setting_page = NULL;
     preview_flap = NULL;
     preview_flap_label = NULL;
 

@@ -13,19 +13,6 @@ lv_obj_t* main_page = NULL;
 lv_obj_t* setting_page = NULL;
 lv_obj_t* menu_page = NULL;
 lv_obj_t* set_password_page = NULL;
-lv_obj_t* print_setting_page = NULL;
-lv_obj_t* language_setting_page = NULL;
-lv_obj_t* double_note_setting_page = NULL;
-lv_obj_t* flap_setting_page = NULL;
-lv_obj_t* reject_pocket_setting_page = NULL;
-lv_obj_t* serial_number_setting_page = NULL;
-lv_obj_t* aging_setting_page = NULL;
-lv_obj_t* cfd_level_setting_page = NULL;
-lv_obj_t* image_get_page = NULL;
-lv_obj_t* password_change_page = NULL;
-lv_obj_t* factory_setting_page = NULL;
-lv_obj_t* wave_get_page = NULL;
-
 #define UI_PAGE_STACK_CAPACITY 10
 #define UI_PAGE_INVALID ((ui_page_t)-1)
 

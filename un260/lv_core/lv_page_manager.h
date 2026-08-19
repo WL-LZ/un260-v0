@@ -9,19 +9,6 @@ extern "C" {
     extern lv_obj_t* setting_page;
     extern lv_obj_t* menu_page;
     extern lv_obj_t* set_password_page;
-    extern lv_obj_t* print_setting_page;
-    extern lv_obj_t* language_setting_page;
-    extern lv_obj_t* double_note_setting_page;
-    extern lv_obj_t* flap_setting_page;
-    extern lv_obj_t* reject_pocket_setting_page;
-    extern lv_obj_t* serial_number_setting_page;
-    extern lv_obj_t* aging_setting_page;
-    extern lv_obj_t* cfd_level_setting_page;
-    extern lv_obj_t* image_get_page;
-    extern lv_obj_t* password_change_page;
-    extern lv_obj_t* factory_setting_page;
-    extern lv_obj_t* wave_get_page;
-
     typedef enum {
         UI_PAGE_BOOT_ANIM = 0,
         UI_PAGE_MAIN,

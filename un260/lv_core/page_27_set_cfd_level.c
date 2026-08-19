@@ -376,7 +376,6 @@ void ui_page_27_set_cfd_level_create(lv_obj_t* parent)
     cfd_level_page = settings_detail_create_page(parent,
                                                  ui_text_get(UI_TEXT_SETTINGS_CFD_LEVEL_TITLE),
                                                  cfd_esc_cb, &content);
-    cfd_level_setting_page = cfd_level_page;
 
     cfd_create_left_panel(content);
     cfd_create_detail_panel(content);
@@ -390,7 +389,6 @@ void ui_page_27_set_cfd_level_destroy(void)
     }
 
     cfd_level_page = NULL;
-    cfd_level_setting_page = NULL;
     currency_label = NULL;
     selected_scene = 0;
 

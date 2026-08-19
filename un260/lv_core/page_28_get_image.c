@@ -466,7 +466,6 @@ void ui_page_28_get_image_create(lv_obj_t* parent)
     image_page = settings_detail_create_page(parent,
                                              ui_text_get(UI_TEXT_SETTINGS_IMAGE_GET_TITLE),
                                              image_esc_cb, &content);
-    image_get_page = image_page;
 
     image_create_left_panel(content);
     image_create_preview(content);
@@ -485,7 +484,6 @@ void ui_page_28_get_image_destroy(void)
     }
 
     image_page = NULL;
-    image_get_page = NULL;
     image_canvas = NULL;
     image_placeholder = NULL;
     image_status_label = NULL;

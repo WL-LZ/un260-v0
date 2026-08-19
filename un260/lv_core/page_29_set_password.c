@@ -193,7 +193,6 @@ void ui_page_29_set_password_create(lv_obj_t* parent)
                                                         ui_text_get(UI_TEXT_SETTINGS_PASSWORD),
                                                         password_setting_esc_cb,
                                                         &content);
-    password_change_page = password_setting_page;
 
     card = password_setting_create_card(content, 276, 18, 730, 306);
     settings_detail_create_label(card, ui_text_get(UI_TEXT_SETTINGS_PASSWORD),
@@ -231,7 +230,6 @@ void ui_page_29_set_password_destroy(void)
     }
 
     password_setting_page = NULL;
-    password_change_page = NULL;
     memset(field_cards, 0, sizeof(field_cards));
     memset(field_values, 0, sizeof(field_values));
     memset(field_text, 0, sizeof(field_text));

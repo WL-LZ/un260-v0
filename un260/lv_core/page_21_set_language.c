@@ -251,7 +251,6 @@ void ui_page_21_set_language_create(lv_obj_t* parent)
     language_page = settings_detail_create_page(parent,
                                                 ui_text_get(UI_TEXT_SETTINGS_LANGUAGE_TITLE),
                                                 language_esc_cb, &content);
-    language_setting_page = language_page;
 
     language_create_panel(content);
     language_create_preview(content);
@@ -265,7 +264,6 @@ void ui_page_21_set_language_destroy(void)
     }
 
     language_page = NULL;
-    language_setting_page = NULL;
     status_label = NULL;
     list_area = NULL;
     summary_code_label = NULL;
