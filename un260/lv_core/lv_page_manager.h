@@ -12,7 +12,6 @@ extern "C" {
     extern lv_obj_t* set_password_page;
     extern lv_obj_t* settings_page;
     extern lv_obj_t* curr_page;
-    extern lv_obj_t* boot_page;
     extern lv_obj_t* cis_calib_page;
     extern lv_obj_t* page_debug;
     extern lv_obj_t* page_sensor;

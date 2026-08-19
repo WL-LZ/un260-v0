@@ -16,7 +16,6 @@ lv_obj_t* menu_page = NULL;
 lv_obj_t* set_password_page = NULL;
 lv_obj_t* settings_page = NULL;
 lv_obj_t* curr_page = NULL;
-lv_obj_t* boot_page = NULL;
 lv_obj_t* cis_calib_page = NULL;
 lv_obj_t* page_debug = NULL;
 lv_obj_t* page_sensor = NULL;

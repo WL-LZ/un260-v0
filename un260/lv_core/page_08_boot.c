@@ -1,27 +1,40 @@
 #include "un260/lv_core/page_08_boot.h"
-#include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_resources/lv_image_declear.h" 
 #include "un260/lv_resources/lv_img_init.h" 
-#include "un260/lv_system/platform_app.h"
-#include "un260/lv_system/user_cfg.h"
 #include "un260/lv_components/lv_components.h"
-#include "un260/lv_refre/lvgl_refre.h"
-#include "un260/lv_drivers/lv_drivers.h"
 #include "un260/boot/boot_service.h"
 #include "../aic_ui/aic_ui.h"
-#include "page_08_boot.h"
-static lv_obj_t* boot_progress_bg = NULL;
-static lv_obj_t* boot_progress_fill = NULL;
-static lv_obj_t* boot_progress_percent_label = NULL;
-static lv_obj_t* boot_progress_loading_label = NULL;
-static uint8_t boot_progress_percent = 0;
-static lv_timer_t* boot_progress_handshake_timer = NULL;
+
+#include <string.h>
 
 #define BOOT_SELFTEST_LIST_X 575
 #define BOOT_SELFTEST_LIST_Y 76
 #define BOOT_SELFTEST_LIST_COUNT 5
 
-static lv_obj_t* boot_selftest_list = NULL;
+typedef struct {
+    lv_obj_t *page;
+    lv_obj_t *progress_bg;
+    lv_obj_t *progress_fill;
+    lv_obj_t *progress_percent_label;
+    lv_obj_t *progress_loading_label;
+    lv_obj_t *selftest_list;
+    lv_timer_t *handshake_timer;
+    lv_selftest_list_state_t item_states[BOOT_SELFTEST_LIST_COUNT];
+    uint8_t progress_percent;
+} boot_page_context_t;
+
+static boot_page_context_t g_boot_page;
+
+static void boot_page_context_reset(void)
+{
+    uint8_t i;
+
+    memset(&g_boot_page, 0, sizeof(g_boot_page));
+    for (i = 0; i < BOOT_SELFTEST_LIST_COUNT; i++) {
+        g_boot_page.item_states[i] = LV_SELFTEST_LIST_STATE_PENDING;
+    }
+}
+
 static const char* boot_selftest_base_names[BOOT_SELFTEST_LIST_COUNT] = {
     "Read config parameters",
     "Sensor self-test ",
@@ -50,14 +63,6 @@ static const char* boot_selftest_failed_names[BOOT_SELFTEST_LIST_COUNT] = {
     "Electromagnet self-test failed",
     "Image board self-test failed",
 };
-static lv_selftest_list_state_t boot_selftest_item_state[BOOT_SELFTEST_LIST_COUNT] = {
-    LV_SELFTEST_LIST_STATE_PENDING,
-    LV_SELFTEST_LIST_STATE_PENDING,
-    LV_SELFTEST_LIST_STATE_PENDING,
-    LV_SELFTEST_LIST_STATE_PENDING,
-    LV_SELFTEST_LIST_STATE_PENDING,
-};
-
 ui_element_t page_08_curr_obj[] = {
     // 背景图
 
@@ -86,42 +91,45 @@ static lv_selftest_list_state_t boot_selftest_list_state_from_result(uint8_t res
 static void boot_progress_apply(uint8_t percent)
 {
     if (percent > 100) percent = 100;
-    boot_progress_percent = percent;
+    g_boot_page.progress_percent = percent;
 
-    if (boot_progress_fill && lv_obj_is_valid(boot_progress_fill)) {
-        lv_coord_t w = (lv_coord_t)((BOOT_PROGRESS_W * boot_progress_percent) / 100);
-        lv_obj_set_width(boot_progress_fill, w);
+    if (g_boot_page.progress_fill && lv_obj_is_valid(g_boot_page.progress_fill)) {
+        lv_coord_t w = (lv_coord_t)((BOOT_PROGRESS_W * g_boot_page.progress_percent) / 100);
+        lv_obj_set_width(g_boot_page.progress_fill, w);
     }
 
-    if (boot_progress_percent_label && lv_obj_is_valid(boot_progress_percent_label)) {
-        lv_label_set_text_fmt(boot_progress_percent_label, "%u%%", boot_progress_percent);
+    if (g_boot_page.progress_percent_label &&
+        lv_obj_is_valid(g_boot_page.progress_percent_label)) {
+        lv_label_set_text_fmt(g_boot_page.progress_percent_label, "%u%%",
+                              g_boot_page.progress_percent);
     }
 }
 
 static void boot_progress_handshake_timer_cb(lv_timer_t* t)
 {
     LV_UNUSED(t);
-    if (boot_progress_percent >= 18) return;
+    if (g_boot_page.progress_percent >= 18) return;
 
-    uint8_t next = (uint8_t)(boot_progress_percent + 3);
+    uint8_t next = (uint8_t)(g_boot_page.progress_percent + 3);
     if (next > 18) next = 18;
     boot_progress_apply(next);
 }
 
 static void boot_progress_handshake_tick_start(void)
 {
-    if (boot_progress_handshake_timer == NULL) {
-        boot_progress_handshake_timer = lv_timer_create(boot_progress_handshake_timer_cb, 1000, NULL);
+    if (g_boot_page.handshake_timer == NULL) {
+        g_boot_page.handshake_timer = lv_timer_create(
+            boot_progress_handshake_timer_cb, 1000, NULL);
     } else {
-        lv_timer_resume(boot_progress_handshake_timer);
+        lv_timer_resume(g_boot_page.handshake_timer);
     }
 }
 
 static void boot_progress_handshake_tick_stop(void)
 {
-    if (boot_progress_handshake_timer) {
-        lv_timer_del(boot_progress_handshake_timer);
-        boot_progress_handshake_timer = NULL;
+    if (g_boot_page.handshake_timer) {
+        lv_timer_del(g_boot_page.handshake_timer);
+        g_boot_page.handshake_timer = NULL;
     }
 }
 
@@ -143,40 +151,44 @@ void boot_progress_reset(void)
 
 static void boot_progress_create(lv_obj_t* parent)
 {
-    boot_progress_bg = lv_obj_create(parent);
-    lv_obj_remove_style_all(boot_progress_bg);
-    lv_obj_set_pos(boot_progress_bg, BOOT_PROGRESS_X, BOOT_PROGRESS_Y);
-    lv_obj_set_size(boot_progress_bg, BOOT_PROGRESS_W, BOOT_PROGRESS_H);
-    lv_obj_set_style_bg_color(boot_progress_bg, lv_color_hex(0xDDEFF9), 0);
-    lv_obj_set_style_bg_opa(boot_progress_bg, LV_OPA_COVER, 0);
-    lv_obj_clear_flag(boot_progress_bg, LV_OBJ_FLAG_SCROLLABLE);
+    g_boot_page.progress_bg = lv_obj_create(parent);
+    lv_obj_remove_style_all(g_boot_page.progress_bg);
+    lv_obj_set_pos(g_boot_page.progress_bg, BOOT_PROGRESS_X, BOOT_PROGRESS_Y);
+    lv_obj_set_size(g_boot_page.progress_bg, BOOT_PROGRESS_W, BOOT_PROGRESS_H);
+    lv_obj_set_style_bg_color(g_boot_page.progress_bg, lv_color_hex(0xDDEFF9), 0);
+    lv_obj_set_style_bg_opa(g_boot_page.progress_bg, LV_OPA_COVER, 0);
+    lv_obj_clear_flag(g_boot_page.progress_bg, LV_OBJ_FLAG_SCROLLABLE);
 
-    boot_progress_fill = lv_obj_create(parent);
-    lv_obj_remove_style_all(boot_progress_fill);
-    lv_obj_set_pos(boot_progress_fill, BOOT_PROGRESS_X, BOOT_PROGRESS_Y);
-    lv_obj_set_size(boot_progress_fill, 0, BOOT_PROGRESS_H);
-    lv_obj_set_style_bg_color(boot_progress_fill, lv_color_hex(0x10A5E9), 0);
-    lv_obj_set_style_bg_opa(boot_progress_fill, LV_OPA_COVER, 0);
-    lv_obj_clear_flag(boot_progress_fill, LV_OBJ_FLAG_SCROLLABLE);
+    g_boot_page.progress_fill = lv_obj_create(parent);
+    lv_obj_remove_style_all(g_boot_page.progress_fill);
+    lv_obj_set_pos(g_boot_page.progress_fill, BOOT_PROGRESS_X, BOOT_PROGRESS_Y);
+    lv_obj_set_size(g_boot_page.progress_fill, 0, BOOT_PROGRESS_H);
+    lv_obj_set_style_bg_color(g_boot_page.progress_fill, lv_color_hex(0x10A5E9), 0);
+    lv_obj_set_style_bg_opa(g_boot_page.progress_fill, LV_OPA_COVER, 0);
+    lv_obj_clear_flag(g_boot_page.progress_fill, LV_OBJ_FLAG_SCROLLABLE);
 
-    boot_progress_loading_label = lv_label_create(parent);
-    lv_label_set_text(boot_progress_loading_label, "LOADING");
-    lv_obj_set_pos(boot_progress_loading_label, 44, 361);
-    lv_obj_set_style_text_color(boot_progress_loading_label, lv_color_hex(0x6D92AA), 0);
-    lv_obj_set_style_text_font(boot_progress_loading_label, LV_FONT_DEFAULT, 0);
+    g_boot_page.progress_loading_label = lv_label_create(parent);
+    lv_label_set_text(g_boot_page.progress_loading_label, "LOADING");
+    lv_obj_set_pos(g_boot_page.progress_loading_label, 44, 361);
+    lv_obj_set_style_text_color(g_boot_page.progress_loading_label,
+                                lv_color_hex(0x6D92AA), 0);
+    lv_obj_set_style_text_font(g_boot_page.progress_loading_label,
+                               LV_FONT_DEFAULT, 0);
 
-    boot_progress_percent_label = lv_label_create(parent);
-    lv_label_set_text(boot_progress_percent_label, "0%");
-    lv_obj_set_pos(boot_progress_percent_label, 1220, 361);
-    lv_obj_set_style_text_color(boot_progress_percent_label, lv_color_hex(0x6D92AA), 0);
-    lv_obj_set_style_text_font(boot_progress_percent_label, LV_FONT_DEFAULT, 0);
+    g_boot_page.progress_percent_label = lv_label_create(parent);
+    lv_label_set_text(g_boot_page.progress_percent_label, "0%");
+    lv_obj_set_pos(g_boot_page.progress_percent_label, 1220, 361);
+    lv_obj_set_style_text_color(g_boot_page.progress_percent_label,
+                                lv_color_hex(0x6D92AA), 0);
+    lv_obj_set_style_text_font(g_boot_page.progress_percent_label,
+                               LV_FONT_DEFAULT, 0);
 
-    boot_progress_apply(boot_progress_percent);
+    boot_progress_apply(g_boot_page.progress_percent);
 }
 
 static void boot_selftest_list_create(lv_obj_t* parent) // 创建自检卡片列表
 {
-    if (parent == NULL || boot_selftest_list != NULL) {
+    if (parent == NULL || g_boot_page.selftest_list != NULL) {
         return;
     }
 
@@ -196,42 +208,47 @@ static void boot_selftest_list_create(lv_obj_t* parent) // 创建自检卡片列
     cfg.pending_text_color = lv_color_hex(0x0084FF);
     cfg.error_text_color = lv_color_hex(0x0084FF);
 
-    boot_selftest_list = lv_selftest_list_create_with_config(parent, BOOT_SELFTEST_LIST_COUNT, &cfg);
-    if (boot_selftest_list == NULL) {
+    g_boot_page.selftest_list = lv_selftest_list_create_with_config(
+        parent, BOOT_SELFTEST_LIST_COUNT, &cfg);
+    if (g_boot_page.selftest_list == NULL) {
         return;
     }
 
-    lv_obj_set_pos(boot_selftest_list, BOOT_SELFTEST_LIST_X, BOOT_SELFTEST_LIST_Y);
-    lv_obj_move_foreground(boot_selftest_list);
+    lv_obj_set_pos(g_boot_page.selftest_list,
+                   BOOT_SELFTEST_LIST_X, BOOT_SELFTEST_LIST_Y);
+    lv_obj_move_foreground(g_boot_page.selftest_list);
 
     for (uint8_t i = 0; i < BOOT_SELFTEST_LIST_COUNT; i++) {
-        lv_selftest_list_set_item(boot_selftest_list, i, boot_selftest_base_names[i],
+        lv_selftest_list_set_item(g_boot_page.selftest_list, i,
+                                  boot_selftest_base_names[i],
                                   LV_SELFTEST_LIST_STATE_PENDING);
     }
 }
 
 static void boot_selftest_list_apply_state(uint8_t index, lv_selftest_list_state_t state) // 刷新单卡状态
 {
-    if (boot_selftest_list == NULL || index >= BOOT_SELFTEST_LIST_COUNT) {
+    if (g_boot_page.selftest_list == NULL ||
+        !lv_obj_is_valid(g_boot_page.selftest_list) ||
+        index >= BOOT_SELFTEST_LIST_COUNT) {
         return;
     }
 
-    boot_selftest_item_state[index] = state;
-    lv_selftest_list_set_item(boot_selftest_list, index,
+    g_boot_page.item_states[index] = state;
+    lv_selftest_list_set_item(g_boot_page.selftest_list, index,
                               boot_selftest_list_text_get(index, state), state);
 }
 
 static void boot_selftest_list_mark_pending(void) // 全部恢复待测
 {
     for (uint8_t i = 0; i < BOOT_SELFTEST_LIST_COUNT; i++) {
-        boot_selftest_item_state[i] = LV_SELFTEST_LIST_STATE_PENDING;
         boot_selftest_list_apply_state(i, LV_SELFTEST_LIST_STATE_PENDING);
     }
 }
 
 void boot_selftest_list_reset(void) // 重置自检卡片显示
 {
-    if (boot_selftest_list == NULL || !lv_obj_is_valid(boot_selftest_list)) {
+    if (g_boot_page.selftest_list == NULL ||
+        !lv_obj_is_valid(g_boot_page.selftest_list)) {
         return;
     }
 
@@ -240,7 +257,8 @@ void boot_selftest_list_reset(void) // 重置自检卡片显示
 
 void boot_selftest_list_sync_step(uint8_t step) // 根据步骤同步自检卡片
 {
-    if (boot_selftest_list == NULL || !lv_obj_is_valid(boot_selftest_list)) {
+    if (g_boot_page.selftest_list == NULL ||
+        !lv_obj_is_valid(g_boot_page.selftest_list)) {
         return;
     }
 
@@ -250,9 +268,9 @@ void boot_selftest_list_sync_step(uint8_t step) // 根据步骤同步自检卡�
     }
 
     for (uint8_t i = 0; i < BOOT_SELFTEST_LIST_COUNT; i++) {
-        if (boot_selftest_item_state[i] == LV_SELFTEST_LIST_STATE_ERROR) {
+        if (g_boot_page.item_states[i] == LV_SELFTEST_LIST_STATE_ERROR) {
             boot_selftest_list_apply_state(i, LV_SELFTEST_LIST_STATE_ERROR);
-        } else if (boot_selftest_item_state[i] == LV_SELFTEST_LIST_STATE_SUCCESS) {
+        } else if (g_boot_page.item_states[i] == LV_SELFTEST_LIST_STATE_SUCCESS) {
             boot_selftest_list_apply_state(i, LV_SELFTEST_LIST_STATE_SUCCESS);
         } else if (i < step) {
             boot_selftest_list_apply_state(i, LV_SELFTEST_LIST_STATE_SUCCESS);
@@ -266,7 +284,8 @@ void boot_selftest_list_sync_step(uint8_t step) // 根据步骤同步自检卡�
 
 void boot_selftest_list_finish(void) // 自检完成后全部置成功
 {
-    if (boot_selftest_list == NULL || !lv_obj_is_valid(boot_selftest_list)) {
+    if (g_boot_page.selftest_list == NULL ||
+        !lv_obj_is_valid(g_boot_page.selftest_list)) {
         return;
     }
 
@@ -277,7 +296,8 @@ void boot_selftest_list_finish(void) // 自检完成后全部置成功
 
 void boot_selftest_list_set_result(uint8_t index, uint8_t result) // 按协议结果更新单项状态
 {
-    if (boot_selftest_list == NULL || !lv_obj_is_valid(boot_selftest_list)) {
+    if (g_boot_page.selftest_list == NULL ||
+        !lv_obj_is_valid(g_boot_page.selftest_list)) {
         return;
     }
 
@@ -318,16 +338,22 @@ static const char *boot_selftest_list_text_get(uint8_t index, lv_selftest_list_s
 
 void ui_page_08_curr_create(lv_obj_t* parent)
 {
-    if (boot_page) return;
-    boot_page = lv_obj_create(lv_scr_act());
-    lv_obj_remove_style_all(boot_page);
-    lv_obj_set_pos(boot_page, 0, 0);
-    lv_obj_set_size(boot_page, 1280, 400);
-    lv_obj_clear_flag(boot_page, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_scrollbar_mode(boot_page, LV_SCROLLBAR_MODE_OFF);
-    lv_ui_obj_init(boot_page, page_08_curr_obj, page_08_curr_len);
-    boot_progress_create(boot_page);
-    boot_selftest_list_create(boot_page);
+    if (g_boot_page.page && lv_obj_is_valid(g_boot_page.page)) return;
+
+    ui_page_08_curr_destroy();
+    if (parent == NULL) {
+        parent = lv_scr_act();
+    }
+
+    g_boot_page.page = lv_obj_create(parent);
+    lv_obj_remove_style_all(g_boot_page.page);
+    lv_obj_set_pos(g_boot_page.page, 0, 0);
+    lv_obj_set_size(g_boot_page.page, 1280, 400);
+    lv_obj_clear_flag(g_boot_page.page, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollbar_mode(g_boot_page.page, LV_SCROLLBAR_MODE_OFF);
+    lv_ui_obj_init(g_boot_page.page, page_08_curr_obj, page_08_curr_len);
+    boot_progress_create(g_boot_page.page);
+    boot_selftest_list_create(g_boot_page.page);
     boot_selftest_list_reset();
     boot_selftest_list_sync_step(boot_service_self_test_sequence_index());
 
@@ -348,15 +374,11 @@ void ui_page_08_curr_create(lv_obj_t* parent)
 
 void ui_page_08_curr_destroy(void)
 {
-    if (boot_page)
-    {
-        lv_obj_del(boot_page);
-        boot_page = NULL;
-    }
-    boot_progress_bg = NULL;
-    boot_progress_fill = NULL;
-    boot_progress_percent_label = NULL;
-    boot_progress_loading_label = NULL;
-    boot_selftest_list = NULL;
     boot_progress_handshake_tick_stop();
+
+    if (g_boot_page.page && lv_obj_is_valid(g_boot_page.page)) {
+        lv_obj_del(g_boot_page.page);
+    }
+
+    boot_page_context_reset();
 }
