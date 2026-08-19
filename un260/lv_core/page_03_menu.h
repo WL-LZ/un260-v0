@@ -3,6 +3,9 @@
 #include "lvgl/lvgl.h"
 #include "un260/lv_resources/lv_img_init.h" 
 
+extern ui_element_t page_03_menu_obj[];
+extern int page_03_menu_len;
+
 void ui_page_03_menu_create(lv_obj_t* parent);
 void ui_page_03_menu_destroy(void);
 void switch_to_amount_batch(void);

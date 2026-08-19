@@ -11,7 +11,8 @@
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/page_08_boot.h"
 #include "un260/lv_drivers/lv_drivers.h"
-#include "un260/lv_refre/lvgl_refre.h"
+#include "un260/lv_core/page_01_main.h"
+#include "un260/lv_system/ui_state_runtime.h"
 #include "un260/lv_system/platform_app.h"
 
 #define APP_BOOT_FINISH_DELAY_MS       2000

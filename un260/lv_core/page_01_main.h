@@ -10,12 +10,24 @@ typedef enum {
     PAGE_01_DETAIL_SECTION_C
 } page_01_detail_section_t;
 
+extern ui_element_t page_01_main_obj[];
+extern int page_01_main_len;
+
 void ui_main_create(lv_obj_t* parent);
 void ui_main_destroy(void);
 bool page_01_main_is_created(void);
 void page_01_main_suspend(void);
 bool page_01_main_resume(void);
 void page_01_update_language_texts(void);
+void page_01_mode_switch_refre(void);
+void page_01_add_refre(void);
+void page_01_work_refre(void);
+void page_01_batch_refre(void);
+void page_01_face_refre(void);
+void page_01_cfd_refre(void);
+void page_01_speed_refre(void);
+void page_01_err_num_refre(void);
+void page_01_curr_img_refre(void);
 void page_01_detail_section_set(page_01_detail_section_t section, bool refresh);
 page_01_detail_section_t page_01_detail_section_get(void);
 void page_01_bottom_a_refresh_mode(bool anim_en);

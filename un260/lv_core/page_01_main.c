@@ -1,4 +1,5 @@
 #include "un260/lv_core/page_01_main.h"
+#include "un260/lv_core/page_01_detail_scroll.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_resources/lv_image_declear.h" 
 #include "lv_page_event.h"
@@ -6,18 +7,19 @@
 #include "un260/lv_system/platform_app.h" 
 #include <string.h>
 #include "un260/lv_resources/lv_img_init.h" 
-#include "un260/lv_refre/lvgl_refre.h"
 #include "../aic_ui/aic_ui.h"
 #include "un260/lv_components/smart_island.h"
 #include "un260/lv_system/lv_str.h" 
 #include "lv_page_declear.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/machine_state/machine_state.h"
+#include "un260/currency/currency_state.h"
 #include "un260/lv_components/lv_print_toast.h"
 #include "un260/protocol/protocol_send.h"
 #include "un260/lv_system/machine_time.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/ui_export_data.h"
+#include "un260/lv_system/ui_state_runtime.h"
 #include <stdint.h>
 
 static lv_obj_t* main_page = NULL;
@@ -112,6 +114,115 @@ static void page_01_create_main_scrollable_container(void)
     }
 
     page_01_detail_scroll_attach(main_page, page_01_main_scroll_container);
+}
+
+void page_01_mode_switch_refre(void)
+{
+    const char* mode_str = "NONE";
+
+    switch (machine_state_mode()) {
+    case MODE_MDC:
+        mode_str = "MDC";
+        break;
+    case MODE_CNT:
+        mode_str = "CNT";
+        break;
+    case MODE_VER:
+        mode_str = "VER";
+        break;
+    case MODE_SDC:
+        mode_str = "SDC";
+        break;
+    default:
+        break;
+    }
+
+    update_label_by_name(page_01_main_obj, page_01_main_len,
+                         "mix_label", "%s", mode_str);
+    update_label_by_name(page_01_main_obj, page_01_main_len,
+                         "mode_label", "%s", mode_str);
+    page_01_bottom_a_refresh_mode(false);
+}
+
+void page_01_add_refre(void)
+{
+    update_label_by_name(page_01_main_obj, page_01_main_len, "add_label", "%s",
+                         machine_state_add_enabled() ? "ADD:ON" : "ADD:OFF");
+    page_01_bottom_a_refresh_add(false);
+}
+
+void page_01_work_refre(void)
+{
+    static const char* const work[] = { "AUTO", "MANUAL" };
+
+    update_label_by_name(page_01_main_obj, page_01_main_len, "auto_label", "%s",
+                         work[machine_state_work_mode()]);
+    page_01_bottom_a_refresh_work(false);
+}
+
+void page_01_batch_refre(void)
+{
+    static const char* const batch[] = { "BATCH :", "VBATCH :" };
+    char buf[12];
+
+    snprintf(buf, sizeof(buf), "%d", machine_state_batch_num());
+    update_label_by_name(page_01_main_obj, page_01_main_len, "bacth_label", "%s",
+                         batch[machine_state_batch_mode()]);
+    update_label_by_name(page_01_main_obj, page_01_main_len, "bacth_num_label", "%s",
+                         machine_state_batch_enabled() ? buf : "OFF");
+    page_01_bottom_c_refresh_batch(false);
+}
+
+void page_01_face_refre(void)
+{
+    static const char* const face[] = { "F./O. : OFF", "F.", "O.", "F./O." };
+
+    update_label_by_name(page_01_main_obj, page_01_main_len, "face_label", "%s",
+                         face[machine_state_fo_mode()]);
+    page_01_bottom_a_refresh_fo(false);
+}
+
+void page_01_cfd_refre(void)
+{
+    static const char* const cfd[] = { "L", "M", "H" };
+
+    update_label_by_name(page_01_main_obj, page_01_main_len,
+                         "cfd_value_label", "%s", cfd[machine_state_cfd_mode()]);
+#if LV_DEBUG
+    printf("cfd:%s\n", cfd[machine_state_cfd_mode()]);
+#endif
+    page_01_bottom_c_refresh_cfd();
+}
+
+void page_01_speed_refre(void)
+{
+    static const int speed[] = { 600, 800, 1000 };
+
+    update_label_by_name(page_01_main_obj, page_01_main_len,
+                         "speed_num_label", "%d", speed[machine_state_speed()]);
+    page_01_bottom_c_refresh_speed(false);
+}
+
+void page_01_err_num_refre(void)
+{
+    char buf[12];
+
+    snprintf(buf, sizeof(buf), "%d", sim.err_expected);
+    update_label_by_name(page_01_main_obj, page_01_main_len,
+                         "reject_num_label", "%s", buf);
+}
+
+void page_01_curr_img_refre(void)
+{
+    char curr_code[4];
+    lv_obj_t* curr_img = find_obj_by_name("curr_USD_img", page_01_main_obj,
+                                          page_01_main_len);
+
+    if (!curr_img || !lv_obj_is_valid(curr_img)) {
+        return;
+    }
+    currency_state_get_active_code(curr_code);
+    lv_img_set_src(curr_img, get_currency_img(curr_code));
 }
 
 static void page_01_smart_island_action_cb(uint8_t action_id)

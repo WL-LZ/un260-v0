@@ -53,14 +53,8 @@ extern "C" {
     }ui_element_group_t;
 
 
-    extern ui_element_t page_01_main_obj[];
-    extern int page_01_main_len;
-
     extern ui_element_t page_02_list_obj[];
     extern int page_02_list_len;
-
-    extern ui_element_t page_03_menu_obj[];
-    extern int page_03_menu_len;
 
     extern ui_element_t page_04_set_obj[];
     extern int page_04_set_obj_len;

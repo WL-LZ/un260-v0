@@ -7,7 +7,7 @@
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_components/lv_components.h"
-#include "un260/lv_refre/lvgl_refre.h"
+#include "un260/lv_core/page_01_main.h"
 #include "../aic_ui/aic_ui.h"
 #include "un260/lv_system/machine_time.h"
 #include "page_11_timeset.h"

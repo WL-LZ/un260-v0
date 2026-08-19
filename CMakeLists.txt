@@ -130,7 +130,6 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_core/page_31_get_wave.c
     un260/lv_core/page_00_boot_anim.c
     
-    un260/lv_refre/lvgl_refre.c
     un260/lv_resources/lv_img_init.c
     un260/lv_system/platform_app.c
     un260/lv_system/ui_state_store.c

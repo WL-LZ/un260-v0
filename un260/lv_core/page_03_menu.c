@@ -8,7 +8,6 @@
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_components/lv_components.h"
 #include "un260/machine_state/machine_state.h"
-#include "un260/lv_refre/lvgl_refre.h"
 #include "un260/lv_system/ui_text.h"
 #include "../aic_ui/aic_ui.h"
 #include <stdlib.h>
