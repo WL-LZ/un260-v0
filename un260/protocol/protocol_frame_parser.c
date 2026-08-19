@@ -2,7 +2,7 @@
 
 #include <stddef.h>
 
-#include "protocol_frame_validator.h"
+#include "protocol_frame.h"
 
 static void protocol_frame_parser_reset(protocol_frame_parser_t *parser)
 {

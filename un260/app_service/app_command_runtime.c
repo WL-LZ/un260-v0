@@ -18,7 +18,7 @@
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/protocol/protocol_frame.h"
-#include "un260/protocol/protocol_frame_format.h"
+#include "un260/protocol/protocol_frame.h"
 #include "un260/protocol/protocol_frame_queue.h"
 
 #define APP_COMMAND_MAX_FRAMES_PER_TICK 64

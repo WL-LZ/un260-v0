@@ -2,7 +2,7 @@
 #include "uart_io.h"
 #include "un260/app_service/app_clock.h"
 #include "un260/protocol/protocol_frame.h"
-#include "un260/protocol/protocol_frame_builder.h"
+#include "un260/protocol/protocol_frame.h"
 #include "un260/protocol/protocol_send.h"
 #include "un260/boot/boot_service.h"
 #include <stdio.h>

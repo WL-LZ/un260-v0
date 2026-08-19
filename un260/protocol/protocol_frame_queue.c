@@ -3,7 +3,7 @@
 #include <pthread.h>
 #include <string.h>
 
-#include "protocol_frame_validator.h"
+#include "protocol_frame.h"
 
 static protocol_frame_t g_frames[PROTOCOL_FRAME_QUEUE_CAPACITY];
 static int g_head;
