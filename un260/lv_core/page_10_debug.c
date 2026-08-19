@@ -26,25 +26,28 @@
 #include "un260/lv_system/ui_text.h"
 #include <stdio.h>
 #include <string.h>
+
 #define MAX_LOG_LABELS 200
-static lv_obj_t* log_labels[MAX_LOG_LABELS];
-static int log_label_count = 0;
 
-// UI对象
-static lv_obj_t* ta_input;           // 输入框
-static lv_obj_t* kb_hex;             // HEX键盘
-static lv_obj_t* log_area;           // 日志滚动区
-static lv_obj_t* log_label;          // 日志文本
-static lv_obj_t* label_tx_count;     // 发送计数
-static lv_obj_t* label_rx_count;     // 接收计数
+typedef struct {
+    lv_obj_t *input;
+    lv_obj_t *keyboard;
+    lv_obj_t *log_area;
+    lv_obj_t *log_labels[MAX_LOG_LABELS];
+    lv_obj_t *tx_count_label;
+    lv_obj_t *rx_count_label;
+    int log_count;
+    uint32_t log_sequence;
+    uint32_t tx_count;
+    uint32_t rx_count;
+} debug_page_context_t;
 
-// 统计数据
-static uint32_t tx_count = 0;
-static uint32_t rx_count = 0;
+static debug_page_context_t g_debug_page;
 
-// 日志缓冲区（避免频繁分配内存）
-#define LOG_BUF_SIZE 4096
-static char log_buffer[LOG_BUF_SIZE];
+static void debug_page_context_reset(void)
+{
+    memset(&g_debug_page, 0, sizeof(g_debug_page));
+}
 
 /* ========= HEX 键盘布局 ========= */
 static const char* kb_hex_map[] = {
@@ -89,38 +92,42 @@ static void kb_hex_event_cb(lv_event_t* e) {
     const char* txt = lv_btnmatrix_get_btn_text(kb, btn_id);
 
     if (strcmp(txt, "SPACE") == 0) {
-        lv_textarea_add_char(ta_input, ' ');
+        lv_textarea_add_char(g_debug_page.input, ' ');
     }
     else if (strcmp(txt, "CLR") == 0) {
-        lv_textarea_set_text(ta_input, "");
+        lv_textarea_set_text(g_debug_page.input, "");
     }
     else if (strcmp(txt, LV_SYMBOL_BACKSPACE) == 0) {
-        lv_textarea_del_char_forward(ta_input);
+        lv_textarea_del_char_forward(g_debug_page.input);
     }
     else {
-        lv_textarea_add_text(ta_input, txt);
+        lv_textarea_add_text(g_debug_page.input, txt);
     }
 }
 
 /* ---------- 追加日志（带颜色） ---------- */
 static void append_log(const char* prefix, const char* data, const char* color_hex)
 {
-    if (!log_area) return;
+    if (!g_debug_page.log_area || !lv_obj_is_valid(g_debug_page.log_area)) return;
 
-    if (log_label_count >= MAX_LOG_LABELS) {
+    if (g_debug_page.log_count >= MAX_LOG_LABELS) {
         // 删除最老的一条
-        lv_obj_del(log_labels[0]);
-        for (int i = 1; i < log_label_count; i++) log_labels[i - 1] = log_labels[i];
-        log_label_count--;
+        if (g_debug_page.log_labels[0] &&
+            lv_obj_is_valid(g_debug_page.log_labels[0])) {
+            lv_obj_del(g_debug_page.log_labels[0]);
+        }
+        for (int i = 1; i < g_debug_page.log_count; i++) {
+            g_debug_page.log_labels[i - 1] = g_debug_page.log_labels[i];
+        }
+        g_debug_page.log_labels[--g_debug_page.log_count] = NULL;
     }
 
-    lv_obj_t* lbl = lv_label_create(log_area);
-    log_labels[log_label_count++] = lbl;
+    lv_obj_t* lbl = lv_label_create(g_debug_page.log_area);
+    g_debug_page.log_labels[g_debug_page.log_count++] = lbl;
 
-    static uint32_t timestamp = 0;
-    timestamp++;
     char buf[256];
-    snprintf(buf, sizeof(buf), "%s %04d: %s", prefix, timestamp, data);
+    snprintf(buf, sizeof(buf), "%s %04u: %s", prefix,
+             ++g_debug_page.log_sequence, data);
     lv_label_set_text(lbl, buf);
 
     // 解析颜色
@@ -131,12 +138,12 @@ static void append_log(const char* prefix, const char* data, const char* color_h
 
     // 排列纵向
     lv_coord_t y = 5;
-    for (int i = 0; i < log_label_count - 1; i++) {
-        y += lv_obj_get_height(log_labels[i]) + 2;
+    for (int i = 0; i < g_debug_page.log_count - 1; i++) {
+        y += lv_obj_get_height(g_debug_page.log_labels[i]) + 2;
     }
     lv_obj_align(lbl, LV_ALIGN_TOP_LEFT, 5, y);
 
-    lv_obj_scroll_to_y(log_area, y, LV_ANIM_ON);
+    lv_obj_scroll_to_y(g_debug_page.log_area, y, LV_ANIM_ON);
 }
 static int hex_str_to_bytes(const char *str, uint8_t *out, int max_len)
 {
@@ -157,7 +164,7 @@ static int hex_str_to_bytes(const char *str, uint8_t *out, int max_len)
 
 static void btn_send_event_cb(lv_event_t* e)
 {
-    const char* cmd_str = lv_textarea_get_text(ta_input);
+    const char* cmd_str = lv_textarea_get_text(g_debug_page.input);
     if (!cmd_str || strlen(cmd_str) < 8) return;
 
     uint8_t frame[64];
@@ -179,27 +186,40 @@ static void btn_send_event_cb(lv_event_t* e)
 
     /* ===== UI 显示 ===== */
     append_log("TX", cmd_str, "00FF00");
-    tx_count++;
-    if (label_tx_count) {  // 检查label_tx_count是否已创建
-        lv_label_set_text_fmt(label_tx_count, "TX: %d", tx_count);
+    g_debug_page.tx_count++;
+    if (g_debug_page.tx_count_label) {
+        lv_label_set_text_fmt(g_debug_page.tx_count_label, "TX: %u",
+                              g_debug_page.tx_count);
     }
 
-    lv_textarea_set_text(ta_input, "FD DF ");
-    lv_textarea_set_cursor_pos(ta_input, LV_TEXTAREA_CURSOR_LAST);
+    lv_textarea_set_text(g_debug_page.input, "FD DF ");
+    lv_textarea_set_cursor_pos(g_debug_page.input, LV_TEXTAREA_CURSOR_LAST);
 }
 
 
 
 /* ---------- 清空日志按钮 ---------- */
 static void btn_clear_log_event_cb(lv_event_t* e) {
-    for (int i = 0; i < log_label_count; i++) {
-        lv_obj_del(log_labels[i]);
+    LV_UNUSED(e);
+    for (int i = 0; i < g_debug_page.log_count; i++) {
+        if (g_debug_page.log_labels[i] &&
+            lv_obj_is_valid(g_debug_page.log_labels[i])) {
+            lv_obj_del(g_debug_page.log_labels[i]);
+        }
     }
-    log_label_count = 0;
-    tx_count = 0;
-    rx_count = 0;
-    lv_label_set_text(label_tx_count, "TX: 0");
-    lv_label_set_text(label_rx_count, "RX: 0");
+    memset(g_debug_page.log_labels, 0, sizeof(g_debug_page.log_labels));
+    g_debug_page.log_count = 0;
+    g_debug_page.log_sequence = 0;
+    g_debug_page.tx_count = 0;
+    g_debug_page.rx_count = 0;
+    if (g_debug_page.tx_count_label &&
+        lv_obj_is_valid(g_debug_page.tx_count_label)) {
+        lv_label_set_text(g_debug_page.tx_count_label, "TX: 0");
+    }
+    if (g_debug_page.rx_count_label &&
+        lv_obj_is_valid(g_debug_page.rx_count_label)) {
+        lv_label_set_text(g_debug_page.rx_count_label, "RX: 0");
+    }
 }
 
 static void debug_log_show_toast(const char* text, bool alarm)
@@ -224,9 +244,10 @@ static void btn_download_log_event_cb(lv_event_t* e)
     size_t line_count = 0;
 
     LV_UNUSED(e);
-    for (int i = 0; i < log_label_count; i++) {
-        if (log_labels[i] != NULL && lv_obj_is_valid(log_labels[i])) {
-            lines[line_count++] = lv_label_get_text(log_labels[i]);
+    for (int i = 0; i < g_debug_page.log_count; i++) {
+        if (g_debug_page.log_labels[i] != NULL &&
+            lv_obj_is_valid(g_debug_page.log_labels[i])) {
+            lines[line_count++] = lv_label_get_text(g_debug_page.log_labels[i]);
         }
     }
 
@@ -245,13 +266,14 @@ static void btn_download_log_event_cb(lv_event_t* e)
 
 /* ---------- 清空输入框按钮 ---------- */
 static void btn_clear_input_event_cb(lv_event_t* e) {
-    lv_textarea_set_text(ta_input, "");
+    LV_UNUSED(e);
+    lv_textarea_set_text(g_debug_page.input, "");
 }
 
 /* ---------- 快捷命令按钮 ---------- */
 static void btn_quick_cmd_event_cb(lv_event_t* e) {
     const char* cmd = (const char*)lv_event_get_user_data(e);
-    lv_textarea_set_text(ta_input, cmd);
+    lv_textarea_set_text(g_debug_page.input, cmd);
 }
 
 static void screenshot_switch_event_cb(lv_event_t* e)
@@ -288,26 +310,14 @@ void ui_page_10_debug_create(void) {
     if (page_debug && lv_obj_is_valid(page_debug)) {
         lv_obj_clean(page_debug);  // 清理所有子对象
         lv_obj_clear_flag(page_debug, LV_OBJ_FLAG_HIDDEN);  // 显示page_debug
-        // 重新初始化UI元素指针
-        log_area = NULL;
-        label_tx_count = NULL;
-        label_rx_count = NULL;
-        ta_input = NULL;
-        log_label_count = 0;
-        tx_count = 0;
-        rx_count = 0;
     } else {
         page_debug = lv_obj_create(lv_scr_act());
     }
+    debug_page_context_reset();
 
     lv_obj_set_size(page_debug, 1280, 400);
     lv_obj_set_style_bg_color(page_debug, lv_color_hex(0x1a1a1a), 0);
     lv_obj_clear_flag(page_debug, LV_OBJ_FLAG_SCROLLABLE);
-
-    // 初始化日志缓冲区
-    log_buffer[0] = '\0';
-    tx_count = 0;
-    rx_count = 0;
 
     /* ================= 左侧输入区（宽度550） ================= */
     lv_obj_t* left_panel = lv_obj_create(page_debug);
@@ -326,17 +336,18 @@ void ui_page_10_debug_create(void) {
     lv_obj_set_pos(label_title, 15, 10);
 
     // 输入框
-    ta_input = lv_textarea_create(left_panel);
-    lv_obj_set_size(ta_input, 380, 50);
-    lv_obj_set_pos(ta_input, 15, 40);
-    lv_textarea_set_placeholder_text(ta_input, "FD DF XX XX 0A");
-    lv_textarea_set_text(ta_input, "FD DF ");        // 默认固定前缀
-    lv_textarea_set_cursor_pos(ta_input, LV_TEXTAREA_CURSOR_LAST); // 光标移动到末尾
-    lv_textarea_set_one_line(ta_input, true);
-    lv_obj_set_style_bg_color(ta_input, lv_color_hex(0x1a1a1a), 0);
-    lv_obj_set_style_text_color(ta_input, lv_color_hex(0x00FF00), 0);
-    lv_obj_set_style_border_color(ta_input, lv_color_hex(0x4A9EFF), 0);
-    lv_obj_add_event_cb(ta_input, ta_auto_space_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    g_debug_page.input = lv_textarea_create(left_panel);
+    lv_obj_set_size(g_debug_page.input, 380, 50);
+    lv_obj_set_pos(g_debug_page.input, 15, 40);
+    lv_textarea_set_placeholder_text(g_debug_page.input, "FD DF XX XX 0A");
+    lv_textarea_set_text(g_debug_page.input, "FD DF ");        // 默认固定前缀
+    lv_textarea_set_cursor_pos(g_debug_page.input, LV_TEXTAREA_CURSOR_LAST); // 光标移动到末尾
+    lv_textarea_set_one_line(g_debug_page.input, true);
+    lv_obj_set_style_bg_color(g_debug_page.input, lv_color_hex(0x1a1a1a), 0);
+    lv_obj_set_style_text_color(g_debug_page.input, lv_color_hex(0x00FF00), 0);
+    lv_obj_set_style_border_color(g_debug_page.input, lv_color_hex(0x4A9EFF), 0);
+    lv_obj_add_event_cb(g_debug_page.input, ta_auto_space_event_cb,
+                        LV_EVENT_VALUE_CHANGED, NULL);
 
 
     // 发送按钮
@@ -405,14 +416,15 @@ void ui_page_10_debug_create(void) {
     lv_obj_center(lbl_q1);
 
     // HEX键盘
-    kb_hex = lv_btnmatrix_create(left_panel);
-    lv_btnmatrix_set_map(kb_hex, kb_hex_map);
-    lv_btnmatrix_set_ctrl_map(kb_hex, kb_hex_ctrl_map);
-    lv_obj_set_size(kb_hex, 500, 200);
-    lv_obj_set_pos(kb_hex, 15, 145);
-    lv_obj_set_style_bg_color(kb_hex, lv_color_hex(0x1a1a1a), 0);
-    lv_obj_set_style_border_width(kb_hex, 0, 0);
-    lv_obj_add_event_cb(kb_hex, kb_hex_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    g_debug_page.keyboard = lv_btnmatrix_create(left_panel);
+    lv_btnmatrix_set_map(g_debug_page.keyboard, kb_hex_map);
+    lv_btnmatrix_set_ctrl_map(g_debug_page.keyboard, kb_hex_ctrl_map);
+    lv_obj_set_size(g_debug_page.keyboard, 500, 200);
+    lv_obj_set_pos(g_debug_page.keyboard, 15, 145);
+    lv_obj_set_style_bg_color(g_debug_page.keyboard, lv_color_hex(0x1a1a1a), 0);
+    lv_obj_set_style_border_width(g_debug_page.keyboard, 0, 0);
+    lv_obj_add_event_cb(g_debug_page.keyboard, kb_hex_event_cb,
+                        LV_EVENT_VALUE_CHANGED, NULL);
 
     /* ================= 右侧日志区（宽度680） ================= */
     lv_obj_t* right_panel = lv_obj_create(page_debug);
@@ -441,18 +453,22 @@ void ui_page_10_debug_create(void) {
     lv_obj_set_pos(label_log, 5, (a_parent_h - a_label_h) / 2);
 
     // 统计标签
-    label_tx_count = lv_label_create(top_bar);
-    lv_label_set_text(label_tx_count, "TX: 0");
-    lv_obj_set_style_text_color(label_tx_count, lv_color_hex(0x00FF00), 0);
+    g_debug_page.tx_count_label = lv_label_create(top_bar);
+    lv_label_set_text(g_debug_page.tx_count_label, "TX: 0");
+    lv_obj_set_style_text_color(g_debug_page.tx_count_label,
+                                lv_color_hex(0x00FF00), 0);
     lv_coord_t b_parent_h = lv_obj_get_height(top_bar);
     lv_coord_t b_label_h = lv_obj_get_height(label_log);
-    lv_obj_set_pos(label_tx_count, 245, (b_parent_h - b_label_h) / 2);
-    label_rx_count = lv_label_create(top_bar);
-    lv_label_set_text(label_rx_count, "RX: 0");
-    lv_obj_set_style_text_color(label_rx_count, lv_color_hex(0x4A9EFF), 0);
+    lv_obj_set_pos(g_debug_page.tx_count_label, 245,
+                   (b_parent_h - b_label_h) / 2);
+    g_debug_page.rx_count_label = lv_label_create(top_bar);
+    lv_label_set_text(g_debug_page.rx_count_label, "RX: 0");
+    lv_obj_set_style_text_color(g_debug_page.rx_count_label,
+                                lv_color_hex(0x4A9EFF), 0);
     lv_coord_t c_parent_h = lv_obj_get_height(top_bar);
     lv_coord_t c_label_h = lv_obj_get_height(label_log);
-    lv_obj_set_pos(label_rx_count, 315, (c_parent_h - c_label_h) / 2);
+    lv_obj_set_pos(g_debug_page.rx_count_label, 315,
+                   (c_parent_h - c_label_h) / 2);
     // 下载日志按钮
     lv_obj_t* btn_download_log = lv_btn_create(top_bar);
     lv_obj_set_size(btn_download_log, 100, 30);
@@ -476,41 +492,33 @@ void ui_page_10_debug_create(void) {
     lv_obj_center(lbl_clr_log);
 
     // 日志滚动区域
-    log_area = lv_obj_create(right_panel);
-    lv_obj_set_size(log_area, 600, 290);
-    lv_obj_set_pos(log_area, 15, 60);
-    lv_obj_set_style_bg_color(log_area, lv_color_black(), 0);
-    lv_obj_set_style_border_color(log_area, lv_color_hex(0x444444), 0);
-    lv_obj_set_style_radius(log_area, 4, 0);
-    lv_obj_set_scroll_dir(log_area, LV_DIR_VER);
-
-    log_label = lv_label_create(log_area);
-    lv_label_set_text(log_label, "");
-    lv_obj_set_width(log_label, 560);
-    lv_label_set_long_mode(log_label, LV_LABEL_LONG_WRAP);
-    lv_obj_set_style_text_color(log_label, lv_color_white(), 0);
-    lv_obj_set_style_text_font(log_label, &lv_font_instrument_sans_medium_14, 0);
+    g_debug_page.log_area = lv_obj_create(right_panel);
+    lv_obj_set_size(g_debug_page.log_area, 600, 290);
+    lv_obj_set_pos(g_debug_page.log_area, 15, 60);
+    lv_obj_set_style_bg_color(g_debug_page.log_area, lv_color_black(), 0);
+    lv_obj_set_style_border_color(g_debug_page.log_area,
+                                  lv_color_hex(0x444444), 0);
+    lv_obj_set_style_radius(g_debug_page.log_area, 4, 0);
+    lv_obj_set_scroll_dir(g_debug_page.log_area, LV_DIR_VER);
 }
 
 void ui_page_10_debug_destroy(void) {
     if (page_debug && lv_obj_is_valid(page_debug)) {
         lv_obj_clean(page_debug);  // 清空子对象，但不删除page_debug本身
         lv_obj_add_flag(page_debug, LV_OBJ_FLAG_HIDDEN);  // 隐藏page_debug
-        // 清空指针，避免悬空指针
-        log_area = NULL;
-        label_tx_count = NULL;
-        label_rx_count = NULL;
-        ta_input = NULL;
-        log_label_count = 0;  // 重置日志计数
     }
+    debug_page_context_reset();
 }
 
 /* ========== 外部调用：追加接收日志 ========== */
 void debug_append_rx_log(const char* data) {
-    if (!log_area) return;  // 如果debug页面未创建，直接返回
+    if (!g_debug_page.log_area ||
+        !lv_obj_is_valid(g_debug_page.log_area)) return;
     append_log("RX", data, "4A9EFF");
-    rx_count++;
-    if (label_rx_count) {  // 检查label_rx_count是否已创建
-        lv_label_set_text_fmt(label_rx_count, "RX: %d", rx_count);
+    g_debug_page.rx_count++;
+    if (g_debug_page.rx_count_label &&
+        lv_obj_is_valid(g_debug_page.rx_count_label)) {
+        lv_label_set_text_fmt(g_debug_page.rx_count_label, "RX: %u",
+                              g_debug_page.rx_count);
     }
 }
