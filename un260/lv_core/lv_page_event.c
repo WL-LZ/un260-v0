@@ -22,7 +22,7 @@
 #include "un260/currency/currency_service.h"
 #include "un260/serial_number/serial_number_state.h"
 #include "un260/serial_number/serial_number_service.h"
-#include "un260/cfd/cfd_service.h"
+#include "un260/cfd/cfd.h"
 #include "un260/lv_core/page_22_set_double_note.h"
 #include "un260/lv_core/page_23_set_flap.h"
 #include "un260/lv_core/page_24_set_reject_pocket.h"

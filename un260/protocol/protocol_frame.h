@@ -15,11 +15,7 @@
 #define PROTOCOL_FRAME_MAX_PAYLOAD     \
     (PROTOCOL_FRAME_MAX_SIZE - PROTOCOL_FRAME_OVERHEAD)
 
-int protocol_frame_build(uint8_t *output,
-                         size_t output_capacity,
-                         uint8_t cmd,
-                         const uint8_t *payload,
-                         uint16_t payload_len);
+int protocol_frame_build(uint8_t *output, size_t output_capacity, uint8_t cmd, const uint8_t *payload, uint16_t payload_len);
 
 /*
  * Validate the common receive-frame structure only. The local command
@@ -28,9 +24,6 @@ int protocol_frame_build(uint8_t *output,
  */
 bool protocol_frame_is_valid(const uint8_t *data, size_t len);
 
-size_t protocol_frame_format_hex(const uint8_t *data,
-                                 size_t len,
-                                 char *output,
-                                 size_t output_size);
+size_t protocol_frame_format_hex(const uint8_t *data, size_t len, char *output, size_t output_size);
 
 #endif

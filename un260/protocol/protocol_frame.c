@@ -2,11 +2,7 @@
 
 #include <string.h>
 
-int protocol_frame_build(uint8_t *output,
-                         size_t output_capacity,
-                         uint8_t cmd,
-                         const uint8_t *payload,
-                         uint16_t payload_len)
+int protocol_frame_build(uint8_t *output, size_t output_capacity, uint8_t cmd, const uint8_t *payload, uint16_t payload_len)
 {
     size_t frame_len;
 
@@ -47,10 +43,7 @@ bool protocol_frame_is_valid(const uint8_t *data, size_t len)
     return (size_t)data[2] == len;
 }
 
-size_t protocol_frame_format_hex(const uint8_t *data,
-                                 size_t len,
-                                 char *output,
-                                 size_t output_size)
+size_t protocol_frame_format_hex(const uint8_t *data, size_t len, char *output, size_t output_size)
 {
     static const char hex_digits[] = "0123456789ABCDEF";
     size_t pos = 0;

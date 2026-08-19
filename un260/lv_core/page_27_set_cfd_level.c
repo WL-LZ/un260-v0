@@ -4,8 +4,7 @@
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/currency/currency_state.h"
-#include "un260/cfd/cfd_state.h"
-#include "un260/cfd/cfd_service.h"
+#include "un260/cfd/cfd.h"
 
 #include <stdbool.h>
 #include <stddef.h>

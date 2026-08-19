@@ -1,15 +1,24 @@
-#include "cfd_service.h"
-#include "un260/protocol/protocol_request.h"
+#include "cfd.h"
 
 #include <stddef.h>
 #include <string.h>
 
+#include "un260/protocol/protocol_request.h"
+
 #define CFD_QUERY_TIMEOUT_MS 800U
 
+static cfd_state_value_t g_cfd_state = {
+    .currency = "CNY",
+    .levels = {
+        { 3, 3, 3, 3 },
+        { 3, 3, 3, 3 },
+        { 3, 3, 3, 3 },
+    },
+};
 static protocol_request_t g_cfd_query_request = PROTOCOL_REQUEST_INITIALIZER(CFD_QUERY_TIMEOUT_MS);
 static char g_cfd_query_currency[4] = "";
 
-static void cfd_service_copy_currency(char dst[4], const char *src)
+static void cfd_copy_currency(char dst[4], const char *src)
 {
     size_t len = 0;
 
@@ -22,12 +31,24 @@ static void cfd_service_copy_currency(char dst[4], const char *src)
     dst[len] = '\0';
 }
 
+void cfd_state_get(cfd_state_value_t *value)
+{
+    if (!value) return;
+    *value = g_cfd_state;
+}
+
+void cfd_state_confirm(const cfd_state_value_t *value)
+{
+    if (!value) return;
+    cfd_copy_currency(g_cfd_state.currency, value->currency);
+    memcpy(g_cfd_state.levels, value->levels, sizeof(g_cfd_state.levels));
+}
+
 bool cfd_service_request_query(const char currency[4])
 {
     if (!currency || currency[0] == '\0') return false;
     if (!protocol_request_begin(&g_cfd_query_request)) return false;
-
-    cfd_service_copy_currency(g_cfd_query_currency, currency);
+    cfd_copy_currency(g_cfd_query_currency, currency);
     return true;
 }
 
