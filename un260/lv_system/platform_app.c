@@ -350,8 +350,6 @@ void sim_data_init(void)
     sim_data->last_issue_pcs = 0;
     sim_data->last_suspect_pcs = 0;
     sim_data->last_damaged_pcs = 0;
-    Machine_para.last_total_amount = 0;
-    Machine_para.last_total_pcs = 0;
     sim_data->is_paused = false;  // 初始化暂停标志为false
 
 }

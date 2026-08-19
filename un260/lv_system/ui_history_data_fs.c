@@ -8,7 +8,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "un260/lv_system/user_cfg.h"
 #include "un260/lv_system/machine_time.h"
 #include "un260/currency/currency_state.h"
 
@@ -45,11 +44,6 @@ static int history_ensure_dir(void)
     }
 
     return 0;
-}
-
-static void history_apply_runtime_total(void)
-{
-    Machine_para.history_total_notes_counted = g_history_store.total_notes_counted;
 }
 
 static void history_write_escaped_field(FILE *fp,
@@ -522,7 +516,6 @@ static void history_load_from_file(void)
 
     fp = fopen(UI_HISTORY_INDEX_PATH, "r");
     if (fp == NULL) {
-        history_apply_runtime_total();
         g_history_loaded = true;
         return;
     }
@@ -590,7 +583,6 @@ static void history_load_from_file(void)
         g_history_store.next_slot_no = 1;
     }
 
-    history_apply_runtime_total();
     g_history_loaded = true;
 }
 
@@ -622,7 +614,6 @@ void ui_history_total_notes_counted_set(uint32_t total)
 {
     history_ensure_loaded();
     g_history_store.total_notes_counted = total;
-    history_apply_runtime_total();
     history_save_all();
 }
 
@@ -688,7 +679,6 @@ bool ui_history_record_append_from_session(const counting_sim_t *sim_data, uint3
         g_history_store.record_count = UI_HISTORY_MAX_RECORDS;
     }
 
-    history_apply_runtime_total();
     history_save_all();
     return true;
 }
@@ -802,7 +792,6 @@ bool ui_history_record_delete_selected(void)
     g_history_store.next_slot_no = (uint8_t)((kept_count >= UI_HISTORY_MAX_RECORDS) ? 1 : (kept_count + 1));
     g_history_store.next_record_no = next_record_no;
 
-    history_apply_runtime_total();
     history_save_all();
     return true;
 }
@@ -834,10 +823,4 @@ bool ui_history_record_get_by_no(uint32_t record_no, ui_history_record_t *out)
         }
     }
     return false;
-}
-
-void ui_history_record_apply_runtime_total(void)
-{
-    history_ensure_loaded();
-    history_apply_runtime_total();
 }

@@ -13,6 +13,7 @@
 #include "un260/lv_components/lv_print_toast.h"
 #include "un260/lv_system/ui_history_data.h"
 #include "un260/currency/currency_state.h"
+#include "un260/machine_state/machine_state.h"
 
 #define UI_HISTORY_EXPORT_USB_DIR          "/mnt/usb"
 #define UI_HISTORY_EXPORT_LOCK_MS          2000U
@@ -125,11 +126,11 @@ static void history_export_get_mode_text(char *buf, size_t size)
         return;
     }
 
-    if (Machine_para.mode == MODE_MDC) {
+    if (machine_state_mode() == MODE_MDC) {
         lv_snprintf(buf, size, "%s", "MDC");
-    } else if (Machine_para.mode == MODE_SDC) {
+    } else if (machine_state_mode() == MODE_SDC) {
         lv_snprintf(buf, size, "%s", "SDC");
-    } else if (Machine_para.mode == MODE_CNT) {
+    } else if (machine_state_mode() == MODE_CNT) {
         lv_snprintf(buf, size, "%s", "CNT");
     } else {
         lv_snprintf(buf, size, "%s", "NONE");
@@ -141,7 +142,7 @@ static void history_export_get_sort_text(char *buf, size_t size)
     if (buf == NULL || size == 0) {
         return;
     }
-    switch (Machine_para.fo_mode) {
+    switch (machine_state_fo_mode()) {
     case 0:
         lv_snprintf(buf, size, "%s", "SORT:OFF");
         break;
@@ -165,7 +166,7 @@ static void history_export_get_add_text(char *buf, size_t size)
     if (buf == NULL || size == 0) {
         return;
     }
-    lv_snprintf(buf, size, "%s", Machine_para.add_enable ? "ADD:ON" : "ADD:OFF");
+    lv_snprintf(buf, size, "%s", machine_state_add_enabled() ? "ADD:ON" : "ADD:OFF");
 }
 
 static void history_export_get_work_text(char *buf, size_t size)
@@ -173,7 +174,7 @@ static void history_export_get_work_text(char *buf, size_t size)
     if (buf == NULL || size == 0) {
         return;
     }
-    lv_snprintf(buf, size, "%s", Machine_para.work_mode ? "MANUAL" : "AUTO");
+    lv_snprintf(buf, size, "%s", machine_state_work_mode() ? "MANUAL" : "AUTO");
 }
 
 static void history_export_get_speed_text(char *buf, size_t size)
@@ -182,7 +183,7 @@ static void history_export_get_speed_text(char *buf, size_t size)
         return;
     }
 
-    switch (Machine_para.speed) {
+    switch (machine_state_speed()) {
     case 0:
         lv_snprintf(buf, size, "%s", "SPD:LOW");
         break;

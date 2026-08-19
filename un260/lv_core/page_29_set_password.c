@@ -116,7 +116,7 @@ static void password_setting_save_cb(lv_event_t* e)
         return;
     }
 
-    if (strcmp(field_text[PASSWORD_FIELD_CURRENT], Machine_para.password) != 0) {
+    if (strcmp(field_text[PASSWORD_FIELD_CURRENT], user_cfg_password_get()) != 0) {
         password_setting_show_toast(UI_TEXT_PASSWORD_ERROR, true);
         return;
     }

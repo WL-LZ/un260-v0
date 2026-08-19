@@ -62,29 +62,9 @@ typedef enum {
 #define CFD_LEVEL_MAX 5
 #define USER_PASSWORD_MAX_LEN 31
 
-typedef struct {
-
-    int mode;
-    uint8_t speed;
-    bool add_enable;
-    bool start_auto;
-    char password[USER_PASSWORD_MAX_LEN + 1];
-    int batch_mode;
-    uint8_t cfd_mode;
-    uint8_t fo_mode;
-    uint8_t work_mode;
-    uint8_t language;
-    uint32_t batch_amount;
-    bool buzzer_enable;
-    uint16_t last_total_pcs;
-    uint32_t last_total_amount;
-    uint32_t history_total_notes_counted;
-}Machine_para_t;
-
-extern Machine_para_t Machine_para;
-
 bool user_cfg_password_load(void);
 bool user_cfg_password_save(const char* password);
+const char *user_cfg_password_get(void);
 bool user_cfg_screenshot_load(void);
 bool user_cfg_screenshot_save(bool enabled);
 bool user_cfg_screenshot_enabled(void);
@@ -97,9 +77,6 @@ bool user_cfg_screenshot_enabled(void);
     MODE_SDC
 
 };
-
-
-void user_data_init(void);
 
 
 #endif // !USER_CFG_H

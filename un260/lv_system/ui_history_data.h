@@ -56,6 +56,4 @@ void ui_history_record_set_all_selected(bool selected);
 bool ui_history_record_delete_selected(void);
 bool ui_history_record_get(uint8_t index, ui_history_record_t *out);
 bool ui_history_record_get_by_no(uint32_t record_no, ui_history_record_t *out);
-void ui_history_record_apply_runtime_total(void);
-
 #endif

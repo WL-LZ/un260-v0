@@ -95,7 +95,7 @@ void page_01_mode_switch_refre()
 {
     const char* mode_str = "NONE";
 
-    switch (Machine_para.mode)
+    switch (machine_state_mode())
     {
     case MODE_MDC:
         mode_str = "MDC";
@@ -197,7 +197,7 @@ void page_03_create_batch_label_switcher(lv_obj_t* parent)
     lv_obj_t* amount_obj = find_obj_by_name("03_amount_batch_label", page_03_menu_obj, page_03_menu_len);
     lv_obj_t* pcs_obj = find_obj_by_name("03_pcs_batch_label", page_03_menu_obj, page_03_menu_len);
 
-    printf("Machine_para.batch_mode: %s\n", Machine_para.batch_mode?"AMOUNT MODE":"PCS MODE");
+    printf("machine batch mode: %s\n", machine_state_batch_mode()?"AMOUNT MODE":"PCS MODE");
 
     if (amount_obj && pcs_obj)
     {
@@ -205,8 +205,8 @@ void page_03_create_batch_label_switcher(lv_obj_t* parent)
         lv_obj_set_parent(amount_obj, page_03_batch_container);
         lv_obj_set_parent(pcs_obj, page_03_batch_container);
 
-        // 根据Machine_para.batch_mode初始化状态和位置
-        if (Machine_para.batch_mode == AMOUNT_BATCH_MODE)
+        // 根据已确认的批次模式初始化状态和位置
+        if (machine_state_batch_mode() == AMOUNT_BATCH_MODE)
         {
             // AMOUNT模式
             is_amount_active = true;
@@ -256,7 +256,7 @@ void page_03_create_batch_label_switcher(lv_obj_t* parent)
 
     if (!machine_state_batch_enabled())
     {
-        if (Machine_para.batch_mode == AMOUNT_BATCH_MODE)
+        if (machine_state_batch_mode() == AMOUNT_BATCH_MODE)
         {
             lv_obj_set_style_text_color(amount_obj, lv_color_hex(0x888888), 0);  // 蓝色激活
             lv_obj_set_style_text_opa(amount_obj, 255, 0);  // 完全不透明
@@ -335,7 +335,7 @@ void page_03_batch_mode_status_refre(void)
     lv_obj_t* pcs_obj = find_obj_by_name("03_pcs_batch_label", page_03_menu_obj, page_03_menu_len);
     if (!machine_state_batch_enabled())
     {
-        if (Machine_para.batch_mode == AMOUNT_BATCH_MODE)
+        if (machine_state_batch_mode() == AMOUNT_BATCH_MODE)
         {
             lv_obj_set_style_text_color(amount_obj, lv_color_hex(0x888888), 0);  // 蓝色激活
             lv_obj_set_style_text_opa(amount_obj, 255, 0);  // 完全不透明
@@ -355,7 +355,7 @@ void page_03_batch_mode_status_refre(void)
     }
     else
     {
-        if (Machine_para.batch_mode == AMOUNT_BATCH_MODE)
+        if (machine_state_batch_mode() == AMOUNT_BATCH_MODE)
         {
             lv_obj_set_style_text_color(amount_obj, lv_color_hex(0x4285F4), 0);  // 蓝色激活
             lv_obj_set_style_text_opa(amount_obj, 255, 0);  // 完全不透明
@@ -530,14 +530,14 @@ void create_liquid_glass_panel(lv_obj_t* parent) {
 void page_01_add_refre(void)
 {
     
-    update_label_by_name(page_01_main_obj, page_01_main_len, "add_label", "%s", Machine_para.add_enable == true?"ADD:ON":"ADD:OFF");
+    update_label_by_name(page_01_main_obj, page_01_main_len, "add_label", "%s", machine_state_add_enabled()?"ADD:ON":"ADD:OFF");
     page_01_bottom_a_refresh_add(false);
 
 }
 void page_01_work_refre(void)
 {
     char* work[2] = {"AUTO","MANUAL"};
-    update_label_by_name(page_01_main_obj, page_01_main_len, "auto_label", "%s", work[Machine_para.work_mode]);
+    update_label_by_name(page_01_main_obj, page_01_main_len, "auto_label", "%s", work[machine_state_work_mode()]);
     page_01_bottom_a_refresh_work(false);
 
 }
@@ -546,7 +546,7 @@ void page_01_batch_refre(void)
     char* batch[2] = { "BATCH :","VBATCH :" };
     char buf[12];
     snprintf(buf, sizeof(buf), "%d", machine_state_batch_num());
-    update_label_by_name(page_01_main_obj, page_01_main_len, "bacth_label", "%s", batch[Machine_para.batch_mode]);
+    update_label_by_name(page_01_main_obj, page_01_main_len, "bacth_label", "%s", batch[machine_state_batch_mode()]);
     if (machine_state_batch_enabled())
     {
         update_label_by_name(page_01_main_obj, page_01_main_len, "bacth_num_label", "%s", buf);
@@ -563,22 +563,22 @@ void page_01_face_refre(void)
 {
     char* batch[4] = { "F./O. : OFF","F.","O." ,"F./O."};
 
-    update_label_by_name(page_01_main_obj, page_01_main_len, "face_label", "%s", batch[Machine_para.fo_mode]);
+    update_label_by_name(page_01_main_obj, page_01_main_len, "face_label", "%s", batch[machine_state_fo_mode()]);
     page_01_bottom_a_refresh_fo(false);
 
 }
 void page_01_cfd_refre(void)
 {
     char* cfd[3] = { "L","M","H"  };
-    update_label_by_name(page_01_main_obj, page_01_main_len, "cfd_value_label", "%s", cfd[Machine_para.cfd_mode]);
-    printf("cfd:%s\n", cfd[Machine_para.cfd_mode]);
+    update_label_by_name(page_01_main_obj, page_01_main_len, "cfd_value_label", "%s", cfd[machine_state_cfd_mode()]);
+    printf("cfd:%s\n", cfd[machine_state_cfd_mode()]);
     page_01_bottom_c_refresh_cfd();
 
 }
 void page_01_speed_refre(void)
 {
     int speed[3] = { 600,800,1000 };
-    update_label_by_name(page_01_main_obj, page_01_main_len, "speed_num_label", "%d", speed[Machine_para.speed]);
+    update_label_by_name(page_01_main_obj, page_01_main_len, "speed_num_label", "%d", speed[machine_state_speed()]);
     page_01_bottom_c_refresh_speed(false);
 }
 

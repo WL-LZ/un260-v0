@@ -4,6 +4,26 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+typedef struct {
+    uint8_t mode;
+    uint8_t speed;
+    bool add_enabled;
+    uint8_t fo_mode;
+    uint8_t work_mode;
+    uint8_t cfd_mode;
+    bool buzzer_enabled;
+    bool batch_enabled;
+    uint8_t batch_num;
+    uint8_t batch_mode;
+    uint32_t batch_amount;
+    bool aging_running;
+    uint8_t double_note_level;
+    uint8_t flap_position;
+    uint8_t reject_pocket_max;
+} machine_state_snapshot_t;
+
+void machine_state_get_snapshot(machine_state_snapshot_t *snapshot);
+
 void machine_state_confirm_mode(uint8_t mode);
 uint8_t machine_state_mode(void);
 
@@ -21,6 +41,9 @@ uint8_t machine_state_speed(void);
 
 void machine_state_confirm_work_mode(uint8_t mode);
 uint8_t machine_state_work_mode(void);
+
+void machine_state_confirm_cfd_mode(uint8_t mode);
+uint8_t machine_state_cfd_mode(void);
 
 void machine_state_confirm_batch(bool enabled, uint8_t num);
 void machine_state_sync_batch_num(uint8_t num);

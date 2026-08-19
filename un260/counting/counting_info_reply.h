@@ -23,6 +23,7 @@ typedef struct {
 counting_info_reply_result_t counting_info_reply_handle(counting_session_state_t *session,
                                                         counting_sim_t *sim_data,
                                                         const uint8_t *buf,
-                                                        uint8_t len);
+                                                        uint8_t len,
+                                                        uint32_t history_total_notes_counted);
 
 #endif

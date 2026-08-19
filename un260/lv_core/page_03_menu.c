@@ -952,11 +952,11 @@ void page_03_menu_function_focus(uint8_t function)
 {
     uint8_t value = 0;
 
-    if (function == PAGE_03_FUNCTION_BEEP) value = Machine_para.buzzer_enable;
-    else if (function == PAGE_03_FUNCTION_SPEED) value = Machine_para.speed;
-    else if (function == PAGE_03_FUNCTION_ADD) value = Machine_para.add_enable;
-    else if (function == PAGE_03_FUNCTION_SORT) value = Machine_para.fo_mode;
-    else if (function == PAGE_03_FUNCTION_WORK) value = Machine_para.work_mode;
+    if (function == PAGE_03_FUNCTION_BEEP) value = machine_state_buzzer_enabled();
+    else if (function == PAGE_03_FUNCTION_SPEED) value = machine_state_speed();
+    else if (function == PAGE_03_FUNCTION_ADD) value = machine_state_add_enabled();
+    else if (function == PAGE_03_FUNCTION_SORT) value = machine_state_fo_mode();
+    else if (function == PAGE_03_FUNCTION_WORK) value = machine_state_work_mode();
 
     page_03_menu_function_feedback(function, value);
 }
@@ -1055,12 +1055,12 @@ void switch_to_pcs_batch(void)
 void toggle_batch_mode(void)
 {
     /* Amount batch 暂未启用：菜单页固定 PCS 模式 */
-    if (Machine_para.batch_mode != PCS_BATCH_MODE) {
-        Machine_para.batch_mode = PCS_BATCH_MODE;
+    if (machine_state_batch_mode() != PCS_BATCH_MODE) {
+        machine_state_confirm_batch_mode(PCS_BATCH_MODE);
         switch_to_pcs_batch();
     }
 #if LV_DEBUG
-    printf("Machine_para.batch_mode: PCS MODE\n");
+    printf("machine batch mode: PCS MODE\n");
 #endif
 }
 
@@ -1072,7 +1072,7 @@ void toggle_batch_mode(void)
 void ui_page_03_menu_create(lv_obj_t* parent)
 {
     if (menu_page) return;
-    Machine_para.batch_mode = PCS_BATCH_MODE;
+    machine_state_confirm_batch_mode(PCS_BATCH_MODE);
     is_amount_active = false;
     page_03_batch_num_edit_reset();
     menu_page = lv_obj_create(lv_scr_act());

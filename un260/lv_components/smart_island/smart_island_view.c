@@ -56,7 +56,7 @@ static void smart_island_apply_quality_indicator(void);
 
 static const char *smart_island_get_work_mode_text(void)
 {
-    return Machine_para.work_mode ? ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_MODE_MANUAL)
+    return machine_state_work_mode() ? ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_MODE_MANUAL)
                                   : ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_MODE_AUTO);
 }
 
@@ -497,10 +497,6 @@ static void smart_island_rebuild_scene_texts(void)
         } else if (sim.last_total_pcs > 0 || sim.last_total_amount > 0.0f) {
             lv_snprintf(g_si_ctx.text.info_summary, sizeof(g_si_ctx.text.info_summary),
                 ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_PCS_AMOUNT_FMT), sim.last_total_pcs, sim.last_total_amount);
-        } else if (Machine_para.last_total_pcs > 0U || Machine_para.last_total_amount > 0U) {
-            lv_snprintf(g_si_ctx.text.info_summary, sizeof(g_si_ctx.text.info_summary),
-                ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_PCS_AMOUNT_FMT),
-                (int)Machine_para.last_total_pcs, (float)Machine_para.last_total_amount);
         } else {
             lv_snprintf(g_si_ctx.text.info_summary, sizeof(g_si_ctx.text.info_summary),
                 ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_PCS_AMOUNT_FMT), 0, 0.0f);

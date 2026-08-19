@@ -36,9 +36,9 @@ basic_setting_reply_action_t basic_setting_reply_dispatch(uint8_t cmd,
             }
             {
                 const char* mode_str = "NONE";
-                if (Machine_para.mode == MODE_MDC) mode_str = "MDC";
-                else if (Machine_para.mode == MODE_SDC) mode_str = "SDC";
-                else if (Machine_para.mode == MODE_CNT) mode_str = "CNT";
+                if (machine_state_mode() == MODE_MDC) mode_str = "MDC";
+                else if (machine_state_mode() == MODE_SDC) mode_str = "SDC";
+                else if (machine_state_mode() == MODE_CNT) mode_str = "CNT";
 
                 if (requested_mode != 0) {
                     icon_feedback_comp("page_01_mode_icon.png", page_01_main_obj, page_01_main_len);
@@ -160,14 +160,14 @@ basic_setting_reply_action_t basic_setting_reply_dispatch(uint8_t cmd,
                 machine_state_confirm_add(true);
             } else {
                 uart_printf(fd6, "ADD boot status: unexpected raw=0x%02X, keep %s\n",
-                            v, Machine_para.add_enable ? "ON" : "OFF");
+                            v, machine_state_add_enabled() ? "ON" : "OFF");
             }
             if (setting_service_add_is_pending()) {
                 setting_service_add_finish();
             }
             page_01_bottom_a_refresh_add(false);
             uart_printf(fd6, "ADD boot status: raw=0x%02X -> %s\n",
-                        v, Machine_para.add_enable ? "ON" : "OFF");
+                        v, machine_state_add_enabled() ? "ON" : "OFF");
             smart_island_refresh_summary();
             page_03_update_menu_button_states_refresh();
         }
@@ -201,7 +201,7 @@ basic_setting_reply_action_t basic_setting_reply_dispatch(uint8_t cmd,
             if (setting_service_beep_is_pending()) {
                 setting_service_beep_finish();
             }
-            uart_printf(fd6, "BEEP boot status: %s\n", Machine_para.buzzer_enable ? "ON" : "OFF");
+            uart_printf(fd6, "BEEP boot status: %s\n", machine_state_buzzer_enabled() ? "ON" : "OFF");
             page_03_update_menu_button_states_refresh();
         }
         break;
@@ -227,7 +227,7 @@ basic_setting_reply_action_t basic_setting_reply_dispatch(uint8_t cmd,
                 page_01_bottom_c_refresh_speed(true);
                 page_01_speed_refre();
                 uart_printf(fd6, "SPEED set SUCCESS: type=0x%02X -> ui=%u\n",
-                            type, Machine_para.speed);
+                            type, machine_state_speed());
                 smart_island_refresh_summary();
             } else if (res == 0x02) {
                 if (setting_service_speed_is_pending()) {
@@ -243,7 +243,7 @@ basic_setting_reply_action_t basic_setting_reply_dispatch(uint8_t cmd,
             if (res <= 0x02) {
                 machine_state_confirm_speed((uint8_t)(0x02 - res));
                 page_03_update_menu_button_states_refresh();
-                uart_printf(fd6, "SPEED boot sync: mode=0x%02X -> ui=%u\n", res, Machine_para.speed);
+                uart_printf(fd6, "SPEED boot sync: mode=0x%02X -> ui=%u\n", res, machine_state_speed());
                 smart_island_refresh_summary();
             } else {
                 uart_printf(fd6, "SPEED boot sync: invalid mode=0x%02X\n", res);
@@ -265,7 +265,7 @@ basic_setting_reply_action_t basic_setting_reply_dispatch(uint8_t cmd,
         if (type == 0x05) {
             if (val <= 0x03) {
                 machine_state_confirm_fo_mode(val);
-                uart_printf(fd6, "FO boot sync: mode=0x%02X -> ui=%u\n", val, Machine_para.fo_mode);
+                uart_printf(fd6, "FO boot sync: mode=0x%02X -> ui=%u\n", val, machine_state_fo_mode());
             } else {
                 uart_printf(fd6, "FO boot sync: invalid mode=0x%02X\n", val);
             }
@@ -288,7 +288,7 @@ basic_setting_reply_action_t basic_setting_reply_dispatch(uint8_t cmd,
                 machine_state_confirm_fo_mode(target_mode);
                 page_01_bottom_a_refresh_fo(true);
                 page_03_update_menu_button_states_refresh();
-                uart_printf(fd6, "FO set SUCCESS: type=0x%02X -> ui=%u\n", type, Machine_para.fo_mode);
+                uart_printf(fd6, "FO set SUCCESS: type=0x%02X -> ui=%u\n", type, machine_state_fo_mode());
                 smart_island_refresh_summary();
             } else if (val == 0x02) {
                 if (setting_service_fo_mode_is_pending()) {

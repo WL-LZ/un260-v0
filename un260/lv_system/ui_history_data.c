@@ -8,7 +8,6 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-#include "un260/lv_system/user_cfg.h"
 #include "un260/lv_system/machine_time.h"
 #include "un260/currency/currency_state.h"
 
@@ -59,11 +58,6 @@ static int history_ensure_store_dir(void)
     }
 
     return 0;
-}
-
-static void history_apply_runtime_total(void)
-{
-    Machine_para.history_total_notes_counted = g_history_store.total_notes_counted;
 }
 
 static void history_save_to_file(void)
@@ -265,7 +259,6 @@ static void history_load_from_file(void)
     fp = fopen(UI_HISTORY_STORE_PATH, "r");
     if (fp == NULL) {
         g_history_loaded = true;
-        history_apply_runtime_total();
         return;
     }
 
@@ -284,7 +277,6 @@ static void history_load_from_file(void)
     }
 
     g_history_loaded = true;
-    history_apply_runtime_total();
 }
 
 static void history_ensure_loaded(void)
@@ -315,7 +307,6 @@ void ui_history_total_notes_counted_set(uint32_t total)
 {
     history_ensure_loaded();
     g_history_store.total_notes_counted = total;
-    history_apply_runtime_total();
     history_save_to_file();
 }
 
@@ -448,7 +439,6 @@ bool ui_history_record_append_from_session(const counting_sim_t *sim_data, uint3
                 error_frame_text ? error_frame_text : "");
 
     g_history_store.total_notes_counted = total_notes_after;
-    history_apply_runtime_total();
     history_save_to_file();
     return true;
 }
@@ -530,10 +520,4 @@ bool ui_history_record_get(uint8_t index, ui_history_record_t *out)
 
     *out = g_history_store.records[index];
     return true;
-}
-
-void ui_history_record_apply_runtime_total(void)
-{
-    history_ensure_loaded();
-    history_apply_runtime_total();
 }

@@ -14,24 +14,7 @@
 
 static bool g_screenshot_enabled = true;
 
-// 定义Machine_para变量
-Machine_para_t Machine_para = {
-    .mode = 1,  //1 MDC , 2 CNT ,3 VER , 4 SDC
-    .speed = 0,
-    .add_enable = 0,
-    .start_auto = 0,
-    .password = "1111",               // 默认密码1111
-    .batch_mode = 0,                  //0 pcs ,1 amount
-    .cfd_mode = 0,
-    .fo_mode = 0,
-    .work_mode = 0,
-    .language = 0,
-    .batch_amount = 0,
-    .buzzer_enable = 1,
-    .last_total_pcs = 0,
-    .last_total_amount = 0,
-    .history_total_notes_counted = 0,
-};
+static char g_user_password[USER_PASSWORD_MAX_LEN + 1] = "1111";
 
 static bool user_cfg_password_is_valid(const char* password)
 {
@@ -75,7 +58,7 @@ bool user_cfg_password_load(void)
         return false;
     }
 
-    lv_snprintf(Machine_para.password, sizeof(Machine_para.password), "%s", buf);
+    lv_snprintf(g_user_password, sizeof(g_user_password), "%s", buf);
     return true;
 }
 
@@ -95,8 +78,13 @@ bool user_cfg_password_save(const char* password)
 
     fprintf(fp, "%s\n", password);
     fclose(fp);
-    lv_snprintf(Machine_para.password, sizeof(Machine_para.password), "%s", password);
+    lv_snprintf(g_user_password, sizeof(g_user_password), "%s", password);
     return true;
+}
+
+const char *user_cfg_password_get(void)
+{
+    return g_user_password;
 }
 
 bool user_cfg_screenshot_load(void)
@@ -167,8 +155,3 @@ bool user_cfg_screenshot_enabled(void)
 {
     return g_screenshot_enabled;
 }
-
-//void user_data_init(void) {
-//    memcpy(&Machine_para, &default_para, sizeof(Machine_para_t));
-//}
-                     

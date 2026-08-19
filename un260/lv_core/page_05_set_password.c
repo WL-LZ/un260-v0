@@ -86,7 +86,7 @@ static void password_confirm_cb(const char* value, void* user_data)
     password_index = (int)strlen(input_password);
     password_set_display_text(input_password);
 
-    if (strcmp(Machine_para.password, input_password) == 0) {
+    if (strcmp(user_cfg_password_get(), input_password) == 0) {
         memset(input_password, 0, sizeof(input_password));
         password_index = 0;
         ui_manager_switch(UI_PAGE_SETTING);

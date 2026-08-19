@@ -198,7 +198,7 @@ static void ui_export_data_get_sort_text(char *buf, size_t size)
         return;
     }
 
-    switch (Machine_para.fo_mode) {
+    switch (machine_state_fo_mode()) {
     case 0:
         lv_snprintf(buf, size, "%s", "SORT:OFF");
         break;
@@ -223,7 +223,7 @@ static void ui_export_data_get_add_text(char *buf, size_t size)
         return;
     }
 
-    lv_snprintf(buf, size, "%s", Machine_para.add_enable ? "ADD:ON" : "ADD:OFF");
+    lv_snprintf(buf, size, "%s", machine_state_add_enabled() ? "ADD:ON" : "ADD:OFF");
 }
 
 static void ui_export_data_get_work_text(char *buf, size_t size)
@@ -232,7 +232,7 @@ static void ui_export_data_get_work_text(char *buf, size_t size)
         return;
     }
 
-    lv_snprintf(buf, size, "%s", Machine_para.work_mode ? "MANUAL" : "AUTO");
+    lv_snprintf(buf, size, "%s", machine_state_work_mode() ? "MANUAL" : "AUTO");
 }
 
 static void ui_export_data_get_speed_text(char *buf, size_t size)
@@ -241,7 +241,7 @@ static void ui_export_data_get_speed_text(char *buf, size_t size)
         return;
     }
 
-    switch (Machine_para.speed) {
+    switch (machine_state_speed()) {
     case 0:
         lv_snprintf(buf, size, "%s", "SPD:LOW");
         break;
@@ -346,11 +346,11 @@ static bool ui_export_data_write_html_file(const char *file_path)
         return false;
     }
 
-    if (Machine_para.mode == MODE_MDC) {
+    if (machine_state_mode() == MODE_MDC) {
         lv_snprintf(mode_buf, sizeof(mode_buf), "%s", "MDC");
-    } else if (Machine_para.mode == MODE_SDC) {
+    } else if (machine_state_mode() == MODE_SDC) {
         lv_snprintf(mode_buf, sizeof(mode_buf), "%s", "SDC");
-    } else if (Machine_para.mode == MODE_CNT) {
+    } else if (machine_state_mode() == MODE_CNT) {
         lv_snprintf(mode_buf, sizeof(mode_buf), "%s", "CNT");
     }
 
@@ -544,11 +544,11 @@ static bool ui_export_data_write_csv_file(const char *file_path)
     machine_time_value_t now;
     char curr_code[4];
 
-    if (Machine_para.mode == MODE_MDC) {
+    if (machine_state_mode() == MODE_MDC) {
         lv_snprintf(mode_buf, sizeof(mode_buf), "%s", "MDC");
-    } else if (Machine_para.mode == MODE_SDC) {
+    } else if (machine_state_mode() == MODE_SDC) {
         lv_snprintf(mode_buf, sizeof(mode_buf), "%s", "SDC");
-    } else if (Machine_para.mode == MODE_CNT) {
+    } else if (machine_state_mode() == MODE_CNT) {
         lv_snprintf(mode_buf, sizeof(mode_buf), "%s", "CNT");
     }
 

@@ -1,9 +1,9 @@
 #include "ui_lang.h"
-#include "un260/lv_system/user_cfg.h"
+static language_t g_ui_language = LANGUAGE_EN;
 
 language_t ui_lang_get(void) //获取当前界面语言
 {
-    switch (Machine_para.language) {
+    switch (g_ui_language) {
     case LANGUAGE_CN:
         return LANGUAGE_CN;
 
@@ -22,11 +22,11 @@ void ui_lang_set(language_t lang) //设置当前界面语言
     case LANGUAGE_CN:
     case LANGUAGE_KR:
     case LANGUAGE_EN:
-        Machine_para.language = (uint8_t)lang;
+        g_ui_language = lang;
         break;
 
     default:
-        Machine_para.language = LANGUAGE_EN;
+        g_ui_language = LANGUAGE_EN;
         break;
     }
 }

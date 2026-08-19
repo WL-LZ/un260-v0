@@ -234,8 +234,8 @@ void page_01_start_btn_event_cb(lv_event_t* e) // 开始仿真
 //     if (lv_event_get_code(e) == LV_EVENT_CLICKED)
 //     {   
 //         // 用当前模式来循环，而不是每次都从 MDC 开始
-//         Machine_Mode_t Temp_Mode = mode_next(Machine_para.mode);
-//         Machine_para.mode = Temp_Mode;  // 更新当前模式
+//         Machine_Mode_t Temp_Mode = mode_next(machine_state_mode());
+//         machine_state_confirm_mode(Temp_Mode);  // 更新当前模式
 
 //         uart_printf(fd6, "mode:%02X\n", Temp_Mode);
 //         icon_feedback_comp("page_01_mode_icon.png", page_01_main_obj, page_01_main_len);
@@ -555,7 +555,7 @@ void page_05_set_password_keypad_enter_event_cb(lv_event_t* e)
         page_05_password_del_timer = NULL;
         printf("del\n");
     }
-    if (strcmp(Machine_para.password, input_password) == 0)
+    if (strcmp(user_cfg_password_get(), input_password) == 0)
         ui_manager_switch(UI_PAGE_SETTING);
     else
     {
@@ -671,7 +671,7 @@ void page_03_batch_num_keypad_event_cb(lv_event_t* e)
     if (!password_get_txt) return;
     char input_num = password_get_txt[0];
 
-    if (Machine_para.batch_mode == PCS_BATCH_MODE && pcs_batch_num_lock_200) {
+    if (machine_state_batch_mode() == PCS_BATCH_MODE && pcs_batch_num_lock_200) {
         lv_label_set_text(batch_num_display, "200");
         lv_obj_set_align(batch_num_display, LV_ALIGN_RIGHT_MID);
         return;
@@ -864,7 +864,7 @@ void page_03_update_menu_button_states_refresh(void)
     // BEEP 处理（配色与 ADD 一致）
     lv_obj_t* tmp_beep_on_obj = find_obj_by_name(page_03_beep_mode_obj[0], page_03_menu_obj, page_03_menu_len);
     lv_obj_t* tmp_beep_off_obj = find_obj_by_name(page_03_beep_mode_obj[1], page_03_menu_obj, page_03_menu_len);
-    bool beep_on = Machine_para.buzzer_enable;
+    bool beep_on = machine_state_buzzer_enabled();
     if (tmp_beep_on_obj && tmp_beep_off_obj) {
         PAGE_03_APPLY_FUNCTION_BTN(tmp_beep_on_obj, beep_on, false);
         PAGE_03_APPLY_FUNCTION_BTN(tmp_beep_off_obj, !beep_on, true);
@@ -873,7 +873,7 @@ void page_03_update_menu_button_states_refresh(void)
     for (int i = 0; i < SPEED_MODE; i++)
     {
         lv_obj_t* tmp_speed_obj = find_obj_by_name(page_03_speed_mode_obj[i], page_03_menu_obj, page_03_menu_len);
-        bool sel = (i == Machine_para.speed);
+        bool sel = (i == machine_state_speed());
         if (!tmp_speed_obj) continue;
         PAGE_03_APPLY_FUNCTION_BTN(tmp_speed_obj, sel, false);
     }
@@ -881,7 +881,7 @@ void page_03_update_menu_button_states_refresh(void)
     for (int i = 0; i < FO_MODE; i++)
     {
         lv_obj_t* tmp_fo_obj = find_obj_by_name(page_03_fo_mode_obj[i], page_03_menu_obj, page_03_menu_len);
-        bool sel = (i == Machine_para.fo_mode);
+        bool sel = (i == machine_state_fo_mode());
         if (!tmp_fo_obj) continue;
         PAGE_03_APPLY_FUNCTION_BTN(tmp_fo_obj, sel, i == 0);
     }
@@ -889,14 +889,14 @@ void page_03_update_menu_button_states_refresh(void)
     for (int i = 0; i < WORK_MODE; i++)
     {
         lv_obj_t* tmp_work_obj = find_obj_by_name(page_03_work_mode_obj[i], page_03_menu_obj, page_03_menu_len);
-        bool sel = (i == Machine_para.work_mode);
+        bool sel = (i == machine_state_work_mode());
         if (!tmp_work_obj) continue;
         PAGE_03_APPLY_FUNCTION_BTN(tmp_work_obj, sel, false);
     }
     //ADD 处理
         lv_obj_t* tmp_add_on_obj = find_obj_by_name(page_03_add_mode_obj[0], page_03_menu_obj, page_03_menu_len);
         lv_obj_t* tmp_add_off_obj = find_obj_by_name(page_03_add_mode_obj[1], page_03_menu_obj, page_03_menu_len);
-        bool sel =  Machine_para.add_enable;
+        bool sel = machine_state_add_enabled();
         if (!tmp_add_on_obj || !tmp_add_off_obj) return;
         PAGE_03_APPLY_FUNCTION_BTN(tmp_add_on_obj, sel, false);
         PAGE_03_APPLY_FUNCTION_BTN(tmp_add_off_obj, !sel, true);

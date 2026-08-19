@@ -22,6 +22,7 @@
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_refre/lvgl_refre.h"
 #include "un260/machine_state/machine_state.h"
+#include "un260/lv_system/ui_history_data.h"
 
 typedef struct {
     counting_session_state_t *session;
@@ -225,7 +226,8 @@ void app_counting_runtime_handle_info(counting_session_state_t *session,
         return;
     }
 
-    result = counting_info_reply_handle(session, sim_data, buf, len);
+    result = counting_info_reply_handle(session, sim_data, buf, len,
+                                        ui_history_total_notes_counted_get());
     if (result.kind == COUNTING_INFO_REPLY_LIVE) {
         app_counting_runtime_refresh_compact(sim_data);
         counting_history_append_frame("0x0E", buf, len);

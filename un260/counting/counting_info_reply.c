@@ -2,7 +2,6 @@
 
 #include <stddef.h>
 
-#include "un260/lv_system/user_cfg.h"
 
 static counting_info_reply_result_t counting_info_reply_result(counting_info_reply_kind_t kind)
 {
@@ -28,8 +27,6 @@ static void counting_info_commit_previous_result(counting_session_state_t *sessi
     sim_data->last_issue_pcs = session->last_result.issue_pcs;
     sim_data->last_suspect_pcs = session->last_result.suspect_pcs;
     sim_data->last_damaged_pcs = session->last_result.damaged_pcs;
-    Machine_para.last_total_pcs = (uint16_t)session->last_result.pcs;
-    Machine_para.last_total_amount = (uint32_t)session->last_result.amount;
     session->last_result.valid = false;
 }
 
@@ -64,7 +61,8 @@ static counting_info_reply_result_t counting_info_handle_finished(counting_sessi
                                                                   counting_sim_t *sim_data,
                                                                   uint32_t amount,
                                                                   uint16_t qty,
-                                                                  uint8_t issue)
+                                                                  uint8_t issue,
+                                                                  uint32_t history_total_notes_counted)
 {
     counting_info_reply_result_t result = counting_info_reply_result(COUNTING_INFO_REPLY_FINISHED);
 
@@ -100,7 +98,7 @@ static counting_info_reply_result_t counting_info_handle_finished(counting_sessi
     session->history_record.end_seen = false;
     session->history_record.pcs = (uint32_t)result.final_pcs;
     session->history_record.total_after =
-        Machine_para.history_total_notes_counted + (uint32_t)result.final_pcs;
+        history_total_notes_counted + (uint32_t)result.final_pcs;
     session->history_record.amount = result.final_amount;
 
     return result;
@@ -109,7 +107,8 @@ static counting_info_reply_result_t counting_info_handle_finished(counting_sessi
 counting_info_reply_result_t counting_info_reply_handle(counting_session_state_t *session,
                                                         counting_sim_t *sim_data,
                                                         const uint8_t *buf,
-                                                        uint8_t len)
+                                                        uint8_t len,
+                                                        uint32_t history_total_notes_counted)
 {
     const uint8_t *payload;
     uint32_t amount;
@@ -134,7 +133,8 @@ counting_info_reply_result_t counting_info_reply_handle(counting_session_state_t
         return counting_info_handle_live(session, sim_data, amount, qty, issue);
     }
     if (status == 0x02) {
-        return counting_info_handle_finished(session, sim_data, amount, qty, issue);
+        return counting_info_handle_finished(session, sim_data, amount, qty, issue,
+                                             history_total_notes_counted);
     }
     return counting_info_reply_result(COUNTING_INFO_REPLY_IGNORED);
 }
