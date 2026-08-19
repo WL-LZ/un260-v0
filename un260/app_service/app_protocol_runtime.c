@@ -1,7 +1,7 @@
 #include "app_protocol_runtime.h"
 
 #include "un260/data_collection/data_collection.h"
-#include "un260/device_info/device_reply.h"
+#include "un260/device_info/device_info.h"
 #include "un260/diagnostic/diagnostic_reply.h"
 #include "un260/lv_core/page_06_settings.h"
 #include "un260/lv_core/page_09_cis_cala.h"

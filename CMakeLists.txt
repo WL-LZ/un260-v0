@@ -62,7 +62,6 @@ add_executable(${PROJECT_NAME} main.c
     un260/counting/counting_reject_reason.c
     un260/counting/counting_reject_sn_reply.c
     un260/device_info/device_info.c
-    un260/device_info/device_reply.c
     un260/data_collection/data_collection.c
     un260/diagnostic/diagnostic_reply.c
     un260/diagnostic/sensor_state.c
