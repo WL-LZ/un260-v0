@@ -9,17 +9,6 @@
 extern "C" {  
 #endif
 
-    typedef enum {
-        PAGE_MAIN,
-        PAGE_SETTING
-    } page_id_t;
-
-
-    void ui_switch_to(page_id_t page);
-    void lvgl_ui_init(void);           // 确保声明与实现一致
-    void create_setting_page(void);
-    void create_main_page(void);
-
     void page_01_mode_switch_refre(void);
     void page_01_create_mian_scrollable_container(void);
     void page_01_add_refre(void);
