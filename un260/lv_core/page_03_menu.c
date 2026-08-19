@@ -14,6 +14,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+static lv_obj_t* menu_page = NULL;
+static lv_obj_t* g_batch_tip_label = NULL;
+static lv_timer_t* g_batch_tip_timer = NULL;
 
 lv_obj_t* batch_num_display;
 
@@ -64,6 +67,77 @@ static uint32_t g_page_03_preview_feedback_started = 0;
 static void page_03_create_decor(void);
 static void page_03_apply_modern_style(void);
 static void page_03_create_preview(void);
+static void page_03_create_batch_num_area(void);
+
+static void page_03_delete_batch_tip_cb(lv_timer_t* timer)
+{
+    lv_obj_t* label = (lv_obj_t*)timer->user_data;
+
+    if (label && lv_obj_is_valid(label)) {
+        lv_obj_del(label);
+    }
+    if (g_batch_tip_label == label) {
+        g_batch_tip_label = NULL;
+    }
+    lv_timer_del(timer);
+    g_batch_tip_timer = NULL;
+}
+
+void page_03_menu_clear_batch_tip(void)
+{
+    if (g_batch_tip_timer) {
+        lv_timer_del(g_batch_tip_timer);
+        g_batch_tip_timer = NULL;
+    }
+    if (g_batch_tip_label && lv_obj_is_valid(g_batch_tip_label)) {
+        lv_obj_del(g_batch_tip_label);
+    }
+    g_batch_tip_label = NULL;
+}
+
+void page_03_menu_show_batch_saved_tip(void)
+{
+    page_03_menu_clear_batch_tip();
+    if (!menu_page || !lv_obj_is_valid(menu_page)) {
+        return;
+    }
+
+    g_batch_tip_label = lv_label_create(menu_page);
+    lv_obj_set_pos(g_batch_tip_label, 90, 182);
+    lv_obj_set_size(g_batch_tip_label, 400, 18);
+    lv_obj_set_style_text_font(g_batch_tip_label, &lv_font_instrument_sans_semibold_12, 0);
+    lv_obj_set_style_text_color(g_batch_tip_label, lv_color_hex(0x28A95B), 0);
+    lv_obj_set_style_text_align(g_batch_tip_label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_label_set_text(g_batch_tip_label, "Batch num saved successfully!");
+    g_batch_tip_timer = lv_timer_create(page_03_delete_batch_tip_cb, 2000,
+                                        g_batch_tip_label);
+}
+
+static void page_03_create_batch_num_area(void)
+{
+    lv_obj_t* batch_num_area = lv_obj_create(menu_page);
+    lv_obj_set_size(batch_num_area, 338, 49);
+    lv_obj_set_pos(batch_num_area, 119, 156);
+    lv_obj_set_style_bg_opa(batch_num_area, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_opa(batch_num_area, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(batch_num_area, 1, 0);
+    lv_obj_set_style_radius(batch_num_area, 48, 0);
+    lv_obj_clear_flag(batch_num_area, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollbar_mode(batch_num_area, LV_SCROLLBAR_MODE_OFF);
+
+    batch_num_display = lv_label_create(batch_num_area);
+    lv_obj_set_style_text_font(batch_num_display, &lv_font_manrope_bold_32, 0);
+    lv_obj_set_style_text_color(batch_num_display, lv_color_hex(0x000000), 0);
+    lv_obj_set_align(batch_num_display, LV_ALIGN_RIGHT_MID);
+    lv_label_set_text(batch_num_display, "0");
+
+    lv_obj_t* amount_obj = find_obj_by_name("03_amount_batch_label", page_03_menu_obj,
+                                            page_03_menu_len);
+    lv_obj_t* pcs_obj = find_obj_by_name("03_pcs_batch_label", page_03_menu_obj,
+                                         page_03_menu_len);
+    lv_obj_set_style_text_opa(pcs_obj, 255, 0);
+    lv_obj_set_style_text_opa(amount_obj, 40, 0);
+}
 
 // 定义初始位置常量（相对于容器的坐标）
 #define PCS_ACTIVE_Y 63     
@@ -1071,11 +1145,12 @@ void toggle_batch_mode(void)
 // 创建页面UI
 void ui_page_03_menu_create(lv_obj_t* parent)
 {
-    if (menu_page) return;
+    if (menu_page && lv_obj_is_valid(menu_page)) return;
+    ui_page_03_menu_destroy();
     machine_state_confirm_batch_mode(PCS_BATCH_MODE);
     is_amount_active = false;
     page_03_batch_num_edit_reset();
-    menu_page = lv_obj_create(lv_scr_act());
+    menu_page = lv_obj_create(parent ? parent : lv_scr_act());
     lv_obj_remove_style_all(menu_page);
     lv_obj_set_pos(menu_page, 0, 0);
     lv_obj_set_size(menu_page, 1280, 400);
@@ -1087,7 +1162,7 @@ void ui_page_03_menu_create(lv_obj_t* parent)
     page_03_menu_len = sizeof(page_03_menu_obj) / sizeof(ui_element_t);
     lv_ui_obj_init(menu_page, page_03_menu_obj, page_03_menu_len);
     page_03_create_decor();
-    page_03_batch_num_container();//BATCH_NUM_MIX
+    page_03_create_batch_num_area();//BATCH_NUM_MIX
     page_03_create_batch_label_switcher(menu_page);
     //刷新batch_num
     page_03_batch_num_refre();
@@ -1115,7 +1190,8 @@ void ui_page_03_menu_destroy(void)
         lv_timer_del(g_page_03_preview_timer);
         g_page_03_preview_timer = NULL;
     }
-    if (menu_page) {
+    page_03_menu_clear_batch_tip();
+    if (menu_page && lv_obj_is_valid(menu_page)) {
         lv_obj_del(menu_page);
     }
     menu_page = NULL;

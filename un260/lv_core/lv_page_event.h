@@ -17,10 +17,6 @@ extern char input_batch_num[9];
 extern bool pcs_batch_num_lock_200;
 void page_03_batch_num_edit_reset(void);
 
-/*****************定时器********************/
-void page_03_delete_tip_label_cb(lv_timer_t* t);
-extern lv_timer_t* page_03_batch_num_del_timer;
-
 void page_01_print_btn_event_cb(lv_event_t* e);
 void page_01_qr_btn_event_cb(lv_event_t* e);
 

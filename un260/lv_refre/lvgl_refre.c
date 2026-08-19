@@ -285,33 +285,6 @@ void page_03_create_batch_label_switcher(lv_obj_t* parent)
 
 }
 
-void page_03_batch_num_container(void)
-{
-    //创建batch_num显示
-    lv_obj_t* batch_num_area = lv_obj_create(menu_page);
-    lv_obj_set_size(batch_num_area, 338, 49);
-    lv_obj_set_pos(batch_num_area, 119, 156);
-    lv_obj_set_style_bg_opa(batch_num_area, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_opa(batch_num_area, LV_OPA_TRANSP, 0); // 保留边框（不透明）
-    lv_obj_set_style_border_width(batch_num_area, 1, 0);
-    lv_obj_set_style_radius(batch_num_area, 48, 0);
-    lv_obj_clear_flag(batch_num_area, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_scrollbar_mode(batch_num_area, LV_SCROLLBAR_MODE_OFF); // 滚动条关闭
-    // 显示num标签
-    batch_num_display = lv_label_create(batch_num_area);
-    lv_obj_set_style_text_font(batch_num_display, &lv_font_manrope_bold_32, 0);
-    lv_obj_set_style_text_color(batch_num_display, lv_color_hex(0x000000), 0);
-    lv_obj_set_align(batch_num_display, LV_ALIGN_RIGHT_MID);
-    lv_label_set_text(batch_num_display, "0");
-
-    lv_obj_t* amount_obj = find_obj_by_name("03_amount_batch_label", page_03_menu_obj, page_03_menu_len);
-    lv_obj_t* pcs_obj = find_obj_by_name("03_pcs_batch_label", page_03_menu_obj, page_03_menu_len);
-
-    lv_obj_set_style_text_opa(pcs_obj, 255, 0);  // 半透明
-    lv_obj_set_style_text_opa(amount_obj, 40, 0);
-}
-
-
 void page_03_batch_num_refre(void)
 {
     if (machine_state_batch_enabled()) {

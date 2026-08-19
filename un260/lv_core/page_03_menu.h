@@ -11,5 +11,7 @@ void toggle_batch_mode(void);
 void page_03_menu_function_focus(uint8_t function);
 void page_03_menu_function_feedback(uint8_t function, uint8_t value);
 void page_03_menu_preview_refresh(void);
+void page_03_menu_clear_batch_tip(void);
+void page_03_menu_show_batch_saved_tip(void);
 
 #endif // !PAGE_03_MENU_H

@@ -28,9 +28,6 @@
 #include "un260/lv_core/page_24_set_reject_pocket.h"
 #include "un260/lv_core/page_25_set_serial_number.h"
 
-lv_timer_t* page_03_batch_num_del_timer = NULL;
-static lv_obj_t* g_batch_tip_label = NULL;
-
 #define PAGE_01_DETAIL_TAP_THRESHOLD     10
 // 声明外部变量
 
@@ -482,19 +479,6 @@ void page_01_curr_btn_event_cb(lv_event_t* e)
 
 }
 
-// page_03 batch_num定时器
-void page_03_delete_tip_label_cb(lv_timer_t* t) {
-    lv_obj_t* lbl = (lv_obj_t*) t->user_data;  // v8 写法
-    if (lbl && lv_obj_is_valid(lbl)) {
-        lv_obj_del(lbl);
-    }
-    if (g_batch_tip_label == lbl) {
-        g_batch_tip_label = NULL;
-    }
-    lv_timer_del(t);
-    page_03_batch_num_del_timer = NULL;
-    printf("dress:%p\n", &page_03_batch_num_del_timer);
-}
 // 输入事件回调函数（处理触摸事件）
 
 void page_03_batch_label_input_event_cb(lv_event_t* e)
@@ -664,18 +648,7 @@ void page_03_batch_num_keypad_enter_event_cb(lv_event_t* e)
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
     icon_feedback_comp("page_03_del_icon.png", page_03_menu_obj, page_03_menu_len);
 
-    if (page_03_batch_num_del_timer) {
-        lv_obj_t* old_lbl = (lv_obj_t*)page_03_batch_num_del_timer->user_data;
-        if (old_lbl && lv_obj_is_valid(old_lbl)) {
-            lv_obj_del(old_lbl);
-        }
-        if (g_batch_tip_label == old_lbl) {
-            g_batch_tip_label = NULL;
-        }
-        lv_timer_del(page_03_batch_num_del_timer);
-        page_03_batch_num_del_timer = NULL;
-        printf("del\n");
-    }
+    page_03_menu_clear_batch_tip();
     int num = 0;
     if (batch_num_index > 0) {
         num = atoi(input_batch_num);
@@ -703,20 +676,8 @@ void page_03_batch_num_keypad_enter_event_cb(lv_event_t* e)
 }
 void page_03_batch_set_result(bool success, const setting_batch_result_t *result)
 {
-    if (menu_page == NULL) return;
     if (result == NULL) return;
-
-    if (page_03_batch_num_del_timer) {
-        lv_obj_t* old_lbl = (lv_obj_t*)page_03_batch_num_del_timer->user_data;
-        if (old_lbl && lv_obj_is_valid(old_lbl)) {
-            lv_obj_del(old_lbl);
-        }
-        if (g_batch_tip_label == old_lbl) {
-            g_batch_tip_label = NULL;
-        }
-        lv_timer_del(page_03_batch_num_del_timer);
-        page_03_batch_num_del_timer = NULL;
-    }
+    page_03_menu_clear_batch_tip();
 
     if (success) {
         if (result->target.num > 0) {
@@ -727,14 +688,7 @@ void page_03_batch_set_result(bool success, const setting_batch_result_t *result
                                  "%d", machine_state_batch_num());
             page_01_batch_refre();
             page_03_batch_num_edit_reset();
-            g_batch_tip_label = lv_label_create(menu_page);
-            lv_obj_set_pos(g_batch_tip_label, 90, 182);
-            lv_obj_set_size(g_batch_tip_label, 400, 18);
-            lv_obj_set_style_text_font(g_batch_tip_label, &lv_font_instrument_sans_semibold_12, 0);
-            lv_obj_set_style_text_color(g_batch_tip_label, lv_color_hex(0x28A95B), 0);
-            lv_obj_set_style_text_align(g_batch_tip_label, LV_TEXT_ALIGN_CENTER, 0);
-            lv_label_set_text(g_batch_tip_label, "Batch num saved successfully!");
-            page_03_batch_num_del_timer = lv_timer_create(page_03_delete_tip_label_cb, 2000, g_batch_tip_label);
+            page_03_menu_show_batch_saved_tip();
         }
     }
 
