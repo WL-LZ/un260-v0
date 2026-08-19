@@ -29,6 +29,8 @@
 
 #define MAX_LOG_LABELS 200
 
+static lv_obj_t* page_debug = NULL;
+
 typedef struct {
     lv_obj_t *input;
     lv_obj_t *keyboard;

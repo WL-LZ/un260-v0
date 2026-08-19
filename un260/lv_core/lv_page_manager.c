@@ -11,17 +11,8 @@
 // 定义页面对象
 lv_obj_t* main_page = NULL;
 lv_obj_t* setting_page = NULL;
-lv_obj_t* list_page = NULL;
 lv_obj_t* menu_page = NULL;
 lv_obj_t* set_password_page = NULL;
-lv_obj_t* settings_page = NULL;
-lv_obj_t* curr_page = NULL;
-lv_obj_t* cis_calib_page = NULL;
-lv_obj_t* page_debug = NULL;
-lv_obj_t* page_sensor = NULL;
-lv_obj_t* page_upgrade = NULL;
-lv_obj_t* page_motor_test = NULL;
-lv_obj_t* boot_anim_page = NULL;
 lv_obj_t* print_setting_page = NULL;
 lv_obj_t* language_setting_page = NULL;
 lv_obj_t* double_note_setting_page = NULL;

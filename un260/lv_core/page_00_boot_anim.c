@@ -2,6 +2,7 @@
 #include "un260/lv_core/lv_page_manager.h"
 #include <math.h>
 
+static lv_obj_t* boot_anim_page = NULL;
 static lv_timer_t* boot_anim_timer = NULL;
 static lv_obj_t* line_base = NULL;
 static lv_obj_t* line_mid = NULL;

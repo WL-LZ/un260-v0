@@ -17,6 +17,8 @@
 #include "aic_ui/aic_ui.h"
 #include "lv_port_indev.h"
 
+static lv_obj_t* curr_page = NULL;
+
 ui_element_t page_07_curr_obj[] = {
     // 背景图
     {

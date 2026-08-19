@@ -1,5 +1,4 @@
 #include "un260/lv_core/page_02_list.h"
-#include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_resources/lv_image_declear.h" 
 #include "un260/lv_resources/lv_img_init.h" 
 #include "un260/currency/currency_state.h"
@@ -9,6 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 
+static lv_obj_t* list_page = NULL;
 
 // 添加长度变量
 int page_02_list_len = 0;

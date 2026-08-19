@@ -16,6 +16,8 @@
 #include <stdio.h>
 #include <string.h>
 
+static lv_obj_t* settings_page = NULL;
+
 #define SETTINGS_SCREEN_W            1280
 #define SETTINGS_SCREEN_H            400
 #define SETTINGS_SIDEBAR_W           216

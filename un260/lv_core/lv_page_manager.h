@@ -7,17 +7,8 @@ extern "C" {
 #include "un260/lv_resources/lv_img_init.h" 
     extern lv_obj_t* main_page;
     extern lv_obj_t* setting_page;
-    extern lv_obj_t* list_page;
     extern lv_obj_t* menu_page;
     extern lv_obj_t* set_password_page;
-    extern lv_obj_t* settings_page;
-    extern lv_obj_t* curr_page;
-    extern lv_obj_t* cis_calib_page;
-    extern lv_obj_t* page_debug;
-    extern lv_obj_t* page_sensor;
-    extern lv_obj_t* page_upgrade;
-    extern lv_obj_t* page_motor_test;
-    extern lv_obj_t* boot_anim_page;
     extern lv_obj_t* print_setting_page;
     extern lv_obj_t* language_setting_page;
     extern lv_obj_t* double_note_setting_page;
