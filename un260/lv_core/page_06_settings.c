@@ -9,7 +9,7 @@
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/device_info/device_info.h"
-#include "un260/data_collection/data_collection_state.h"
+#include "un260/data_collection/data_collection.h"
 #include "un260/lv_drivers/lv_drivers.h"
 
 #include <stdint.h>

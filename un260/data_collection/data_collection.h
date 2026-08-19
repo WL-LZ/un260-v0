@@ -1,5 +1,5 @@
-#ifndef DATA_COLLECTION_STATE_H
-#define DATA_COLLECTION_STATE_H
+#ifndef DATA_COLLECTION_H
+#define DATA_COLLECTION_H
 
 #include <stdint.h>
 
@@ -9,13 +9,21 @@ typedef enum {
     DATA_COLLECT_MODE_FALSE = 0x02,
 } data_collect_mode_t;
 
+typedef enum {
+    DATA_COLLECTION_REPLY_INVALID = 0,
+    DATA_COLLECTION_REPLY_STATUS_UPDATED,
+    DATA_COLLECTION_REPLY_EXITED,
+    DATA_COLLECTION_REPLY_UNKNOWN,
+} data_collection_reply_result_t;
+
 data_collect_mode_t data_collection_state_mode(void);
 uint16_t data_collection_state_pcs(void);
 const char *data_collection_state_status(void);
-
 void data_collection_state_select_mode(data_collect_mode_t mode, const char *status);
 void data_collection_state_reset_pcs(void);
 void data_collection_state_set_status(const char *status);
 void data_collection_state_exit(const char *status);
+
+data_collection_reply_result_t data_collection_reply_handle(const uint8_t *buf, uint8_t len);
 
 #endif

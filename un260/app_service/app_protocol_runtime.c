@@ -1,6 +1,6 @@
 #include "app_protocol_runtime.h"
 
-#include "un260/data_collection/data_collection_reply.h"
+#include "un260/data_collection/data_collection.h"
 #include "un260/device_info/device_reply.h"
 #include "un260/diagnostic/diagnostic_reply.h"
 #include "un260/lv_core/page_06_settings.h"
