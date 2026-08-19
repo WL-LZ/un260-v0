@@ -12,7 +12,6 @@
 lv_obj_t* main_page = NULL;
 lv_obj_t* setting_page = NULL;
 lv_obj_t* menu_page = NULL;
-lv_obj_t* set_password_page = NULL;
 #define UI_PAGE_STACK_CAPACITY 10
 #define UI_PAGE_INVALID ((ui_page_t)-1)
 

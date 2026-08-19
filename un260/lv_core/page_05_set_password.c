@@ -10,17 +10,17 @@
 
 #define PASSWORD_DOT_COUNT 4
 
-char input_password[USER_PASSWORD_MAX_LEN + 1] = { 0 };
-int password_index = 0;
-lv_obj_t* password_display = NULL;
+typedef struct {
+    lv_obj_t *page;
+    lv_obj_t *display;
+    lv_obj_t *field;
+    lv_obj_t *dots[PASSWORD_DOT_COUNT];
+    lv_obj_t *error_label;
+    lv_timer_t *error_timer;
+    char input[USER_PASSWORD_MAX_LEN + 1];
+} password_page_context_t;
 
-ui_element_t page_05_set_password_obj[] = { { 0 } };
-int page_05_set_password_len = 0;
-
-static lv_obj_t* password_field = NULL;
-static lv_obj_t* password_dots[PASSWORD_DOT_COUNT] = { NULL };
-static lv_obj_t* password_error_label = NULL;
-static lv_timer_t* password_error_timer = NULL;
+static password_page_context_t g_password_page;
 
 static void password_open_keyboard(void);
 
@@ -28,26 +28,30 @@ static void password_error_timer_cb(lv_timer_t* timer)
 {
     (void)timer;
 
-    if (password_error_label && lv_obj_is_valid(password_error_label)) {
-        lv_obj_add_flag(password_error_label, LV_OBJ_FLAG_HIDDEN);
+    if (g_password_page.error_label &&
+        lv_obj_is_valid(g_password_page.error_label)) {
+        lv_obj_add_flag(g_password_page.error_label, LV_OBJ_FLAG_HIDDEN);
     }
-    if (password_error_timer) {
-        lv_timer_del(password_error_timer);
-        password_error_timer = NULL;
+    if (g_password_page.error_timer) {
+        lv_timer_del(g_password_page.error_timer);
+        g_password_page.error_timer = NULL;
     }
 }
 
 static void password_show_error(void)
 {
-    if (!password_error_label || !lv_obj_is_valid(password_error_label)) return;
+    if (!g_password_page.error_label ||
+        !lv_obj_is_valid(g_password_page.error_label)) return;
 
-    lv_label_set_text(password_error_label, ui_text_get(UI_TEXT_PASSWORD_ERROR));
-    lv_obj_clear_flag(password_error_label, LV_OBJ_FLAG_HIDDEN);
+    lv_label_set_text(g_password_page.error_label,
+                      ui_text_get(UI_TEXT_PASSWORD_ERROR));
+    lv_obj_clear_flag(g_password_page.error_label, LV_OBJ_FLAG_HIDDEN);
 
-    if (password_error_timer) {
-        lv_timer_del(password_error_timer);
+    if (g_password_page.error_timer) {
+        lv_timer_del(g_password_page.error_timer);
     }
-    password_error_timer = lv_timer_create(password_error_timer_cb, 1600, NULL);
+    g_password_page.error_timer = lv_timer_create(password_error_timer_cb,
+                                                  1600, NULL);
 }
 
 static void password_set_display_text(const char* value)
@@ -60,19 +64,22 @@ static void password_set_display_text(const char* value)
     for (uint8_t i = 0; i < PASSWORD_DOT_COUNT; i++) {
         bool filled = (i < len);
 
-        if (!password_dots[i] || !lv_obj_is_valid(password_dots[i])) continue;
-        lv_obj_set_style_bg_color(password_dots[i],
+        if (!g_password_page.dots[i] ||
+            !lv_obj_is_valid(g_password_page.dots[i])) continue;
+        lv_obj_set_style_bg_color(g_password_page.dots[i],
                                   filled ? lv_color_hex(0x0878C8) : lv_color_hex(0xECF4FA),
                                   0);
-        lv_obj_set_style_border_color(password_dots[i],
+        lv_obj_set_style_border_color(g_password_page.dots[i],
                                       filled ? lv_color_hex(0x0466AD) : lv_color_hex(0xCFE0EE),
                                       0);
-        lv_obj_set_style_shadow_opa(password_dots[i], filled ? LV_OPA_30 : LV_OPA_TRANSP, 0);
+        lv_obj_set_style_shadow_opa(g_password_page.dots[i],
+                                    filled ? LV_OPA_30 : LV_OPA_TRANSP, 0);
     }
 
-    if (password_display && lv_obj_is_valid(password_display)) {
-        lv_label_set_text(password_display, len > 0 ? "" : ui_text_get(UI_TEXT_PASSWORD_PLACEHOLDER));
-        lv_obj_align(password_display, LV_ALIGN_BOTTOM_MID, 0, -6);
+    if (g_password_page.display && lv_obj_is_valid(g_password_page.display)) {
+        lv_label_set_text(g_password_page.display,
+                          len > 0 ? "" : ui_text_get(UI_TEXT_PASSWORD_PLACEHOLDER));
+        lv_obj_align(g_password_page.display, LV_ALIGN_BOTTOM_MID, 0, -6);
     }
 }
 
@@ -82,19 +89,16 @@ static void password_confirm_cb(const char* value, void* user_data)
 
     if (!value || value[0] == '\0') return;
 
-    lv_snprintf(input_password, sizeof(input_password), "%s", value);
-    password_index = (int)strlen(input_password);
-    password_set_display_text(input_password);
+    lv_snprintf(g_password_page.input, sizeof(g_password_page.input), "%s", value);
+    password_set_display_text(g_password_page.input);
 
-    if (strcmp(user_cfg_password_get(), input_password) == 0) {
-        memset(input_password, 0, sizeof(input_password));
-        password_index = 0;
+    if (strcmp(user_cfg_password_get(), g_password_page.input) == 0) {
+        memset(g_password_page.input, 0, sizeof(g_password_page.input));
         ui_manager_switch(UI_PAGE_SETTING);
         return;
     }
 
-    memset(input_password, 0, sizeof(input_password));
-    password_index = 0;
+    memset(g_password_page.input, 0, sizeof(g_password_page.input));
     password_set_display_text("");
     password_show_error();
 }
@@ -177,47 +181,47 @@ static void password_create_login_card(lv_obj_t* parent)
     settings_detail_create_label(card, ui_text_get(UI_TEXT_PASSWORD_LOGIN_TITLE),
                                  &lv_font_instrument_sans_medium_24, lv_color_hex(0x0D3440), 206, 134);
 
-    password_field = lv_obj_create(card);
-    lv_obj_remove_style_all(password_field);
-    lv_obj_set_pos(password_field, 88, 168);
-    lv_obj_set_size(password_field, 444, 80);
-    lv_obj_set_style_bg_color(password_field, lv_color_hex(0xF6FBFF), 0);
-    lv_obj_set_style_bg_opa(password_field, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_width(password_field, 2, 0);
-    lv_obj_set_style_border_color(password_field, lv_color_hex(0x0878C8), 0);
-    lv_obj_set_style_radius(password_field, 8, 0);
-    lv_obj_add_flag(password_field, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_add_event_cb(password_field, password_field_cb, LV_EVENT_CLICKED, NULL);
+    g_password_page.field = lv_obj_create(card);
+    lv_obj_remove_style_all(g_password_page.field);
+    lv_obj_set_pos(g_password_page.field, 88, 168);
+    lv_obj_set_size(g_password_page.field, 444, 80);
+    lv_obj_set_style_bg_color(g_password_page.field, lv_color_hex(0xF6FBFF), 0);
+    lv_obj_set_style_bg_opa(g_password_page.field, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(g_password_page.field, 2, 0);
+    lv_obj_set_style_border_color(g_password_page.field, lv_color_hex(0x0878C8), 0);
+    lv_obj_set_style_radius(g_password_page.field, 8, 0);
+    lv_obj_add_flag(g_password_page.field, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(g_password_page.field, password_field_cb,
+                        LV_EVENT_CLICKED, NULL);
 
-    pin_box = lv_obj_create(password_field);
+    pin_box = lv_obj_create(g_password_page.field);
     lv_obj_remove_style_all(pin_box);
     lv_obj_set_pos(pin_box, 86, 12);
     lv_obj_set_size(pin_box, 272, 34);
     lv_obj_clear_flag(pin_box, LV_OBJ_FLAG_SCROLLABLE);
 
     for (uint8_t i = 0; i < PASSWORD_DOT_COUNT; i++) {
-        password_dots[i] = lv_obj_create(pin_box);
-        lv_obj_remove_style_all(password_dots[i]);
-        lv_obj_set_pos(password_dots[i], (lv_coord_t)(i * 72), 0);
-        lv_obj_set_size(password_dots[i], 34, 34);
-        lv_obj_set_style_radius(password_dots[i], 17, 0);
-        lv_obj_set_style_bg_color(password_dots[i], lv_color_hex(0xECF4FA), 0);
-        lv_obj_set_style_bg_opa(password_dots[i], LV_OPA_COVER, 0);
-        lv_obj_set_style_border_width(password_dots[i], 2, 0);
-        lv_obj_set_style_border_color(password_dots[i], lv_color_hex(0xCFE0EE), 0);
-        lv_obj_set_style_shadow_width(password_dots[i], 10, 0);
-        lv_obj_set_style_shadow_color(password_dots[i], lv_color_hex(0x0878C8), 0);
-        lv_obj_set_style_shadow_opa(password_dots[i], LV_OPA_TRANSP, 0);
-        lv_obj_clear_flag(password_dots[i], LV_OBJ_FLAG_SCROLLABLE);
+        g_password_page.dots[i] = lv_obj_create(pin_box);
+        lv_obj_remove_style_all(g_password_page.dots[i]);
+        lv_obj_set_pos(g_password_page.dots[i], (lv_coord_t)(i * 72), 0);
+        lv_obj_set_size(g_password_page.dots[i], 34, 34);
+        lv_obj_set_style_radius(g_password_page.dots[i], 17, 0);
+        lv_obj_set_style_bg_color(g_password_page.dots[i], lv_color_hex(0xECF4FA), 0);
+        lv_obj_set_style_bg_opa(g_password_page.dots[i], LV_OPA_COVER, 0);
+        lv_obj_set_style_border_width(g_password_page.dots[i], 2, 0);
+        lv_obj_set_style_border_color(g_password_page.dots[i], lv_color_hex(0xCFE0EE), 0);
+        lv_obj_set_style_shadow_width(g_password_page.dots[i], 10, 0);
+        lv_obj_set_style_shadow_color(g_password_page.dots[i], lv_color_hex(0x0878C8), 0);
+        lv_obj_set_style_shadow_opa(g_password_page.dots[i], LV_OPA_TRANSP, 0);
+        lv_obj_clear_flag(g_password_page.dots[i], LV_OBJ_FLAG_SCROLLABLE);
     }
 
-    password_display = settings_detail_create_label(password_field,
-                                                    ui_text_get(UI_TEXT_PASSWORD_PLACEHOLDER),
-                                                    &lv_font_instrument_sans_medium_16,
-                                                    lv_color_hex(0x5686A5), 0, 0);
-    lv_obj_align(password_display, LV_ALIGN_BOTTOM_MID, 0, -6);
+    g_password_page.display = settings_detail_create_label(
+        g_password_page.field, ui_text_get(UI_TEXT_PASSWORD_PLACEHOLDER),
+        &lv_font_instrument_sans_medium_16, lv_color_hex(0x5686A5), 0, 0);
+    lv_obj_align(g_password_page.display, LV_ALIGN_BOTTOM_MID, 0, -6);
 
-    password_hit_area = lv_obj_create(password_field);
+    password_hit_area = lv_obj_create(g_password_page.field);
     lv_obj_remove_style_all(password_hit_area);
     lv_obj_set_pos(password_hit_area, 0, 0);
     lv_obj_set_size(password_hit_area, lv_pct(100), lv_pct(100));
@@ -227,10 +231,10 @@ static void password_create_login_card(lv_obj_t* parent)
     lv_obj_clear_flag(password_hit_area, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_event_cb(password_hit_area, password_field_cb, LV_EVENT_CLICKED, NULL);
 
-    password_error_label = settings_detail_create_label(card, "",
-                                                        &lv_font_instrument_sans_medium_16,
-                                                        lv_color_hex(0xC03A2B), 258, 252);
-    lv_obj_add_flag(password_error_label, LV_OBJ_FLAG_HIDDEN);
+    g_password_page.error_label = settings_detail_create_label(
+        card, "", &lv_font_instrument_sans_medium_16,
+        lv_color_hex(0xC03A2B), 258, 252);
+    lv_obj_add_flag(g_password_page.error_label, LV_OBJ_FLAG_HIDDEN);
 
     password_set_display_text("");
 }
@@ -239,17 +243,17 @@ void ui_page_05_set_password_create(lv_obj_t* parent)
 {
     lv_obj_t* content = NULL;
 
-    (void)parent;
+    if (g_password_page.page && lv_obj_is_valid(g_password_page.page)) return;
 
-    if (set_password_page) return;
+    ui_page_05_set_password_destroy();
 
-    memset(input_password, 0, sizeof(input_password));
-    password_index = 0;
+    if (parent == NULL) {
+        parent = lv_scr_act();
+    }
 
-    set_password_page = settings_detail_create_page(lv_scr_act(),
-                                                    ui_text_get(UI_TEXT_PASSWORD_LOGIN_TITLE),
-                                                    password_back_cb,
-                                                    &content);
+    g_password_page.page = settings_detail_create_page(
+        parent, ui_text_get(UI_TEXT_PASSWORD_LOGIN_TITLE),
+        password_back_cb, &content);
     password_create_login_card(content);
     password_open_keyboard();
 }
@@ -258,20 +262,14 @@ void ui_page_05_set_password_destroy(void)
 {
     settings_detail_keyboard_hide();
 
-    if (password_error_timer) {
-        lv_timer_del(password_error_timer);
-        password_error_timer = NULL;
+    if (g_password_page.error_timer) {
+        lv_timer_del(g_password_page.error_timer);
+        g_password_page.error_timer = NULL;
     }
 
-    if (set_password_page && lv_obj_is_valid(set_password_page)) {
-        lv_obj_del(set_password_page);
+    if (g_password_page.page && lv_obj_is_valid(g_password_page.page)) {
+        lv_obj_del(g_password_page.page);
     }
 
-    set_password_page = NULL;
-    password_field = NULL;
-    password_display = NULL;
-    password_error_label = NULL;
-    memset(password_dots, 0, sizeof(password_dots));
-    memset(input_password, 0, sizeof(input_password));
-    password_index = 0;
+    memset(&g_password_page, 0, sizeof(g_password_page));
 }

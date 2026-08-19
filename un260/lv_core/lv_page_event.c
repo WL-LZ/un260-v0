@@ -1,11 +1,8 @@
 #include "lvgl/lvgl.h"
 #include "un260/lv_core/lv_page_manager.h"
-#include "un260/lv_core/lv_page_manager.h"
 #include "lv_page_event.h"
 #include "un260/lv_system/platform_app.h"
-#include <string.h>
 #include "lvgl/src/misc/lv_timer.h"
-#include "un260/lv_system/user_cfg.h"
 #include "un260/lv_system/machine_time.h"
 #include "un260/lv_refre/lvgl_refre.h"
 #include "un260/lv_core/page_03_menu.h"
@@ -32,7 +29,6 @@
 #include "un260/lv_core/page_25_set_serial_number.h"
 
 lv_timer_t* page_03_batch_num_del_timer = NULL;
-lv_timer_t* page_05_password_del_timer = NULL;
 static lv_obj_t* g_batch_tip_label = NULL;
 
 #define PAGE_01_DETAIL_TAP_THRESHOLD     10
@@ -486,45 +482,6 @@ void page_01_curr_btn_event_cb(lv_event_t* e)
 
 }
 
-//设置密码界面按键输入
-void page_05_set_password_keypad_event_cb(lv_event_t* e)
-{
-    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
-    const char* password_get_txt = lv_event_get_user_data(e);
-    if (!password_get_txt || password_index >= 4) return;
-
-    input_password[password_index] = password_get_txt[0];
-    password_index++;
-    input_password[password_index] = '\0';
-    lv_label_set_text(password_display, input_password);
-
-
-}
-
-//密码清除事件
-void page_05_set_password_keypad_clear_event_cb(lv_event_t* e)
-{
-    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
-    icon_feedback_comp("page_03_ok_icon.png", page_05_set_password_obj, page_05_set_password_len);
-
-    memset(input_password,0,sizeof(input_password));
-    password_index = 0;
-    lv_label_set_text(password_display, "");
-
-}
-
-
-// page_05 密码错误定时器
-void page_05_error_label_timer_cb(lv_timer_t* timer) {
-    lv_obj_t* error_label = (lv_obj_t*) timer->user_data;  // v8 写法
-    if (error_label && lv_obj_is_valid(error_label)) {
-        lv_obj_del(error_label);
-    }
-    lv_timer_del(timer);
-    page_05_password_del_timer = NULL;
-    printf("dress:%p\n", &page_05_password_del_timer);
-}
-
 // page_03 batch_num定时器
 void page_03_delete_tip_label_cb(lv_timer_t* t) {
     lv_obj_t* lbl = (lv_obj_t*) t->user_data;  // v8 写法
@@ -538,43 +495,6 @@ void page_03_delete_tip_label_cb(lv_timer_t* t) {
     page_03_batch_num_del_timer = NULL;
     printf("dress:%p\n", &page_03_batch_num_del_timer);
 }
-
-
-
-
-
-
-//设置密码界面确认时间
-void page_05_set_password_keypad_enter_event_cb(lv_event_t* e)
-{
-    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
-    icon_feedback_comp("page_03_del_icon.png", page_05_set_password_obj, page_05_set_password_len);
-
-    if (page_05_password_del_timer) {
-        lv_timer_del(page_05_password_del_timer);
-        page_05_password_del_timer = NULL;
-        printf("del\n");
-    }
-    if (strcmp(user_cfg_password_get(), input_password) == 0)
-        ui_manager_switch(UI_PAGE_SETTING);
-    else
-    {
-        lv_obj_t* err_txt;
-        memset(input_password, 0, sizeof(input_password));
-        password_index = 0;
-        lv_label_set_text(password_display, "");
-
-        err_txt = lv_label_create(set_password_page);
-        lv_obj_set_style_text_color(err_txt, lv_color_make(0,0,0), 0);
-        lv_label_set_text(err_txt, "password error!");
-        lv_obj_align(err_txt, LV_ALIGN_TOP_MID, 0, 150);
-
-        page_05_password_del_timer = lv_timer_create(page_05_error_label_timer_cb,2000,err_txt);
-    }
-
-}
-
-
 // 输入事件回调函数（处理触摸事件）
 
 void page_03_batch_label_input_event_cb(lv_event_t* e)

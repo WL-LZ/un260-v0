@@ -8,9 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-extern lv_obj_t* password_display;
-extern char input_password[USER_PASSWORD_MAX_LEN + 1];
-extern int password_index;
 //batch num
 extern lv_obj_t* batch_num_display;
 
@@ -22,9 +19,7 @@ void page_03_batch_num_edit_reset(void);
 
 /*****************定时器********************/
 void page_03_delete_tip_label_cb(lv_timer_t* t);
-void page_05_error_label_timer_cb(lv_timer_t* t);
 extern lv_timer_t* page_03_batch_num_del_timer;
-extern lv_timer_t* page_05_password_del_timer;
 
 void page_01_print_btn_event_cb(lv_event_t* e);
 void page_01_qr_btn_event_cb(lv_event_t* e);
@@ -54,9 +49,6 @@ void page_setting_req_poll(void);
 void page_01_set_btn_event_cb(lv_event_t* e);
 void page_01_curr_btn_event_cb(lv_event_t* e);
 // 密码键盘相关函数
-void page_05_set_password_keypad_event_cb(lv_event_t* e);
-void page_05_set_password_keypad_clear_event_cb(lv_event_t* e);
-void page_05_set_password_keypad_enter_event_cb(lv_event_t* e);
 
 void page_03_batch_label_input_event_cb(lv_event_t* e);
 void page_03_void_batch_label_gesture_event_cb(lv_event_t* e);

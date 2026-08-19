@@ -8,7 +8,6 @@ extern "C" {
     extern lv_obj_t* main_page;
     extern lv_obj_t* setting_page;
     extern lv_obj_t* menu_page;
-    extern lv_obj_t* set_password_page;
     typedef enum {
         UI_PAGE_BOOT_ANIM = 0,
         UI_PAGE_MAIN,
@@ -68,10 +67,6 @@ extern "C" {
 
     extern ui_element_t page_04_set_obj[];
     extern int page_04_set_obj_len;
-
-    extern ui_element_t page_05_set_password_obj[];
-    extern int page_05_set_password_len;
-
 
     extern ui_element_t page_06_settins_password_obj[];
     extern int page_06_settins_password_len;
