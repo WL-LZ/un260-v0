@@ -4,6 +4,7 @@
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/user_cfg.h"
+#include "un260/diagnostic/sensor_state.h"
 
 #define SENSOR_SCALE_Y_DEFAULT 330
 #define SENSOR_QUERY_PERIOD_MS 300
@@ -30,14 +31,17 @@ static void sensor_send_query(void)
 
 static void sensor_refresh_view(void)
 {
-    if (last_update_count == g_sensor_voltage.update_count) return;
-    last_update_count = g_sensor_voltage.update_count;
+    sensor_voltage_snapshot_t snapshot;
+
+    sensor_state_get_snapshot(&snapshot);
+    if (last_update_count == snapshot.update_count) return;
+    last_update_count = snapshot.update_count;
 
     for (int i = 0; i < SENSOR_VOLTAGE_CH_NUM; i++) {
         if (!value_labels[i] || !lv_obj_is_valid(value_labels[i])) continue;
 
-        if (g_sensor_voltage.valid[i]) {
-            const uint8_t raw = g_sensor_voltage.raw[i];
+        if (snapshot.valid[i]) {
+            const uint8_t raw = snapshot.raw[i];
             const float v = sensor_raw_to_volt(raw);
             lv_label_set_text_fmt(value_labels[i], "%.3f V", v);
             lv_obj_set_style_text_color(value_labels[i], lv_color_hex(0x1C8E4D), 0);

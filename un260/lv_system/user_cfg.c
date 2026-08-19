@@ -32,7 +32,6 @@ Machine_para_t Machine_para = {
     .last_total_amount = 0,
     .history_total_notes_counted = 0,
 };
-sensor_voltage_t g_sensor_voltage = { 0 };
 
 static bool user_cfg_password_is_valid(const char* password)
 {

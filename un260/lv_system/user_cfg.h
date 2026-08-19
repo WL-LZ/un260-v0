@@ -89,15 +89,6 @@ bool user_cfg_screenshot_load(void);
 bool user_cfg_screenshot_save(bool enabled);
 bool user_cfg_screenshot_enabled(void);
 
-#define SENSOR_VOLTAGE_CH_NUM 11
-typedef struct {
-    uint8_t raw[SENSOR_VOLTAGE_CH_NUM];
-    bool valid[SENSOR_VOLTAGE_CH_NUM];
-    uint32_t update_count;
-} sensor_voltage_t;
-
-extern sensor_voltage_t g_sensor_voltage;
-
  enum {
     MODE_NONE,
     MODE_MDC,

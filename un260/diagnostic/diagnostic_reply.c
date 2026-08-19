@@ -1,4 +1,5 @@
 #include "diagnostic_reply.h"
+#include "un260/diagnostic/sensor_state.h"
 
 #include <stddef.h>
 #include <string.h>
@@ -29,8 +30,7 @@ static diagnostic_reply_result_t diagnostic_sensor_reply_handle(
     index = buf[4];
     value = buf[5];
     if (index == 0x00 && value == 0x00) {
-        memset(g_sensor_voltage.valid, 0, sizeof(g_sensor_voltage.valid));
-        g_sensor_voltage.update_count++;
+        sensor_state_clear();
         return DIAGNOSTIC_REPLY_SENSOR_START;
     }
     if (index == 0xFF && value == 0xFF) {
@@ -42,9 +42,7 @@ static diagnostic_reply_result_t diagnostic_sensor_reply_handle(
         return DIAGNOSTIC_REPLY_IGNORED;
     }
 
-    g_sensor_voltage.raw[channel] = value;
-    g_sensor_voltage.valid[channel] = true;
-    g_sensor_voltage.update_count++;
+    sensor_state_set_voltage(channel, value);
     return DIAGNOSTIC_REPLY_SENSOR_DATA;
 }
 
