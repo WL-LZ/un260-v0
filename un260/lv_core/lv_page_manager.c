@@ -35,14 +35,26 @@ lv_obj_t* password_change_page = NULL;
 lv_obj_t* factory_setting_page = NULL;
 lv_obj_t* wave_get_page = NULL;
 
+#define UI_PAGE_STACK_CAPACITY 10
+#define UI_PAGE_INVALID ((ui_page_t)-1)
+
+typedef struct {
+    ui_page_t current;
+    ui_page_t stack[UI_PAGE_STACK_CAPACITY];
+    int stack_top;
+} ui_page_manager_context_t;
+
+static ui_page_manager_context_t g_page_manager = {
+    .current = UI_PAGE_INVALID,
+    .stack_top = -1,
+};
+
 ui_element_group_t all_ui_groups[] = {
     { page_01_main_obj, 0 },
     { page_02_list_obj, 0 },
     { page_03_menu_obj, 0 },
    // { page_04_set_obj,  0 },
 };
-
-static ui_page_t current_page = (ui_page_t)-1;
 
 typedef void (*ui_page_create_fn_t)(lv_obj_t *parent);
 typedef void (*ui_page_destroy_fn_t)(void);
@@ -107,16 +119,17 @@ static bool ui_manager_page_is_registered(ui_page_t page)
 //销毁当前页面
 static void destroy_current_page(void)
 {
-    if (current_page == UI_PAGE_MAIN) {
+    if (g_page_manager.current == UI_PAGE_MAIN) {
         if (main_page && lv_obj_is_valid(main_page)) {
             pause_counting_sim(); // 暂停计数
             lv_obj_add_flag(main_page, LV_OBJ_FLAG_HIDDEN); // 隐藏主页面
             return; // 直接返回，不执行销毁
         }
     }
-    if (current_page >= UI_PAGE_BOOT_ANIM && current_page < UI_PAGE_COUNT &&
-        g_page_registry[current_page].destroy != NULL) {
-        g_page_registry[current_page].destroy();
+    if (g_page_manager.current >= UI_PAGE_BOOT_ANIM &&
+        g_page_manager.current < UI_PAGE_COUNT &&
+        g_page_registry[g_page_manager.current].destroy != NULL) {
+        g_page_registry[g_page_manager.current].destroy();
     }
 }
 
@@ -180,36 +193,24 @@ static void ui_manager_notify_page_switch(ui_page_t from, ui_page_t to)
 
 void ui_manager_switch(ui_page_t page)
 {
-    ui_page_t from = current_page;
+    ui_page_t from = g_page_manager.current;
 
-    if (page == current_page) return;
+    if (page == g_page_manager.current) return;
     if (!ui_manager_page_is_registered(page)) return;
     ui_manager_notify_page_switch(from, page);
     destroy_current_page();
     create_new_page(page);
-    current_page = page;
+    g_page_manager.current = page;
 }
 
-
-// 页面堆栈
-#define MAX_PAGE 10
-static ui_page_t page_stack[MAX_PAGE];
-static int top = -1;
-static page_data_t machine_data = { 0 };
 void ui_manager_init(void) {
-    // 初始化共享数据
-    machine_data.count_value = 0;
-    machine_data.batch_value = 100;
-    machine_data.sp_level = 800;
-    machine_data.is_auto_mode = true;
-
     // 更新ui_groups的长度值
     all_ui_groups[0].len = page_01_main_len;
     all_ui_groups[1].len = page_02_list_len;
     all_ui_groups[2].len = page_03_menu_len;
 
     // 初始化堆栈
-    top = -1;
+    g_page_manager.stack_top = -1;
 
     // 显示主页面
 
@@ -222,31 +223,36 @@ void ui_manager_init(void) {
 
 void ui_manager_push_page(ui_page_t page)
 {
+    int i;
 
-    if (page == current_page)  return;
+    if (page == g_page_manager.current ||
+        !ui_manager_page_is_registered(page)) return;
 
     //当前页入栈
-    if (top < MAX_PAGE - 1 && current_page != (ui_page_t)-1)  //当前页有效
-    {
-        page_stack[++top] = current_page;
-
-    }
-    else
-    {
-        for (int i = 0; i < MAX_PAGE - 1; i++)
-            page_stack[i] = page_stack[i + 1];
-        page_stack[MAX_PAGE - 1] = current_page;
-
+    if (g_page_manager.current != UI_PAGE_INVALID) {
+        if (g_page_manager.stack_top < UI_PAGE_STACK_CAPACITY - 1) {
+            g_page_manager.stack[++g_page_manager.stack_top] =
+                g_page_manager.current;
+        } else {
+            for (i = 0; i < UI_PAGE_STACK_CAPACITY - 1; i++) {
+                g_page_manager.stack[i] = g_page_manager.stack[i + 1];
+            }
+            g_page_manager.stack[UI_PAGE_STACK_CAPACITY - 1] =
+                g_page_manager.current;
+        }
     }
     ui_manager_switch(page);
 }
 
 bool ui_manager_pop_page(void)
 {
-    if (top < 0)
+    ui_page_t previous_page;
+
+    if (g_page_manager.stack_top < 0)
     {
         // 栈为空时，判断是否需要返回主页面
-        if (current_page != (ui_page_t)-1 && current_page != UI_PAGE_MAIN) {
+        if (g_page_manager.current != UI_PAGE_INVALID &&
+            g_page_manager.current != UI_PAGE_MAIN) {
             ui_manager_switch(UI_PAGE_MAIN);
             return true;
         }
@@ -254,25 +260,18 @@ bool ui_manager_pop_page(void)
     }
 
     // 出栈
-    ui_page_t prev_page = page_stack[top--];
-    ui_manager_switch(prev_page);
+    previous_page = g_page_manager.stack[g_page_manager.stack_top--];
+    ui_manager_switch(previous_page);
     return true;
 }
 
 void ui_manager_clear_stack(void)
 {
-    top = -1;
+    g_page_manager.stack_top = -1;
 }
 
 
 // 读取当前页
 ui_page_t ui_manager_get_current_page(void) {
-    return current_page;
-}
-
-
-
-// 获取机器状态
-page_data_t* ui_manager_get_data(void) {
-    return &machine_data;
+    return g_page_manager.current;
 }

@@ -74,14 +74,6 @@ extern "C" {
     void ui_manager_clear_stack(void);      //清空页面堆栈
     ui_page_t ui_manager_get_current_page(void);   //获取当前页
     typedef struct {
-        int count_value;
-        int batch_value;
-        int sp_level;
-        bool is_auto_mode;
-
-    }page_data_t;
-
-    typedef struct {
         ui_element_t* list;
         int len;
     }ui_element_group_t;
