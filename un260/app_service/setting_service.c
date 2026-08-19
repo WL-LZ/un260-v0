@@ -27,15 +27,81 @@ static protocol_request_t g_batch_request = PROTOCOL_REQUEST_INITIALIZER(SETTING
 static setting_batch_request_type_t g_batch_req_type = SETTING_BATCH_REQUEST_NONE;
 static setting_batch_snapshot_t g_batch_req_target = { false, 0 };
 static setting_batch_snapshot_t g_batch_req_previous = { false, 0 };
-static protocol_request_t g_double_note_request = PROTOCOL_REQUEST_INITIALIZER(SETTING_REQUEST_TIMEOUT_MS);
-static uint8_t g_double_note_req_target = 0;
-static uint8_t g_double_note_req_previous = 0;
-static protocol_request_t g_flap_request = PROTOCOL_REQUEST_INITIALIZER(SETTING_REQUEST_TIMEOUT_MS);
-static uint8_t g_flap_req_target = 0;
-static uint8_t g_flap_req_previous = 0;
-static protocol_request_t g_reject_pocket_request = PROTOCOL_REQUEST_INITIALIZER(SETTING_REQUEST_TIMEOUT_MS);
-static uint8_t g_reject_pocket_req_target = 0;
-static uint8_t g_reject_pocket_req_previous = 0;
+
+typedef struct {
+    protocol_request_t request;
+    uint8_t target;
+    uint8_t previous;
+} setting_value_request_slot_t;
+
+#define SETTING_VALUE_REQUEST_SLOT_INITIALIZER \
+    { PROTOCOL_REQUEST_INITIALIZER(SETTING_REQUEST_TIMEOUT_MS), 0, 0 }
+
+static setting_value_request_slot_t g_double_note_request =
+    SETTING_VALUE_REQUEST_SLOT_INITIALIZER;
+static setting_value_request_slot_t g_flap_request =
+    SETTING_VALUE_REQUEST_SLOT_INITIALIZER;
+static setting_value_request_slot_t g_reject_pocket_request =
+    SETTING_VALUE_REQUEST_SLOT_INITIALIZER;
+
+static bool setting_value_request_begin(setting_value_request_slot_t *slot,
+                                        uint8_t cmd_g,
+                                        const uint8_t *payload,
+                                        uint16_t payload_len,
+                                        uint8_t target,
+                                        uint8_t previous)
+{
+    if (slot == NULL || !protocol_request_begin(&slot->request)) return false;
+
+    slot->target = target;
+    slot->previous = previous;
+    if (protocol_send(cmd_g, payload, payload_len) < 0) {
+        protocol_request_finish(&slot->request);
+        return false;
+    }
+
+    return true;
+}
+
+static bool setting_value_request_take_result(setting_value_request_slot_t *slot,
+                                              uint8_t status,
+                                              uint8_t success_status,
+                                              uint8_t failure_status,
+                                              setting_value_result_t *result)
+{
+    if (slot == NULL || result == NULL ||
+        !protocol_request_can_take_result(&slot->request)) {
+        return false;
+    }
+    if (status != success_status && status != failure_status) return false;
+
+    result->target = slot->target;
+    result->previous = slot->previous;
+    result->success = (status == success_status);
+    result->timeout = false;
+    protocol_request_finish(&slot->request);
+    return true;
+}
+
+static bool setting_value_request_take_timeout(setting_value_request_slot_t *slot,
+                                               setting_value_result_t *result)
+{
+    if (slot == NULL || result == NULL ||
+        !protocol_request_take_timeout(&slot->request)) {
+        return false;
+    }
+
+    result->target = slot->target;
+    result->previous = slot->previous;
+    result->success = false;
+    result->timeout = true;
+    return true;
+}
+
+static void setting_value_request_clear(setting_value_request_slot_t *slot)
+{
+    if (slot != NULL) protocol_request_finish(&slot->request);
+}
 
 #if SETTING_BATCH_TRACE_ENABLE
 static uint32_t g_batch_trace_next_seq = 0;
@@ -387,125 +453,64 @@ bool setting_service_batch_take_timeout(setting_batch_result_t *result)
 
 bool setting_service_request_double_note_level(uint8_t target, uint8_t previous)
 {
-    if (!protocol_request_begin(&g_double_note_request)) return false;
-    g_double_note_req_target = target;
-    g_double_note_req_previous = previous;
-    if (protocol_send(0x31, &target, 1) < 0) {
-        setting_service_clear_double_note_level_request();
-        return false;
-    }
-
-    return true;
+    return setting_value_request_begin(&g_double_note_request, 0x31,
+                                       &target, 1, target, previous);
 }
 
 bool setting_service_take_double_note_level_result(uint8_t status, setting_value_result_t *result)
 {
-    if (!protocol_request_can_take_result(&g_double_note_request) || result == NULL) return false;
-    if (status != 0x01 && status != 0x02) return false;
-
-    result->target = g_double_note_req_target;
-    result->previous = g_double_note_req_previous;
-    result->success = (status == 0x01);
-    result->timeout = false;
-    protocol_request_finish(&g_double_note_request);
-    return true;
+    return setting_value_request_take_result(&g_double_note_request, status,
+                                             0x01, 0x02, result);
 }
 
 bool setting_service_take_double_note_level_timeout(setting_value_result_t *result)
 {
-    if (!result || !protocol_request_take_timeout(&g_double_note_request)) return false;
-
-    result->target = g_double_note_req_target;
-    result->previous = g_double_note_req_previous;
-    result->success = false;
-    result->timeout = true;
-    setting_service_clear_double_note_level_request();
-    return true;
+    return setting_value_request_take_timeout(&g_double_note_request, result);
 }
 
 void setting_service_clear_double_note_level_request(void)
 {
-    protocol_request_finish(&g_double_note_request);
+    setting_value_request_clear(&g_double_note_request);
 }
 
 bool setting_service_request_flap_position(uint8_t target, uint8_t previous)
 {
-    if (!protocol_request_begin(&g_flap_request)) return false;
-    g_flap_req_target = target;
-    g_flap_req_previous = previous;
-    if (protocol_send(0x42, &target, 1) < 0) {
-        protocol_request_finish(&g_flap_request);
-        return false;
-    }
-
-    return true;
+    return setting_value_request_begin(&g_flap_request, 0x42,
+                                       &target, 1, target, previous);
 }
 
 bool setting_service_take_flap_position_result(uint8_t status, setting_value_result_t *result)
 {
-    if (!protocol_request_can_take_result(&g_flap_request) || result == NULL) return false;
-    if (status != 0x00 && status != 0x01) return false;
-
-    result->target = g_flap_req_target;
-    result->previous = g_flap_req_previous;
-    result->success = (status == 0x00);
-    result->timeout = false;
-    protocol_request_finish(&g_flap_request);
-    return true;
+    return setting_value_request_take_result(&g_flap_request, status,
+                                             0x00, 0x01, result);
 }
 
 bool setting_service_take_flap_position_timeout(setting_value_result_t *result)
 {
-    if (!result || !protocol_request_take_timeout(&g_flap_request)) return false;
-
-    result->target = g_flap_req_target;
-    result->previous = g_flap_req_previous;
-    result->success = false;
-    result->timeout = true;
-    return true;
+    return setting_value_request_take_timeout(&g_flap_request, result);
 }
 
 bool setting_service_request_reject_pocket_max(uint8_t target, uint8_t previous)
 {
     uint8_t payload[2] = { 0x01, target };
 
-    if (!protocol_request_begin(&g_reject_pocket_request)) return false;
-    g_reject_pocket_req_target = target;
-    g_reject_pocket_req_previous = previous;
-    if (protocol_send(0x08, payload, sizeof(payload)) < 0) {
-        setting_service_clear_reject_pocket_max_request();
-        return false;
-    }
-
-    return true;
+    return setting_value_request_begin(&g_reject_pocket_request, 0x08,
+                                       payload, sizeof(payload),
+                                       target, previous);
 }
 
 bool setting_service_take_reject_pocket_max_result(uint8_t status, setting_value_result_t *result)
 {
-    if (!protocol_request_can_take_result(&g_reject_pocket_request) || result == NULL) return false;
-    if (status != 0x01 && status != 0x02) return false;
-
-    result->target = g_reject_pocket_req_target;
-    result->previous = g_reject_pocket_req_previous;
-    result->success = (status == 0x01);
-    result->timeout = false;
-    protocol_request_finish(&g_reject_pocket_request);
-    return true;
+    return setting_value_request_take_result(&g_reject_pocket_request, status,
+                                             0x01, 0x02, result);
 }
 
 bool setting_service_take_reject_pocket_max_timeout(setting_value_result_t *result)
 {
-    if (!result || !protocol_request_take_timeout(&g_reject_pocket_request)) return false;
-
-    result->target = g_reject_pocket_req_target;
-    result->previous = g_reject_pocket_req_previous;
-    result->success = false;
-    result->timeout = true;
-    setting_service_clear_reject_pocket_max_request();
-    return true;
+    return setting_value_request_take_timeout(&g_reject_pocket_request, result);
 }
 
 void setting_service_clear_reject_pocket_max_request(void)
 {
-    protocol_request_finish(&g_reject_pocket_request);
+    setting_value_request_clear(&g_reject_pocket_request);
 }
