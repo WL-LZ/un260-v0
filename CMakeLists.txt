@@ -110,6 +110,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_core/page_14_main_upgrade.c
     un260/lv_core/page_15_image_upgrade.c
     un260/lv_core/page_16_ui_upgrade.c
+    un260/lv_core/upgrade_page_runtime.c
     un260/lv_core/ui_upgrade_service.c
     un260/lv_core/page_17_motor_test.c
     un260/lv_core/page_18_pure.c
