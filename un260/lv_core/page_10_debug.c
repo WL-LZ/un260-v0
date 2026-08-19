@@ -20,7 +20,7 @@
 
 /* ================= page_10_debug.c ================= */
 #include "page_10_debug.h"
-#include "un260/lv_drivers/lv_drivers.h"
+#include "un260/protocol/protocol_send.h"
 #include "un260/lv_components/lv_print_toast.h"
 #include "un260/lv_system/ui_export_data.h"
 #include "un260/lv_system/ui_text.h"
@@ -175,7 +175,7 @@ static void btn_send_event_cb(lv_event_t* e)
     uint16_t cmd_s_len = len - 5;             // 去掉 FD DF LEN CMD-G CRC
 
     /* ===== 调用真实发送 ===== */
-    send_command(fd4, cmd_g, cmd_s, cmd_s_len);
+    protocol_send(cmd_g, cmd_s, cmd_s_len);
 
     /* ===== UI 显示 ===== */
     append_log("TX", cmd_str, "00FF00");

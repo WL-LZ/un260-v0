@@ -4,7 +4,7 @@
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/page_04_set.h"
 #include "un260/lv_system/platform_app.h"
-#include "un260/lv_drivers/lv_drivers.h"
+#include "un260/protocol/protocol_send.h"
 #include "un260/lv_refre/lvgl_refre.h"
 #include"lv_page_declear.h"
 
@@ -166,7 +166,7 @@ typedef struct {
 
 static void ui_manager_send_protocol(uint8_t cmd_g, uint8_t cmd_s)
 {
-    send_command(fd4, cmd_g, &cmd_s, 1);
+    protocol_send(cmd_g, &cmd_s, 1);
 }
 
 static void ui_manager_notify_page_switch(ui_page_t from, ui_page_t to)

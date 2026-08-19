@@ -12,7 +12,7 @@
 #include "un260/lv_resources/lv_img_init.h"
 #include "un260/currency/currency_state.h"
 #include "un260/currency/currency_service.h"
-#include "un260/lv_drivers/lv_drivers.h"
+#include "un260/protocol/protocol_send.h"
 #include "lv_page_event.h"
 #include "aic_ui/aic_ui.h"
 #include "lv_port_indev.h"
@@ -592,7 +592,7 @@ static void curr_select_and_exit_abs(int abs_idx)
     }
 
     if (!currency_service_request_switch((uint8_t)abs_idx, target_code)) return;
-    if (send_command(fd4, 0x03, (const uint8_t*)target_code, 3) < 0) {
+    if (protocol_send(0x03, (const uint8_t*)target_code, 3) < 0) {
         currency_switch_result_t result;
 
         if (currency_service_take_switch_result(0x02, &result)) {

@@ -1,7 +1,7 @@
 #include "page_14_main_upgrade.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/settings_detail_ui.h"
-#include "un260/lv_drivers/lv_drivers.h"
+#include "un260/protocol/protocol_send.h"
 #include "un260/lv_system/ui_text.h"
 
 #include <stdbool.h>
@@ -61,13 +61,17 @@ static void start_cb(lv_event_t* e)
 {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
 
-    if (fd4 < 0) {
+    if (!protocol_send_is_ready()) {
         lv_label_set_text(lbl_upgrade, ui_text_get(UI_TEXT_SETTINGS_UART_NOT_READY));
         lv_obj_set_style_text_color(lbl_upgrade, lv_color_hex(0xC03A2B), 0);
         return;
     }
 
-    send_command(fd4, 0xA1, (const uint8_t[]){0x01}, 1);
+    if (protocol_send(0xA1, (const uint8_t[]){0x01}, 1) < 0) {
+        lv_label_set_text(lbl_upgrade, ui_text_get(UI_TEXT_SETTINGS_UART_NOT_READY));
+        lv_obj_set_style_text_color(lbl_upgrade, lv_color_hex(0xC03A2B), 0);
+        return;
+    }
     waiting_upgrade_result = true;
     wait_start_tick = lv_tick_get();
 

@@ -14,7 +14,7 @@
 #include "un260/lv_system/user_cfg.h"
 #include "un260/machine_state/machine_state.h"
 #include "un260/lv_components/lv_print_toast.h"
-#include "un260/lv_drivers/lv_drivers.h"
+#include "un260/protocol/protocol_send.h"
 #include "un260/lv_system/machine_time.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/ui_export_data.h"
@@ -99,9 +99,9 @@ static void page_01_main_send_init_protocol(void) //主界面首次进入时发�
     uint8_t sub = 0x02;
 
     if (s_main_init_protocol_sent) return;
-    if (fd4 < 0) return;
+    if (!protocol_send_is_ready()) return;
 
-    send_command(fd4, 0xC0, &sub, 1); //FD DF 06 C0 02：通知下位机进入采集误报数据模式
+    protocol_send(0xC0, &sub, 1); //FD DF 06 C0 02：通知下位机进入采集误报数据模式
 
     /* 预留：后续新增主界面首次进入协议时，继续在这里统一发送。 */
 

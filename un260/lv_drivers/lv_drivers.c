@@ -121,11 +121,21 @@ void uart_close(int fd)
 
 
 //通用发送指令
+bool protocol_send_is_ready(void)
+{
+    return fd4 >= 0;
+}
+
 int protocol_send(uint8_t cmd_g, const uint8_t *cmd_s, uint16_t cmd_s_len)
 {
     uint8_t buf[PROTOCOL_FRAME_MAX_SIZE];
     char log_prefix[40];
     int frame_len;
+
+    if (!protocol_send_is_ready()) {
+        uart_printf(fd6, "Send CMD: 0x%02X, UART4 not ready\n", cmd_g);
+        return -1;
+    }
 
     frame_len = protocol_frame_build(buf, sizeof(buf), cmd_g, cmd_s, cmd_s_len);
     if (frame_len < 0) {

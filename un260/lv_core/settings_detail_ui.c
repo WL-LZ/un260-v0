@@ -1,7 +1,7 @@
 #define SETTINGS_THEME_DISABLE_COLOR_REMAP
 #include "un260/lv_core/settings_detail_ui.h"
 #include "un260/lv_core/page_06_settings.h"
-#include "un260/lv_drivers/lv_drivers.h"
+#include "un260/protocol/protocol_send.h"
 #include "un260/lv_system/ui_text.h"
 
 #include <string.h>
@@ -362,13 +362,13 @@ void settings_detail_set_focus_box_active(lv_obj_t* box, bool active)
 bool settings_detail_send_command(uint8_t cmd_g, const uint8_t* cmd_s,
                                   uint16_t cmd_s_len)
 {
-    if (fd4 < 0) {
+    if (!protocol_send_is_ready()) {
         page_06_settings_set_status(ui_text_get(UI_TEXT_SETTINGS_UART_NOT_READY),
                                     lv_color_hex(0xC03A2B));
         return false;
     }
 
-    if (send_command(fd4, cmd_g, cmd_s, cmd_s_len) < 0) {
+    if (protocol_send(cmd_g, cmd_s, cmd_s_len) < 0) {
         page_06_settings_set_status(ui_text_get(UI_TEXT_SETTINGS_UART_NOT_READY),
                                     lv_color_hex(0xC03A2B));
         return false;

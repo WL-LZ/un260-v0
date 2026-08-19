@@ -9,7 +9,6 @@
 #include "un260/lv_system/machine_time.h"
 #include "un260/lv_refre/lvgl_refre.h"
 #include "un260/lv_core/page_03_menu.h"
-#include "un260/lv_drivers/lv_drivers.h"
 #include "un260/protocol/protocol_send.h"
 #include "un260/lv_components/lv_print_toast.h"
 #include "un260/lv_components/lv_qr_popup.h"
@@ -201,7 +200,7 @@ void page_01_start_btn_event_cb(lv_event_t* e) // 开始仿真
         // uart_send(fd4, (char*)atb_cmd, 6);           
         // uart_close(fd4);
         uint8_t start_cmd = 0x01;
-        send_command(fd4,0x0A,&start_cmd,1);
+        protocol_send(0x0A, &start_cmd, 1);
     }
 }
 
