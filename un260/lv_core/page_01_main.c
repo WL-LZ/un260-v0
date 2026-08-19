@@ -208,19 +208,19 @@ static const char* page_01_bottom_mode_text_get(uint8_t mode) //获取底部A区
 
 static const char* page_01_bottom_add_text_get(void) //获取底部A区ADD文本
 {
-    return Machine_para.add_enable ? ui_text_get(UI_TEXT_PAGE01_BOTTOM_ADD_ON) :
+    return machine_state_add_enabled() ? ui_text_get(UI_TEXT_PAGE01_BOTTOM_ADD_ON) :
         ui_text_get(UI_TEXT_PAGE01_BOTTOM_ADD_OFF);
 }
 
 static const char* page_01_bottom_work_text_get(void) //获取底部A区工作模式文本
 {
-    return Machine_para.work_mode ? ui_text_get(UI_TEXT_PAGE01_BOTTOM_WORK_MANUAL) :
+    return machine_state_work_mode() ? ui_text_get(UI_TEXT_PAGE01_BOTTOM_WORK_MANUAL) :
         ui_text_get(UI_TEXT_PAGE01_BOTTOM_WORK_AUTO);
 }
 
 static const char* page_01_bottom_fo_text_get(void) //获取底部A区F/O文本
 {
-    switch (Machine_para.fo_mode) {
+    switch (machine_state_fo_mode()) {
     case 0: return ui_text_get(UI_TEXT_PAGE01_BOTTOM_FO_OFF);
     case 1: return ui_text_get(UI_TEXT_PAGE01_BOTTOM_FO_F);
     case 2: return ui_text_get(UI_TEXT_PAGE01_BOTTOM_FO_O);
@@ -231,7 +231,7 @@ static const char* page_01_bottom_fo_text_get(void) //获取底部A区F/O文本
 
 static const char* page_01_bottom_speed_text_get(void) //获取底部C区速度文本
 {
-    switch (Machine_para.speed) {
+    switch (machine_state_speed()) {
     case 0: return ui_text_get(UI_TEXT_PAGE01_BOTTOM_SPEED_LOW);
     case 1: return ui_text_get(UI_TEXT_PAGE01_BOTTOM_SPEED_MID);
     case 2: return ui_text_get(UI_TEXT_PAGE01_BOTTOM_SPEED_HIGH);
@@ -603,7 +603,7 @@ static void page_01_bottom_bg_destroy_all(void) //销毁主界面底部三个背
 
 void page_01_bottom_a_refresh_mode(bool anim_en) //刷新主界面底部A区模式文本
 {
-    page_01_bottom_label_anim_run(s_bottom_a_label_mode, page_01_bottom_mode_text_get(Machine_para.mode),
+    page_01_bottom_label_anim_run(s_bottom_a_label_mode, page_01_bottom_mode_text_get(machine_state_mode()),
         anim_en ? PAGE_01_BOTTOM_TEXT_ANIM_SLIDE : PAGE_01_BOTTOM_TEXT_ANIM_NONE);
 }
 
