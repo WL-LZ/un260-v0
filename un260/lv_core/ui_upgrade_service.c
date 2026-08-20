@@ -20,6 +20,7 @@
 #define UI_UPGRADE_RUNNING_FILE_PATH   "/proc/self/exe"
 #define UI_UPGRADE_SCRIPT_PATH         "/usr/bin/ui_update.sh"  
 #define UI_UPGRADE_STATUS_FILE_PATH    "/tmp/ui_update.status"
+#define UI_UPGRADE_STATUS_MAX_SIZE     512U
 
 typedef struct {
     bool valid;
@@ -37,7 +38,8 @@ typedef struct {
     bool success;
     pid_t child_pid;
     unsigned long start_ms;
-    unsigned long status_mtime_ms;
+    char status_content[UI_UPGRADE_STATUS_MAX_SIZE];
+    size_t status_content_len;
     ui_upgrade_service_status_t status;
 } ui_upgrade_service_ctx_t;
 
@@ -342,6 +344,34 @@ static ui_upgrade_stage_t ui_upgrade_service_stage_from_name(const char* stage_n
     return UI_UPGRADE_STAGE_NONE;
 }
 
+static bool ui_upgrade_service_parse_int(const char* text,
+                                         int min_value,
+                                         int max_value,
+                                         int* value_out)
+{
+    char* end;
+    long value;
+
+    if (text == NULL || value_out == NULL) {
+        return false;
+    }
+
+    errno = 0;
+    value = strtol(text, &end, 10);
+    if (end == text || errno != 0) {
+        return false;
+    }
+    if (*end == '\r') {
+        end++;
+    }
+    if (*end != '\0' || value < min_value || value > max_value) {
+        return false;
+    }
+
+    *value_out = (int)value;
+    return true;
+}
+
 static void ui_upgrade_service_set_progress_by_time(void)
 {
     unsigned long elapsed_ms = ui_upgrade_service_now_ms() - g_ui_upgrade_service.start_ms;
@@ -374,53 +404,89 @@ static void ui_upgrade_service_set_progress_by_time(void)
 
 static void ui_upgrade_service_load_status_file(void)
 {
-    struct stat st;
     FILE* fp;
-    char line[256];
+    char content[UI_UPGRADE_STATUS_MAX_SIZE];
+    char parse_content[UI_UPGRADE_STATUS_MAX_SIZE];
+    char* line;
+    char* save_ptr = NULL;
     char step_text[64] = {0};
     char result_text[128] = {0};
     char stage_name[32] = {0};
+    ui_upgrade_stage_t stage;
+    size_t content_len;
+    bool has_progress = false;
+    bool has_stage = false;
+    bool has_step = false;
     int progress = -1;
     int success = -1;
-
-    if (stat(UI_UPGRADE_STATUS_FILE_PATH, &st) != 0) return;
-
-    if (g_ui_upgrade_service.status_mtime_ms == (unsigned long)st.st_mtime * 1000UL) {
-        return;
-    }
 
     fp = fopen(UI_UPGRADE_STATUS_FILE_PATH, "r");
     if (fp == NULL) return;
 
-    while (fgets(line, sizeof(line), fp) != NULL) {
-        if (strncmp(line, "progress=", 9) == 0) {
-            progress = atoi(line + 9);
-        } else if (strncmp(line, "stage=", 6) == 0) {
-            sscanf(line + 6, "%31s", stage_name);
-        } else if (strncmp(line, "step=", 5) == 0) {
-            sscanf(line + 5, "%63[^\n]", step_text);
-        } else if (strncmp(line, "message=", 8) == 0) {
-            sscanf(line + 8, "%127[^\n]", result_text);
-        } else if (strncmp(line, "success=", 8) == 0) {
-            success = atoi(line + 8);
-        }
+    content_len = fread(content, 1, sizeof(content) - 1U, fp);
+    if (ferror(fp) != 0 || !feof(fp)) {
+        fclose(fp);
+        return;
     }
-
     fclose(fp);
 
-    g_ui_upgrade_service.status_mtime_ms = (unsigned long)st.st_mtime * 1000UL;
-
-    if (progress >= 0) g_ui_upgrade_service.status.progress = progress;
-    if (step_text[0] != '\0') {
-        snprintf(g_ui_upgrade_service.status.step_text,
-                 sizeof(g_ui_upgrade_service.status.step_text), "%s", step_text);
+    if (content_len == 0U || content[content_len - 1U] != '\n') {
+        return;
     }
+    content[content_len] = '\0';
+    if (content_len == g_ui_upgrade_service.status_content_len &&
+        memcmp(content, g_ui_upgrade_service.status_content, content_len) == 0) {
+        return;
+    }
+
+    memcpy(parse_content, content, content_len + 1U);
+    line = strtok_r(parse_content, "\n", &save_ptr);
+    while (line != NULL) {
+        if (strncmp(line, "progress=", 9) == 0) {
+            if (!ui_upgrade_service_parse_int(line + 9, 0, 100, &progress)) {
+                return;
+            }
+            has_progress = true;
+        } else if (strncmp(line, "stage=", 6) == 0) {
+            if (sscanf(line + 6, "%31s", stage_name) != 1) {
+                return;
+            }
+            has_stage = true;
+        } else if (strncmp(line, "step=", 5) == 0) {
+            snprintf(step_text, sizeof(step_text), "%s", line + 5);
+            has_step = true;
+        } else if (strncmp(line, "message=", 8) == 0) {
+            snprintf(result_text, sizeof(result_text), "%s", line + 8);
+        } else if (strncmp(line, "success=", 8) == 0) {
+            if (!ui_upgrade_service_parse_int(line + 8, 0, 1, &success)) {
+                return;
+            }
+        }
+        line = strtok_r(NULL, "\n", &save_ptr);
+    }
+
+    if (!has_progress || !has_stage || !has_step) {
+        return;
+    }
+    stage = ui_upgrade_service_stage_from_name(stage_name);
+    if (stage == UI_UPGRADE_STAGE_NONE ||
+        (success == 1 && stage != UI_UPGRADE_STAGE_SUCCESS) ||
+        (success == 0 && stage != UI_UPGRADE_STAGE_FAIL) ||
+        (success < 0 && (stage == UI_UPGRADE_STAGE_SUCCESS ||
+                         stage == UI_UPGRADE_STAGE_FAIL))) {
+        return;
+    }
+
+    memcpy(g_ui_upgrade_service.status_content, content, content_len + 1U);
+    g_ui_upgrade_service.status_content_len = content_len;
+
+    g_ui_upgrade_service.status.progress = progress;
+    g_ui_upgrade_service.status.stage = stage;
+    snprintf(g_ui_upgrade_service.status.step_text,
+             sizeof(g_ui_upgrade_service.status.step_text), "%s", step_text);
     if (result_text[0] != '\0') {
         snprintf(g_ui_upgrade_service.status.result_text,
                  sizeof(g_ui_upgrade_service.status.result_text), "%s", result_text);
-    }
-    if (stage_name[0] != '\0') {
-        g_ui_upgrade_service.status.stage = ui_upgrade_service_stage_from_name(stage_name);
     }
 
     if (success == 1) {
@@ -469,6 +535,9 @@ static void ui_upgrade_service_update_child_state(void)
     }
 
     g_ui_upgrade_service.child_pid = -1;
+    if (!g_ui_upgrade_service.status.finished) {
+        ui_upgrade_service_load_status_file();
+    }
     g_ui_upgrade_service.running = false;
     g_ui_upgrade_service.finished = true;
 
@@ -538,7 +607,9 @@ int ui_upgrade_service_start(void)
         g_ui_upgrade_service.child_pid > 0) return -1;
     if (!ui_upgrade_service_file_exists(UI_UPGRADE_SCRIPT_PATH)) return -1;
 
-    unlink(UI_UPGRADE_STATUS_FILE_PATH);
+    if (unlink(UI_UPGRADE_STATUS_FILE_PATH) != 0 && errno != ENOENT) {
+        return -1;
+    }
 
     pid = fork();
     if (pid < 0) return -1;
@@ -558,7 +629,8 @@ int ui_upgrade_service_start(void)
     g_ui_upgrade_service.success = false;
     g_ui_upgrade_service.child_pid = pid;
     g_ui_upgrade_service.start_ms = ui_upgrade_service_now_ms();
-    g_ui_upgrade_service.status_mtime_ms = 0;
+    g_ui_upgrade_service.status_content[0] = '\0';
+    g_ui_upgrade_service.status_content_len = 0;
 
     ui_upgrade_service_set_status(true, false, false, 0,
                                   UI_UPGRADE_STAGE_VERIFY,
