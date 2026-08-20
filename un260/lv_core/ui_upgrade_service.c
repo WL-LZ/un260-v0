@@ -1,5 +1,6 @@
 #include "ui_upgrade_service.h"
 
+#include <errno.h>
 #include <fcntl.h>
 #include <glob.h>
 #include <stdio.h>
@@ -184,21 +185,6 @@ static bool ui_upgrade_service_find_usb_device_path(char* path, size_t path_size
     return false;
 }
 
-static bool ui_upgrade_service_usb_device_present(void)
-{
-    char usb_dev[128];
-    return ui_upgrade_service_find_usb_device_path(usb_dev, sizeof(usb_dev));
-}
-
-static const char* ui_upgrade_service_get_usb_device_path(void)
-{
-    static char usb_dev[128];
-    if (ui_upgrade_service_find_usb_device_path(usb_dev, sizeof(usb_dev))) {
-        return usb_dev;
-    }
-    return NULL;
-}
-
 static bool ui_upgrade_service_get_mounted_device(char* dev_path, size_t dev_path_size)
 {
     FILE* fp = fopen("/proc/mounts", "r");
@@ -245,45 +231,56 @@ static bool ui_upgrade_service_usb_mounted(void)
     return mounted;
 }
 
-static bool ui_upgrade_service_usb_mount_stale(void)
+static bool ui_upgrade_service_mount_dir_prepare(void)
+{
+    struct stat st;
+
+    if (stat(UI_UPGRADE_USB_MNT, &st) == 0) {
+        return S_ISDIR(st.st_mode);
+    }
+    if (errno != ENOENT) {
+        return false;
+    }
+    return mkdir(UI_UPGRADE_USB_MNT, 0755) == 0;
+}
+
+static bool ui_upgrade_service_try_umount_usb(void)
+{
+    if (!ui_upgrade_service_usb_mounted()) {
+        return true;
+    }
+    if (system("umount /mnt/usb 2>/dev/null") != 0) {
+        return false;
+    }
+    return !ui_upgrade_service_usb_mounted();
+}
+
+static bool ui_upgrade_service_try_mount_usb(const char* usb_dev)
 {
     char mounted_dev[128];
+    char cmd[192];
 
-    if (!ui_upgrade_service_get_mounted_device(mounted_dev, sizeof(mounted_dev))) {
+    if (usb_dev == NULL || usb_dev[0] == '\0') {
+        return false;
+    }
+    if (ui_upgrade_service_get_mounted_device(mounted_dev,
+                                              sizeof(mounted_dev))) {
+        if (access(mounted_dev, F_OK) == 0) {
+            return true;
+        }
+        if (!ui_upgrade_service_try_umount_usb()) {
+            return false;
+        }
+    }
+    if (!ui_upgrade_service_mount_dir_prepare()) {
         return false;
     }
 
-    if (access(mounted_dev, F_OK) != 0) {
-        return true;
-    }
-    return false;
-}
-
-static void ui_upgrade_service_try_umount_usb(void)
-{
-    if (!ui_upgrade_service_usb_mounted()) return;
-    system("umount /mnt/usb 2>/dev/null");
-}
-
-static void ui_upgrade_service_try_mount_usb(void)
-{
-    const char* usb_dev;
-    char cmd[192];
-
-    system("mkdir -p /mnt/usb");
-
-    if (ui_upgrade_service_usb_mounted()) {
-        if (!ui_upgrade_service_usb_mount_stale()) {
-            return;
-        }
-        ui_upgrade_service_try_umount_usb();
-    }
-
-    usb_dev = ui_upgrade_service_get_usb_device_path();
-    if (usb_dev == NULL) return;
-
     snprintf(cmd, sizeof(cmd), "mount '%s' %s 2>/dev/null", usb_dev, UI_UPGRADE_USB_MNT);
-    system(cmd);
+    if (system(cmd) != 0) {
+        return false;
+    }
+    return ui_upgrade_service_usb_mounted();
 }
 
 static void ui_upgrade_service_set_status(bool running,
@@ -459,16 +456,20 @@ void ui_upgrade_service_reset(void)
 
 void ui_upgrade_service_detect(ui_upgrade_detect_info_t* info)
 {
+    char usb_dev[128];
+
     if (info == NULL) return;
 
-    info->usb_present = ui_upgrade_service_usb_device_present();
+    info->usb_present =
+        ui_upgrade_service_find_usb_device_path(usb_dev, sizeof(usb_dev));
     if (info->usb_present) {
-        ui_upgrade_service_try_mount_usb();
+        info->usb_mounted = ui_upgrade_service_try_mount_usb(usb_dev);
     } else {
-        ui_upgrade_service_try_umount_usb();
+        (void)ui_upgrade_service_try_umount_usb();
+        info->usb_mounted = ui_upgrade_service_usb_mounted();
     }
-    info->usb_mounted = ui_upgrade_service_usb_mounted();
-    info->package_found = ui_upgrade_service_file_exists(UI_UPGRADE_FILE_PATH);
+    info->package_found = info->usb_present && info->usb_mounted &&
+                          ui_upgrade_service_file_exists(UI_UPGRADE_FILE_PATH);
     info->package_hash_match = false;
 
     if (info->package_found) {
