@@ -51,18 +51,17 @@ static bool setting_basic_request_begin(setting_basic_request_slot_t *slot,
 
 static bool setting_basic_request_is_pending(const setting_basic_request_slot_t *slot)
 {
-    return slot != NULL && protocol_request_can_take_result(&slot->request);
+    return slot != NULL && protocol_request_is_pending(&slot->request);
 }
 
 static bool setting_basic_request_take_result(setting_basic_request_slot_t *slot,
                                               uint8_t *target)
 {
-    if (slot == NULL || !protocol_request_can_take_result(&slot->request)) {
+    if (slot == NULL || !protocol_request_take_result(&slot->request)) {
         return false;
     }
 
     if (target != NULL) *target = slot->target;
-    protocol_request_finish(&slot->request);
     return true;
 }
 
@@ -136,17 +135,14 @@ static bool setting_value_request_take_result(setting_value_request_slot_t *slot
                                               uint8_t failure_status,
                                               setting_value_result_t *result)
 {
-    if (slot == NULL || result == NULL ||
-        !protocol_request_can_take_result(&slot->request)) {
-        return false;
-    }
+    if (slot == NULL || result == NULL) return false;
     if (status != success_status && status != failure_status) return false;
+    if (!protocol_request_take_result(&slot->request)) return false;
 
     result->target = slot->target;
     result->previous = slot->previous;
     result->success = (status == success_status);
     result->timeout = false;
-    protocol_request_finish(&slot->request);
     return true;
 }
 
@@ -405,27 +401,29 @@ bool setting_service_request_batch_switch(bool target_enable, uint8_t sent_num, 
 
 bool setting_service_batch_take_result(uint8_t status, setting_batch_result_t *result)
 {
-    if (!protocol_request_can_take_result(&g_batch_request.request)) {
-#if SETTING_BATCH_TRACE_ENABLE
-        if (status == 0x01 || status == 0x02) {
-            printf("[BATCH_TRACE] RX_UNMATCHED time_ms=%llu status=%s\n",
-                   (unsigned long long)protocol_request_now_ms(), setting_batch_trace_status(status));
-        }
-#endif
-        return false;
-    }
     if (status != 0x01 && status != 0x02) {
 #if SETTING_BATCH_TRACE_ENABLE
-        printf("[BATCH_TRACE] RX_INVALID time_ms=%llu status=%u pending=1\n",
-               (unsigned long long)protocol_request_now_ms(), (unsigned)status);
+        if (protocol_request_can_take_result(&g_batch_request.request)) {
+            printf("[BATCH_TRACE] RX_INVALID time_ms=%llu status=%u pending=1\n",
+                   (unsigned long long)protocol_request_now_ms(), (unsigned)status);
+        }
 #endif
         return false;
     }
     if (result == NULL) {
 #if SETTING_BATCH_TRACE_ENABLE
-        printf("[BATCH_TRACE] RX_RESULT_NULL time_ms=%llu status=%s pending=1 active_seq=%u\n",
-               (unsigned long long)protocol_request_now_ms(), setting_batch_trace_status(status),
-               g_batch_request.trace_active_seq);
+        if (protocol_request_can_take_result(&g_batch_request.request)) {
+            printf("[BATCH_TRACE] RX_RESULT_NULL time_ms=%llu status=%s pending=1 active_seq=%u\n",
+                   (unsigned long long)protocol_request_now_ms(), setting_batch_trace_status(status),
+                   g_batch_request.trace_active_seq);
+        }
+#endif
+        return false;
+    }
+    if (!protocol_request_take_result(&g_batch_request.request)) {
+#if SETTING_BATCH_TRACE_ENABLE
+        printf("[BATCH_TRACE] RX_UNMATCHED time_ms=%llu status=%s\n",
+               (unsigned long long)protocol_request_now_ms(), setting_batch_trace_status(status));
 #endif
         return false;
     }
@@ -436,7 +434,6 @@ bool setting_service_batch_take_result(uint8_t status, setting_batch_result_t *r
     result->type = g_batch_request.type;
     result->target = g_batch_request.target;
     result->previous = g_batch_request.previous;
-    protocol_request_finish(&g_batch_request.request);
     g_batch_request.type = SETTING_BATCH_REQUEST_NONE;
     return true;
 }

@@ -17,6 +17,7 @@ bool protocol_request_begin(protocol_request_t *request);
 bool protocol_request_is_pending(const protocol_request_t *request);
 bool protocol_request_is_expired(const protocol_request_t *request);
 bool protocol_request_can_take_result(const protocol_request_t *request);
+bool protocol_request_take_result(protocol_request_t *request);
 bool protocol_request_take_timeout(protocol_request_t *request);
 void protocol_request_finish(protocol_request_t *request);
 

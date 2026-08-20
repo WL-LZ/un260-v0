@@ -66,14 +66,14 @@ static void serial_number_service_fill_result(serial_number_setting_result_t *re
 
 bool serial_number_service_take_reply(uint8_t level, uint8_t status, serial_number_setting_result_t *result)
 {
-    if (!protocol_request_can_take_result(&g_serial_number_request) || result == NULL) return false;
+    if (result == NULL) return false;
     if (status != 0x01 && status != 0x02) return false;
     if (status == 0x01 && level != g_serial_number_request_state.target_level) return false;
+    if (!protocol_request_take_result(&g_serial_number_request)) return false;
 
     serial_number_service_fill_result(result);
     result->success = status == 0x01;
     result->response_level = level;
-    protocol_request_finish(&g_serial_number_request);
     return true;
 }
 

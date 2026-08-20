@@ -40,8 +40,9 @@ bool currency_service_request_switch(uint8_t target_index, const char target_cod
 
 bool currency_service_take_switch_result(uint8_t status, currency_switch_result_t* result)
 {
-    if (!protocol_request_can_take_result(&g_currency_switch_lifecycle) || !result) return false;
+    if (!result) return false;
     if (status != 0x01 && status != 0x02) return false;
+    if (!protocol_request_take_result(&g_currency_switch_lifecycle)) return false;
 
     memset(result, 0, sizeof(*result));
     result->success = (status == 0x01);
@@ -51,7 +52,6 @@ bool currency_service_take_switch_result(uint8_t status, currency_switch_result_
     result->previous_currency = g_currency_switch_request.previous_currency;
     result->previous_index = g_currency_switch_request.previous_index;
     memset(&g_currency_switch_request, 0, sizeof(g_currency_switch_request));
-    protocol_request_finish(&g_currency_switch_lifecycle);
     return true;
 }
 

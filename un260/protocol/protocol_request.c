@@ -34,6 +34,13 @@ bool protocol_request_can_take_result(const protocol_request_t *request)
     return protocol_request_is_pending(request) && !protocol_request_is_expired(request);
 }
 
+bool protocol_request_take_result(protocol_request_t *request)
+{
+    if (!protocol_request_can_take_result(request)) return false;
+    protocol_request_finish(request);
+    return true;
+}
+
 bool protocol_request_take_timeout(protocol_request_t *request)
 {
     if (!protocol_request_is_expired(request)) return false;

@@ -60,9 +60,9 @@ void cfd_service_cancel_query(void)
 
 bool cfd_service_take_query_result(const char currency[4])
 {
-    if (!protocol_request_can_take_result(&g_cfd_query_request)) return false;
     if (!currency || strncmp(currency, g_cfd_query_currency, 3) != 0) return false;
-    cfd_service_cancel_query();
+    if (!protocol_request_take_result(&g_cfd_query_request)) return false;
+    g_cfd_query_currency[0] = '\0';
     return true;
 }
 
