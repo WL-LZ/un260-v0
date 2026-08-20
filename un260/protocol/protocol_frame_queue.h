@@ -15,5 +15,6 @@ typedef struct {
 
 bool protocol_frame_queue_push(const uint8_t *data, int len);
 bool protocol_frame_queue_pop(protocol_frame_t *frame);
+void protocol_frame_queue_clear(void);
 
 #endif

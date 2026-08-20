@@ -5,6 +5,7 @@
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_drivers/uart_bridge_service.h"
 #include "un260/protocol/protocol_frame.h"
+#include "un260/protocol/protocol_frame_queue.h"
 #include "un260/protocol/protocol_rx_service.h"
 #include "un260/protocol/protocol_send.h"
 
@@ -89,6 +90,7 @@ bool app_serial_runtime_start(void)
     }
     printf("UART配置完成\n");
 
+    protocol_frame_queue_clear();
     if (!protocol_rx_service_start(fd4, fd6)) {
         printf("UART4接收服务启动失败\n");
         app_serial_runtime_stop();
@@ -117,6 +119,7 @@ void app_serial_runtime_stop(void)
         protocol_rx_service_stop();
         g_rx_started = false;
     }
+    protocol_frame_queue_clear();
     app_serial_runtime_close_devices();
 }
 

@@ -51,3 +51,12 @@ bool protocol_frame_queue_pop(protocol_frame_t *frame)
 
     return popped;
 }
+
+void protocol_frame_queue_clear(void)
+{
+    pthread_mutex_lock(&g_mutex);
+    g_head = 0;
+    g_tail = 0;
+    g_count = 0;
+    pthread_mutex_unlock(&g_mutex);
+}
