@@ -13,6 +13,7 @@
 #include "un260/lv_core/page_01_main.h"
 #include "un260/lv_core/page_02_list.h"
 #include "un260/lv_drivers/lv_drivers.h"
+#include "un260/lv_system/platform_app.h"
 #include "un260/protocol/protocol_send.h"
 
 static void counting_detail_record_history(

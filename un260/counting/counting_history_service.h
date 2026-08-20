@@ -4,8 +4,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "counting_data_types.h"
 #include "counting_session_state.h"
-#include "un260/lv_system/platform_app.h"
 
 void counting_history_session_start(const uint8_t *buf, uint8_t len);
 void counting_history_capture_error(const char *tag,

@@ -4,8 +4,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "counting_data_types.h"
 #include "counting_session_state.h"
-#include "un260/lv_system/platform_app.h"
 
 typedef enum {
     COUNTING_REJECT_ANALYSIS_SOURCE_CURRENT = 0,

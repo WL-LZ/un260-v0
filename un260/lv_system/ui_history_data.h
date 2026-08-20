@@ -3,7 +3,8 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "un260/lv_system/platform_app.h"
+
+#include "un260/counting/counting_data_types.h"
 
 #define UI_HISTORY_MAX_RECORDS 20
 

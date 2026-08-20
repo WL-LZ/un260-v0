@@ -7,6 +7,7 @@
 
 #include "counting_denom_query_service.h"
 #include "un260/lv_drivers/lv_drivers.h"
+#include "un260/lv_system/platform_app.h"
 #include "un260/protocol/protocol_send.h"
 
 static void counting_denom_record_history(const counting_denom_reply_hooks_t *hooks,

@@ -22,6 +22,7 @@
 #include "un260/lv_core/page_31_get_wave.h"
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/machine_state/machine_state.h"
+#include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/ui_history_data.h"
 
 typedef struct {

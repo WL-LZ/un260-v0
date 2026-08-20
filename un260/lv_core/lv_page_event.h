@@ -2,11 +2,7 @@
 #define LV_PAGE_EVENT_H
 //管理事件
 #include "lvgl/lvgl.h"
-#include "un260/lv_system/platform_app.h"
-#include "un260/lv_components/lv_components.h"
 #include "un260/app_service/setting_service.h"
-#include <stdlib.h>
-#include <string.h>
 
 //batch num
 extern lv_obj_t* batch_num_display;

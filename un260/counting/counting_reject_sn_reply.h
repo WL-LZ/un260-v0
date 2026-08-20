@@ -5,8 +5,8 @@
 #include <stdint.h>
 
 #include "counting_detail_state.h"
+#include "counting_data_types.h"
 #include "counting_session_state.h"
-#include "un260/lv_system/platform_app.h"
 
 typedef enum {
     COUNTING_DETAIL_REPLY_INVALID = 0,
