@@ -35,17 +35,18 @@ int main(void) {
         return -1;
     }
     while (1) {
+        uint64_t loop_start_us = app_clock_monotonic_us();
         uint32_t now = app_clock_uptime_ms();
         ui_page_t current_page = ui_manager_get_current_page();
-        uint64_t ui_start_us;
-        uint64_t ui_end_us;
-        uint32_t ui_time_us;
+        uint64_t lvgl_start_us;
+        uint64_t lvgl_end_us;
+        uint64_t loop_end_us;
 
-        ui_start_us = app_clock_monotonic_us();
+        lvgl_start_us = app_clock_monotonic_us();
         lv_timer_handler();
-        ui_end_us = app_clock_monotonic_us();
-        ui_time_us = app_clock_elapsed_us32(ui_start_us, ui_end_us);
-        perf_stats_report_ui_time_us(ui_time_us);
+        lvgl_end_us = app_clock_monotonic_us();
+        perf_stats_report_lvgl_time_us(
+            app_clock_elapsed_us32(lvgl_start_us, lvgl_end_us));
         app_command_runtime_process_frames();
         app_ui_runtime_poll(now);
 
@@ -53,6 +54,9 @@ int main(void) {
 
         app_boot_runtime_poll(now, current_page == UI_PAGE_BOOT);
 
+        loop_end_us = app_clock_monotonic_us();
+        perf_stats_report_loop_time_us(
+            app_clock_elapsed_us32(loop_start_us, loop_end_us));
         usleep(1000);
     }
     app_setting_runtime_stop();

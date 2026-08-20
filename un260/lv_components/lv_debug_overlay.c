@@ -7,7 +7,8 @@ static lv_obj_t *g_debug_overlay = NULL;
 static lv_obj_t *g_debug_fps_label = NULL;
 static lv_obj_t *g_debug_cpu_label = NULL;
 static lv_obj_t *g_debug_mem_label = NULL;
-static lv_obj_t *g_debug_ui_label = NULL;
+static lv_obj_t *g_debug_lvgl_label = NULL;
+static lv_obj_t *g_debug_loop_label = NULL;
 static lv_timer_t *g_debug_timer = NULL;
 static bool g_debug_overlay_enabled = true;
 
@@ -37,8 +38,10 @@ static void debug_overlay_refresh_cb(lv_timer_t *timer)
         lv_label_set_text(g_debug_mem_label, "MEM: N/A");
     }
 
-    lv_label_set_text_fmt(g_debug_ui_label, "UI: %.2f/%.2fms",
-                          stats.ui_avg_ms, stats.ui_max_ms);
+    lv_label_set_text_fmt(g_debug_lvgl_label, "LVGL: %.2f/%.2fms",
+                          stats.lvgl_avg_ms, stats.lvgl_max_ms);
+    lv_label_set_text_fmt(g_debug_loop_label, "LOOP: %.2f/%.2fms",
+                          stats.loop_avg_ms, stats.loop_max_ms);
 }
 
 void lv_debug_overlay_init(void)
@@ -49,7 +52,7 @@ void lv_debug_overlay_init(void)
 
     g_debug_overlay = lv_obj_create(lv_layer_top());
     lv_obj_remove_style_all(g_debug_overlay);
-    lv_obj_set_size(g_debug_overlay, 176, 82);
+    lv_obj_set_size(g_debug_overlay, 176, 100);
     lv_obj_align(g_debug_overlay, LV_ALIGN_TOP_RIGHT, -8, 8);
     lv_obj_set_style_bg_color(g_debug_overlay, lv_color_black(), 0);
     lv_obj_set_style_bg_opa(g_debug_overlay, LV_OPA_40, 0);
@@ -66,17 +69,20 @@ void lv_debug_overlay_init(void)
     g_debug_fps_label = lv_label_create(g_debug_overlay);
     g_debug_cpu_label = lv_label_create(g_debug_overlay);
     g_debug_mem_label = lv_label_create(g_debug_overlay);
-    g_debug_ui_label = lv_label_create(g_debug_overlay);
+    g_debug_lvgl_label = lv_label_create(g_debug_overlay);
+    g_debug_loop_label = lv_label_create(g_debug_overlay);
 
     lv_obj_set_style_text_color(g_debug_fps_label, lv_color_white(), 0);
     lv_obj_set_style_text_color(g_debug_cpu_label, lv_color_white(), 0);
     lv_obj_set_style_text_color(g_debug_mem_label, lv_color_white(), 0);
-    lv_obj_set_style_text_color(g_debug_ui_label, lv_color_white(), 0);
+    lv_obj_set_style_text_color(g_debug_lvgl_label, lv_color_white(), 0);
+    lv_obj_set_style_text_color(g_debug_loop_label, lv_color_white(), 0);
 
     lv_label_set_text(g_debug_fps_label, "FPS: 0");
     lv_label_set_text(g_debug_cpu_label, "CPU: --%");
     lv_label_set_text(g_debug_mem_label, "MEM: --");
-    lv_label_set_text(g_debug_ui_label, "UI: --/--ms");
+    lv_label_set_text(g_debug_lvgl_label, "LVGL: --/--ms");
+    lv_label_set_text(g_debug_loop_label, "LOOP: --/--ms");
 
     if (g_debug_timer == NULL) {
         g_debug_timer = lv_timer_create(debug_overlay_refresh_cb, 1000, NULL);
