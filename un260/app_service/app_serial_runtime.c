@@ -4,19 +4,49 @@
 
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_drivers/uart_bridge_service.h"
+#include "un260/protocol/protocol_frame.h"
 #include "un260/protocol/protocol_rx_service.h"
+#include "un260/protocol/protocol_send.h"
 
 #define APP_UART_CONTROLLER_DEVICE "/dev/ttyS4"
 #define APP_UART_BRIDGE_DEVICE     "/dev/ttyS5"
 #define APP_UART_LOG_DEVICE        "/dev/ttyS6"
 #define APP_UART_BAUD              115200
 
-int fd4 = -1;
-int fd5 = -1;
+static int fd4 = -1;
+static int fd5 = -1;
 int fd6 = -1;
 
 static bool g_rx_started;
 static bool g_bridge_started;
+
+bool protocol_send_is_ready(void)
+{
+    return fd4 >= 0;
+}
+
+int protocol_send(uint8_t cmd_g, const uint8_t *cmd_s, uint16_t cmd_s_len)
+{
+    uint8_t buf[PROTOCOL_FRAME_MAX_SIZE];
+    char log_prefix[40];
+    int frame_len;
+
+    if (!protocol_send_is_ready()) {
+        uart_printf(fd6, "Send CMD: 0x%02X, UART4 not ready\n", cmd_g);
+        return -1;
+    }
+
+    frame_len = protocol_frame_build(buf, sizeof(buf), cmd_g, cmd_s, cmd_s_len);
+    if (frame_len < 0) {
+        uart_printf(fd6, "Send CMD: 0x%02X, invalid payload len=%u\n", cmd_g, (unsigned int)cmd_s_len);
+        return -1;
+    }
+
+    snprintf(log_prefix, sizeof(log_prefix), "Send CMD 0x%02X: ", cmd_g);
+    uart_log_hex(fd6, log_prefix, buf, (size_t)frame_len, (size_t)frame_len);
+
+    return uart_send(fd4, (const char *)buf, frame_len);
+}
 
 static void app_serial_runtime_close_devices(void)
 {

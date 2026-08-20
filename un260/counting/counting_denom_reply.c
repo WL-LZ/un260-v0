@@ -7,6 +7,7 @@
 
 #include "counting_denom_query_service.h"
 #include "un260/lv_drivers/lv_drivers.h"
+#include "un260/protocol/protocol_send.h"
 
 static void counting_denom_record_history(const counting_denom_reply_hooks_t *hooks,
                                           const uint8_t *buf,
@@ -49,7 +50,7 @@ static counting_denom_reply_result_t counting_denom_handle_end(
 
     {
         uint8_t reject_cmd = 0x01;
-        send_command(fd4, 0x0C, &reject_cmd, 1);
+        protocol_send(0x0C, &reject_cmd, 1);
     }
     detail->wait_sn_after_reject_end = true;
     if (!session->active) {

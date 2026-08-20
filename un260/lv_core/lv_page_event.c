@@ -248,7 +248,7 @@ void page_01_start_btn_event_cb(lv_event_t* e) // 开始仿真
 //             send_data = Temp_Mode;
 //         }
 
-//         send_command(fd4, 0x04, &send_data, 1);  // 发送字节
+//         protocol_send(0x04, &send_data, 1);  // 发送字节
 //         Machine_work_code.mode_code = send_data; // 保存当前发送的模式代码
 //         uart_printf(fd6, "send_data:%02X\n", send_data);
         

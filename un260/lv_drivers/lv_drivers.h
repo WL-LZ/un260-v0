@@ -27,12 +27,9 @@ int uart_config(int fd, int baud, int dataBit, char parity, int stopBit);
 
 /* 关闭串口 */
 void uart_close(int fd);
-int send_command(int fd, uint8_t cmd_g, const uint8_t *cmd_s, uint16_t cmd_s_len);
 
 extern void machine_handshake_send(void);
 
-extern int fd4;
-extern int fd5;
 extern int fd6;
 typedef uint8_t Machine_Mode_t;
 extern void debug_append_rx_log(const char* data); // 接收数据时调用

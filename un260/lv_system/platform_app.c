@@ -8,6 +8,7 @@
 #include "un260/lv_core/page_01_main.h"
 #include "un260/lv_core/page_01_detail_scroll.h"
 #include "un260/lv_drivers/lv_drivers.h"
+#include "un260/protocol/protocol_send.h"
 #include "un260/lv_core/page_01_main.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_components/smart_island.h"
@@ -933,7 +934,7 @@ void sim_clear_all_sn(counting_sim_t* sim_data)
     ui_refresh_main_page();
     smart_island_refresh_summary();
     const uint8_t clear_data_cmd = 0x01;
-    send_command(fd4, 0x3b, &clear_data_cmd, 1);
+    protocol_send(0x3b, &clear_data_cmd, 1);
 }
 
 

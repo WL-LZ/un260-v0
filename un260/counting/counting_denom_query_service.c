@@ -3,6 +3,7 @@
 #include <stddef.h>
 
 #include "un260/lv_drivers/lv_drivers.h"
+#include "un260/protocol/protocol_send.h"
 
 #define DENOM_QUERY_CMD           0x0B
 #define DENOM_QUERY_SUBCMD        0x01
@@ -15,7 +16,7 @@ static void counting_denom_query_send(counting_detail_state_t *detail,
 {
     const uint8_t subcmd = DENOM_QUERY_SUBCMD;
 
-    send_command(fd4, DENOM_QUERY_CMD, &subcmd, 1);
+    protocol_send(DENOM_QUERY_CMD, &subcmd, 1);
     detail->query_pending = true;
     detail->query_got_frame = false;
     detail->query_tick = now_ms;

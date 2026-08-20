@@ -1,5 +1,6 @@
 #include "un260/lv_components/smart_island/smart_island_internal.h"
 #include "un260/lv_drivers/lv_drivers.h"
+#include "un260/protocol/protocol_send.h"
 #include "un260/lv_system/ui_text.h"
 #include "lvgl/src/misc/lv_txt.h"
 #include <string.h>
@@ -81,7 +82,7 @@ static bool smart_island_warning_pocket_confirm(void)
         return false;
     }
 
-    send_command(fd4, 0x3D, &clear_cmd, 1);
+    protocol_send(0x3D, &clear_cmd, 1);
     return true;
 }
 

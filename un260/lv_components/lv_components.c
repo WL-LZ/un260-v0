@@ -7,6 +7,7 @@
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_core/page_01_main.h"
 #include "un260/lv_drivers/lv_drivers.h"
+#include "un260/protocol/protocol_send.h"
 #include "un260/app_service/setting_service.h"
 #include "un260/machine_state/machine_state.h"
 
@@ -607,7 +608,7 @@ void system_error_confirm_cb(lv_event_t* e)
     if ((lv_event_code_t)lv_event_get_code(e) != LV_EVENT_CLICKED) return;
 
     uint8_t clear_cmd = 0x01;
-    send_command(fd4, 0x3D, &clear_cmd, 1); /* FD DF 06 3D 01 0A */
+    protocol_send(0x3D, &clear_cmd, 1); /* FD DF 06 3D 01 0A */
     hide_system_error_popup();
     g_sys_err_last_code = 0x00;
 }
@@ -757,7 +758,7 @@ void counting_error_confirm_cb(lv_event_t* e)
 
     /* 与系统报错确认一致：发送清除命令 */
     uint8_t clear_cmd = 0x01;
-    send_command(fd4, 0x3D, &clear_cmd, 1); /* FD DF 06 3D 01 0A */
+    protocol_send(0x3D, &clear_cmd, 1); /* FD DF 06 3D 01 0A */
     hide_counting_error_popup();
     g_count_err_last_code = 0x00;
     g_count_err_last_type = 0x00;

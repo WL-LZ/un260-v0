@@ -12,6 +12,7 @@
 #include "un260/lv_core/page_08_boot.h"
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_core/page_01_main.h"
+#include "un260/protocol/protocol_send.h"
 #include "un260/lv_system/ui_state_runtime.h"
 #include "un260/lv_system/platform_app.h"
 
@@ -23,7 +24,7 @@ static void app_boot_runtime_request_currency_list(void)
 {
     const uint8_t request = APP_BOOT_CURRENCY_LIST_REQUEST;
 
-    send_command(fd4, APP_BOOT_CURRENCY_LIST_CMD, &request, 1);
+    protocol_send(APP_BOOT_CURRENCY_LIST_CMD, &request, 1);
 }
 
 static void app_boot_runtime_finish(counting_session_state_t *counting_session)

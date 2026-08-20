@@ -13,6 +13,7 @@
 #include "un260/lv_core/page_01_main.h"
 #include "un260/lv_core/page_02_list.h"
 #include "un260/lv_drivers/lv_drivers.h"
+#include "un260/protocol/protocol_send.h"
 
 static void counting_detail_record_history(
     const counting_reject_sn_reply_hooks_t *hooks,
@@ -88,7 +89,7 @@ static counting_detail_reply_result_t counting_reject_reply_handle(
         }
         if (detail->wait_sn_after_reject_end) {
             uint8_t sn_req[2] = {0x01, 0x01};
-            send_command(fd4, 0x0D, sn_req, 2);
+            protocol_send(0x0D, sn_req, 2);
             detail->wait_sn_after_reject_end = false;
         }
         return COUNTING_DETAIL_REPLY_END;

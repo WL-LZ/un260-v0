@@ -1,6 +1,7 @@
 #include "lv_fault_popup.h"
 #include "un260/lv_components/lv_components.h"
 #include "un260/lv_drivers/lv_drivers.h"
+#include "un260/protocol/protocol_send.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_components/smart_island.h"
 #include "un260/lv_system/ui_text.h"
@@ -463,7 +464,7 @@ static void fault_popup_confirm_cb(lv_event_t* e)
 {
     (void)e;
     uint8_t clear_cmd = 0x01;
-    send_command(fd4, 0x3D, &clear_cmd, 1);
+    protocol_send(0x3D, &clear_cmd, 1);
 
     if (g_fault_popup_data.confirm_action == FAULT_CONFIRM_GOTO_SENSOR) {
         hide_fault_popup();
@@ -642,7 +643,7 @@ void fault_popup_auto_confirm_pending_if_needed(void)
         return;
     }
 
-    send_command(fd4, 0x3D, &clear_cmd, 1);
+    protocol_send(0x3D, &clear_cmd, 1);
     g_fault_auto_retry_count++;
     g_fault_auto_retry_last_tick = now_tick;
     fault_popup_clear_pending();
