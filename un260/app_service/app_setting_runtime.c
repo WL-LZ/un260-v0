@@ -4,9 +4,8 @@
 
 #include "lvgl/lvgl.h"
 
+#include "un260/app_service/app_setting_reply.h"
 #include "un260/lv_system/platform_app.h"
-#include "un260/protocol/basic_setting_reply_dispatch.h"
-#include "un260/protocol/setting_reply_dispatch.h"
 
 #define APP_SETTING_MODE_CLEAR_DELAY_MS 120
 
@@ -47,10 +46,10 @@ static void app_setting_runtime_handle_basic_reply(uint8_t cmd,
                                                    uint8_t *buf,
                                                    uint8_t len)
 {
-    basic_setting_reply_action_t actions =
-        basic_setting_reply_dispatch(cmd, buf, len);
+    app_setting_reply_action_t actions =
+        app_setting_reply_handle_basic(cmd, buf, len);
 
-    if ((actions & BASIC_SETTING_REPLY_ACTION_SCHEDULE_MODE_CLEAR) != 0) {
+    if ((actions & APP_SETTING_REPLY_ACTION_SCHEDULE_MODE_CLEAR) != 0) {
         app_setting_runtime_schedule_mode_clear();
     }
 }
@@ -76,7 +75,7 @@ bool app_setting_runtime_handle_reply(uint8_t cmd, uint8_t *buf, uint8_t len)
     case 0x44:
     case 0x45:
     case 0x46:
-        setting_reply_dispatch_detail(cmd, buf, len);
+        app_setting_reply_handle_detail(cmd, buf, len);
         return true;
 
     default:

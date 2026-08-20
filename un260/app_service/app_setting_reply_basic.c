@@ -1,4 +1,4 @@
-#include "basic_setting_reply_dispatch.h"
+#include "app_setting_reply.h"
 
 #include <stdbool.h>
 
@@ -15,11 +15,11 @@
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/user_cfg.h"
 
-basic_setting_reply_action_t basic_setting_reply_dispatch(uint8_t cmd,
-                                                           const uint8_t *buf,
-                                                           uint8_t len)
+app_setting_reply_action_t app_setting_reply_handle_basic(uint8_t cmd,
+                                                          const uint8_t *buf,
+                                                          uint8_t len)
 {
-    basic_setting_reply_action_t actions = BASIC_SETTING_REPLY_ACTION_NONE;
+    app_setting_reply_action_t actions = APP_SETTING_REPLY_ACTION_NONE;
 
     switch (cmd) {
     case 0x04:
@@ -49,8 +49,8 @@ basic_setting_reply_action_t basic_setting_reply_dispatch(uint8_t cmd,
                 page_01_bottom_a_refresh_mode(true);
             }
             setting_service_mode_finish();
-            actions = (basic_setting_reply_action_t)(actions |
-                      BASIC_SETTING_REPLY_ACTION_SCHEDULE_MODE_CLEAR);
+            actions = (app_setting_reply_action_t)(actions |
+                      APP_SETTING_REPLY_ACTION_SCHEDULE_MODE_CLEAR);
             uart_printf(fd6, "Set work mode success\n");
             smart_island_refresh_summary();
         }

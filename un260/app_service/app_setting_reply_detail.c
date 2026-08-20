@@ -1,4 +1,4 @@
-#include "setting_reply_dispatch.h"
+#include "app_setting_reply.h"
 
 #include "un260/app_service/setting_service.h"
 #include "un260/lv_core/page_20_set_print.h"
@@ -175,7 +175,9 @@ static void setting_reply_handle_print(const uint8_t *buf, uint8_t len)
     ui_page_20_set_print_on_reply(buf[4], buf[5]);
 }
 
-bool setting_reply_dispatch_detail(uint8_t cmd, const uint8_t *buf, uint8_t len)
+bool app_setting_reply_handle_detail(uint8_t cmd,
+                                     const uint8_t *buf,
+                                     uint8_t len)
 {
     if (!buf) return false;
 

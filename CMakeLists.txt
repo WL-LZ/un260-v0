@@ -78,8 +78,8 @@ add_executable(${PROJECT_NAME} main.c
     un260/protocol/protocol_frame_queue.c
     un260/protocol/protocol_rx_service.c
     un260/protocol/protocol_request.c
-    un260/protocol/basic_setting_reply_dispatch.c
-    un260/protocol/setting_reply_dispatch.c
+    un260/app_service/app_setting_reply_basic.c
+    un260/app_service/app_setting_reply_detail.c
     un260/protocol/startup_sync_reply.c
     un260/protocol/auxiliary_reply.c
     un260/protocol/stream_data_reply.c
