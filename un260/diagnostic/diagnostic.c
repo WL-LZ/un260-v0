@@ -4,10 +4,12 @@
 #include <string.h>
 
 static sensor_voltage_snapshot_t g_sensor_voltage;
-cis_calib_state_t cis_state = CIS_CALIB_IDLE;
-cb_calib_state_t cb_state = CB_CALIB_IDLE;
-calib_target_t g_calib_target = CALIB_TARGET_CIS;
-uint8_t g_cb_running = 0;
+static calibration_state_snapshot_t g_calibration_state = {
+    .cis_state = CIS_CALIB_IDLE,
+    .cb_state = CB_CALIB_IDLE,
+    .target = CALIB_TARGET_CIS,
+    .session_active = false,
+};
 
 void sensor_state_clear(void)
 {
@@ -26,6 +28,32 @@ void sensor_state_set_voltage(uint8_t channel, uint8_t raw)
 void sensor_state_get_snapshot(sensor_voltage_snapshot_t *snapshot)
 {
     if (snapshot != NULL) *snapshot = g_sensor_voltage;
+}
+
+void diagnostic_calibration_get_snapshot(calibration_state_snapshot_t *snapshot)
+{
+    if (snapshot != NULL) *snapshot = g_calibration_state;
+}
+
+bool diagnostic_calibration_begin(calib_target_t target)
+{
+    if (target != CALIB_TARGET_CIS && target != CALIB_TARGET_CB) return false;
+    if (g_calibration_state.cis_state == CIS_CALIB_RUNNING ||
+        g_calibration_state.cb_state == CB_CALIB_RUNNING) return false;
+
+    g_calibration_state.target = target;
+    g_calibration_state.session_active = true;
+    if (target == CALIB_TARGET_CB) {
+        g_calibration_state.cb_state = CB_CALIB_RUNNING;
+    } else {
+        g_calibration_state.cis_state = CIS_CALIB_RUNNING;
+    }
+    return true;
+}
+
+void diagnostic_calibration_end_session(void)
+{
+    g_calibration_state.session_active = false;
 }
 
 static int diagnostic_sensor_index_to_channel(uint8_t index)
@@ -90,10 +118,10 @@ static diagnostic_reply_result_t diagnostic_calibration_reply_handle(const uint8
     /* 状态字节之后还应有校验字节。 */
     if (buf == NULL || len < 6) return DIAGNOSTIC_REPLY_INVALID;
 
-    if (g_calib_target == CALIB_TARGET_CB) {
-        updated = diagnostic_cb_state_decode(buf[4], &cb_state);
+    if (g_calibration_state.target == CALIB_TARGET_CB) {
+        updated = diagnostic_cb_state_decode(buf[4], &g_calibration_state.cb_state);
     } else {
-        updated = diagnostic_cis_state_decode(buf[4], &cis_state);
+        updated = diagnostic_cis_state_decode(buf[4], &g_calibration_state.cis_state);
     }
     if (!updated) return DIAGNOSTIC_REPLY_IGNORED;
 

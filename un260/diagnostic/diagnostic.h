@@ -28,6 +28,13 @@ typedef enum {
 } calib_target_t;
 
 typedef struct {
+    cis_calib_state_t cis_state;
+    cb_calib_state_t cb_state;
+    calib_target_t target;
+    bool session_active;
+} calibration_state_snapshot_t;
+
+typedef struct {
     uint8_t raw[SENSOR_VOLTAGE_CH_NUM];
     bool valid[SENSOR_VOLTAGE_CH_NUM];
     uint32_t update_count;
@@ -46,14 +53,13 @@ typedef struct {
     void (*on_calibration_changed)(void);
 } diagnostic_reply_hooks_t;
 
-extern cis_calib_state_t cis_state;
-extern cb_calib_state_t cb_state;
-extern calib_target_t g_calib_target;
-extern uint8_t g_cb_running;
-
 void sensor_state_clear(void);
 void sensor_state_set_voltage(uint8_t channel, uint8_t raw);
 void sensor_state_get_snapshot(sensor_voltage_snapshot_t *snapshot);
+
+void diagnostic_calibration_get_snapshot(calibration_state_snapshot_t *snapshot);
+bool diagnostic_calibration_begin(calib_target_t target);
+void diagnostic_calibration_end_session(void);
 
 diagnostic_reply_result_t diagnostic_reply_dispatch(uint8_t cmd, const uint8_t *buf, uint8_t len, const diagnostic_reply_hooks_t *hooks);
 

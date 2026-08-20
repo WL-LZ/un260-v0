@@ -64,9 +64,9 @@ static void calib_update_panel(calib_panel_t* panel, const char* text,
     lv_obj_set_style_text_color(panel->status, color, 0);
 }
 
-static void cis_panel_refresh(void)
+static void cis_panel_refresh(cis_calib_state_t state)
 {
-    switch (cis_state) {
+    switch (state) {
     case CIS_CALIB_RUNNING:
         calib_update_panel(&cis_panel, ui_text_get(UI_TEXT_SETTINGS_CIS_STARTED),
                            lv_color_hex(0x1F6FE5), LV_SYMBOL_REFRESH);
@@ -95,9 +95,9 @@ static void cis_panel_refresh(void)
     }
 }
 
-static void cb_panel_refresh(void)
+static void cb_panel_refresh(cb_calib_state_t state)
 {
-    switch (cb_state) {
+    switch (state) {
     case CB_CALIB_RUNNING:
         calib_update_panel(&cb_panel, ui_text_get(UI_TEXT_SETTINGS_CB_STARTED),
                            lv_color_hex(0x1F6FE5), LV_SYMBOL_REFRESH);
@@ -132,28 +132,31 @@ static void cis_esc_btn_cb(lv_event_t* e)
 
 static void cis_start_btn_cb(lv_event_t* e)
 {
+    calibration_state_snapshot_t state;
     uint8_t sub = 0x01;
 
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
-    if (cis_state == CIS_CALIB_RUNNING || cb_state == CB_CALIB_RUNNING) return;
+    diagnostic_calibration_get_snapshot(&state);
+    if (state.cis_state == CIS_CALIB_RUNNING ||
+        state.cb_state == CB_CALIB_RUNNING) return;
     if (!settings_detail_send_command(0x5B, &sub, 1)) return;
+    if (!diagnostic_calibration_begin(CALIB_TARGET_CIS)) return;
 
-    g_calib_target = CALIB_TARGET_CIS;
-    cis_state = CIS_CALIB_RUNNING;
     cis_calib_ui_refresh();
 }
 
 static void cb_start_btn_cb(lv_event_t* e)
 {
+    calibration_state_snapshot_t state;
     uint8_t sub = 0x01;
 
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
-    if (cis_state == CIS_CALIB_RUNNING || cb_state == CB_CALIB_RUNNING) return;
+    diagnostic_calibration_get_snapshot(&state);
+    if (state.cis_state == CIS_CALIB_RUNNING ||
+        state.cb_state == CB_CALIB_RUNNING) return;
     if (!settings_detail_send_command(0x5F, &sub, 1)) return;
+    if (!diagnostic_calibration_begin(CALIB_TARGET_CB)) return;
 
-    g_calib_target = CALIB_TARGET_CB;
-    cb_state = CB_CALIB_RUNNING;
-    g_cb_running = 1;
     cis_calib_ui_refresh();
 }
 
@@ -234,19 +237,22 @@ void ui_page_cis_calib_destroy(void)
     cis_page = NULL;
     cis_panel = (calib_panel_t){ 0 };
     cb_panel = (calib_panel_t){ 0 };
-    g_cb_running = 0;
+    diagnostic_calibration_end_session();
 }
 
 void cis_calib_ui_refresh(void)
 {
+    calibration_state_snapshot_t state;
     bool running;
 
     if (!cis_page || !lv_obj_is_valid(cis_page)) return;
 
-    cis_panel_refresh();
-    cb_panel_refresh();
+    diagnostic_calibration_get_snapshot(&state);
+    cis_panel_refresh(state.cis_state);
+    cb_panel_refresh(state.cb_state);
 
-    running = cis_state == CIS_CALIB_RUNNING || cb_state == CB_CALIB_RUNNING;
+    running = state.cis_state == CIS_CALIB_RUNNING ||
+              state.cb_state == CB_CALIB_RUNNING;
     calib_set_button_enabled(cis_panel.button, !running);
     calib_set_button_enabled(cb_panel.button, !running);
 }

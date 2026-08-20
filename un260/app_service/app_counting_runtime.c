@@ -97,6 +97,15 @@ static bool app_counting_runtime_should_keep_current_page(void)
            page == UI_PAGE_SENSOR;
 }
 
+static bool app_counting_runtime_cb_calibration_active(void)
+{
+    calibration_state_snapshot_t calibration;
+
+    diagnostic_calibration_get_snapshot(&calibration);
+    return calibration.session_active &&
+           calibration.target == CALIB_TARGET_CB;
+}
+
 static void app_counting_runtime_on_start_success(const uint8_t *buf, uint8_t len)
 {
     counting_history_session_start(buf, len);
@@ -104,7 +113,7 @@ static void app_counting_runtime_on_start_success(const uint8_t *buf, uint8_t le
     if (data_collection_state_mode() != DATA_COLLECT_MODE_NONE) {
         data_collection_state_set_status("Counting started...");
         page_06_data_collection_refresh();
-    } else if (!g_cb_running &&
+    } else if (!app_counting_runtime_cb_calibration_active() &&
                ui_manager_get_current_page() != UI_PAGE_PURE &&
                !app_counting_runtime_should_keep_current_page()) {
         ui_manager_switch(UI_PAGE_MAIN);
