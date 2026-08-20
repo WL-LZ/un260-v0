@@ -3,9 +3,11 @@
 #include <stddef.h>
 #include <string.h>
 
-#include "un260/lv_drivers/lv_drivers.h"
-
 static sensor_voltage_snapshot_t g_sensor_voltage;
+cis_calib_state_t cis_state = CIS_CALIB_IDLE;
+cb_calib_state_t cb_state = CB_CALIB_IDLE;
+calib_target_t g_calib_target = CALIB_TARGET_CIS;
+uint8_t g_cb_running = 0;
 
 void sensor_state_clear(void)
 {

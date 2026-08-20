@@ -6,6 +6,27 @@
 
 #define SENSOR_VOLTAGE_CH_NUM 11
 
+typedef enum {
+    CIS_CALIB_IDLE = 0,
+    CIS_CALIB_RUNNING,
+    CIS_CALIB_SUCCESS,
+    CIS_CALIB_FAIL_UPPER,
+    CIS_CALIB_FAIL_LOWER,
+    CIS_CALIB_FAIL_IR
+} cis_calib_state_t;
+
+typedef enum {
+    CB_CALIB_IDLE = 0,
+    CB_CALIB_RUNNING,
+    CB_CALIB_SUCCESS,
+    CB_CALIB_FAIL_IR
+} cb_calib_state_t;
+
+typedef enum {
+    CALIB_TARGET_CIS = 0,
+    CALIB_TARGET_CB
+} calib_target_t;
+
 typedef struct {
     uint8_t raw[SENSOR_VOLTAGE_CH_NUM];
     bool valid[SENSOR_VOLTAGE_CH_NUM];
@@ -24,6 +45,11 @@ typedef enum {
 typedef struct {
     void (*on_calibration_changed)(void);
 } diagnostic_reply_hooks_t;
+
+extern cis_calib_state_t cis_state;
+extern cb_calib_state_t cb_state;
+extern calib_target_t g_calib_target;
+extern uint8_t g_cb_running;
 
 void sensor_state_clear(void);
 void sensor_state_set_voltage(uint8_t channel, uint8_t raw);

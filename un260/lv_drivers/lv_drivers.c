@@ -13,12 +13,8 @@
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/page_08_boot.h"
 
-cis_calib_state_t cis_state = CIS_CALIB_IDLE;
-cb_calib_state_t cb_state = CB_CALIB_IDLE;
-calib_target_t g_calib_target = CALIB_TARGET_CIS;
 curr_query_state_t curr_query_state = CURR_QUERY_IDLE;
 
-uint8_t g_cb_running = 0;
 static bool g_boot_waiting_log_shown = false;
 
 

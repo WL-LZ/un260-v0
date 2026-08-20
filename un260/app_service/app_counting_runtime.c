@@ -14,6 +14,7 @@
 #include "un260/counting/counting_reject_analysis_service.h"
 #include "un260/counting/counting_reject_sn_reply.h"
 #include "un260/data_collection/data_collection.h"
+#include "un260/diagnostic/diagnostic.h"
 #include "un260/lv_components/lv_fault_popup.h"
 #include "un260/lv_components/smart_island.h"
 #include "un260/lv_core/lv_page_manager.h"

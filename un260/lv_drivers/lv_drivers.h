@@ -45,32 +45,6 @@ extern void debug_append_rx_log(const char* data); // 接收数据时调用
 #define Query_ver_cmd 0x01
 #define curr_cmd 0x01
 
-// CIS校准状态枚举
-typedef enum {
-    CIS_CALIB_IDLE = 0,          // 空闲
-    CIS_CALIB_RUNNING,           // 校验中
-    CIS_CALIB_SUCCESS,           // 校验成功
-    CIS_CALIB_FAIL_UPPER,        // 上CIS失败
-    CIS_CALIB_FAIL_LOWER,        // 下CIS失败
-    CIS_CALIB_FAIL_IR            // 红外失败
-} cis_calib_state_t;
-extern cis_calib_state_t cis_state;
-
-typedef enum {
-    CB_CALIB_IDLE = 0,
-    CB_CALIB_RUNNING,
-    CB_CALIB_SUCCESS,
-    CB_CALIB_FAIL_IR
-} cb_calib_state_t;
-
-typedef enum {
-    CALIB_TARGET_CIS = 0,
-    CALIB_TARGET_CB
-} calib_target_t;
-
-extern cb_calib_state_t cb_state;
-extern uint8_t g_cb_running; //判断是否需要回到主界面
-extern calib_target_t g_calib_target;
 /* 获取币种状态 */
 typedef enum {
     CURR_QUERY_IDLE = 0,
