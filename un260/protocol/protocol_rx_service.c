@@ -1,5 +1,6 @@
 #include "protocol_rx_service.h"
 
+#include <errno.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -19,6 +20,8 @@ static int g_log_fd = -1;
 #define PROTOCOL_RX_LOG_PREVIEW_BYTES 32U
 #define PROTOCOL_RX_DROP_REPORT_STEP  100U
 #define PROTOCOL_RX_INVALID_REPORT_STEP 100U
+#define PROTOCOL_RX_ERROR_REPORT_STEP 100U
+#define PROTOCOL_RX_ERROR_BACKOFF_US  10000U
 
 static bool protocol_rx_service_should_run(void)
 {
@@ -37,12 +40,34 @@ static void *protocol_rx_service_thread(void *arg)
     uint8_t byte;
     unsigned int dropped_frames = 0;
     unsigned int invalid_frames = 0;
+    unsigned int receive_errors = 0;
 
     (void)arg;
     protocol_frame_parser_init(&parser);
 
     while (protocol_rx_service_should_run()) {
         int len = uart_recv(g_uart_fd, (char *)&byte, 1, 10);
+
+        if (len < 0) {
+            int error_code = errno;
+
+            receive_errors++;
+            if (receive_errors == 1 ||
+                (receive_errors % PROTOCOL_RX_ERROR_REPORT_STEP) == 0) {
+                uart_printf(g_log_fd,
+                            "UART4: receive failed errno=%d count=%u\n",
+                            error_code,
+                            receive_errors);
+            }
+            usleep(PROTOCOL_RX_ERROR_BACKOFF_US);
+            continue;
+        }
+        if (receive_errors > 0) {
+            uart_printf(g_log_fd,
+                        "UART4: receive recovered, errors=%u\n",
+                        receive_errors);
+            receive_errors = 0;
+        }
 
         if (len > 0) {
             protocol_frame_parse_result_t result;
@@ -90,6 +115,9 @@ static void *protocol_rx_service_thread(void *arg)
     }
     if (invalid_frames > 0) {
         uart_printf(g_log_fd, "UART4: receive stopped, invalid=%u\n", invalid_frames);
+    }
+    if (receive_errors > 0) {
+        uart_printf(g_log_fd, "UART4: receive stopped, errors=%u\n", receive_errors);
     }
 
     return NULL;

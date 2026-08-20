@@ -1,5 +1,6 @@
 #include "uart_bridge_service.h"
 
+#include <errno.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -9,6 +10,8 @@
 
 #define UART_BRIDGE_BUFFER_SIZE 256
 #define UART_BRIDGE_LOG_PREVIEW_BYTES 32U
+#define UART_BRIDGE_ERROR_REPORT_STEP 100U
+#define UART_BRIDGE_ERROR_BACKOFF_US  10000U
 
 static pthread_mutex_t g_state_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_t g_thread;
@@ -31,12 +34,35 @@ static bool uart_bridge_service_should_run(void)
 static void *uart_bridge_service_thread(void *arg)
 {
     uint8_t buffer[UART_BRIDGE_BUFFER_SIZE];
+    unsigned int receive_errors = 0;
+    unsigned int forward_errors = 0;
 
     (void)arg;
     uart_printf(g_log_fd, "UART5 start\n");
 
     while (uart_bridge_service_should_run()) {
         int len = uart_recv(g_source_fd, (char *)buffer, sizeof(buffer), 100);
+
+        if (len < 0) {
+            int error_code = errno;
+
+            receive_errors++;
+            if (receive_errors == 1 ||
+                (receive_errors % UART_BRIDGE_ERROR_REPORT_STEP) == 0) {
+                uart_printf(g_log_fd,
+                            "UART5: receive failed errno=%d count=%u\n",
+                            error_code,
+                            receive_errors);
+            }
+            usleep(UART_BRIDGE_ERROR_BACKOFF_US);
+            continue;
+        }
+        if (receive_errors > 0) {
+            uart_printf(g_log_fd,
+                        "UART5: receive recovered, errors=%u\n",
+                        receive_errors);
+            receive_errors = 0;
+        }
 
         if (len > 0) {
             char prefix[40];
@@ -48,13 +74,32 @@ static void *uart_bridge_service_thread(void *arg)
 
             sent = uart_send(g_target_fd, (const char *)buffer, len);
             if (sent != len) {
-                uart_printf(g_log_fd, "UART5: forward failed, sent=%d/%d\n", sent, len);
+                int error_code = errno;
+
+                forward_errors++;
+                if (forward_errors == 1 ||
+                    (forward_errors % UART_BRIDGE_ERROR_REPORT_STEP) == 0) {
+                    uart_printf(g_log_fd,
+                                "UART5: forward failed errno=%d sent=%d/%d count=%u\n",
+                                error_code,
+                                sent,
+                                len,
+                                forward_errors);
+                }
+            } else if (forward_errors > 0) {
+                uart_printf(g_log_fd,
+                            "UART5: forward recovered, errors=%u\n",
+                            forward_errors);
+                forward_errors = 0;
             }
         }
         usleep(1000);
     }
 
-    uart_printf(g_log_fd, "UART5 end\n");
+    uart_printf(g_log_fd,
+                "UART5 end, receive_errors=%u forward_errors=%u\n",
+                receive_errors,
+                forward_errors);
     return NULL;
 }
 
