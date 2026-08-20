@@ -1,6 +1,9 @@
 #include "lvgl/lvgl.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "lv_page_event.h"
+
+#include <stdlib.h>
+
 #include "un260/lv_system/platform_app.h"
 #include "lvgl/src/misc/lv_timer.h"
 #include "un260/lv_system/machine_time.h"

@@ -134,7 +134,7 @@ static void history_format_denom(const counting_sim_t *sim_data, char *dst, size
         if (sim_data->denom[i].value <= 0) {
             continue;
         }
-        written = lv_snprintf(dst + pos, size - pos, "%s%d x %u",
+        written = snprintf(dst + pos, size - pos, "%s%d x %u",
                               (pos > 0) ? "\n" : "",
                               sim_data->denom[i].value,
                               (unsigned)sim_data->denom[i].pcs);
@@ -168,7 +168,7 @@ static void history_format_sn(const counting_sim_t *sim_data, char *dst, size_t 
         if (sim_data->sn_str[i] == NULL || sim_data->sn_str[i][0] == '\0') {
             continue;
         }
-        written = lv_snprintf(dst + pos, size - pos, "%s%s",
+        written = snprintf(dst + pos, size - pos, "%s%s",
                               (pos > 0) ? "\n" : "",
                               sim_data->sn_str[i]);
         if (written < 0) {
@@ -204,7 +204,7 @@ static void history_format_sn_detail(const counting_sim_t *sim_data, char *dst, 
             continue;
         }
 
-        written = lv_snprintf(dst + pos, size - pos, "%s%02d\t%d\t%s",
+        written = snprintf(dst + pos, size - pos, "%s%02d\t%d\t%s",
                               (pos > 0) ? "\n" : "",
                               i + 1, denom, sn);
         if (written < 0) {
@@ -274,27 +274,27 @@ static void history_write_kv(FILE *fp, uint8_t slot_no, const ui_history_record_
         return;
     }
 
-    lv_snprintf(buf, sizeof(buf), "slot%02u_valid=%d\n", (unsigned)slot_no, rec->valid ? 1 : 0);
+    snprintf(buf, sizeof(buf), "slot%02u_valid=%d\n", (unsigned)slot_no, rec->valid ? 1 : 0);
     fputs(buf, fp);
-    lv_snprintf(buf, sizeof(buf), "slot%02u_selected=%d\n", (unsigned)slot_no, rec->selected ? 1 : 0);
+    snprintf(buf, sizeof(buf), "slot%02u_selected=%d\n", (unsigned)slot_no, rec->selected ? 1 : 0);
     fputs(buf, fp);
-    lv_snprintf(buf, sizeof(buf), "slot%02u_slot_no=%u\n", (unsigned)slot_no, (unsigned)rec->slot_no);
+    snprintf(buf, sizeof(buf), "slot%02u_slot_no=%u\n", (unsigned)slot_no, (unsigned)rec->slot_no);
     fputs(buf, fp);
-    lv_snprintf(buf, sizeof(buf), "slot%02u_record_no=%u\n", (unsigned)slot_no, (unsigned)rec->record_no);
+    snprintf(buf, sizeof(buf), "slot%02u_record_no=%u\n", (unsigned)slot_no, (unsigned)rec->record_no);
     fputs(buf, fp);
-    lv_snprintf(buf, sizeof(buf), "slot%02u_pcs=%u\n", (unsigned)slot_no, (unsigned)rec->pcs);
+    snprintf(buf, sizeof(buf), "slot%02u_pcs=%u\n", (unsigned)slot_no, (unsigned)rec->pcs);
     fputs(buf, fp);
-    lv_snprintf(buf, sizeof(buf), "slot%02u_amount=%u\n", (unsigned)slot_no, (unsigned)rec->amount);
+    snprintf(buf, sizeof(buf), "slot%02u_amount=%u\n", (unsigned)slot_no, (unsigned)rec->amount);
     fputs(buf, fp);
-    lv_snprintf(buf, sizeof(buf), "slot%02u_currency=%s\n", (unsigned)slot_no, rec->currency);
+    snprintf(buf, sizeof(buf), "slot%02u_currency=%s\n", (unsigned)slot_no, rec->currency);
     fputs(buf, fp);
-    lv_snprintf(buf, sizeof(buf), "slot%02u_time=%04u-%02u-%02u %02u:%02u:%02u\n",
+    snprintf(buf, sizeof(buf), "slot%02u_time=%04u-%02u-%02u %02u:%02u:%02u\n",
                 (unsigned)slot_no,
                 (unsigned)rec->year, (unsigned)rec->month, (unsigned)rec->day,
                 (unsigned)rec->hour, (unsigned)rec->minute, (unsigned)rec->second);
     fputs(buf, fp);
 
-    lv_snprintf(prefix, sizeof(prefix), "slot%02u_", (unsigned)slot_no);
+    snprintf(prefix, sizeof(prefix), "slot%02u_", (unsigned)slot_no);
     history_write_escaped_field(fp, prefix, "denom", rec->denom_text);
     history_write_escaped_field(fp, prefix, "sn", rec->sn_text);
     history_write_escaped_field(fp, prefix, "sn_detail", rec->sn_detail_text);
@@ -317,7 +317,7 @@ static int history_write_file(const char *path, const ui_history_record_t *rec, 
         return -1;
     }
 
-    lv_snprintf(tmp, sizeof(tmp), "%s.tmp", path);
+    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
     fd = open(tmp, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd < 0) {
         return -1;
@@ -339,7 +339,7 @@ static int history_write_file(const char *path, const ui_history_record_t *rec, 
         char prefix[32];
         const ui_history_record_t *item = &g_history_store.records[i];
 
-        lv_snprintf(prefix, sizeof(prefix), "record%02d_", i);
+        snprintf(prefix, sizeof(prefix), "record%02d_", i);
         fprintf(fp, "%svalid=%d\n", prefix, item->valid ? 1 : 0);
         fprintf(fp, "%sselected=%d\n", prefix, item->selected ? 1 : 0);
         fprintf(fp, "%sslot_no=%u\n", prefix, (unsigned)item->slot_no);
@@ -388,8 +388,8 @@ static void history_write_slot_file(const ui_history_record_t *rec)
         return;
     }
 
-    lv_snprintf(path, sizeof(path), UI_HISTORY_SLOT_PATH_FMT, (unsigned)rec->slot_no);
-    lv_snprintf(tmp, sizeof(tmp), "%s.tmp", path);
+    snprintf(path, sizeof(path), UI_HISTORY_SLOT_PATH_FMT, (unsigned)rec->slot_no);
+    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
     fd = open(tmp, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd < 0) {
         return;
@@ -424,7 +424,7 @@ static void history_save_all(void)
 
     for (i = 1; i <= UI_HISTORY_MAX_RECORDS; i++) {
         char slot_path[128];
-        lv_snprintf(slot_path, sizeof(slot_path), UI_HISTORY_SLOT_PATH_FMT, (unsigned)i);
+        snprintf(slot_path, sizeof(slot_path), UI_HISTORY_SLOT_PATH_FMT, (unsigned)i);
         unlink(slot_path);
     }
 
@@ -478,7 +478,7 @@ static void history_parse_key_value(int record_index, const char *key, const cha
     } else if (strcmp(key, "amount") == 0) {
         rec->amount = (uint32_t)strtoul(value, NULL, 0);
     } else if (strcmp(key, "currency") == 0) {
-        lv_snprintf(rec->currency, sizeof(rec->currency), "%s", value);
+        snprintf(rec->currency, sizeof(rec->currency), "%s", value);
     } else if (strcmp(key, "time") == 0) {
         unsigned y, m, d, h, mi, s;
         if (sscanf(value, "%u-%u-%u %u:%u:%u", &y, &m, &d, &h, &mi, &s) == 6) {
@@ -650,7 +650,7 @@ bool ui_history_record_append_from_session(const counting_sim_t *sim_data, uint3
     rec.pcs = pcs_total;
     rec.amount = (uint32_t)((sim_data->total_amount < 0.0f) ? 0.0f : sim_data->total_amount);
     currency_state_get_active_code(curr_code);
-    lv_snprintf(rec.currency, sizeof(rec.currency), "%s", curr_code);
+    snprintf(rec.currency, sizeof(rec.currency), "%s", curr_code);
     machine_time_get(&now);
     rec.year = now.year;
     rec.month = now.month;
@@ -661,13 +661,13 @@ bool ui_history_record_append_from_session(const counting_sim_t *sim_data, uint3
     history_format_denom(sim_data, rec.denom_text, sizeof(rec.denom_text));
     history_format_sn(sim_data, rec.sn_text, sizeof(rec.sn_text));
     history_format_sn_detail(sim_data, rec.sn_detail_text, sizeof(rec.sn_detail_text));
-    lv_snprintf(rec.error_frame_text, sizeof(rec.error_frame_text), "%s",
+    snprintf(rec.error_frame_text, sizeof(rec.error_frame_text), "%s",
                 error_frame_text ? error_frame_text : "");
-    lv_snprintf(rec.start_frame_text, sizeof(rec.start_frame_text), "%s",
+    snprintf(rec.start_frame_text, sizeof(rec.start_frame_text), "%s",
                 start_frame_text ? start_frame_text : "");
-    lv_snprintf(rec.end_frame_text, sizeof(rec.end_frame_text), "%s",
+    snprintf(rec.end_frame_text, sizeof(rec.end_frame_text), "%s",
                 end_frame_text ? end_frame_text : "");
-    lv_snprintf(rec.session_log, sizeof(rec.session_log), "%s",
+    snprintf(rec.session_log, sizeof(rec.session_log), "%s",
                 session_log_text ? session_log_text : "");
 
     history_insert_front(&rec);

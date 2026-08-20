@@ -438,28 +438,6 @@ static void fault_anim_timer_cb(lv_timer_t* timer)
     }
 }
 
-/* =========================
- * UI
- * ========================= */
-static lv_obj_t* create_info_box(lv_obj_t* parent,
-                                 lv_coord_t x, lv_coord_t y,
-                                 lv_coord_t w, lv_coord_t h,
-                                 lv_color_t bg,
-                                 lv_color_t border)
-{
-    lv_obj_t* box = lv_obj_create(parent);
-    lv_obj_set_size(box, w, h);
-    lv_obj_set_pos(box, x, y);
-    lv_obj_clear_flag(box, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_radius(box, 14, 0);
-    lv_obj_set_style_bg_color(box, bg, 0);
-    lv_obj_set_style_bg_opa(box, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_width(box, 1, 0);
-    lv_obj_set_style_border_color(box, border, 0);
-    lv_obj_set_style_shadow_width(box, 0, 0);
-    return box;
-}
-
 static void fault_popup_confirm_cb(lv_event_t* e)
 {
     (void)e;

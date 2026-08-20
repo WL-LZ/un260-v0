@@ -12,6 +12,7 @@
 #include "un260/lv_core/page_01_main.h"
 #include "un260/machine_state/machine_state.h"
 #include "un260/protocol/mode_codec.h"
+#include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/user_cfg.h"
 
 basic_setting_reply_action_t basic_setting_reply_dispatch(uint8_t cmd,
