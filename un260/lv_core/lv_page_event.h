@@ -36,7 +36,6 @@ void page_01_work_btn_event_cb(lv_event_t* e);
 void page_01_fo_btn_event_cb(lv_event_t* e);
 void page_01_bottom_batch_btn_event_cb(lv_event_t* e);
 void page_01_bottom_speed_btn_event_cb(lv_event_t* e);
-void page_setting_req_poll(void);
 
 void page_01_set_btn_event_cb(lv_event_t* e);
 void page_01_curr_btn_event_cb(lv_event_t* e);

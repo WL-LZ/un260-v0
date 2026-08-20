@@ -5,7 +5,19 @@
 #include "lvgl/lvgl.h"
 
 #include "un260/app_service/app_setting_reply.h"
+#include "un260/app_service/setting_service.h"
+#include "un260/cfd/cfd.h"
+#include "un260/currency/currency_service.h"
+#include "un260/lv_components/lv_components.h"
+#include "un260/lv_core/lv_page_event.h"
+#include "un260/lv_core/page_07_curr.h"
+#include "un260/lv_core/page_22_set_double_note.h"
+#include "un260/lv_core/page_23_set_flap.h"
+#include "un260/lv_core/page_24_set_reject_pocket.h"
+#include "un260/lv_core/page_25_set_serial_number.h"
 #include "un260/lv_system/platform_app.h"
+#include "un260/machine_state/machine_state.h"
+#include "un260/serial_number/serial_number.h"
 
 #define APP_SETTING_MODE_CLEAR_DELAY_MS 120
 
@@ -80,6 +92,68 @@ bool app_setting_runtime_handle_reply(uint8_t cmd, uint8_t *buf, uint8_t len)
 
     default:
         return false;
+    }
+}
+
+static void app_setting_runtime_notify_timeout(void)
+{
+    page_03_update_menu_button_states_refresh();
+    show_communication_error_popup();
+}
+
+void app_setting_runtime_poll(void)
+{
+    uint32_t basic_timeouts;
+    setting_batch_result_t batch_result;
+    setting_value_result_t value_result;
+    serial_number_setting_result_t serial_result;
+    currency_switch_result_t currency_result;
+
+    basic_timeouts = setting_service_take_basic_timeouts();
+    if (basic_timeouts != SETTING_REQUEST_TIMEOUT_NONE) {
+        app_setting_runtime_notify_timeout();
+    }
+
+    if (setting_service_batch_take_timeout(&batch_result)) {
+        if (batch_result.type == SETTING_BATCH_REQUEST_NUMBER) {
+            page_03_batch_set_result(false, &batch_result);
+        } else if (batch_result.type == SETTING_BATCH_REQUEST_SWITCH) {
+            batch_switch_on_0x06_result(false, &batch_result);
+        }
+        app_setting_runtime_notify_timeout();
+    }
+
+    if (setting_service_take_double_note_level_timeout(&value_result)) {
+        machine_state_confirm_double_note_level(value_result.previous);
+        ui_page_22_set_double_note_on_reply(&value_result);
+        app_setting_runtime_notify_timeout();
+    }
+
+    if (setting_service_take_flap_position_timeout(&value_result)) {
+        machine_state_confirm_flap_position(value_result.previous);
+        ui_page_23_set_flap_on_reply(&value_result);
+        app_setting_runtime_notify_timeout();
+    }
+
+    if (setting_service_take_reject_pocket_max_timeout(&value_result)) {
+        machine_state_confirm_reject_pocket_max(value_result.previous);
+        ui_page_24_set_reject_pocket_on_reply(&value_result);
+        app_setting_runtime_notify_timeout();
+    }
+
+    if (serial_number_service_take_timeout(&serial_result)) {
+        serial_number_state_confirm(serial_result.previous_enabled,
+                                    serial_result.previous_level);
+        ui_page_25_set_serial_number_on_reply(serial_result.response_level, 0x02);
+        app_setting_runtime_notify_timeout();
+    }
+
+    if (currency_service_take_switch_timeout(&currency_result)) {
+        page_07_curr_apply_switch_result(&currency_result);
+    }
+
+    if (cfd_service_take_query_timeout()) {
+        app_setting_runtime_notify_timeout();
     }
 }
 

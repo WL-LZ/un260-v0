@@ -1,7 +1,7 @@
 #include "app_ui_runtime.h"
 
+#include "un260/app_service/app_setting_runtime.h"
 #include "un260/lv_components/lv_upgrade_popup.h"
-#include "un260/lv_core/lv_page_event.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/ui_upgrade_service.h"
 #include "un260/lv_system/platform_app.h"
@@ -34,7 +34,7 @@ static void app_ui_runtime_poll_upgrade(uint32_t now_ms)
 
 void app_ui_runtime_poll(uint32_t now_ms)
 {
-    page_setting_req_poll();
+    app_setting_runtime_poll();
     ui_screenshot_indicator_poll();
     ui_count_end_anim_poll();
     app_ui_runtime_poll_upgrade(now_ms);
