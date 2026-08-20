@@ -10,7 +10,6 @@
 #include "../aic_ui/aic_ui.h"
 #include "un260/lv_components/smart_island.h"
 #include "un260/lv_system/lv_str.h" 
-#include "lv_page_declear.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/machine_state/machine_state.h"
 #include "un260/currency/currency_state.h"

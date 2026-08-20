@@ -4,9 +4,9 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "lv_page_declear.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_core/lv_page_manager.h"
+#include "un260/lv_core/page_01_main.h"
 #include "un260/lv_core/page_01_detail_scroll.h"
 #include "un260/lv_resources/lv_image_declear.h"
 #include "un260/lv_resources/lv_img_init.h"
