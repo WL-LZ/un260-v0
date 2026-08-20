@@ -23,8 +23,11 @@
 
 typedef struct {
     bool valid;
+    dev_t device;
+    ino_t inode;
     off_t size;
     time_t mtime;
+    time_t ctime;
     uint64_t hash;
 } ui_upgrade_hash_cache_t;
 
@@ -88,37 +91,60 @@ static bool ui_upgrade_service_hash_file_fnv1a64(const char* path, uint64_t* has
     return true;
 }
 
+static void ui_upgrade_service_hash_cache_clear(ui_upgrade_hash_cache_t* cache)
+{
+    if (cache != NULL) {
+        memset(cache, 0, sizeof(*cache));
+    }
+}
+
 static bool ui_upgrade_service_hash_file_cached(const char* path,
                                                 ui_upgrade_hash_cache_t* cache,
                                                 uint64_t* hash_out)
 {
-    struct stat st;
+    struct stat before;
+    struct stat after;
     uint64_t hash = 0;
 
     if (path == NULL || cache == NULL || hash_out == NULL) {
         return false;
     }
 
-    if (stat(path, &st) != 0 || !S_ISREG(st.st_mode)) {
-        cache->valid = false;
+    if (stat(path, &before) != 0 || !S_ISREG(before.st_mode)) {
+        ui_upgrade_service_hash_cache_clear(cache);
         return false;
     }
 
     if (cache->valid &&
-        cache->size == st.st_size &&
-        cache->mtime == st.st_mtime) {
+        cache->device == before.st_dev &&
+        cache->inode == before.st_ino &&
+        cache->size == before.st_size &&
+        cache->mtime == before.st_mtime &&
+        cache->ctime == before.st_ctime) {
         *hash_out = cache->hash;
         return true;
     }
 
     if (!ui_upgrade_service_hash_file_fnv1a64(path, &hash)) {
-        cache->valid = false;
+        ui_upgrade_service_hash_cache_clear(cache);
+        return false;
+    }
+    if (stat(path, &after) != 0 || !S_ISREG(after.st_mode) ||
+        before.st_dev != after.st_dev ||
+        before.st_ino != after.st_ino ||
+        before.st_size != after.st_size ||
+        before.st_mtime != after.st_mtime ||
+        before.st_ctime != after.st_ctime) {
+        ui_upgrade_service_hash_cache_clear(cache);
         return false;
     }
 
     cache->valid = true;
-    cache->size = st.st_size;
-    cache->mtime = st.st_mtime;
+    cache->device = after.st_dev;
+    cache->inode = after.st_ino;
+    cache->size = after.st_size;
+    cache->mtime = after.st_mtime;
+    cache->ctime = after.st_ctime;
     cache->hash = hash;
     *hash_out = hash;
     return true;
@@ -449,6 +475,7 @@ static void ui_upgrade_service_update_child_state(void)
 void ui_upgrade_service_reset(void)
 {
     memset(&g_ui_upgrade_service, 0, sizeof(g_ui_upgrade_service));
+    ui_upgrade_service_hash_cache_clear(&g_ui_upgrade_pkg_hash_cache);
     g_ui_upgrade_service.child_pid = -1;
     ui_upgrade_service_set_status(false, false, false, 0,
                                   UI_UPGRADE_STAGE_NONE, "", "");
@@ -474,6 +501,8 @@ void ui_upgrade_service_detect(ui_upgrade_detect_info_t* info)
 
     if (info->package_found) {
         info->package_hash_match = ui_upgrade_service_package_hash_match_running();
+    } else {
+        ui_upgrade_service_hash_cache_clear(&g_ui_upgrade_pkg_hash_cache);
     }
 }
 
