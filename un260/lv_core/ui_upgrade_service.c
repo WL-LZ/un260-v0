@@ -449,13 +449,32 @@ static void ui_upgrade_service_update_child_state(void)
 
     if (g_ui_upgrade_service.child_pid <= 0) return;
 
-    ret = waitpid(g_ui_upgrade_service.child_pid, &status, WNOHANG);
+    do {
+        ret = waitpid(g_ui_upgrade_service.child_pid, &status, WNOHANG);
+    } while (ret < 0 && errno == EINTR);
+
     if (ret == 0) return;
-    if (ret < 0) return;
+    if (ret < 0) {
+        g_ui_upgrade_service.child_pid = -1;
+        if (!g_ui_upgrade_service.status.finished) {
+            g_ui_upgrade_service.running = false;
+            g_ui_upgrade_service.finished = true;
+            g_ui_upgrade_service.success = false;
+            ui_upgrade_service_set_status(false, true, false, 12,
+                                          UI_UPGRADE_STAGE_FAIL,
+                                          "Upgrade process monitoring failed",
+                                          "Unable to determine the upgrade process result.");
+        }
+        return;
+    }
 
     g_ui_upgrade_service.child_pid = -1;
     g_ui_upgrade_service.running = false;
     g_ui_upgrade_service.finished = true;
+
+    if (g_ui_upgrade_service.status.finished) {
+        return;
+    }
 
     if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
         g_ui_upgrade_service.success = true;
@@ -474,6 +493,11 @@ static void ui_upgrade_service_update_child_state(void)
 
 void ui_upgrade_service_reset(void)
 {
+    if (g_ui_upgrade_service.running ||
+        g_ui_upgrade_service.child_pid > 0) {
+        return;
+    }
+
     memset(&g_ui_upgrade_service, 0, sizeof(g_ui_upgrade_service));
     ui_upgrade_service_hash_cache_clear(&g_ui_upgrade_pkg_hash_cache);
     g_ui_upgrade_service.child_pid = -1;
@@ -510,7 +534,8 @@ int ui_upgrade_service_start(void)
 {
     pid_t pid;
 
-    if (g_ui_upgrade_service.running) return -1;
+    if (g_ui_upgrade_service.running ||
+        g_ui_upgrade_service.child_pid > 0) return -1;
     if (!ui_upgrade_service_file_exists(UI_UPGRADE_SCRIPT_PATH)) return -1;
 
     unlink(UI_UPGRADE_STATUS_FILE_PATH);
@@ -546,11 +571,15 @@ void ui_upgrade_service_poll(ui_upgrade_service_status_t* status)
     if (g_ui_upgrade_service.running) {
         ui_upgrade_service_set_progress_by_time();
         ui_upgrade_service_load_status_file();
-        ui_upgrade_service_update_child_state();
     }
+    ui_upgrade_service_update_child_state();
 
     if (status != NULL) {
         *status = g_ui_upgrade_service.status;
+        if (g_ui_upgrade_service.child_pid > 0 && status->finished) {
+            status->running = true;
+            status->finished = false;
+        }
     }
 }
 
