@@ -47,17 +47,8 @@ extern "C" {
     bool ui_manager_pop_page(void);         //页面堆栈：返回上一页
     void ui_manager_clear_stack(void);      //清空页面堆栈
     ui_page_t ui_manager_get_current_page(void);   //获取当前页
-    typedef struct {
-        ui_element_t* list;
-        int len;
-    }ui_element_group_t;
-
-
     extern ui_element_t page_02_list_obj[];
     extern int page_02_list_len;
-
-    extern ui_element_t page_04_set_obj[];
-    extern int page_04_set_obj_len;
 
     extern ui_element_t page_06_settins_password_obj[];
     extern int page_06_settins_password_len;
@@ -65,7 +56,6 @@ extern "C" {
     extern ui_element_t page_07_curr_obj[];
     extern int page_07_curr_len;
 
-    extern ui_element_group_t all_ui_groups[];
 #ifdef __cplusplus
 }
 #endif

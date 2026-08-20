@@ -1,7 +1,6 @@
 
 #include "lvgl/lvgl.h"
 #include "un260/lv_core/lv_page_manager.h"
-#include "un260/lv_core/page_04_set.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/protocol/protocol_send.h"
 #include "un260/lv_core/page_01_main.h"
@@ -19,13 +18,6 @@ typedef struct {
 static ui_page_manager_context_t g_page_manager = {
     .current = UI_PAGE_INVALID,
     .stack_top = -1,
-};
-
-ui_element_group_t all_ui_groups[] = {
-    { page_01_main_obj, 0 },
-    { page_02_list_obj, 0 },
-    { page_03_menu_obj, 0 },
-   // { page_04_set_obj,  0 },
 };
 
 typedef void (*ui_page_create_fn_t)(lv_obj_t *parent);
@@ -152,11 +144,6 @@ void ui_manager_switch(ui_page_t page)
 }
 
 void ui_manager_init(void) {
-    // 更新ui_groups的长度值
-    all_ui_groups[0].len = page_01_main_len;
-    all_ui_groups[1].len = page_02_list_len;
-    all_ui_groups[2].len = page_03_menu_len;
-
     // 初始化堆栈
     g_page_manager.stack_top = -1;
 
