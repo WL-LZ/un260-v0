@@ -27,9 +27,7 @@ static void app_ui_runtime_poll_upgrade(uint32_t now_ms)
 
     g_upgrade_detect_tick = now_ms;
     ui_upgrade_service_detect(&detect_info);
-    lv_upgrade_popup_process_detect(detect_info.usb_present,
-                                    detect_info.package_found,
-                                    detect_info.package_hash_match);
+    lv_upgrade_popup_process_detect(&detect_info);
 }
 
 void app_ui_runtime_poll(uint32_t now_ms)

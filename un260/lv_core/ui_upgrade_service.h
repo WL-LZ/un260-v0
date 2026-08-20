@@ -12,11 +12,18 @@ typedef enum {
     UI_UPGRADE_STAGE_FAIL
 } ui_upgrade_stage_t;
 
+typedef enum {
+    UI_UPGRADE_PACKAGE_HASH_NOT_CHECKED = 0,
+    UI_UPGRADE_PACKAGE_HASH_MATCH,
+    UI_UPGRADE_PACKAGE_HASH_DIFFERENT,
+    UI_UPGRADE_PACKAGE_HASH_ERROR
+} ui_upgrade_package_hash_status_t;
+
 typedef struct {
     bool usb_present;
     bool usb_mounted;
     bool package_found;
-    bool package_hash_match;
+    ui_upgrade_package_hash_status_t package_hash_status;
 } ui_upgrade_detect_info_t;
 
 typedef struct {

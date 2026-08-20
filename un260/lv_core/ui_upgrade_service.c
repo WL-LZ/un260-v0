@@ -152,14 +152,15 @@ static bool ui_upgrade_service_hash_file_cached(const char* path,
     return true;
 }
 
-static bool ui_upgrade_service_package_hash_match_running(void)
+static ui_upgrade_package_hash_status_t
+ui_upgrade_service_get_package_hash_status(void)
 {
     uint64_t package_hash = 0;
 
     if (!g_ui_upgrade_running_hash_ready) {
         if (!ui_upgrade_service_hash_file_fnv1a64(UI_UPGRADE_RUNNING_FILE_PATH,
                                                   &g_ui_upgrade_running_hash)) {
-            return false;
+            return UI_UPGRADE_PACKAGE_HASH_ERROR;
         }
         g_ui_upgrade_running_hash_ready = true;
     }
@@ -167,10 +168,12 @@ static bool ui_upgrade_service_package_hash_match_running(void)
     if (!ui_upgrade_service_hash_file_cached(UI_UPGRADE_FILE_PATH,
                                              &g_ui_upgrade_pkg_hash_cache,
                                              &package_hash)) {
-        return false;
+        return UI_UPGRADE_PACKAGE_HASH_ERROR;
     }
 
-    return package_hash == g_ui_upgrade_running_hash;
+    return package_hash == g_ui_upgrade_running_hash ?
+           UI_UPGRADE_PACKAGE_HASH_MATCH :
+           UI_UPGRADE_PACKAGE_HASH_DIFFERENT;
 }
 
 static bool ui_upgrade_service_find_usb_device_path(char* path, size_t path_size)
@@ -590,10 +593,11 @@ void ui_upgrade_service_detect(ui_upgrade_detect_info_t* info)
     }
     info->package_found = info->usb_present && info->usb_mounted &&
                           ui_upgrade_service_file_exists(UI_UPGRADE_FILE_PATH);
-    info->package_hash_match = false;
+    info->package_hash_status = UI_UPGRADE_PACKAGE_HASH_NOT_CHECKED;
 
     if (info->package_found) {
-        info->package_hash_match = ui_upgrade_service_package_hash_match_running();
+        info->package_hash_status =
+            ui_upgrade_service_get_package_hash_status();
     } else {
         ui_upgrade_service_hash_cache_clear(&g_ui_upgrade_pkg_hash_cache);
     }

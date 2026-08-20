@@ -149,11 +149,6 @@ static void upgrade_popup_anim_translate_x_cb(void* var, int32_t v)
     lv_obj_set_style_translate_x((lv_obj_t*)var, (lv_coord_t)v, 0);
 }
 
-static void upgrade_popup_anim_zoom_cb(void* var, int32_t v)
-{
-    lv_obj_set_style_transform_zoom((lv_obj_t*)var, (lv_coord_t)v, 0);
-}
-
 static void upgrade_popup_start_fade_in_up(lv_obj_t* obj, uint32_t delay)
 {
     lv_anim_t a;
@@ -458,13 +453,10 @@ static void upgrade_popup_on_retry_click(lv_event_t* e)
     ui_upgrade_service_reset();
     ui_upgrade_service_detect(&detect_info);
 
-    if (detect_info.package_found) {
-        g_upgrade_popup.hide_to_prompt = true;
-        upgrade_popup_hide();
-    } else {
-        g_upgrade_popup.hide_to_prompt = false;
-        upgrade_popup_hide();
-    }
+    g_upgrade_popup.hide_to_prompt =
+        detect_info.package_found &&
+        detect_info.package_hash_status == UI_UPGRADE_PACKAGE_HASH_DIFFERENT;
+    upgrade_popup_hide();
 }
 
 static void upgrade_popup_create_prompt_card(void)
@@ -1315,9 +1307,11 @@ static void upgrade_popup_show_fail(const char* desc_text)
     upgrade_popup_set_state(UPGRADE_POPUP_STATE_FAIL);
 }
 
-void lv_upgrade_popup_process_detect(bool usb_present, bool package_found, bool package_hash_match)
+void lv_upgrade_popup_process_detect(const ui_upgrade_detect_info_t* detect_info)
 {
-    if (!usb_present) {
+    if (detect_info == NULL) return;
+
+    if (!detect_info->usb_present) {
         g_upgrade_popup_detect_latched = false;
 
         if (g_upgrade_popup.state == UPGRADE_POPUP_STATE_PROMPT) {
@@ -1326,8 +1320,8 @@ void lv_upgrade_popup_process_detect(bool usb_present, bool package_found, bool 
         return;
     }
 
-    if (package_found) {
-        if (package_hash_match) {
+    if (detect_info->package_found) {
+        if (detect_info->package_hash_status == UI_UPGRADE_PACKAGE_HASH_MATCH) {
             if (!g_upgrade_popup_detect_latched &&
                 (g_upgrade_popup.state == UPGRADE_POPUP_STATE_IDLE || g_upgrade_popup.root == NULL)) {
                 static char toast_text[64];
@@ -1354,14 +1348,23 @@ void lv_upgrade_popup_process_detect(bool usb_present, bool package_found, bool 
             return;
         }
 
-        if (!g_upgrade_popup_detect_latched &&
-            (g_upgrade_popup.state == UPGRADE_POPUP_STATE_IDLE || g_upgrade_popup.root == NULL)) {
-            upgrade_popup_show_prompt();
+        if (detect_info->package_hash_status == UI_UPGRADE_PACKAGE_HASH_DIFFERENT) {
+            if (!g_upgrade_popup_detect_latched &&
+                (g_upgrade_popup.state == UPGRADE_POPUP_STATE_IDLE || g_upgrade_popup.root == NULL)) {
+                upgrade_popup_show_prompt();
+            }
+            g_upgrade_popup_detect_latched = true;
+            return;
         }
-        g_upgrade_popup_detect_latched = true;
+
+        g_upgrade_popup_detect_latched = false;
+        if (g_upgrade_popup.state == UPGRADE_POPUP_STATE_PROMPT) {
+            upgrade_popup_hide();
+        }
         return;
     }
 
+    g_upgrade_popup_detect_latched = false;
     if (g_upgrade_popup.state == UPGRADE_POPUP_STATE_PROMPT) {
         upgrade_popup_hide();
     }
