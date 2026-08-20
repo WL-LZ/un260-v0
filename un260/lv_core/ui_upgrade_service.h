@@ -19,6 +19,15 @@ typedef enum {
     UI_UPGRADE_PACKAGE_HASH_ERROR
 } ui_upgrade_package_hash_status_t;
 
+typedef enum {
+    UI_UPGRADE_START_OK = 0,
+    UI_UPGRADE_START_BUSY,
+    UI_UPGRADE_START_SCRIPT_NOT_FOUND,
+    UI_UPGRADE_START_PACKAGE_NOT_READY,
+    UI_UPGRADE_START_STATUS_CLEANUP_FAILED,
+    UI_UPGRADE_START_FORK_FAILED
+} ui_upgrade_start_result_t;
+
 typedef struct {
     bool usb_present;
     bool usb_mounted;
@@ -38,7 +47,7 @@ typedef struct {
 
 void ui_upgrade_service_reset(void);
 void ui_upgrade_service_detect(ui_upgrade_detect_info_t* info);
-int ui_upgrade_service_start(void);
+ui_upgrade_start_result_t ui_upgrade_service_start(void);
 void ui_upgrade_service_poll(ui_upgrade_service_status_t* status);
 void ui_upgrade_service_reboot(void);
 

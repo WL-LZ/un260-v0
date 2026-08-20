@@ -603,26 +603,41 @@ void ui_upgrade_service_detect(ui_upgrade_detect_info_t* info)
     }
 }
 
-int ui_upgrade_service_start(void)
+ui_upgrade_start_result_t ui_upgrade_service_start(void)
 {
+    ui_upgrade_detect_info_t detect_info;
     pid_t pid;
 
     if (g_ui_upgrade_service.running ||
-        g_ui_upgrade_service.child_pid > 0) return -1;
-    if (!ui_upgrade_service_file_exists(UI_UPGRADE_SCRIPT_PATH)) return -1;
+        g_ui_upgrade_service.child_pid > 0) {
+        return UI_UPGRADE_START_BUSY;
+    }
+    if (!ui_upgrade_service_file_exists(UI_UPGRADE_SCRIPT_PATH)) {
+        return UI_UPGRADE_START_SCRIPT_NOT_FOUND;
+    }
+
+    ui_upgrade_service_detect(&detect_info);
+    if (!detect_info.usb_present ||
+        !detect_info.usb_mounted ||
+        !detect_info.package_found ||
+        (detect_info.package_hash_status != UI_UPGRADE_PACKAGE_HASH_MATCH &&
+         detect_info.package_hash_status != UI_UPGRADE_PACKAGE_HASH_DIFFERENT)) {
+        return UI_UPGRADE_START_PACKAGE_NOT_READY;
+    }
 
     if (unlink(UI_UPGRADE_STATUS_FILE_PATH) != 0 && errno != ENOENT) {
-        return -1;
+        return UI_UPGRADE_START_STATUS_CLEANUP_FAILED;
     }
 
     pid = fork();
-    if (pid < 0) return -1;
+    if (pid < 0) return UI_UPGRADE_START_FORK_FAILED;
 
     if (pid == 0) {
         FILE* fp = fopen("/tmp/ui_update_child.log", "a");
         if (fp) {
             dup2(fileno(fp), STDOUT_FILENO);
             dup2(fileno(fp), STDERR_FILENO);
+            fclose(fp);
         }
         execl("/bin/sh", "sh", UI_UPGRADE_SCRIPT_PATH, (char*)NULL);
         _exit(127);
@@ -639,7 +654,7 @@ int ui_upgrade_service_start(void)
     ui_upgrade_service_set_status(true, false, false, 0,
                                   UI_UPGRADE_STAGE_VERIFY,
                                   "Verifying upgrade package", "");
-    return 0;
+    return UI_UPGRADE_START_OK;
 }
 
 void ui_upgrade_service_poll(ui_upgrade_service_status_t* status)

@@ -390,7 +390,7 @@ static void upgrade_popup_on_confirm_click(lv_event_t* e)
         lv_obj_add_state(g_upgrade_popup.prompt_btn_confirm, LV_STATE_DISABLED);
     }
 
-    if (ui_upgrade_service_start() != 0) {
+    if (ui_upgrade_service_start() != UI_UPGRADE_START_OK) {
         upgrade_popup_show_fail(ui_text_get(UI_TEXT_WIDGET_UPGRADE_POPUP_FAIL_START_SCRIPT));
         return;
     }

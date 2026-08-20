@@ -334,7 +334,7 @@ static void upgrade_start_btn_cb(lv_event_t* e) //升级按钮：检查U盘->启
     upgrade_ui_enter_waiting();
 
     ui_upgrade_service_reset();
-    if (ui_upgrade_service_start() != 0) {
+    if (ui_upgrade_service_start() != UI_UPGRADE_START_OK) {
         upgrade_waiting_exit(false);
         if (g_ui_upgrade_page.hint_label) {
             lv_label_set_text(g_ui_upgrade_page.hint_label,
