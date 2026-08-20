@@ -2,7 +2,7 @@
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/settings_detail_ui.h"
 #include "un260/lv_system/ui_text.h"
-#include "un260/diagnostic/sensor_state.h"
+#include "un260/diagnostic/diagnostic.h"
 
 #include <string.h>
 

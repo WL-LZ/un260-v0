@@ -63,8 +63,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/counting/counting_reject_sn_reply.c
     un260/device_info/device_info.c
     un260/data_collection/data_collection.c
-    un260/diagnostic/diagnostic_reply.c
-    un260/diagnostic/sensor_state.c
+    un260/diagnostic/diagnostic.c
     un260/history/history_export_sn_parser.c
     un260/history/history_export_text.c
     un260/currency/currency_state.c
