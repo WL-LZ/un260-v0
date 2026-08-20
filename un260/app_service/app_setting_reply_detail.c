@@ -87,9 +87,13 @@ static void setting_reply_handle_serial_number(const uint8_t *buf, uint8_t len)
 
     normalized_level = serial_number_state_normalize_level(buf[4]);
     result_taken = serial_number_service_take_reply(normalized_level, buf[5], &result);
-    if (result_taken && result.success) {
+    if (!result_taken) {
+        uart_printf(fd6, "0x32 serial number level ack ignored: no matching request\n");
+        return;
+    }
+    if (result.success) {
         serial_number_state_confirm(normalized_level != SERIAL_NUMBER_LEVEL_OFF, normalized_level);
-    } else if (result_taken) {
+    } else {
         serial_number_state_confirm(result.previous_enabled, result.previous_level);
     }
 

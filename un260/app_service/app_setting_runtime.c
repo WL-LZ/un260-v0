@@ -103,6 +103,7 @@ static void app_setting_runtime_notify_timeout(void)
 
 void app_setting_runtime_poll(void)
 {
+    bool notify_timeout = false;
     uint32_t basic_timeouts;
     setting_batch_result_t batch_result;
     setting_value_result_t value_result;
@@ -111,7 +112,7 @@ void app_setting_runtime_poll(void)
 
     basic_timeouts = setting_service_take_basic_timeouts();
     if (basic_timeouts != SETTING_REQUEST_TIMEOUT_NONE) {
-        app_setting_runtime_notify_timeout();
+        notify_timeout = true;
     }
 
     if (setting_service_batch_take_timeout(&batch_result)) {
@@ -120,32 +121,32 @@ void app_setting_runtime_poll(void)
         } else if (batch_result.type == SETTING_BATCH_REQUEST_SWITCH) {
             batch_switch_on_0x06_result(false, &batch_result);
         }
-        app_setting_runtime_notify_timeout();
+        notify_timeout = true;
     }
 
     if (setting_service_take_double_note_level_timeout(&value_result)) {
         machine_state_confirm_double_note_level(value_result.previous);
         ui_page_22_set_double_note_on_reply(&value_result);
-        app_setting_runtime_notify_timeout();
+        notify_timeout = true;
     }
 
     if (setting_service_take_flap_position_timeout(&value_result)) {
         machine_state_confirm_flap_position(value_result.previous);
         ui_page_23_set_flap_on_reply(&value_result);
-        app_setting_runtime_notify_timeout();
+        notify_timeout = true;
     }
 
     if (setting_service_take_reject_pocket_max_timeout(&value_result)) {
         machine_state_confirm_reject_pocket_max(value_result.previous);
         ui_page_24_set_reject_pocket_on_reply(&value_result);
-        app_setting_runtime_notify_timeout();
+        notify_timeout = true;
     }
 
     if (serial_number_service_take_timeout(&serial_result)) {
         serial_number_state_confirm(serial_result.previous_enabled,
                                     serial_result.previous_level);
         ui_page_25_set_serial_number_on_reply(serial_result.response_level, 0x02);
-        app_setting_runtime_notify_timeout();
+        notify_timeout = true;
     }
 
     if (currency_service_take_switch_timeout(&currency_result)) {
@@ -153,6 +154,10 @@ void app_setting_runtime_poll(void)
     }
 
     if (cfd_service_take_query_timeout()) {
+        notify_timeout = true;
+    }
+
+    if (notify_timeout) {
         app_setting_runtime_notify_timeout();
     }
 }

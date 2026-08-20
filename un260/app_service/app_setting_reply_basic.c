@@ -30,10 +30,12 @@ app_setting_reply_action_t app_setting_reply_handle_basic(uint8_t cmd,
 
         if (status == 0x01)
         {
-            uint8_t requested_mode = 0;
-            if (setting_service_take_mode_result(&requested_mode)) {
-                machine_state_confirm_mode(requested_mode);
+            uint8_t requested_mode;
+            if (!setting_service_take_mode_result(&requested_mode)) {
+                uart_printf(fd6, "Set work mode success ignored: no pending request\n");
+                break;
             }
+            machine_state_confirm_mode(requested_mode);
             {
                 const char* mode_str = "NONE";
                 if (machine_state_mode() == MODE_MDC) mode_str = "MDC";
@@ -47,7 +49,6 @@ app_setting_reply_action_t app_setting_reply_handle_basic(uint8_t cmd,
                 update_label_by_name(page_01_main_obj, page_01_main_len, "mode_label", "%s", mode_str);
                 page_01_bottom_a_refresh_mode(true);
             }
-            setting_service_cancel_mode_request();
             actions = (app_setting_reply_action_t)(actions |
                       APP_SETTING_REPLY_ACTION_SCHEDULE_MODE_CLEAR);
             uart_printf(fd6, "Set work mode success\n");
@@ -55,7 +56,10 @@ app_setting_reply_action_t app_setting_reply_handle_basic(uint8_t cmd,
         }
         else if (status == 0x02)
         {
-            setting_service_cancel_mode_request();
+            if (!setting_service_take_mode_result(NULL)) {
+                uart_printf(fd6, "Set work mode fail ignored: no pending request\n");
+                break;
+            }
             uart_printf(fd6, "Set work mode fail\n");
             show_start_fault_popup(0x02, 0x06);
         }
@@ -88,12 +92,14 @@ app_setting_reply_action_t app_setting_reply_handle_basic(uint8_t cmd,
         if (status == 0x01)
         {
             setting_batch_result_t result;
-            if (setting_service_batch_take_result(status, &result)) {
-                if (result.type == SETTING_BATCH_REQUEST_NUMBER) {
-                    page_03_batch_set_result(true, &result);
-                } else if (result.type == SETTING_BATCH_REQUEST_SWITCH) {
-                    batch_switch_on_0x06_result(true, &result);
-                }
+            if (!setting_service_batch_take_result(status, &result)) {
+                uart_printf(fd6, "Set batch num success ignored: no pending request\n");
+                break;
+            }
+            if (result.type == SETTING_BATCH_REQUEST_NUMBER) {
+                page_03_batch_set_result(true, &result);
+            } else if (result.type == SETTING_BATCH_REQUEST_SWITCH) {
+                batch_switch_on_0x06_result(true, &result);
             }
             uart_printf(fd6, "Set batch num success\n");
             smart_island_refresh_summary();
@@ -101,12 +107,14 @@ app_setting_reply_action_t app_setting_reply_handle_basic(uint8_t cmd,
         else if (status == 0x02)
         {
             setting_batch_result_t result;
-            if (setting_service_batch_take_result(status, &result)) {
-                if (result.type == SETTING_BATCH_REQUEST_NUMBER) {
-                    page_03_batch_set_result(false, &result);
-                } else if (result.type == SETTING_BATCH_REQUEST_SWITCH) {
-                    batch_switch_on_0x06_result(false, &result);
-                }
+            if (!setting_service_batch_take_result(status, &result)) {
+                uart_printf(fd6, "Set batch num fail ignored: no pending request\n");
+                break;
+            }
+            if (result.type == SETTING_BATCH_REQUEST_NUMBER) {
+                page_03_batch_set_result(false, &result);
+            } else if (result.type == SETTING_BATCH_REQUEST_SWITCH) {
+                batch_switch_on_0x06_result(false, &result);
             }
             show_batch_set_fail_popup();
             uart_printf(fd6, "Set batch num fail\n");
@@ -137,15 +145,20 @@ app_setting_reply_action_t app_setting_reply_handle_basic(uint8_t cmd,
 
         if (sub == 0x00) {
             bool target;
-            if (setting_service_take_add_result(&target)) {
-                machine_state_confirm_add(target);
-                page_01_bottom_a_refresh_add(true);
+            if (!setting_service_take_add_result(&target)) {
+                uart_printf(fd6, "ADD set success ignored: no pending request\n");
+                break;
             }
+            machine_state_confirm_add(target);
+            page_01_bottom_a_refresh_add(true);
             page_03_update_menu_button_states_refresh();
             uart_printf(fd6, "ADD set success\n");
             smart_island_refresh_summary();
         } else if (sub == 0x01) {
-            (void)setting_service_take_add_result(NULL);
+            if (!setting_service_take_add_result(NULL)) {
+                uart_printf(fd6, "ADD set failed ignored: no pending request\n");
+                break;
+            }
             uart_printf(fd6, "ADD set failed\n");
             show_start_fault_popup(0x02, 0x06);
             page_03_update_menu_button_states_refresh();
@@ -176,14 +189,19 @@ app_setting_reply_action_t app_setting_reply_handle_basic(uint8_t cmd,
 
         if (sub == 0x01) {
             bool target;
-            if (setting_service_take_beep_result(&target)) {
-                machine_state_confirm_buzzer(target);
+            if (!setting_service_take_beep_result(&target)) {
+                uart_printf(fd6, "BEEP set success ignored: no pending request\n");
+                break;
             }
+            machine_state_confirm_buzzer(target);
             uart_printf(fd6, "BEEP set success\n");
             page_03_update_menu_button_states_refresh();
         } else if (sub == 0x02) {
+            if (!setting_service_take_beep_result(NULL)) {
+                uart_printf(fd6, "BEEP set failed ignored: no pending request\n");
+                break;
+            }
             uart_printf(fd6, "BEEP set failed\n");
-            (void)setting_service_take_beep_result(NULL);
             show_start_fault_popup(0x02, 0x06);
             page_03_update_menu_button_states_refresh();
         } else if (sub == 0x03) {
@@ -218,7 +236,10 @@ app_setting_reply_action_t app_setting_reply_handle_basic(uint8_t cmd,
                             type, machine_state_speed());
                 smart_island_refresh_summary();
             } else if (res == 0x02) {
-                (void)setting_service_take_speed_result(NULL);
+                if (!setting_service_take_speed_result(NULL)) {
+                    uart_printf(fd6, "SPEED set FAIL ignored: no pending request\n");
+                    break;
+                }
                 page_03_update_menu_button_states_refresh();
                 uart_printf(fd6, "SPEED set FAIL: type=0x%02X\n", type);
                 show_start_fault_popup(0x02, 0x06);
@@ -273,7 +294,10 @@ app_setting_reply_action_t app_setting_reply_handle_basic(uint8_t cmd,
                 uart_printf(fd6, "FO set SUCCESS: type=0x%02X -> ui=%u\n", type, machine_state_fo_mode());
                 smart_island_refresh_summary();
             } else if (val == 0x02) {
-                (void)setting_service_take_fo_mode_result(NULL);
+                if (!setting_service_take_fo_mode_result(NULL)) {
+                    uart_printf(fd6, "FO set FAIL ignored: no pending request\n");
+                    break;
+                }
                 uart_printf(fd6, "FO set FAIL: type=0x%02X\n", type);
                 show_start_fault_popup(0x02, 0x06);
                 page_03_update_menu_button_states_refresh();
@@ -328,7 +352,10 @@ app_setting_reply_action_t app_setting_reply_handle_basic(uint8_t cmd,
             uart_printf(fd6, "0x38 AUTO OK\n");
             smart_island_refresh_summary();
         } else {
-            (void)setting_service_take_work_mode_result(NULL);
+            if (!setting_service_take_work_mode_result(NULL)) {
+                uart_printf(fd6, "0x38 RES=0x%02X ignored: no pending request\n", res);
+                break;
+            }
             uart_printf(fd6, "0x38 RES=0x%02X\n", res);
             show_start_fault_popup(0x02, 0x06);
             page_03_update_menu_button_states_refresh();
