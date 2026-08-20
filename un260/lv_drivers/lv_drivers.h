@@ -32,7 +32,6 @@ extern void machine_handshake_send(void);
 
 extern int fd6;
 typedef uint8_t Machine_Mode_t;
-extern void debug_append_rx_log(const char* data); // 接收数据时调用
 
 #define Machine_MODE_MDC   0x03
 #define Machine_MODE_SDC   0x04

@@ -15,6 +15,7 @@
 #include "un260/counting/counting_session_state.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/page_01_main.h"
+#include "un260/lv_core/page_10_debug.h"
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/protocol/protocol_frame.h"
@@ -90,13 +91,16 @@ void app_command_runtime_process_frames(void)
 
     while (processed < APP_COMMAND_MAX_FRAMES_PER_TICK &&
            protocol_frame_queue_pop(&frame)) {
-        char hex_log[256];
         uint8_t *buf = frame.data;
         uint8_t len = frame.len;
 
         processed++;
-        protocol_frame_format_hex(buf, len, hex_log, sizeof(hex_log));
-        debug_append_rx_log(hex_log);
+        if (debug_page_rx_log_is_active()) {
+            char hex_log[256];
+
+            protocol_frame_format_hex(buf, len, hex_log, sizeof(hex_log));
+            debug_append_rx_log(hex_log);
+        }
 
         if (len < PROTOCOL_FRAME_MIN_SIZE) {
             uart_printf(fd6, "Queued frame dropped: invalid len=%u\n", len);

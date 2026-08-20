@@ -20,6 +20,7 @@
 
 /* ================= page_10_debug.c ================= */
 #include "page_10_debug.h"
+#include "un260/protocol/protocol_frame.h"
 #include "un260/protocol/protocol_send.h"
 #include "un260/lv_components/lv_print_toast.h"
 #include "un260/lv_system/ui_export_data.h"
@@ -91,8 +92,15 @@ static void ta_auto_space_event_cb(lv_event_t* e) {
 static void kb_hex_event_cb(lv_event_t* e) {
     lv_obj_t* kb = lv_event_get_target(e);
     uint16_t btn_id = lv_btnmatrix_get_selected_btn(kb);
-    const char* txt = lv_btnmatrix_get_btn_text(kb, btn_id);
+    const char* txt;
 
+    if (btn_id == LV_BTNMATRIX_BTN_NONE) {
+        return;
+    }
+    txt = lv_btnmatrix_get_btn_text(kb, btn_id);
+    if (txt == NULL) {
+        return;
+    }
     if (strcmp(txt, "SPACE") == 0) {
         lv_textarea_add_char(g_debug_page.input, ' ');
     }
@@ -171,25 +179,35 @@ static void btn_send_event_cb(lv_event_t* e)
 
     uint8_t frame[64];
     int len = hex_str_to_bytes(cmd_str, frame, sizeof(frame));
-    if (len < 6) return;
+    if (len < PROTOCOL_FRAME_MIN_SIZE) {
+        append_log("ERR", "Frame too short", "FF0000");
+        return;
+    }
 
-    // 协议校验
-    if (frame[0] != 0xFD || frame[1] != 0xDF) {
-        append_log("ERR", "Invalid header", "FF0000");
+    if (!protocol_frame_is_valid(frame, (size_t)len)) {
+        append_log("ERR", "Invalid frame or length", "FF0000");
+        return;
+    }
+    if (frame[len - 1] != PROTOCOL_FRAME_TRAILER) {
+        append_log("ERR", "Invalid frame trailer", "FF0000");
         return;
     }
 
     uint8_t cmd_g = frame[3];                 // CMD-G
     uint8_t *cmd_s = &frame[4];               // CMD-Sx
-    uint16_t cmd_s_len = len - 5;             // 去掉 FD DF LEN CMD-G CRC
+    uint16_t cmd_s_len = len - PROTOCOL_FRAME_OVERHEAD;
 
     /* ===== 调用真实发送 ===== */
-    protocol_send(cmd_g, cmd_s, cmd_s_len);
+    if (protocol_send(cmd_g, cmd_s, cmd_s_len) < 0) {
+        append_log("ERR", "Send failed", "FF0000");
+        return;
+    }
 
     /* ===== UI 显示 ===== */
     append_log("TX", cmd_str, "00FF00");
     g_debug_page.tx_count++;
-    if (g_debug_page.tx_count_label) {
+    if (g_debug_page.tx_count_label &&
+        lv_obj_is_valid(g_debug_page.tx_count_label)) {
         lv_label_set_text_fmt(g_debug_page.tx_count_label, "TX: %u",
                               g_debug_page.tx_count);
     }
@@ -513,9 +531,14 @@ void ui_page_10_debug_destroy(void) {
 }
 
 /* ========== 外部调用：追加接收日志 ========== */
+bool debug_page_rx_log_is_active(void)
+{
+    return g_debug_page.log_area != NULL &&
+           lv_obj_is_valid(g_debug_page.log_area);
+}
+
 void debug_append_rx_log(const char* data) {
-    if (!g_debug_page.log_area ||
-        !lv_obj_is_valid(g_debug_page.log_area)) return;
+    if (!debug_page_rx_log_is_active() || data == NULL) return;
     append_log("RX", data, "4A9EFF");
     g_debug_page.rx_count++;
     if (g_debug_page.rx_count_label &&
