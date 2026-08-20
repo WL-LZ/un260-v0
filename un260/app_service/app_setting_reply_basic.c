@@ -31,8 +31,7 @@ app_setting_reply_action_t app_setting_reply_handle_basic(uint8_t cmd,
         if (status == 0x01)
         {
             uint8_t requested_mode = 0;
-            if (setting_service_mode_is_pending()) {
-                requested_mode = setting_service_mode_target();
+            if (setting_service_take_mode_result(&requested_mode)) {
                 machine_state_confirm_mode(requested_mode);
             }
             {
@@ -48,7 +47,7 @@ app_setting_reply_action_t app_setting_reply_handle_basic(uint8_t cmd,
                 update_label_by_name(page_01_main_obj, page_01_main_len, "mode_label", "%s", mode_str);
                 page_01_bottom_a_refresh_mode(true);
             }
-            setting_service_mode_finish();
+            setting_service_cancel_mode_request();
             actions = (app_setting_reply_action_t)(actions |
                       APP_SETTING_REPLY_ACTION_SCHEDULE_MODE_CLEAR);
             uart_printf(fd6, "Set work mode success\n");
@@ -56,7 +55,7 @@ app_setting_reply_action_t app_setting_reply_handle_basic(uint8_t cmd,
         }
         else if (status == 0x02)
         {
-            setting_service_mode_finish();
+            setting_service_cancel_mode_request();
             uart_printf(fd6, "Set work mode fail\n");
             show_start_fault_popup(0x02, 0x06);
         }
@@ -72,7 +71,7 @@ app_setting_reply_action_t app_setting_reply_handle_basic(uint8_t cmd,
             }
 
             machine_state_confirm_mode(machine_mode);
-            setting_service_mode_finish();
+            setting_service_cancel_mode_request();
             page_01_mode_switch_refre();
             uart_printf(fd6, "Boot work mode: 0x%02X\n", protocol_mode);
             smart_island_refresh_summary();
@@ -137,9 +136,8 @@ app_setting_reply_action_t app_setting_reply_handle_basic(uint8_t cmd,
         uint8_t sub = buf[4];
 
         if (sub == 0x00) {
-            if (setting_service_add_is_pending()) {
-                bool target = setting_service_add_target();
-                setting_service_add_finish();
+            bool target;
+            if (setting_service_take_add_result(&target)) {
                 machine_state_confirm_add(target);
                 page_01_bottom_a_refresh_add(true);
             }
@@ -147,9 +145,7 @@ app_setting_reply_action_t app_setting_reply_handle_basic(uint8_t cmd,
             uart_printf(fd6, "ADD set success\n");
             smart_island_refresh_summary();
         } else if (sub == 0x01) {
-            if (setting_service_add_is_pending()) {
-                setting_service_add_finish();
-            }
+            (void)setting_service_take_add_result(NULL);
             uart_printf(fd6, "ADD set failed\n");
             show_start_fault_popup(0x02, 0x06);
             page_03_update_menu_button_states_refresh();
@@ -163,9 +159,7 @@ app_setting_reply_action_t app_setting_reply_handle_basic(uint8_t cmd,
                 uart_printf(fd6, "ADD boot status: unexpected raw=0x%02X, keep %s\n",
                             v, machine_state_add_enabled() ? "ON" : "OFF");
             }
-            if (setting_service_add_is_pending()) {
-                setting_service_add_finish();
-            }
+            (void)setting_service_take_add_result(NULL);
             page_01_bottom_a_refresh_add(false);
             uart_printf(fd6, "ADD boot status: raw=0x%02X -> %s\n",
                         v, machine_state_add_enabled() ? "ON" : "OFF");
@@ -181,27 +175,22 @@ app_setting_reply_action_t app_setting_reply_handle_basic(uint8_t cmd,
         uint8_t sub = buf[4];
 
         if (sub == 0x01) {
-            if (setting_service_beep_is_pending()) {
-                bool target = setting_service_beep_target();
-                setting_service_beep_finish();
+            bool target;
+            if (setting_service_take_beep_result(&target)) {
                 machine_state_confirm_buzzer(target);
             }
             uart_printf(fd6, "BEEP set success\n");
             page_03_update_menu_button_states_refresh();
         } else if (sub == 0x02) {
             uart_printf(fd6, "BEEP set failed\n");
-            if (setting_service_beep_is_pending()) {
-                setting_service_beep_finish();
-            }
+            (void)setting_service_take_beep_result(NULL);
             show_start_fault_popup(0x02, 0x06);
             page_03_update_menu_button_states_refresh();
         } else if (sub == 0x03) {
             if (len < 7) break;
             uint8_t v = buf[5];
             machine_state_confirm_buzzer(v == 0x01);
-            if (setting_service_beep_is_pending()) {
-                setting_service_beep_finish();
-            }
+            (void)setting_service_take_beep_result(NULL);
             uart_printf(fd6, "BEEP boot status: %s\n", machine_state_buzzer_enabled() ? "ON" : "OFF");
             page_03_update_menu_button_states_refresh();
         }
@@ -216,13 +205,11 @@ app_setting_reply_action_t app_setting_reply_handle_basic(uint8_t cmd,
 
         if (type >= 0x01 && type <= 0x03) {
             if (res == 0x01) {
-                uint8_t target_speed = (uint8_t)(0x03 - type);
-                if (!setting_service_speed_is_pending()) {
+                uint8_t target_speed;
+                if (!setting_service_take_speed_result(&target_speed)) {
                     uart_printf(fd6, "SPEED set SUCCESS ignored: no pending request\n");
                     break;
                 }
-                target_speed = setting_service_speed_target();
-                setting_service_speed_finish();
                 machine_state_confirm_speed(target_speed);
                 page_03_update_menu_button_states_refresh();
                 page_01_bottom_c_refresh_speed(true);
@@ -231,9 +218,7 @@ app_setting_reply_action_t app_setting_reply_handle_basic(uint8_t cmd,
                             type, machine_state_speed());
                 smart_island_refresh_summary();
             } else if (res == 0x02) {
-                if (setting_service_speed_is_pending()) {
-                    setting_service_speed_finish();
-                }
+                (void)setting_service_take_speed_result(NULL);
                 page_03_update_menu_button_states_refresh();
                 uart_printf(fd6, "SPEED set FAIL: type=0x%02X\n", type);
                 show_start_fault_popup(0x02, 0x06);
@@ -270,9 +255,7 @@ app_setting_reply_action_t app_setting_reply_handle_basic(uint8_t cmd,
             } else {
                 uart_printf(fd6, "FO boot sync: invalid mode=0x%02X\n", val);
             }
-            if (setting_service_fo_mode_is_pending()) {
-                setting_service_fo_mode_finish();
-            }
+            (void)setting_service_take_fo_mode_result(NULL);
             page_01_bottom_a_refresh_fo(false);
             smart_island_refresh_summary();
             break;
@@ -280,21 +263,17 @@ app_setting_reply_action_t app_setting_reply_handle_basic(uint8_t cmd,
         if (type <= 0x03) {
             if (val == 0x01) {
                 uint8_t target_mode = 0;
-                if (!setting_service_fo_mode_is_pending()) {
+                if (!setting_service_take_fo_mode_result(&target_mode)) {
                     uart_printf(fd6, "FO set SUCCESS ignored: no pending request\n");
                     break;
                 }
-                target_mode = setting_service_fo_mode_target();
-                setting_service_fo_mode_finish();
                 machine_state_confirm_fo_mode(target_mode);
                 page_01_bottom_a_refresh_fo(true);
                 page_03_update_menu_button_states_refresh();
                 uart_printf(fd6, "FO set SUCCESS: type=0x%02X -> ui=%u\n", type, machine_state_fo_mode());
                 smart_island_refresh_summary();
             } else if (val == 0x02) {
-                if (setting_service_fo_mode_is_pending()) {
-                    setting_service_fo_mode_finish();
-                }
+                (void)setting_service_take_fo_mode_result(NULL);
                 uart_printf(fd6, "FO set FAIL: type=0x%02X\n", type);
                 show_start_fault_popup(0x02, 0x06);
                 page_03_update_menu_button_states_refresh();
@@ -318,9 +297,7 @@ app_setting_reply_action_t app_setting_reply_handle_basic(uint8_t cmd,
             } else if (mode == 0x01) {
                 machine_state_confirm_work_mode(0);
             }
-            if (setting_service_work_mode_is_pending()) {
-                setting_service_work_mode_finish();
-            }
+            (void)setting_service_take_work_mode_result(NULL);
             page_01_bottom_a_refresh_work(false);
             uart_printf(fd6, "0x38 BOOT mode=0x%02X\n", mode);
             smart_island_refresh_summary();
@@ -330,12 +307,10 @@ app_setting_reply_action_t app_setting_reply_handle_basic(uint8_t cmd,
         uint8_t res = buf[4];
         if (res == 0x00) {
             uint8_t target_mode = 0;
-            if (!setting_service_work_mode_is_pending()) {
+            if (!setting_service_take_work_mode_result(&target_mode)) {
                 uart_printf(fd6, "0x38 MANUAL OK ignored: no pending request\n");
                 break;
             }
-            target_mode = setting_service_work_mode_target();
-            setting_service_work_mode_finish();
             machine_state_confirm_work_mode(target_mode);
             page_01_bottom_a_refresh_work(true);
             page_03_update_menu_button_states_refresh();
@@ -343,21 +318,17 @@ app_setting_reply_action_t app_setting_reply_handle_basic(uint8_t cmd,
             smart_island_refresh_summary();
         } else if (res == 0x01) {
             uint8_t target_mode = 0;
-            if (!setting_service_work_mode_is_pending()) {
+            if (!setting_service_take_work_mode_result(&target_mode)) {
                 uart_printf(fd6, "0x38 AUTO OK ignored: no pending request\n");
                 break;
             }
-            target_mode = setting_service_work_mode_target();
-            setting_service_work_mode_finish();
             machine_state_confirm_work_mode(target_mode);
             page_01_bottom_a_refresh_work(true);
             page_03_update_menu_button_states_refresh();
             uart_printf(fd6, "0x38 AUTO OK\n");
             smart_island_refresh_summary();
         } else {
-            if (setting_service_work_mode_is_pending()) {
-                setting_service_work_mode_finish();
-            }
+            (void)setting_service_take_work_mode_result(NULL);
             uart_printf(fd6, "0x38 RES=0x%02X\n", res);
             show_start_fault_popup(0x02, 0x06);
             page_03_update_menu_button_states_refresh();

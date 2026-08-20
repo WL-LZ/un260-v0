@@ -40,33 +40,23 @@ typedef enum {
 
 bool setting_service_request_mode(uint8_t target);
 bool setting_service_mode_is_pending(void);
-uint8_t setting_service_mode_target(void);
-void setting_service_mode_finish(void);
+bool setting_service_take_mode_result(uint8_t *target);
+void setting_service_cancel_mode_request(void);
 
 bool setting_service_request_add(bool target);
-bool setting_service_add_is_pending(void);
-bool setting_service_add_target(void);
-void setting_service_add_finish(void);
+bool setting_service_take_add_result(bool *target);
 
 bool setting_service_request_fo_mode(uint8_t target);
-bool setting_service_fo_mode_is_pending(void);
-uint8_t setting_service_fo_mode_target(void);
-void setting_service_fo_mode_finish(void);
+bool setting_service_take_fo_mode_result(uint8_t *target);
 
 bool setting_service_request_speed(uint8_t target);
-bool setting_service_speed_is_pending(void);
-uint8_t setting_service_speed_target(void);
-void setting_service_speed_finish(void);
+bool setting_service_take_speed_result(uint8_t *target);
 
 bool setting_service_request_work_mode(uint8_t target);
-bool setting_service_work_mode_is_pending(void);
-uint8_t setting_service_work_mode_target(void);
-void setting_service_work_mode_finish(void);
+bool setting_service_take_work_mode_result(uint8_t *target);
 
 bool setting_service_request_beep(bool target);
-bool setting_service_beep_is_pending(void);
-bool setting_service_beep_target(void);
-void setting_service_beep_finish(void);
+bool setting_service_take_beep_result(bool *target);
 uint32_t setting_service_take_basic_timeouts(void);
 
 bool setting_service_request_batch_number(uint8_t num, bool previous_enable, uint8_t previous_num);

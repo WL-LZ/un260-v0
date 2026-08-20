@@ -54,12 +54,19 @@ static bool setting_basic_request_is_pending(const setting_basic_request_slot_t 
     return slot != NULL && protocol_request_can_take_result(&slot->request);
 }
 
-static uint8_t setting_basic_request_target(const setting_basic_request_slot_t *slot)
+static bool setting_basic_request_take_result(setting_basic_request_slot_t *slot,
+                                              uint8_t *target)
 {
-    return slot != NULL ? slot->target : 0;
+    if (slot == NULL || !protocol_request_can_take_result(&slot->request)) {
+        return false;
+    }
+
+    if (target != NULL) *target = slot->target;
+    protocol_request_finish(&slot->request);
+    return true;
 }
 
-static void setting_basic_request_finish(setting_basic_request_slot_t *slot)
+static void setting_basic_request_cancel(setting_basic_request_slot_t *slot)
 {
     if (slot != NULL) protocol_request_finish(&slot->request);
 }
@@ -267,14 +274,14 @@ bool setting_service_mode_is_pending(void)
     return setting_basic_request_is_pending(&g_mode_request);
 }
 
-uint8_t setting_service_mode_target(void)
+bool setting_service_take_mode_result(uint8_t *target)
 {
-    return setting_basic_request_target(&g_mode_request);
+    return setting_basic_request_take_result(&g_mode_request, target);
 }
 
-void setting_service_mode_finish(void)
+void setting_service_cancel_mode_request(void)
 {
-    setting_basic_request_finish(&g_mode_request);
+    setting_basic_request_cancel(&g_mode_request);
 }
 
 bool setting_service_request_add(bool target)
@@ -286,19 +293,17 @@ bool setting_service_request_add(bool target)
                                        &add_cmd, 1, target ? 1 : 0);
 }
 
-bool setting_service_add_is_pending(void)
+bool setting_service_take_add_result(bool *target)
 {
-    return setting_basic_request_is_pending(&g_add_request);
-}
+    uint8_t raw_target;
 
-bool setting_service_add_target(void)
-{
-    return setting_basic_request_target(&g_add_request) != 0;
-}
+    if (!setting_basic_request_take_result(&g_add_request,
+                                           target != NULL ? &raw_target : NULL)) {
+        return false;
+    }
 
-void setting_service_add_finish(void)
-{
-    setting_basic_request_finish(&g_add_request);
+    if (target != NULL) *target = raw_target != 0;
+    return true;
 }
 
 bool setting_service_request_fo_mode(uint8_t target)
@@ -310,19 +315,9 @@ bool setting_service_request_fo_mode(uint8_t target)
                                        &fo_cmd, 1, target);
 }
 
-bool setting_service_fo_mode_is_pending(void)
+bool setting_service_take_fo_mode_result(uint8_t *target)
 {
-    return setting_basic_request_is_pending(&g_fo_request);
-}
-
-uint8_t setting_service_fo_mode_target(void)
-{
-    return setting_basic_request_target(&g_fo_request);
-}
-
-void setting_service_fo_mode_finish(void)
-{
-    setting_basic_request_finish(&g_fo_request);
+    return setting_basic_request_take_result(&g_fo_request, target);
 }
 
 bool setting_service_request_speed(uint8_t target)
@@ -340,19 +335,9 @@ bool setting_service_request_speed(uint8_t target)
                                        &speed_cmd, 1, target);
 }
 
-bool setting_service_speed_is_pending(void)
+bool setting_service_take_speed_result(uint8_t *target)
 {
-    return setting_basic_request_is_pending(&g_speed_request);
-}
-
-uint8_t setting_service_speed_target(void)
-{
-    return setting_basic_request_target(&g_speed_request);
-}
-
-void setting_service_speed_finish(void)
-{
-    setting_basic_request_finish(&g_speed_request);
+    return setting_basic_request_take_result(&g_speed_request, target);
 }
 
 bool setting_service_request_work_mode(uint8_t target)
@@ -364,19 +349,9 @@ bool setting_service_request_work_mode(uint8_t target)
                                        &work_cmd, 1, target);
 }
 
-bool setting_service_work_mode_is_pending(void)
+bool setting_service_take_work_mode_result(uint8_t *target)
 {
-    return setting_basic_request_is_pending(&g_work_request);
-}
-
-uint8_t setting_service_work_mode_target(void)
-{
-    return setting_basic_request_target(&g_work_request);
-}
-
-void setting_service_work_mode_finish(void)
-{
-    setting_basic_request_finish(&g_work_request);
+    return setting_basic_request_take_result(&g_work_request, target);
 }
 
 bool setting_service_request_beep(bool target)
@@ -388,19 +363,17 @@ bool setting_service_request_beep(bool target)
                                        &beep_cmd, 1, target ? 1 : 0);
 }
 
-bool setting_service_beep_is_pending(void)
+bool setting_service_take_beep_result(bool *target)
 {
-    return setting_basic_request_is_pending(&g_beep_request);
-}
+    uint8_t raw_target;
 
-bool setting_service_beep_target(void)
-{
-    return setting_basic_request_target(&g_beep_request) != 0;
-}
+    if (!setting_basic_request_take_result(&g_beep_request,
+                                           target != NULL ? &raw_target : NULL)) {
+        return false;
+    }
 
-void setting_service_beep_finish(void)
-{
-    setting_basic_request_finish(&g_beep_request);
+    if (target != NULL) *target = raw_target != 0;
+    return true;
 }
 
 uint32_t setting_service_take_basic_timeouts(void)
