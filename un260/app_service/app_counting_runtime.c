@@ -15,6 +15,7 @@
 #include "un260/counting/counting_reject_sn_reply.h"
 #include "un260/data_collection/data_collection.h"
 #include "un260/diagnostic/diagnostic.h"
+#include "un260/lv_components/lv_components.h"
 #include "un260/lv_components/lv_fault_popup.h"
 #include "un260/lv_components/smart_island.h"
 #include "un260/lv_core/lv_page_manager.h"
@@ -25,6 +26,7 @@
 #include "un260/machine_state/machine_state.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/ui_history_data.h"
+#include "un260/lv_system/ui_text.h"
 
 typedef struct {
     counting_session_state_t *session;
@@ -99,6 +101,9 @@ static bool app_counting_runtime_cb_calibration_active(void)
 
 static void app_counting_runtime_on_start_success(const uint8_t *buf, uint8_t len)
 {
+    hide_counting_error_popup();
+    fault_popup_clear_pending();
+    fault_popup_reset_auto_retry();
     counting_history_session_start(buf, len);
 
     if (data_collection_state_mode() != DATA_COLLECT_MODE_NONE) {
@@ -109,6 +114,7 @@ static void app_counting_runtime_on_start_success(const uint8_t *buf, uint8_t le
                !app_counting_runtime_should_keep_current_page()) {
         ui_manager_switch(UI_PAGE_MAIN);
     }
+    smart_island_notify_count_start();
 }
 
 static void app_counting_runtime_on_error_frame(const char *tag,
@@ -118,9 +124,46 @@ static void app_counting_runtime_on_error_frame(const char *tag,
     counting_history_capture_error(tag, buf, len);
 }
 
-static void app_counting_runtime_on_start_failure(const char *description)
+static const char *app_counting_runtime_start_ui_error_desc(uint8_t code)
+{
+    if (code == 0x00) {
+        return ui_text_get(UI_TEXT_WIDGET_FAULT_NO_NOTE_MAIN);
+    }
+    if (code < sizeof(g_start_error_desc) / sizeof(g_start_error_desc[0]) &&
+        g_start_error_desc[code] != NULL) {
+        return g_start_error_desc[code];
+    }
+    return ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_COUNT_ERROR);
+}
+
+static void app_counting_runtime_on_start_failure(uint8_t type, uint8_t code)
 {
     char status[160];
+    const char *description;
+
+    if (type == 0x01 && code == 0x02) {
+        description = "No banknotes detected";
+        fault_popup_report_start_no_note();
+        uart_debug_printf("0x0A start fail (no note)\n");
+        smart_island_notify_warning_level(
+            ui_text_get(UI_TEXT_WIDGET_FAULT_NO_NOTE_MAIN),
+            SMART_ISLAND_WARNING_LEVEL_WARNING);
+    } else if (type == 0x01 || type == 0x02) {
+        description = get_counting_error_desc(type, code);
+        fault_popup_report_start_fault(type, code);
+        uart_debug_printf(type == 0x01
+                              ? "0x0A start fail (normal): val=%02X desc=%s\n"
+                              : "0x0A start fail (fault): code=%02X desc=%s\n",
+                          code, description);
+        smart_island_notify_warning_level(
+            app_counting_runtime_start_ui_error_desc(code),
+            SMART_ISLAND_WARNING_LEVEL_ERROR);
+    } else {
+        smart_island_notify_warning_level(
+            ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_COUNT_ERROR),
+            SMART_ISLAND_WARNING_LEVEL_ERROR);
+        return;
+    }
 
     if (data_collection_state_mode() == DATA_COLLECT_MODE_NONE) {
         return;
@@ -129,15 +172,34 @@ static void app_counting_runtime_on_start_failure(const char *description)
     snprintf(status,
              sizeof(status),
              "Start failed: %s",
-             description != NULL ? description : "Unknown");
+             description);
     data_collection_state_set_status(status);
     page_06_data_collection_refresh();
+}
+
+static void app_counting_runtime_on_runtime_fault(uint8_t code)
+{
+    if (code == 0x00) {
+        hide_fault_popup();
+        fault_popup_clear_pending();
+        fault_popup_reset_auto_retry();
+        system_error_state_reset();
+        smart_island_restore_idle();
+        return;
+    }
+
+    fault_popup_report_runtime_fault(code);
+    uart_debug_printf("0x0F fault=0x%02X %s\n",
+                      code, get_system_error_desc(code));
+    smart_island_notify_warning_level(get_system_error_desc(code),
+                                      SMART_ISLAND_WARNING_LEVEL_ERROR);
 }
 
 static const counting_control_reply_hooks_t g_counting_control_hooks = {
     .on_start_success = app_counting_runtime_on_start_success,
     .on_error_frame = app_counting_runtime_on_error_frame,
     .on_start_failure = app_counting_runtime_on_start_failure,
+    .on_runtime_fault = app_counting_runtime_on_runtime_fault,
 };
 
 static void app_counting_runtime_on_main_data_changed(void)

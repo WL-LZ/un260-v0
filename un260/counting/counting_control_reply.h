@@ -9,7 +9,8 @@
 typedef struct {
     void (*on_start_success)(const uint8_t *buf, uint8_t len);
     void (*on_error_frame)(const char *tag, const uint8_t *buf, uint8_t len);
-    void (*on_start_failure)(const char *description);
+    void (*on_start_failure)(uint8_t type, uint8_t code);
+    void (*on_runtime_fault)(uint8_t code);
 } counting_control_reply_hooks_t;
 
 bool counting_control_reply_dispatch(uint8_t cmd,
