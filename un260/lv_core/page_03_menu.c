@@ -14,6 +14,7 @@
 #include <string.h>
 
 static lv_obj_t* menu_page = NULL;
+static ui_element_t page_03_menu_obj[];
 static lv_obj_t* g_batch_tip_label = NULL;
 static lv_timer_t* g_batch_tip_timer = NULL;
 static lv_obj_t* g_batch_amount_label = NULL;
@@ -87,7 +88,7 @@ bool page_03_batch_num_edit_value(int* value)
 
 
 // 添加长度变量
-int page_03_menu_len = 0;
+static int page_03_menu_len = 0;
 
 // 定义动画和状态变量
 static bool is_amount_active = false;  // 初始状态  PCS为激活状态
@@ -312,7 +313,7 @@ static void pcs_batch_label_anim_cb(void* var, int32_t v)
     lv_obj_set_y(label, v);
 }
 
-ui_element_t page_03_menu_obj[] = {
+static ui_element_t page_03_menu_obj[] = {
     { "page_02_menu_bg.png", LV_OBJ_TYPE_IMAGE, NULL,
         { 0, 0, 1280, 400, 0, 0, 0 },
         { NULL, 0, 0, 0, NULL },
@@ -588,9 +589,24 @@ ui_element_t page_03_menu_obj[] = {
             NULL, 0, NULL, NULL },
 };
 
-static lv_obj_t* page_03_find(const char* name)
+lv_obj_t *page_03_menu_find_obj(const char *name)
 {
     return find_obj_by_name(name, page_03_menu_obj, page_03_menu_len);
+}
+
+bool page_03_menu_is_created(void)
+{
+    return menu_page != NULL && lv_obj_is_valid(menu_page);
+}
+
+void page_03_menu_icon_feedback(const char *name)
+{
+    icon_feedback_comp(name, page_03_menu_obj, page_03_menu_len);
+}
+
+static lv_obj_t* page_03_find(const char* name)
+{
+    return page_03_menu_find_obj(name);
 }
 
 static void page_03_bg_to_back(void)

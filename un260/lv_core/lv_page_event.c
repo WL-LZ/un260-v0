@@ -63,12 +63,12 @@ static bool page_03_function_button_cache_prepare(void)
     }
 
     for (size_t i = 0; i < 2; i++) {
-        g_page_03_button_cache.beep[i] = find_obj_by_name(
-            g_page_03_beep_names[i], page_03_menu_obj, page_03_menu_len);
-        g_page_03_button_cache.add[i] = find_obj_by_name(
-            g_page_03_add_names[i], page_03_menu_obj, page_03_menu_len);
-        g_page_03_button_cache.work[i] = find_obj_by_name(
-            g_page_03_work_names[i], page_03_menu_obj, page_03_menu_len);
+        g_page_03_button_cache.beep[i] =
+            page_03_menu_find_obj(g_page_03_beep_names[i]);
+        g_page_03_button_cache.add[i] =
+            page_03_menu_find_obj(g_page_03_add_names[i]);
+        g_page_03_button_cache.work[i] =
+            page_03_menu_find_obj(g_page_03_work_names[i]);
         if (!g_page_03_button_cache.beep[i] ||
             !g_page_03_button_cache.add[i] ||
             !g_page_03_button_cache.work[i]) {
@@ -77,16 +77,16 @@ static bool page_03_function_button_cache_prepare(void)
         }
     }
     for (size_t i = 0; i < 3; i++) {
-        g_page_03_button_cache.speed[i] = find_obj_by_name(
-            g_page_03_speed_names[i], page_03_menu_obj, page_03_menu_len);
+        g_page_03_button_cache.speed[i] =
+            page_03_menu_find_obj(g_page_03_speed_names[i]);
         if (!g_page_03_button_cache.speed[i]) {
             page_03_function_button_cache_reset();
             return false;
         }
     }
     for (size_t i = 0; i < 4; i++) {
-        g_page_03_button_cache.fo[i] = find_obj_by_name(
-            g_page_03_fo_names[i], page_03_menu_obj, page_03_menu_len);
+        g_page_03_button_cache.fo[i] =
+            page_03_menu_find_obj(g_page_03_fo_names[i]);
         if (!g_page_03_button_cache.fo[i]) {
             page_03_function_button_cache_reset();
             return false;
@@ -575,7 +575,7 @@ void page_03_batch_num_keypad_event_cb(lv_event_t* e)
 void page_03_batch_num_keypad_clear_event_cb(lv_event_t* e)
 {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
-    icon_feedback_comp("page_03_ok_icon.png", page_03_menu_obj, page_03_menu_len);
+    page_03_menu_icon_feedback("page_03_ok_icon.png");
     page_03_batch_num_edit_reset();
 }
 
@@ -585,7 +585,7 @@ void page_03_batch_num_keypad_clear_event_cb(lv_event_t* e)
 void page_03_batch_num_keypad_enter_event_cb(lv_event_t* e)
 {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
-    icon_feedback_comp("page_03_del_icon.png", page_03_menu_obj, page_03_menu_len);
+    page_03_menu_icon_feedback("page_03_del_icon.png");
 
     page_03_menu_clear_batch_tip();
     int num = 0;
@@ -621,8 +621,7 @@ void page_03_batch_set_result(bool success, const setting_batch_result_t *result
             machine_state_confirm_batch(result->target.enable, result->target.num);
             set_batch_switch_state(machine_state_batch_enabled());
             batch_switch_set_last_on_num(machine_state_batch_num());
-            update_label_by_name(page_03_menu_obj, page_03_menu_len, "03_batch_num_label",
-                                 "%d", machine_state_batch_num());
+            page_03_menu_refresh_batch_number();
             page_01_batch_refre();
             page_03_batch_num_edit_reset();
             page_03_menu_show_batch_saved_tip();
@@ -635,7 +634,7 @@ void page_03_update_menu_button_states_refresh(void)
     /* boot 阶段会收到参数同步帧(0x38/0x39/0x3A/0x15等)，
        但菜单页对象可能尚未创建。这里必须做到“无对象就直接跳过”，
        否则会对 NULL 调用 lv_obj_set_style_* 导致卡死/崩溃。 */
-    if (page_03_menu_obj == NULL || page_03_menu_len <= 0) {
+    if (!page_03_menu_is_created()) {
         return;
     }
 
