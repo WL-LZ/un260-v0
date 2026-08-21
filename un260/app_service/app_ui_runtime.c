@@ -32,7 +32,7 @@ static void app_ui_runtime_poll_upgrade(uint32_t now_ms)
 
 void app_ui_runtime_poll(uint32_t now_ms)
 {
-    app_setting_runtime_poll();
+    app_setting_runtime_poll(now_ms);
     ui_screenshot_indicator_poll();
     ui_count_end_anim_poll();
     app_ui_runtime_poll_upgrade(now_ms);

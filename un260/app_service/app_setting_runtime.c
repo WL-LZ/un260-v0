@@ -2,8 +2,7 @@
 
 #include <stddef.h>
 
-#include "lvgl/lvgl.h"
-
+#include "un260/app_service/app_clock.h"
 #include "un260/app_service/app_setting_reply.h"
 #include "un260/app_service/setting_service.h"
 #include "un260/cfd/cfd.h"
@@ -22,39 +21,20 @@
 
 #define APP_SETTING_MODE_CLEAR_DELAY_MS 120
 
-static lv_timer_t *g_mode_clear_timer;
+static bool g_mode_clear_scheduled;
+static uint32_t g_mode_clear_tick;
 static bool g_mode_clear_due;
-
-static void app_setting_runtime_mode_clear_timer_cb(lv_timer_t *timer)
-{
-    if (timer == NULL || timer != g_mode_clear_timer) {
-        return;
-    }
-
-    g_mode_clear_timer = NULL;
-    g_mode_clear_due = true;
-}
 
 static void app_setting_runtime_schedule_mode_clear(void)
 {
+    app_setting_runtime_cancel_mode_clear();
+
     if (sim.total_pcs == 0 && counting_data_reject_pcs_count(&sim) == 0) {
         return;
     }
 
-    if (g_mode_clear_timer != NULL) {
-        lv_timer_del(g_mode_clear_timer);
-        g_mode_clear_timer = NULL;
-    }
-    g_mode_clear_due = false;
-
-    g_mode_clear_timer = lv_timer_create(app_setting_runtime_mode_clear_timer_cb,
-                                         APP_SETTING_MODE_CLEAR_DELAY_MS,
-                                         NULL);
-    if (g_mode_clear_timer == NULL) {
-        g_mode_clear_due = true;
-        return;
-    }
-    lv_timer_set_repeat_count(g_mode_clear_timer, 1);
+    g_mode_clear_tick = app_clock_uptime_ms();
+    g_mode_clear_scheduled = true;
 }
 
 bool app_setting_runtime_take_mode_clear(void)
@@ -69,10 +49,8 @@ bool app_setting_runtime_take_mode_clear(void)
 
 void app_setting_runtime_cancel_mode_clear(void)
 {
-    if (g_mode_clear_timer != NULL) {
-        lv_timer_del(g_mode_clear_timer);
-        g_mode_clear_timer = NULL;
-    }
+    g_mode_clear_scheduled = false;
+    g_mode_clear_tick = 0;
     g_mode_clear_due = false;
 }
 
@@ -123,7 +101,7 @@ static void app_setting_runtime_notify_timeout(void)
     show_communication_error_popup();
 }
 
-void app_setting_runtime_poll(void)
+void app_setting_runtime_poll(uint32_t now_ms)
 {
     bool notify_timeout = false;
     uint32_t basic_timeouts;
@@ -131,6 +109,14 @@ void app_setting_runtime_poll(void)
     setting_value_result_t value_result;
     serial_number_setting_result_t serial_result;
     currency_switch_result_t currency_result;
+
+    if (g_mode_clear_scheduled &&
+        (uint32_t)(now_ms - g_mode_clear_tick) >=
+            APP_SETTING_MODE_CLEAR_DELAY_MS) {
+        g_mode_clear_scheduled = false;
+        g_mode_clear_tick = 0;
+        g_mode_clear_due = true;
+    }
 
     basic_timeouts = setting_service_take_basic_timeouts();
     if (basic_timeouts != SETTING_REQUEST_TIMEOUT_NONE) {
