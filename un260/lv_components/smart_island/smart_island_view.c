@@ -40,7 +40,6 @@ static void smart_island_apply_texts(void);
 static void smart_island_rebuild_scene_texts(void);
 static void smart_island_get_currency_code(char *buf, size_t size);
 static const char *smart_island_get_work_mode_text(void);
-static bool smart_island_batch_enabled(void);
 static void smart_island_apply_progress(void);
 static void smart_island_clear_object_refs(void);
 static void smart_island_pulse_stop(void);
@@ -258,17 +257,9 @@ static void smart_island_get_currency_code(char *buf, size_t size)
     }
 }
 
-static bool smart_island_batch_enabled(void)
-{
-    uint8_t batch_num = machine_state_batch_num();
-
-    return machine_state_batch_enabled() && batch_num > 0 && batch_num != 200;
-}
-
 static void smart_island_apply_progress(void)
 {
     lv_obj_t *progress = g_si_ctx.objects.progress;
-    int batch_num = (int)machine_state_batch_num();
 
     if (progress == NULL || !lv_obj_is_valid(progress)) {
         return;
@@ -276,16 +267,6 @@ static void smart_island_apply_progress(void)
 
     if (g_si_ctx.view.scene == SMART_ISLAND_SCENE_UPDATE) {
         lv_obj_clear_flag(progress, LV_OBJ_FLAG_HIDDEN);
-        return;
-    }
-
-    if (g_si_ctx.view.scene == SMART_ISLAND_SCENE_COUNTING &&
-        machine_state_batch_enabled() && batch_num > 0 && batch_num != 200) {
-        int total_pcs = counting_data_current()->total_pcs > 0 ? counting_data_current()->total_pcs : 0;
-        int percent = total_pcs >= batch_num ? 100 : (total_pcs * 100) / batch_num;
-
-        lv_obj_clear_flag(progress, LV_OBJ_FLAG_HIDDEN);
-        lv_bar_set_value(progress, percent, LV_ANIM_ON);
         return;
     }
 
@@ -398,9 +379,11 @@ static void smart_island_rebuild_scene_texts(void)
 
     switch (g_si_ctx.view.scene) {
     case SMART_ISLAND_SCENE_COUNTING:
-        if (counting_data_current()->total_pcs > 0) {
-            lv_snprintf(g_si_ctx.text.compact, sizeof(g_si_ctx.text.compact),
-                ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_COUNTING_PCS_FMT), counting_data_current()->total_pcs);
+        if (machine_state_mode() == MODE_MDC || machine_state_mode() == MODE_SDC) {
+            lv_snprintf(g_si_ctx.text.compact, sizeof(g_si_ctx.text.compact), "%s",
+                g_si_ctx.text.serial_ticker[0] != '\0'
+                    ? g_si_ctx.text.serial_ticker
+                    : ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_SERIAL_WAITING));
         } else {
             lv_snprintf(g_si_ctx.text.compact, sizeof(g_si_ctx.text.compact), "%s",
                 ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_COUNTING_TITLE));
@@ -417,12 +400,7 @@ static void smart_island_rebuild_scene_texts(void)
             lv_snprintf(g_si_ctx.text.info_summary, sizeof(g_si_ctx.text.info_summary),
                 ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_CUR_MODE_FMT), curr, work_text);
         }
-        if (smart_island_batch_enabled() && counting_data_current()->total_pcs > 0) {
-            lv_snprintf(g_si_ctx.text.info_footer, sizeof(g_si_ctx.text.info_footer),
-                ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_BATCH_PROGRESS_FMT), counting_data_current()->total_pcs, (int)machine_state_batch_num());
-        } else {
-            lv_snprintf(g_si_ctx.text.info_footer, sizeof(g_si_ctx.text.info_footer), "%s", work_text);
-        }
+        lv_snprintf(g_si_ctx.text.info_footer, sizeof(g_si_ctx.text.info_footer), "%s", work_text);
         break;
 
     case SMART_ISLAND_SCENE_RESULT:
@@ -509,10 +487,11 @@ static void smart_island_rebuild_scene_texts(void)
             lv_snprintf(g_si_ctx.text.info_footer, sizeof(g_si_ctx.text.info_footer), "%s",
                 ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_IDLE_NO_COUNT));
         } else {
-            lv_snprintf(g_si_ctx.text.info_footer, sizeof(g_si_ctx.text.info_footer), "%s",
-                g_si_ctx.text.idle_has_issue
-                ? ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_RESULT_ISSUE_TITLE)
-                : ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_RESULT_OK_TITLE));
+            unsigned normal_percent = current_total > 0
+                ? (unsigned)((current_valid * 100) / current_total) : 0U;
+            lv_snprintf(g_si_ctx.text.info_footer, sizeof(g_si_ctx.text.info_footer),
+                ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_RESULT_RATIO_FMT),
+                normal_percent, 100U - normal_percent);
         }
 
         if (g_si_ctx.text.idle_line3[0] != '\0') {
@@ -671,6 +650,15 @@ static void smart_island_apply_scene_style(void)
         lv_obj_set_style_text_color(g_si_ctx.objects.title, title_color, 0);
         lv_obj_set_style_text_opa(g_si_ctx.objects.title, LV_OPA_COVER, 0);
         lv_obj_clear_flag(g_si_ctx.objects.title, LV_OBJ_FLAG_HIDDEN);
+        if (g_si_ctx.view.scene == SMART_ISLAND_SCENE_COUNTING &&
+            (machine_state_mode() == MODE_MDC || machine_state_mode() == MODE_SDC) &&
+            g_si_ctx.text.serial_ticker[0] != '\0') {
+            lv_label_set_long_mode(g_si_ctx.objects.title, LV_LABEL_LONG_SCROLL_CIRCULAR);
+            lv_obj_set_width(g_si_ctx.objects.title, SMART_ISLAND_W - 52);
+        } else {
+            lv_label_set_long_mode(g_si_ctx.objects.title, LV_LABEL_LONG_CLIP);
+            lv_obj_set_width(g_si_ctx.objects.title, 150);
+        }
     }
 
     if (g_si_ctx.objects.subtitle && lv_obj_is_valid(g_si_ctx.objects.subtitle)) {

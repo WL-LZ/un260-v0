@@ -91,6 +91,7 @@ typedef struct {
 
 typedef struct {
     char result[64];
+    char serial_ticker[64];
     char compact[196];
     char info_title[196];
     char info_summary[196];

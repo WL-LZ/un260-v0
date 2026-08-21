@@ -64,6 +64,17 @@ static void app_command_runtime_dispatch(uint8_t cmd,
 {
     counting_action_handle_reply(cmd, buf, len);
 
+    /* 0x49/0x18 is the controller's live serial-number frame. */
+    if (cmd == 0x49 && len == 0x18) {
+        app_counting_runtime_handle_detail(cmd,
+                                           &g_counting_detail_state,
+                                           &g_counting_session,
+                                           counting_data_mutable(),
+                                           buf,
+                                           len);
+        return;
+    }
+
     if (app_setting_runtime_handle_reply(cmd, buf, len) ||
         app_protocol_runtime_handle_reply(cmd, buf, len)) {
         return;

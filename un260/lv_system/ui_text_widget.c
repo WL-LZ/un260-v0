@@ -92,6 +92,7 @@ static const ui_text_item_t g_ui_text_widget_group[UI_TEXT_MAX - UI_TEXT_WIDGET_
     [UI_TEXT_WIDGET_SMART_ISLAND_CUR_PCS_AMOUNT_FMT - UI_TEXT_WIDGET_BASE] = {"%s - %d pcs - %.0f", "%s - %d 张 - %.0f", "%s - %d장 - %.0f"},
     [UI_TEXT_WIDGET_SMART_ISLAND_READY_CUR_FMT - UI_TEXT_WIDGET_BASE] = {"Ready - %s", "就绪 - %s", "준비 - %s"},
     [UI_TEXT_WIDGET_SMART_ISLAND_COUNTING_PCS_FMT - UI_TEXT_WIDGET_BASE] = {"Counting - %d pcs", "点钞中 - %d 张", "계수 중 - %d장"},
+    [UI_TEXT_WIDGET_SMART_ISLAND_SERIAL_WAITING - UI_TEXT_WIDGET_BASE] = {"Serial number...", "冠字号...", "일련번호..."},
     [UI_TEXT_WIDGET_SMART_ISLAND_LAST_TAG - UI_TEXT_WIDGET_BASE] = {"Last", "上一把", "이전"},
     [UI_TEXT_WIDGET_SMART_ISLAND_PCS_AMOUNT_FMT - UI_TEXT_WIDGET_BASE] = {
         "#FFFFFF PCS# #60A5FA %d# #737373 |# #FFFFFF Amount# #60A5FA %.0f#",
@@ -115,6 +116,11 @@ static const ui_text_item_t g_ui_text_widget_group[UI_TEXT_MAX - UI_TEXT_WIDGET_
         "#FF5A5F %d# #FFFFFF Suspect# #737373 |# #FF5A5F %d# #FFFFFF Damaged#",
         "#FF5A5F %d# #FFFFFF 可疑# #737373 |# #FF5A5F %d# #FFFFFF 破损#",
         "#FF5A5F %d# #FFFFFF 의심# #737373 |# #FF5A5F %d# #FFFFFF 손상#"
+    },
+    [UI_TEXT_WIDGET_SMART_ISLAND_RESULT_RATIO_FMT - UI_TEXT_WIDGET_BASE] = {
+        "Normal %u%% | Abnormal %u%%",
+        "正常 %u%% | 异常 %u%%",
+        "정상 %u%% | 이상 %u%%"
     },
     [UI_TEXT_WIDGET_SMART_ISLAND_NO_REJECT - UI_TEXT_WIDGET_BASE] = {"No reject note", "无退钞", "리젝트 없음"},
     [UI_TEXT_WIDGET_SMART_ISLAND_SWIPE_ACTIONS - UI_TEXT_WIDGET_BASE] = {"Swipe for actions", "滑动查看功能", "밀어서 기능 보기"},

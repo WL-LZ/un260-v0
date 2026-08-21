@@ -1,6 +1,8 @@
 #include "un260/lv_components/smart_island/smart_island_internal.h"
 #include "un260/lv_components/lv_fault_popup.h"
 #include "un260/lv_system/counting_ui_runtime.h"
+#include "un260/lv_system/user_cfg.h"
+#include "un260/machine_state/machine_state.h"
 
 #define SMART_ISLAND_RESULT_HOLD_MS 1800U
 
@@ -33,8 +35,31 @@ void smart_island_notify_count_start(void)
     smart_island_warning_fault_clear();
     smart_island_warning_stop();
     g_si_ctx.text.result[0] = '\0';
+    g_si_ctx.text.serial_ticker[0] = '\0';
     smart_island_set_scene(SMART_ISLAND_SCENE_COUNTING, NULL, NULL);
     smart_island_set_visual(SMART_ISLAND_VISUAL_COMPACT, true);
+}
+
+void smart_island_notify_serial_number(int denomination, const char *serial_number)
+{
+    uint8_t mode = machine_state_mode();
+
+    if (!g_si_ctx.lifecycle.count_session_active ||
+        (mode != MODE_MDC && mode != MODE_SDC) ||
+        serial_number == NULL || serial_number[0] == '\0') {
+        return;
+    }
+
+    if (denomination > 0) {
+        lv_snprintf(g_si_ctx.text.serial_ticker,
+                    sizeof(g_si_ctx.text.serial_ticker),
+                    "%d  %s", denomination, serial_number);
+    } else {
+        lv_snprintf(g_si_ctx.text.serial_ticker,
+                    sizeof(g_si_ctx.text.serial_ticker),
+                    "%s", serial_number);
+    }
+    smart_island_refresh_summary();
 }
 
 void smart_island_notify_count_end(const char *result_text)

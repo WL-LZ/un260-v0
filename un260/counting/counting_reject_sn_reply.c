@@ -116,6 +116,18 @@ static bool counting_sn_payload_is(const uint8_t *buf, int payload_end, uint8_t 
     return true;
 }
 
+static void counting_sn_notify_item(
+    const counting_reject_sn_reply_hooks_t *hooks,
+    int denomination,
+    const char *serial_number)
+{
+    if (hooks != NULL && hooks->on_serial_item_changed != NULL) {
+        hooks->on_serial_item_changed(hooks->context,
+                                      denomination,
+                                      serial_number);
+    }
+}
+
 static counting_detail_reply_result_t counting_sn_reply_handle(
     counting_session_state_t *session,
     counting_sim_t *sim_data,
@@ -237,8 +249,80 @@ static counting_detail_reply_result_t counting_sn_reply_handle(
         sim_data->denom_mix[index] = denom;
     }
 
-    counting_detail_notify(hooks, hooks != NULL
-        ? hooks->on_serial_item_changed : NULL);
+    counting_sn_notify_item(hooks, denom, cursor);
+    return COUNTING_DETAIL_REPLY_DATA;
+}
+
+static counting_detail_reply_result_t counting_sn_push_handle(
+    counting_session_state_t *session,
+    counting_sim_t *sim_data,
+    const uint8_t *buf,
+    uint8_t len,
+    const counting_reject_sn_reply_hooks_t *hooks)
+{
+    enum { DENOM_FIELD_LEN = 7, PUSH_FRAME_LEN = 0x18 };
+    char denom_text[DENOM_FIELD_LEN + 1];
+    char serial_text[32];
+    char *denom_start;
+    char *denom_end;
+    char *serial_start;
+    char *serial_end;
+    char *sn_copy;
+    long denom_value;
+    int index;
+    int serial_len;
+
+    if (session == NULL || session->phase != COUNTING_SESSION_ACTIVE) {
+        return COUNTING_DETAIL_REPLY_IGNORED;
+    }
+    if (sim_data == NULL || buf == NULL || len != PUSH_FRAME_LEN) {
+        return COUNTING_DETAIL_REPLY_INVALID;
+    }
+
+    memcpy(denom_text, &buf[4], DENOM_FIELD_LEN);
+    denom_text[DENOM_FIELD_LEN] = '\0';
+    denom_start = denom_text;
+    while (*denom_start == ' ') denom_start++;
+    denom_end = denom_start + strlen(denom_start);
+    while (denom_end > denom_start && denom_end[-1] == ' ') *--denom_end = '\0';
+    if (*denom_start == '\0') return COUNTING_DETAIL_REPLY_IGNORED;
+
+    denom_value = strtol(denom_start, &denom_end, 10);
+    if (denom_value <= 0 || denom_value > INT_MAX || *denom_end != '\0') {
+        return COUNTING_DETAIL_REPLY_IGNORED;
+    }
+
+    serial_len = (int)len - 1 - 4 - DENOM_FIELD_LEN;
+    if (serial_len <= 0 || serial_len >= (int)sizeof(serial_text)) {
+        return COUNTING_DETAIL_REPLY_INVALID;
+    }
+    memcpy(serial_text, &buf[4 + DENOM_FIELD_LEN], (size_t)serial_len);
+    serial_text[serial_len] = '\0';
+    serial_start = serial_text;
+    while (*serial_start == ' ') serial_start++;
+    serial_end = serial_start + strlen(serial_start);
+    while (serial_end > serial_start && serial_end[-1] == ' ') *--serial_end = '\0';
+    if (*serial_start == '\0') return COUNTING_DETAIL_REPLY_IGNORED;
+
+    index = 0;
+    while (index < counting_data_serial_scan_limit(sim_data) &&
+           sim_data->sn_str[index] != NULL) {
+        index++;
+    }
+    if (index >= COUNTING_DATA_MAX_ITEMS ||
+        !counting_data_ensure_serial_capacity(sim_data, index + 1)) {
+        return COUNTING_DETAIL_REPLY_MEMORY_ERROR;
+    }
+
+    sn_copy = malloc(strlen(serial_start) + 1U);
+    if (sn_copy == NULL) return COUNTING_DETAIL_REPLY_MEMORY_ERROR;
+    strcpy(sn_copy, serial_start);
+    free(sim_data->sn_str[index]);
+    sim_data->sn_str[index] = sn_copy;
+    sim_data->denom_mix[index] = (int)denom_value;
+
+    counting_detail_record_history(hooks, "0x49", buf, len);
+    counting_sn_notify_item(hooks, (int)denom_value, serial_start);
     return COUNTING_DETAIL_REPLY_DATA;
 }
 
@@ -256,6 +340,8 @@ counting_detail_reply_result_t counting_reject_sn_reply_dispatch(
         return counting_reject_reply_handle(detail, sim_data, buf, len, hooks);
     case 0x0D:
         return counting_sn_reply_handle(session, sim_data, buf, len, hooks);
+    case 0x49:
+        return counting_sn_push_handle(session, sim_data, buf, len, hooks);
     default:
         return COUNTING_DETAIL_REPLY_INVALID;
     }

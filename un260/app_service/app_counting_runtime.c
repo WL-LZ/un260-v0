@@ -285,9 +285,12 @@ static void app_counting_runtime_on_serial_ui_complete(void *context,
     }
 }
 
-static void app_counting_runtime_on_serial_item_changed(void *context)
+static void app_counting_runtime_on_serial_item_changed(void *context,
+                                                        int denomination,
+                                                        const char *serial_number)
 {
     (void)context;
+    smart_island_notify_serial_number(denomination, serial_number);
     if (app_counting_runtime_main_page_active() &&
         page_01_detail_section_get() == PAGE_01_DETAIL_SECTION_B) {
         page_01_main_detail_refresh_rows_only();
@@ -417,8 +420,19 @@ void app_counting_runtime_handle_info(counting_session_state_t *session,
             smart_island_refresh_summary();
         }
     } else if (result.kind == COUNTING_INFO_REPLY_FINISHED) {
+        int current_pcs = result.final_pcs;
+
         uart_debug_printf("Count finished\n");
         counting_history_capture_end(buf, len);
+        if (machine_state_add_enabled() &&
+            sim_data->last_total_pcs > 0 &&
+            current_pcs >= sim_data->last_total_pcs) {
+            current_pcs -= sim_data->last_total_pcs;
+        }
+        session->analysis_valid_pcs = current_pcs - result.final_issue;
+        if (session->analysis_valid_pcs < 0) {
+            session->analysis_valid_pcs = 0;
+        }
         smart_island_set_count_analysis(session->analysis_valid_pcs,
                                         result.final_issue,
                                         0);
