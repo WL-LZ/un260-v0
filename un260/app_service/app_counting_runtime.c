@@ -23,6 +23,7 @@
 #include "un260/lv_core/page_01_main.h"
 #include "un260/lv_core/page_02_list.h"
 #include "un260/lv_core/page_06_settings.h"
+#include "un260/lv_core/page_19_history.h"
 #include "un260/lv_core/page_31_get_wave.h"
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/machine_state/machine_state.h"
@@ -335,6 +336,10 @@ static void app_counting_runtime_report_history_commit(
     } else if (result == COUNTING_HISTORY_COMMIT_SAVED && previous_attempts > 0) {
         uart_debug_printf("history save recovered after %u retries\n",
                     previous_attempts);
+    }
+    if (result == COUNTING_HISTORY_COMMIT_SAVED &&
+        ui_manager_get_current_page() == UI_PAGE_HISTORY) {
+        ui_page_19_history_refresh();
     }
 }
 

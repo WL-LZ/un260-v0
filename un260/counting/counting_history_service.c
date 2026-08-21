@@ -4,8 +4,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "un260/lv_core/lv_page_manager.h"
-#include "un260/lv_core/page_19_history.h"
 #include "un260/lv_system/ui_history_data.h"
 
 #define COUNTING_HISTORY_FRAME_TEXT_SIZE 160
@@ -156,9 +154,6 @@ counting_history_commit_result_t counting_history_try_commit(
     }
 
     counting_history_clear_pending(session);
-    if (ui_manager_get_current_page() == UI_PAGE_HISTORY) {
-        ui_page_19_history_refresh();
-    }
     return COUNTING_HISTORY_COMMIT_SAVED;
 }
 
