@@ -163,6 +163,57 @@ static void history_unescape_text(char *dst, size_t dst_size, const char *src)
     dst[j] = '\0';
 }
 
+static bool history_trim_line_end(char *line)
+{
+    size_t len;
+
+    if (line == NULL) {
+        return false;
+    }
+
+    len = strlen(line);
+    if (len == 0 || line[len - 1] != '\n') {
+        return false;
+    }
+
+    line[--len] = '\0';
+    if (len > 0 && line[len - 1] == '\r') {
+        line[len - 1] = '\0';
+    }
+    return true;
+}
+
+static bool history_parse_u32(const char *value, uint32_t *out)
+{
+    unsigned long parsed;
+    char *end;
+
+    if (value == NULL || out == NULL || value[0] == '\0' || value[0] == '-') {
+        return false;
+    }
+
+    errno = 0;
+    parsed = strtoul(value, &end, 0);
+    if (errno == ERANGE || end == value || *end != '\0' || parsed > UINT32_MAX) {
+        return false;
+    }
+
+    *out = (uint32_t)parsed;
+    return true;
+}
+
+static bool history_parse_bool(const char *value, bool *out)
+{
+    uint32_t parsed;
+
+    if (out == NULL || !history_parse_u32(value, &parsed) || parsed > 1) {
+        return false;
+    }
+
+    *out = parsed != 0;
+    return true;
+}
+
 static void history_format_denom(const counting_sim_t *sim_data, char *dst, size_t size)
 {
     int i;
@@ -517,43 +568,69 @@ static bool history_save_or_reload(void)
     return false;
 }
 
-static void history_parse_key_value(int record_index, const char *key, const char *value)
+static bool history_parse_key_value(int record_index, const char *key, const char *value)
 {
     ui_history_record_t *rec;
+    uint32_t parsed;
 
     if (record_index < 0 || record_index >= UI_HISTORY_MAX_RECORDS) {
-        return;
+        return false;
     }
 
     rec = &g_history_store.records[record_index];
     if (key == NULL || value == NULL) {
-        return;
+        return false;
     }
 
     if (strcmp(key, "valid") == 0) {
-        rec->valid = atoi(value) ? true : false;
+        return history_parse_bool(value, &rec->valid);
     } else if (strcmp(key, "selected") == 0) {
-        rec->selected = atoi(value) ? true : false;
+        return history_parse_bool(value, &rec->selected);
     } else if (strcmp(key, "slot_no") == 0) {
-        rec->slot_no = (uint8_t)strtoul(value, NULL, 0);
+        if (!history_parse_u32(value, &parsed) || parsed == 0 || parsed > UI_HISTORY_MAX_RECORDS) {
+            return false;
+        }
+        rec->slot_no = (uint8_t)parsed;
     } else if (strcmp(key, "record_no") == 0) {
-        rec->record_no = (uint32_t)strtoul(value, NULL, 0);
+        if (!history_parse_u32(value, &parsed) || parsed == 0) {
+            return false;
+        }
+        rec->record_no = parsed;
     } else if (strcmp(key, "pcs") == 0) {
-        rec->pcs = (uint32_t)strtoul(value, NULL, 0);
+        if (!history_parse_u32(value, &rec->pcs)) {
+            return false;
+        }
     } else if (strcmp(key, "amount") == 0) {
-        rec->amount = (uint32_t)strtoul(value, NULL, 0);
+        if (!history_parse_u32(value, &rec->amount)) {
+            return false;
+        }
     } else if (strcmp(key, "currency") == 0) {
         snprintf(rec->currency, sizeof(rec->currency), "%s", value);
     } else if (strcmp(key, "time") == 0) {
         unsigned y, m, d, h, mi, s;
-        if (sscanf(value, "%u-%u-%u %u:%u:%u", &y, &m, &d, &h, &mi, &s) == 6) {
-            rec->year = (uint16_t)y;
-            rec->month = (uint8_t)m;
-            rec->day = (uint8_t)d;
-            rec->hour = (uint8_t)h;
-            rec->minute = (uint8_t)mi;
-            rec->second = (uint8_t)s;
+        char trailing;
+        machine_time_value_t time_value;
+
+        if (sscanf(value, "%u-%u-%u %u:%u:%u%c", &y, &m, &d, &h, &mi, &s, &trailing) != 6 ||
+            y > UINT16_MAX || m > UINT8_MAX || d > UINT8_MAX || h > UINT8_MAX ||
+            mi > UINT8_MAX || s > UINT8_MAX) {
+            return false;
         }
+        time_value.year = (uint16_t)y;
+        time_value.month = (uint8_t)m;
+        time_value.day = (uint8_t)d;
+        time_value.hour = (uint8_t)h;
+        time_value.minute = (uint8_t)mi;
+        time_value.second = (uint8_t)s;
+        if (!machine_time_is_valid(&time_value)) {
+            return false;
+        }
+        rec->year = time_value.year;
+        rec->month = time_value.month;
+        rec->day = time_value.day;
+        rec->hour = time_value.hour;
+        rec->minute = time_value.minute;
+        rec->second = time_value.second;
     } else if (strcmp(key, "denom") == 0) {
         history_unescape_text(rec->denom_text, sizeof(rec->denom_text), value);
     } else if (strcmp(key, "sn") == 0) {
@@ -570,12 +647,55 @@ static void history_parse_key_value(int record_index, const char *key, const cha
         history_unescape_text(rec->session_log, sizeof(rec->session_log), value);
     }
 
+    return true;
+}
+
+static bool history_loaded_records_valid(void)
+{
+    bool slots_seen[UI_HISTORY_MAX_RECORDS + 1] = { false };
+    uint32_t max_record_no = 0;
+    int i;
+    int j;
+
+    for (i = 0; i < g_history_store.record_count; i++) {
+        const ui_history_record_t *rec = &g_history_store.records[i];
+        machine_time_value_t time_value = {
+            rec->year, rec->month, rec->day,
+            rec->hour, rec->minute, rec->second
+        };
+
+        if (!rec->valid || rec->record_no == 0 || rec->slot_no == 0 ||
+            rec->slot_no > UI_HISTORY_MAX_RECORDS || slots_seen[rec->slot_no] ||
+            !machine_time_is_valid(&time_value)) {
+            return false;
+        }
+        for (j = 0; j < i; j++) {
+            if (g_history_store.records[j].record_no == rec->record_no) {
+                return false;
+            }
+        }
+        slots_seen[rec->slot_no] = true;
+        if (rec->record_no > max_record_no) {
+            max_record_no = rec->record_no;
+        }
+    }
+
+    return g_history_store.record_count == 0 ||
+           g_history_store.next_record_no > max_record_no;
 }
 
 static void history_load_from_file(void)
 {
     FILE *fp;
     char line[UI_HISTORY_LINE_BUFFER_SIZE];
+    bool read_failed;
+    bool file_valid = true;
+    bool magic_seen = false;
+    bool version_seen = false;
+    bool total_seen = false;
+    bool next_record_seen = false;
+    bool next_slot_seen = false;
+    bool record_count_seen = false;
 
     history_store_reset();
 
@@ -587,41 +707,75 @@ static void history_load_from_file(void)
 
     while (fgets(line, sizeof(line), fp) != NULL) {
         char *eq = strchr(line, '=');
+
+        if (!history_trim_line_end(line)) {
+            file_valid = false;
+            break;
+        }
         if (eq == NULL) {
-            continue;
+            file_valid = false;
+            break;
         }
         *eq++ = '\0';
 
         if (strcmp(line, "magic") == 0) {
-            if ((uint32_t)strtoul(eq, NULL, 0) != UI_HISTORY_MAGIC) {
-                history_store_reset();
+            uint32_t parsed;
+
+            if (!history_parse_u32(eq, &parsed) || parsed != UI_HISTORY_MAGIC) {
+                file_valid = false;
+                break;
             }
+            magic_seen = true;
             continue;
         }
         if (strcmp(line, "version") == 0) {
+            uint32_t parsed;
+
+            if (!history_parse_u32(eq, &parsed) || parsed != UI_HISTORY_VERSION) {
+                file_valid = false;
+                break;
+            }
+            version_seen = true;
             continue;
         }
         if (strcmp(line, "total_notes_counted") == 0) {
-            g_history_store.total_notes_counted = (uint32_t)strtoul(eq, NULL, 0);
+            if (!history_parse_u32(eq, &g_history_store.total_notes_counted)) {
+                file_valid = false;
+                break;
+            }
+            total_seen = true;
             continue;
         }
         if (strcmp(line, "next_record_no") == 0) {
-            g_history_store.next_record_no = (uint32_t)strtoul(eq, NULL, 0);
-            if (g_history_store.next_record_no == 0) g_history_store.next_record_no = 1;
+            if (!history_parse_u32(eq, &g_history_store.next_record_no) ||
+                g_history_store.next_record_no == 0) {
+                file_valid = false;
+                break;
+            }
+            next_record_seen = true;
             continue;
         }
         if (strcmp(line, "next_slot_no") == 0) {
-            g_history_store.next_slot_no = (uint8_t)strtoul(eq, NULL, 0);
-            if (g_history_store.next_slot_no == 0 || g_history_store.next_slot_no > UI_HISTORY_MAX_RECORDS) {
-                g_history_store.next_slot_no = 1;
+            uint32_t parsed;
+
+            if (!history_parse_u32(eq, &parsed) || parsed == 0 ||
+                parsed > UI_HISTORY_MAX_RECORDS) {
+                file_valid = false;
+                break;
             }
+            g_history_store.next_slot_no = (uint8_t)parsed;
+            next_slot_seen = true;
             continue;
         }
         if (strcmp(line, "record_count") == 0) {
-            g_history_store.record_count = (uint8_t)strtoul(eq, NULL, 0);
-            if (g_history_store.record_count > UI_HISTORY_MAX_RECORDS) {
-                g_history_store.record_count = UI_HISTORY_MAX_RECORDS;
+            uint32_t parsed;
+
+            if (!history_parse_u32(eq, &parsed) || parsed > UI_HISTORY_MAX_RECORDS) {
+                file_valid = false;
+                break;
             }
+            g_history_store.record_count = (uint8_t)parsed;
+            record_count_seen = true;
             continue;
         }
 
@@ -631,21 +785,29 @@ static void history_load_from_file(void)
             unsigned idx;
             if (sscanf(line, "record%02u_%63[^=]", &idx, key) == 2 && idx < UI_HISTORY_MAX_RECORDS) {
                 record_index = (int)idx;
-                history_parse_key_value(record_index, key, eq);
+                if (!history_parse_key_value(record_index, key, eq)) {
+                    file_valid = false;
+                    break;
+                }
             }
         }
     }
 
-    fclose(fp);
+    read_failed = ferror(fp) != 0;
+    if (fclose(fp) != 0) {
+        read_failed = true;
+    }
+    if (read_failed) {
+        file_valid = false;
+    }
 
-    if (g_history_store.record_count > UI_HISTORY_MAX_RECORDS) {
-        g_history_store.record_count = UI_HISTORY_MAX_RECORDS;
+    if (!magic_seen || !version_seen || !total_seen || !next_record_seen ||
+        !next_slot_seen || !record_count_seen || !history_loaded_records_valid()) {
+        file_valid = false;
     }
-    if (g_history_store.next_record_no == 0) {
-        g_history_store.next_record_no = 1;
-    }
-    if (g_history_store.next_slot_no == 0 || g_history_store.next_slot_no > UI_HISTORY_MAX_RECORDS) {
-        g_history_store.next_slot_no = 1;
+
+    if (!file_valid) {
+        history_store_reset();
     }
 
     g_history_loaded = true;
