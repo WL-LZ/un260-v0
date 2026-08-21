@@ -33,9 +33,9 @@ static bool ui_qr_data_append(char* buf, size_t buf_size, size_t* used,
 
 bool ui_qr_data_is_ready(void) //判断当前是否有有效点钞数据
 {
-    if (sim.total_pcs > 0) return true;
-    if (sim.total_amount > 0.0f) return true;
-    if (counting_data_reject_pcs_count(&sim) > 0) return true;
+    if (counting_data_current()->total_pcs > 0) return true;
+    if (counting_data_current()->total_amount > 0.0f) return true;
+    if (counting_data_reject_pcs_count(counting_data_current()) > 0) return true;
     return false;
 }
 
@@ -60,16 +60,16 @@ bool ui_qr_data_build(char* buf, size_t buf_size) //组装当前点钞结果二�
     buf[0] = '\0';
     machine_time_get(&now);
     currency_state_get_active_code(curr_code);
-    error_count = counting_data_error_detail_count(&sim);
+    error_count = counting_data_error_detail_count(counting_data_current());
 
     if (!ui_qr_data_append(buf, buf_size, &used,
         "Total Amount: %.2f %s;" QR_LINE_BREAK,
-        sim.total_amount,
+        counting_data_current()->total_amount,
         (curr_code[0] != '\0') ? curr_code : "---")) {
         return false;
     }
 
-    if (!ui_qr_data_append(buf, buf_size, &used, "Total Pieces: %d pcs;" QR_LINE_BREAK, sim.total_pcs)) {
+    if (!ui_qr_data_append(buf, buf_size, &used, "Total Pieces: %d pcs;" QR_LINE_BREAK, counting_data_current()->total_pcs)) {
         return false;
     }
 
@@ -93,12 +93,12 @@ bool ui_qr_data_build(char* buf, size_t buf_size) //组装当前点钞结果二�
         }
 
         if (!ui_qr_data_append(buf, buf_size, &used, "%s",
-                               counting_reject_reason_get(sim.err_code[i]))) {
+                               counting_reject_reason_get(counting_data_current()->err_code[i]))) {
             return false;
         }
 
-        if (sim.err_pcs != NULL) {
-            if (!ui_qr_data_append(buf, buf_size, &used, "(%u)", (unsigned)sim.err_pcs[i])) {
+        if (counting_data_current()->err_pcs != NULL) {
+            if (!ui_qr_data_append(buf, buf_size, &used, "(%u)", (unsigned)counting_data_current()->err_pcs[i])) {
                 return false;
             }
         }
@@ -120,8 +120,8 @@ bool ui_qr_data_build(char* buf, size_t buf_size) //组装当前点钞结果二�
         return false;
     }
 
-    for (i = 0; i < counting_data_serial_scan_limit(&sim); i++) {
-        if (sim.sn_str[i] == NULL || sim.sn_str[i][0] == '\0') {
+    for (i = 0; i < counting_data_serial_scan_limit(counting_data_current()); i++) {
+        if (counting_data_current()->sn_str[i] == NULL || counting_data_current()->sn_str[i][0] == '\0') {
             continue;
         }
         sn_count++;
@@ -142,7 +142,7 @@ bool ui_qr_data_build(char* buf, size_t buf_size) //组装当前点钞结果二�
         return true;
     }
 
-    for (i = 0; i < counting_data_serial_scan_limit(&sim); i++) {
+    for (i = 0; i < counting_data_serial_scan_limit(counting_data_current()); i++) {
         char sn_item[32];
         int sn_item_len;
         const char* tail = NULL;
@@ -150,11 +150,11 @@ bool ui_qr_data_build(char* buf, size_t buf_size) //组装当前点钞结果二�
         size_t remain = 0;
         const size_t reserve_for_omitted_note = 48; //预留尾部空间，用于写入省略提示
 
-        if (sim.sn_str[i] == NULL || sim.sn_str[i][0] == '\0') {
+        if (counting_data_current()->sn_str[i] == NULL || counting_data_current()->sn_str[i][0] == '\0') {
             continue;
         }
 
-        sn_item_len = snprintf(sn_item, sizeof(sn_item), "%d.%s", emitted_sn + 1, sim.sn_str[i]);
+        sn_item_len = snprintf(sn_item, sizeof(sn_item), "%d.%s", emitted_sn + 1, counting_data_current()->sn_str[i]);
         if (sn_item_len < 0) {
             continue;
         }

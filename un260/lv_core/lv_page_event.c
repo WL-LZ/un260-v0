@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 #include "un260/lv_system/platform_app.h"
+#include "un260/counting/counting_data_store.h"
 #include "lvgl/src/misc/lv_timer.h"
 #include "un260/lv_system/machine_time.h"
 #include "un260/lv_core/page_03_menu.h"
@@ -416,7 +417,7 @@ void page_01_print_btn_event_cb(lv_event_t* e)
     }
 
     // 只有金额和张数都为 0 时，才提示先点钞
-    if (sim.total_amount <= 0.0f && sim.total_pcs <= 0) {
+    if (counting_data_current()->total_amount <= 0.0f && counting_data_current()->total_pcs <= 0) {
         toast_cfg = lv_print_toast_get_default_config();
         toast_cfg.w = 320;
         toast_cfg.h = 101;

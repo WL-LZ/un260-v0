@@ -81,27 +81,27 @@ static int page_01_detail_row_count_get(page_01_detail_section_t section)
 
     switch (section) {
     case PAGE_01_DETAIL_SECTION_A:
-        for (int i = 0; i < sim.denom_number &&
-             i < (int)(sizeof(sim.denom) / sizeof(sim.denom[0])); i++) {
-            if (sim.denom[i].value > 0) count++;
+        for (int i = 0; i < counting_data_current()->denom_number &&
+             i < (int)(sizeof(counting_data_current()->denom) / sizeof(counting_data_current()->denom[0])); i++) {
+            if (counting_data_current()->denom[i].value > 0) count++;
         }
         if (count > 10) count = 10;
         break;
     case PAGE_01_DETAIL_SECTION_B:
-        if (sim.sn_str != NULL) {
-            int row_limit = sim.total_pcs;
-            const int mix_capacity = (int)(sizeof(sim.denom_mix) / sizeof(sim.denom_mix[0]));
+        if (counting_data_current()->sn_str != NULL) {
+            int row_limit = counting_data_current()->total_pcs;
+            const int mix_capacity = (int)(sizeof(counting_data_current()->denom_mix) / sizeof(counting_data_current()->denom_mix[0]));
 
-            if (row_limit > sim.sn_capacity) row_limit = sim.sn_capacity;
+            if (row_limit > counting_data_current()->sn_capacity) row_limit = counting_data_current()->sn_capacity;
             if (row_limit > mix_capacity) row_limit = mix_capacity;
             if (row_limit < 0) row_limit = 0;
             for (int i = 0; i < row_limit; i++) {
-                if (sim.sn_str[i] != NULL && sim.denom_mix[i] > 0) count++;
+                if (counting_data_current()->sn_str[i] != NULL && counting_data_current()->denom_mix[i] > 0) count++;
             }
         }
         break;
     case PAGE_01_DETAIL_SECTION_C:
-        count = counting_data_error_detail_count(&sim);
+        count = counting_data_error_detail_count(counting_data_current());
         if (count > 10) count = 10;
         break;
     default:

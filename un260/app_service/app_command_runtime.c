@@ -19,6 +19,7 @@
 #include "un260/lv_core/page_10_debug.h"
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_system/platform_app.h"
+#include "un260/counting/counting_data_store_internal.h"
 #include "un260/protocol/protocol_frame.h"
 #include "un260/protocol/protocol_frame_queue.h"
 
@@ -48,7 +49,7 @@ bool app_command_runtime_clear_counting_data(const char *reason)
     stop_counting_sim();
     app_counting_runtime_reset_session(&g_counting_session, reason);
     g_counting_detail_state.wait_sn_after_reject_end = false;
-    sim_reset_counting_result(&sim);
+    sim_reset_counting_result(counting_data_mutable());
     if (!counting_action_request_clear()) {
         uart_debug_printf("count clear request rejected or send failed reason=%s\n",
                     reason != NULL ? reason : "unknown");
@@ -80,7 +81,7 @@ static void app_command_runtime_dispatch(uint8_t cmd,
                                           len);
         break;
     case 0x0E:
-        app_counting_runtime_handle_info(&g_counting_session, &sim, buf, len);
+        app_counting_runtime_handle_info(&g_counting_session, counting_data_mutable(), buf, len);
         break;
     case 0x0F:
     case 0x0A:
@@ -92,7 +93,7 @@ static void app_command_runtime_dispatch(uint8_t cmd,
     case 0x0B:
         app_counting_runtime_handle_denom(&g_counting_detail_state,
                                           &g_counting_session,
-                                          &sim,
+                                          counting_data_mutable(),
                                           buf,
                                           len);
         break;
@@ -101,7 +102,7 @@ static void app_command_runtime_dispatch(uint8_t cmd,
         app_counting_runtime_handle_detail(cmd,
                                            &g_counting_detail_state,
                                            &g_counting_session,
-                                           &sim,
+                                           counting_data_mutable(),
                                            buf,
                                            len);
         break;
@@ -153,7 +154,7 @@ void app_command_runtime_poll(uint32_t now_ms)
     if (app_setting_runtime_take_mode_clear()) {
         app_command_runtime_clear_counting_data("mode change");
     }
-    app_counting_runtime_poll_history(&g_counting_session, &sim, now_ms);
+    app_counting_runtime_poll_history(&g_counting_session, counting_data_mutable(), now_ms);
     counting_denom_query_poll(&g_counting_detail_state,
                               now_ms,
                               stage == BOOT_STAGE_DONE || stage == BOOT_STAGE_FAIL,

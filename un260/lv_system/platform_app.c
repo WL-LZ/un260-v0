@@ -14,11 +14,11 @@
 #include "un260/lv_system/ui_text.h"
 #include "un260/currency/currency_state.h"
 #include "un260/counting/counting_data_store.h"
+#include "un260/counting/counting_data_store_internal.h"
 #include "un260/counting/counting_reject_reason.h"
 #include "un260/app_service/app_clock.h"
 #include "aic_ui/perf_stats.h"
 // 全局变量定义
-counting_sim_t sim = { 0 };
 
 static lv_timer_t *s_sim_timer = NULL;
 lv_obj_t* page_01_main_scroll_container = NULL;
@@ -57,8 +57,7 @@ typedef struct {
 static page_01_main_cache_t g_main_cache;
 
 #define COUNTING_SIM_SN_LENGTH 11
-#define COUNTING_SIM_MAX_ITEMS \
-    ((int)(sizeof(sim.denom_mix) / sizeof(sim.denom_mix[0])))
+#define COUNTING_SIM_MAX_ITEMS COUNTING_DATA_MAX_ITEMS
 
 //金额模拟
 const int USD_value[] = { 100,50,20,10,5,2,1 };
@@ -233,17 +232,18 @@ void update_label_by_name(ui_element_t* page_cfg_obj, int len,const char* name, 
 
 int sim_get_sn_valid_count(void)
 {
+    const counting_sim_t *sim_data = counting_data_current();
     int valid_count = 0;
-    int capacity = sim.sn_capacity;
-    const int mix_capacity = (int)(sizeof(sim.denom_mix) / sizeof(sim.denom_mix[0]));
+    int capacity = sim_data->sn_capacity;
+    const int mix_capacity = (int)(sizeof(sim_data->denom_mix) / sizeof(sim_data->denom_mix[0]));
 
-    if (sim.sn_str == NULL || capacity <= 0) {
+    if (sim_data->sn_str == NULL || capacity <= 0) {
         return 0;
     }
     if (capacity > mix_capacity) capacity = mix_capacity;
 
     for (int i = 0; i < capacity; i++) {
-        if (sim.sn_str[i] != NULL && sim.denom_mix[i] > 0) {
+        if (sim_data->sn_str[i] != NULL && sim_data->denom_mix[i] > 0) {
             valid_count++;
         }
     }
@@ -253,17 +253,18 @@ int sim_get_sn_valid_count(void)
 
 int sim_get_sn_nth_valid_index(int nth)
 {
+    const counting_sim_t *sim_data = counting_data_current();
     int valid_count = 0;
-    int capacity = sim.sn_capacity;
-    const int mix_capacity = (int)(sizeof(sim.denom_mix) / sizeof(sim.denom_mix[0]));
+    int capacity = sim_data->sn_capacity;
+    const int mix_capacity = (int)(sizeof(sim_data->denom_mix) / sizeof(sim_data->denom_mix[0]));
 
-    if (nth < 0 || sim.sn_str == NULL || capacity <= 0) {
+    if (nth < 0 || sim_data->sn_str == NULL || capacity <= 0) {
         return -1;
     }
     if (capacity > mix_capacity) capacity = mix_capacity;
 
     for (int i = 0; i < capacity; i++) {
-        if (sim.sn_str[i] == NULL || sim.denom_mix[i] <= 0) {
+        if (sim_data->sn_str[i] == NULL || sim_data->denom_mix[i] <= 0) {
             continue;
         }
         if (valid_count == nth) {
@@ -282,7 +283,7 @@ void sim_data_init(void)
     currency_state_get_active_code(curr_code);
     printf("Current currency enum: %d\n", currency_state_active_currency());
 
-    counting_sim_t* sim_data = &sim;
+    counting_sim_t* sim_data = counting_data_mutable();
     counting_data_clear_serials(sim_data);
     counting_data_clear_errors(sim_data);
     memset(sim_data, 0, sizeof(counting_sim_t));
@@ -410,12 +411,12 @@ static bool sim_reject_detail_update(counting_sim_t *sim_data)
 static void sim_timer_cb(lv_timer_t* timer)
 {
     (void)timer;
-    counting_sim_t* sim_data = &sim;
+    counting_sim_t* sim_data = counting_data_mutable();
     
-    if (sim.denom_number <= 0)  
+    if (sim_data->denom_number <= 0)
     {
 #if LV_DEBUG
-        printf("denom_number is invalid: %d\n", sim.denom_number);
+        printf("denom_number is invalid: %d\n", sim_data->denom_number);
 #endif
         return;
     }
@@ -461,7 +462,7 @@ static void safe_reset_cb(lv_timer_t* timer)
     if (timer == s_safe_reset_timer) {
         s_safe_reset_timer = NULL;
     }
-    sim_reset_counting_result(&sim);
+    sim_reset_counting_result(counting_data_mutable());
 }
 
 static void sim_timer_stop(void)
@@ -493,7 +494,7 @@ static void safe_reset_timer_schedule(void)
     }
 }
 void start_counting_sim(void) {
-    counting_sim_t* sim_data = &sim;
+    counting_sim_t* sim_data = counting_data_mutable();
     
     // 如果计时器已存在但被暂停，则恢复它
     if (s_sim_timer && sim_data->is_paused) {
@@ -513,7 +514,7 @@ void stop_counting_sim(void)
     
     sim_timer_stop();
     
-    counting_sim_t* sim_data = &sim;
+    counting_sim_t* sim_data = counting_data_mutable();
     sim_data->is_paused = false;  // 重置暂停标志
 
     safe_reset_timer_schedule();
@@ -713,7 +714,7 @@ static void page_01_main_detail_rows_refresh(page_01_detail_section_t section,
                                               int first_row,
                                               bool apply_layout)
 {
-    counting_sim_t* sim_data = &sim;
+    counting_sim_t* sim_data = counting_data_mutable();
 
     for (int i = 0; i < 10; i++)
     {
@@ -822,7 +823,7 @@ void page_01_main_detail_refresh_rows_only(void)
 //主界面右侧详情数据初始化和写入
 void ui_refresh_main_page(void) {
     uint64_t refresh_started_us = app_clock_monotonic_us();
-    counting_sim_t* sim_data = &sim;
+    counting_sim_t* sim_data = counting_data_mutable();
     page_01_detail_section_t section = page_01_detail_section_get();
     int first_row = page_01_detail_scroll_first_row_get(section);
     char buf[32];
@@ -911,7 +912,7 @@ void ui_refresh_main_page(void) {
     }
     label_set_text_fmt_if_changed(
         page_01_main_cache_get(&g_main_cache.reject_pcs, "reject_num_label"),
-        "%d", counting_data_reject_pcs_count(&sim));
+        "%d", counting_data_reject_pcs_count(sim_data));
     perf_stats_report_main_refresh_time_us(app_clock_elapsed_us32(
         refresh_started_us, app_clock_monotonic_us()));
 }
@@ -958,6 +959,8 @@ void ui_count_end_anim_poll(void)
 
 void cleanup_counting_sim(void)
 {
+    counting_sim_t *sim_data = counting_data_mutable();
+
     sim_timer_stop();
     safe_reset_timer_stop();
 
@@ -970,16 +973,16 @@ void cleanup_counting_sim(void)
     g_main_detail_chrome_valid = false;
     memset(&g_main_cache, 0, sizeof(g_main_cache));
 
-    counting_data_clear_errors(&sim);
-    counting_data_clear_serials(&sim);
-    memset(&sim, 0, sizeof(counting_sim_t));
+    counting_data_clear_errors(sim_data);
+    counting_data_clear_serials(sim_data);
+    memset(sim_data, 0, sizeof(*sim_data));
 }
 
 void pause_counting_sim(void)
 {
     if (!s_sim_timer) return;
     
-    counting_sim_t* sim_data = &sim;
+    counting_sim_t* sim_data = counting_data_mutable();
     if (!sim_data->is_paused) {
         lv_timer_pause(s_sim_timer);
         sim_data->is_paused = true;  
@@ -993,7 +996,7 @@ void resume_counting_sim(void)
 {
     if (!s_sim_timer) return;
     
-    counting_sim_t* sim_data = &sim;
+    counting_sim_t* sim_data = counting_data_mutable();
     if (sim_data->is_paused) {
         lv_timer_resume(s_sim_timer);
         sim_data->is_paused = false; 

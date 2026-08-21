@@ -4,6 +4,7 @@
 #include "un260/machine_state/machine_state.h"
 #include "un260/lv_system/machine_time.h"
 #include "un260/lv_system/platform_app.h"
+#include "un260/counting/counting_data_store.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/user_cfg.h"
 #include <string.h>
@@ -281,7 +282,7 @@ static void smart_island_apply_progress(void)
 
     if (g_si_ctx.view.scene == SMART_ISLAND_SCENE_COUNTING &&
         machine_state_batch_enabled() && batch_num > 0 && batch_num != 200) {
-        int total_pcs = sim.total_pcs > 0 ? sim.total_pcs : 0;
+        int total_pcs = counting_data_current()->total_pcs > 0 ? counting_data_current()->total_pcs : 0;
         int percent = total_pcs >= batch_num ? 100 : (total_pcs * 100) / batch_num;
 
         lv_obj_clear_flag(progress, LV_OBJ_FLAG_HIDDEN);
@@ -398,28 +399,28 @@ static void smart_island_rebuild_scene_texts(void)
 
     switch (g_si_ctx.view.scene) {
     case SMART_ISLAND_SCENE_COUNTING:
-        if (sim.total_pcs > 0) {
+        if (counting_data_current()->total_pcs > 0) {
             lv_snprintf(g_si_ctx.text.compact, sizeof(g_si_ctx.text.compact),
-                ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_COUNTING_PCS_FMT), sim.total_pcs);
+                ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_COUNTING_PCS_FMT), counting_data_current()->total_pcs);
         } else {
             lv_snprintf(g_si_ctx.text.compact, sizeof(g_si_ctx.text.compact), "%s",
                 ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_COUNTING_TITLE));
         }
         lv_snprintf(g_si_ctx.text.info_title, sizeof(g_si_ctx.text.info_title), "%s",
             ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_COUNTING_INFO_TITLE));
-        if (sim.total_pcs > 0 && sim.total_amount > 0.0f) {
+        if (counting_data_current()->total_pcs > 0 && counting_data_current()->total_amount > 0.0f) {
             lv_snprintf(g_si_ctx.text.info_summary, sizeof(g_si_ctx.text.info_summary),
-                ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_CUR_PCS_AMOUNT_FMT), curr, sim.total_pcs, sim.total_amount);
-        } else if (sim.total_pcs > 0) {
+                ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_CUR_PCS_AMOUNT_FMT), curr, counting_data_current()->total_pcs, counting_data_current()->total_amount);
+        } else if (counting_data_current()->total_pcs > 0) {
             lv_snprintf(g_si_ctx.text.info_summary, sizeof(g_si_ctx.text.info_summary),
-                ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_CUR_PCS_FMT), curr, sim.total_pcs);
+                ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_CUR_PCS_FMT), curr, counting_data_current()->total_pcs);
         } else {
             lv_snprintf(g_si_ctx.text.info_summary, sizeof(g_si_ctx.text.info_summary),
                 ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_CUR_MODE_FMT), curr, work_text);
         }
-        if (smart_island_batch_enabled() && sim.total_pcs > 0) {
+        if (smart_island_batch_enabled() && counting_data_current()->total_pcs > 0) {
             lv_snprintf(g_si_ctx.text.info_footer, sizeof(g_si_ctx.text.info_footer),
-                ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_BATCH_PROGRESS_FMT), sim.total_pcs, (int)machine_state_batch_num());
+                ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_BATCH_PROGRESS_FMT), counting_data_current()->total_pcs, (int)machine_state_batch_num());
         } else {
             lv_snprintf(g_si_ctx.text.info_footer, sizeof(g_si_ctx.text.info_footer), "%s", work_text);
         }
@@ -463,9 +464,9 @@ static void smart_island_rebuild_scene_texts(void)
             smart_island_text_or_default(g_si_ctx.view.content.title, UI_TEXT_WIDGET_SMART_ISLAND_QR_READY));
         lv_snprintf(g_si_ctx.text.info_summary, sizeof(g_si_ctx.text.info_summary), "%s",
             ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_QR_INFO_SUBTITLE));
-        if (sim.total_pcs > 0 && sim.total_amount > 0.0f) {
+        if (counting_data_current()->total_pcs > 0 && counting_data_current()->total_amount > 0.0f) {
             lv_snprintf(g_si_ctx.text.info_footer, sizeof(g_si_ctx.text.info_footer),
-                ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_CUR_PCS_AMOUNT_FMT), curr, sim.total_pcs, sim.total_amount);
+                ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_CUR_PCS_AMOUNT_FMT), curr, counting_data_current()->total_pcs, counting_data_current()->total_amount);
         } else {
             lv_snprintf(g_si_ctx.text.info_footer, sizeof(g_si_ctx.text.info_footer), "%s",
                 ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_QR_INFO_FOOTER));
@@ -494,9 +495,9 @@ static void smart_island_rebuild_scene_texts(void)
         if (g_si_ctx.text.idle_line1[0] != '\0') {
             lv_snprintf(g_si_ctx.text.info_summary, sizeof(g_si_ctx.text.info_summary), "%s",
                 g_si_ctx.text.idle_line1);
-        } else if (sim.last_total_pcs > 0 || sim.last_total_amount > 0.0f) {
+        } else if (counting_data_current()->last_total_pcs > 0 || counting_data_current()->last_total_amount > 0.0f) {
             lv_snprintf(g_si_ctx.text.info_summary, sizeof(g_si_ctx.text.info_summary),
-                ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_PCS_AMOUNT_FMT), sim.last_total_pcs, sim.last_total_amount);
+                ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_PCS_AMOUNT_FMT), counting_data_current()->last_total_pcs, counting_data_current()->last_total_amount);
         } else {
             lv_snprintf(g_si_ctx.text.info_summary, sizeof(g_si_ctx.text.info_summary),
                 ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_PCS_AMOUNT_FMT), 0, 0.0f);

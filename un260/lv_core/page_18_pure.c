@@ -159,10 +159,10 @@ static void pure_refresh_values(void)
 {
     char amount_buf[32];
     char pcs_buf[32];
-    int reject_cnt = counting_data_reject_pcs_count(&sim);
+    int reject_cnt = counting_data_reject_pcs_count(counting_data_current());
 
-    pure_format_amount(amount_buf, sizeof(amount_buf), sim.total_amount);
-    pure_format_pcs(pcs_buf, sizeof(pcs_buf), sim.total_pcs);
+    pure_format_amount(amount_buf, sizeof(amount_buf), counting_data_current()->total_amount);
+    pure_format_pcs(pcs_buf, sizeof(pcs_buf), counting_data_current()->total_pcs);
 
     if ((!g_pure_page.values_valid ||
          strcmp(g_pure_page.displayed_amount, amount_buf) != 0) &&

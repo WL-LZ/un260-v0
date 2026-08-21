@@ -12,6 +12,7 @@
 #include "un260/lv_core/page_07_curr.h"
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_system/platform_app.h"
+#include "un260/counting/counting_data_store_internal.h"
 
 static bool app_currency_runtime_boot_ready(void)
 {
@@ -41,7 +42,7 @@ void app_currency_runtime_handle_reply(counting_detail_state_t *detail_state,
 
     reply = currency_reply_handle(buf, len);
     if (reply.kind == CURRENCY_REPLY_SWITCH_SUCCESS) {
-        sim_reset_for_currency(&sim);
+        sim_reset_for_currency(counting_data_mutable());
         app_counting_runtime_reset_session(session, "currency change");
         counting_action_cancel_all();
         if (!counting_action_request_clear()) {
@@ -56,7 +57,7 @@ void app_currency_runtime_handle_reply(counting_detail_state_t *detail_state,
         uart_debug_printf("Set %s curr fail\n", reply.active_code);
     } else if (reply.kind == CURRENCY_REPLY_BOOT_ACTIVE) {
         uart_debug_printf("Boot curr: %s\n", reply.active_code);
-        sim_reset_for_currency(&sim);
+        sim_reset_for_currency(counting_data_mutable());
         app_counting_runtime_reset_session(session, "boot currency sync");
         detail_state->wait_sn_after_reject_end = false;
         counting_denom_query_invalidate(detail_state);

@@ -5,6 +5,8 @@
 
 #include "counting_data_types.h"
 
+/* Read-only view of the single application counting-result store. */
+const counting_sim_t *counting_data_current(void);
 void counting_data_clear_serials(counting_sim_t *sim_data);
 bool counting_data_ensure_serial_capacity(counting_sim_t *sim_data,
                                           int required_count);

@@ -5,6 +5,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+static counting_sim_t g_counting_data;
+
+const counting_sim_t *counting_data_current(void)
+{
+    return &g_counting_data;
+}
+
+counting_sim_t *counting_data_mutable(void)
+{
+    return &g_counting_data;
+}
+
 static bool counting_data_capacity_is_valid(int capacity)
 {
     return capacity >= 0 && capacity <= COUNTING_DATA_MAX_ITEMS;

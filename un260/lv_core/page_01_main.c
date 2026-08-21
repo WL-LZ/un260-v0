@@ -207,7 +207,7 @@ void page_01_err_num_refre(void)
 {
     char buf[12];
 
-    snprintf(buf, sizeof(buf), "%d", counting_data_reject_pcs_count(&sim));
+    snprintf(buf, sizeof(buf), "%d", counting_data_reject_pcs_count(counting_data_current()));
     update_label_by_name(page_01_main_obj, page_01_main_len,
                          "reject_num_label", "%s", buf);
 }

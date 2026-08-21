@@ -5,8 +5,6 @@
 #include "un260/lv_resources/lv_img_init.h"
 #include "user_cfg.h"
 
-extern counting_sim_t sim;
-
 extern lv_obj_t* page_01_main_scroll_container;
 
 void start_counting_sim(void);

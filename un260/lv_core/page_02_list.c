@@ -293,14 +293,14 @@ ui_element_t page_02_list_obj[] = {
 static int page_02_a_valid_count_get(void) // 获取A区有效面额条数
 {
     int valid_count = 0;
-    int denom_count = sim.denom_number;
+    int denom_count = counting_data_current()->denom_number;
 
-    if (denom_count > (int)(sizeof(sim.denom) / sizeof(sim.denom[0]))) {
-        denom_count = (int)(sizeof(sim.denom) / sizeof(sim.denom[0]));
+    if (denom_count > (int)(sizeof(counting_data_current()->denom) / sizeof(counting_data_current()->denom[0]))) {
+        denom_count = (int)(sizeof(counting_data_current()->denom) / sizeof(counting_data_current()->denom[0]));
     }
 
     for (int i = 0; i < denom_count; i++) {
-        if (sim.denom[i].value > 0) {
+        if (counting_data_current()->denom[i].value > 0) {
             valid_count++;
         }
     }
@@ -452,7 +452,7 @@ static void page_02_scroll_section_total_page_refresh(page_02_scroll_section_t *
         page_02_b_report_status.total_page = (section->total_row == 0) ? 1 : ((section->total_row + PAGE_02_B_ITEM - 1) / PAGE_02_B_ITEM);
         break;
     case PAGE_02_SECTION_C:
-        section->total_row = counting_data_error_detail_count(&sim);
+        section->total_row = counting_data_error_detail_count(counting_data_current());
         page_02_c_report_status.total_page = (section->total_row == 0) ? 1 : ((section->total_row + PAGE_02_C_ITEM - 1) / PAGE_02_C_ITEM);
         break;
     default:
@@ -541,9 +541,9 @@ static void page_02_scroll_section_row_bind(page_02_scroll_section_t *section, u
 
     switch (section->section_id) {
     case PAGE_02_SECTION_A:
-        lv_label_set_text_fmt(section->cell[pool_row][0], "%d", sim.denom[data_index].value);
-        lv_label_set_text_fmt(section->cell[pool_row][1], "%d", sim.denom[data_index].pcs);
-        lv_label_set_text_fmt(section->cell[pool_row][2], "%.0f", sim.denom[data_index].amount);
+        lv_label_set_text_fmt(section->cell[pool_row][0], "%d", counting_data_current()->denom[data_index].value);
+        lv_label_set_text_fmt(section->cell[pool_row][1], "%d", counting_data_current()->denom[data_index].pcs);
+        lv_label_set_text_fmt(section->cell[pool_row][2], "%.0f", counting_data_current()->denom[data_index].amount);
         break;
     case PAGE_02_SECTION_B:
         actual_index = page_02_b_nth_valid_index_get(data_index);
@@ -554,19 +554,19 @@ static void page_02_scroll_section_row_bind(page_02_scroll_section_t *section, u
             return;
         }
         lv_label_set_text_fmt(section->cell[pool_row][0], "%d", data_index + 1);
-        lv_label_set_text(section->cell[pool_row][1], sim.sn_str[actual_index]);
-        lv_label_set_text_fmt(section->cell[pool_row][2], "%d", sim.denom_mix[actual_index]);
+        lv_label_set_text(section->cell[pool_row][1], counting_data_current()->sn_str[actual_index]);
+        lv_label_set_text_fmt(section->cell[pool_row][2], "%d", counting_data_current()->denom_mix[actual_index]);
         break;
     case PAGE_02_SECTION_C:
         lv_label_set_text_fmt(section->cell[pool_row][0], "%d", data_index + 1);
-        if (sim.err_pcs != NULL) {
-            lv_label_set_text_fmt(section->cell[pool_row][1], "%d", sim.err_pcs[data_index]);
+        if (counting_data_current()->err_pcs != NULL) {
+            lv_label_set_text_fmt(section->cell[pool_row][1], "%d", counting_data_current()->err_pcs[data_index]);
         } else {
             lv_label_set_text(section->cell[pool_row][1], "-");
         }
-        if (sim.err_code != NULL) {
+        if (counting_data_current()->err_code != NULL) {
             lv_label_set_text(section->cell[pool_row][2],
-                              counting_reject_reason_get(sim.err_code[data_index]));
+                              counting_reject_reason_get(counting_data_current()->err_code[data_index]));
         } else {
             lv_label_set_text(section->cell[pool_row][2], "Unknown Error");
         }
@@ -779,9 +779,9 @@ static void page_02_scroll_section_event_cb(lv_event_t *e) // 处理滚动与点
 static void page_02_a_page_refre(void)
 {
     update_label_by_name(page_02_list_obj, page_02_list_len,
-                         "02_a_pcs_amount", "%d", sim.total_pcs);
+                         "02_a_pcs_amount", "%d", counting_data_current()->total_pcs);
     update_label_by_name(page_02_list_obj, page_02_list_len,
-                         "02_a_amount_total", "%.0f", sim.total_amount);
+                         "02_a_amount_total", "%.0f", counting_data_current()->total_amount);
     page_02_list_section_refresh(PAGE_02_SECTION_A);
 }
 
@@ -885,7 +885,7 @@ void page_02_list_section_data_ready(page_02_section_id_t section_id)
         break;
     case PAGE_02_SECTION_C:
         status = &page_02_c_report_status;
-        item_count = counting_data_error_detail_count(&sim);
+        item_count = counting_data_error_detail_count(counting_data_current());
         page_size = PAGE_02_C_ITEM;
         break;
     default:
@@ -917,11 +917,11 @@ void page_02_list_section_data_ready(page_02_section_id_t section_id)
 void page_02_list_report_reset(void)
 {
     int sn_count = sim_get_sn_valid_count();
-    int error_count = counting_data_error_detail_count(&sim);
+    int error_count = counting_data_error_detail_count(counting_data_current());
 
     page_02_a_report_status.curent_page = 1;
-    page_02_a_report_status.total_page = sim.denom_number == 0
-        ? 1 : (sim.denom_number + PAGE_02_A_ITEM - 1) / PAGE_02_A_ITEM;
+    page_02_a_report_status.total_page = counting_data_current()->denom_number == 0
+        ? 1 : (counting_data_current()->denom_number + PAGE_02_A_ITEM - 1) / PAGE_02_A_ITEM;
     page_02_b_report_status.curent_page = 1;
     page_02_b_report_status.total_page = sn_count == 0
         ? 1 : (sn_count + PAGE_02_B_ITEM - 1) / PAGE_02_B_ITEM;

@@ -58,13 +58,13 @@ static void ui_export_data_show_normal_toast(const char *text)
 
 static int ui_export_data_get_reject_count(void)
 {
-    return counting_data_reject_pcs_count(&sim);
+    return counting_data_reject_pcs_count(counting_data_current());
 }
 
 static bool ui_export_data_is_empty(void)
 {
-    return (sim.total_pcs == 0 &&
-            sim.total_amount <= 0.0f &&
+    return (counting_data_current()->total_pcs == 0 &&
+            counting_data_current()->total_amount <= 0.0f &&
             ui_export_data_get_reject_count() == 0);
 }
 
@@ -278,9 +278,9 @@ static bool ui_export_data_write_html_file(const char *file_path)
     int i;
     int sn_no = 0;
     int reject_no = 0;
-    int total_pcs = sim.total_pcs > 0 ? sim.total_pcs : 0;
+    int total_pcs = counting_data_current()->total_pcs > 0 ? counting_data_current()->total_pcs : 0;
     int reject_total = ui_export_data_get_reject_count();
-    float total_amount = sim.total_amount > 0.0f ? sim.total_amount : 0.0f;
+    float total_amount = counting_data_current()->total_amount > 0.0f ? counting_data_current()->total_amount : 0.0f;
     char mode_buf[8] = "NONE";
     char sort_buf[16] = "SORT:OFF";
     char add_buf[16] = "ADD:OFF";
@@ -364,13 +364,13 @@ static bool ui_export_data_write_html_file(const char *file_path)
         curr_buf, total_amount, total_pcs, reject_total,
         mode_buf, sort_buf, work_buf, add_buf, batch_buf, speed_buf);
 
-    for (i = 0; i < sim.denom_number && i < (int)(sizeof(sim.denom) / sizeof(sim.denom[0])); i++) {
-        if (sim.denom[i].value <= 0) {
+    for (i = 0; i < counting_data_current()->denom_number && i < (int)(sizeof(counting_data_current()->denom) / sizeof(counting_data_current()->denom[0])); i++) {
+        if (counting_data_current()->denom[i].value <= 0) {
             continue;
         }
         fprintf(fp,
                 "<tr><td class=\"num-font\">%d</td><td class=\"text-right num-font\">%u</td><td class=\"text-right num-font\">%.0f</td></tr>\n",
-                sim.denom[i].value, (unsigned)sim.denom[i].pcs, sim.denom[i].amount);
+                counting_data_current()->denom[i].value, (unsigned)counting_data_current()->denom[i].pcs, counting_data_current()->denom[i].amount);
     }
 
     fprintf(fp,
@@ -378,32 +378,32 @@ static bool ui_export_data_write_html_file(const char *file_path)
         "<div class=\"graph-area\">\n"
         "<div class=\"graph-title\"><div>Amount Distribution</div><span>Horizontal overview</span></div>\n");
 
-    for (i = 0; i < sim.denom_number && i < (int)(sizeof(sim.denom) / sizeof(sim.denom[0])); i++) {
-        float amount = sim.denom[i].amount;
+    for (i = 0; i < counting_data_current()->denom_number && i < (int)(sizeof(counting_data_current()->denom) / sizeof(counting_data_current()->denom[0])); i++) {
+        float amount = counting_data_current()->denom[i].amount;
         float pct = (total_amount > 0.0f) ? (amount * 100.0f / total_amount) : 0.0f;
 
-        if (sim.denom[i].value <= 0) {
+        if (counting_data_current()->denom[i].value <= 0) {
             continue;
         }
 
         fprintf(fp,
                 "<div class=\"bar-row\"><div class=\"bar-label\">%d</div><div class=\"bar-track\"><div class=\"bar-fill\" style=\"width:%.1f%%\"></div></div><div class=\"bar-values\"><span class=\"amount-value\">%.0f</span><span class=\"percent-value\">%.1f%%</span></div></div>\n",
-                sim.denom[i].value, pct, amount, pct);
+                counting_data_current()->denom[i].value, pct, amount, pct);
     }
 
     fprintf(fp, "<div class=\"graph-title\" style=\"margin-top:16px;\"><div>PCS Distribution</div><span>Count overview</span></div>\n");
 
-    for (i = 0; i < sim.denom_number && i < (int)(sizeof(sim.denom) / sizeof(sim.denom[0])); i++) {
-        float pcs = (float)sim.denom[i].pcs;
+    for (i = 0; i < counting_data_current()->denom_number && i < (int)(sizeof(counting_data_current()->denom) / sizeof(counting_data_current()->denom[0])); i++) {
+        float pcs = (float)counting_data_current()->denom[i].pcs;
         float pct = (total_pcs > 0) ? (pcs * 100.0f / (float)total_pcs) : 0.0f;
 
-        if (sim.denom[i].value <= 0) {
+        if (counting_data_current()->denom[i].value <= 0) {
             continue;
         }
 
         fprintf(fp,
                 "<div class=\"bar-row\"><div class=\"bar-label\">%d</div><div class=\"bar-track\"><div class=\"bar-fill bar-fill-green\" style=\"width:%.1f%%\"></div></div><div class=\"bar-values\"><span class=\"amount-value\">%u</span><span class=\"percent-value\">%.1f%%</span></div></div>\n",
-                sim.denom[i].value, pct, (unsigned)sim.denom[i].pcs, pct);
+                counting_data_current()->denom[i].value, pct, (unsigned)counting_data_current()->denom[i].pcs, pct);
     }
 
     fprintf(fp,
@@ -415,19 +415,19 @@ static bool ui_export_data_write_html_file(const char *file_path)
         total_pcs);
 
     {
-        int sn_limit = counting_data_serial_scan_limit(&sim);
+        int sn_limit = counting_data_serial_scan_limit(counting_data_current());
 
         for (i = 0; i < sn_limit; i++) {
-            if (sim.sn_str[i] == NULL || sim.sn_str[i][0] == '\0') {
+            if (counting_data_current()->sn_str[i] == NULL || counting_data_current()->sn_str[i][0] == '\0') {
                 continue;
             }
-            if (sim.denom_mix[i] <= 0) {
+            if (counting_data_current()->denom_mix[i] <= 0) {
                 continue;
             }
             sn_no++;
             fprintf(fp,
                     "<tr data-sn=\"%s\"><td>%02d</td><td class=\"num-font sn-cell\">%s</td><td class=\"text-right num-font\">%d</td></tr>\n",
-                    sim.sn_str[i], sn_no, sim.sn_str[i], sim.denom_mix[i]);
+                    counting_data_current()->sn_str[i], sn_no, counting_data_current()->sn_str[i], counting_data_current()->denom_mix[i]);
         }
     }
     if (sn_no == 0) {
@@ -443,13 +443,13 @@ static bool ui_export_data_write_html_file(const char *file_path)
         total_amount, total_pcs, reject_total, reject_total);
 
     {
-        int error_count = counting_data_error_detail_count(&sim);
+        int error_count = counting_data_error_detail_count(counting_data_current());
 
         for (i = 0; i < error_count; i++) {
             unsigned int pcs = 0;
 
             lv_snprintf(reason_buf, sizeof(reason_buf), "%s",
-                        counting_reject_reason_get(sim.err_code[i]));
+                        counting_reject_reason_get(counting_data_current()->err_code[i]));
             if (strcmp(reason_buf, "Size Unknow") == 0) {
                 lv_snprintf(reason_buf, sizeof(reason_buf), "%s", "Size Unknown");
             } else if (strcmp(reason_buf, "Ort Unknow") == 0) {
@@ -459,8 +459,8 @@ static bool ui_export_data_write_html_file(const char *file_path)
             }
             ui_export_data_escape_js_str(reason_js, sizeof(reason_js), reason_buf);
 
-            if (sim.err_pcs != NULL) {
-                pcs = (unsigned int)sim.err_pcs[i];
+            if (counting_data_current()->err_pcs != NULL) {
+                pcs = (unsigned int)counting_data_current()->err_pcs[i];
             }
 
             reject_no++;
@@ -522,38 +522,38 @@ static bool ui_export_data_write_csv_file(const char *file_path)
             (unsigned)now.minute,
             (unsigned)now.second);
     fprintf(fp, "Currency,%s\n", curr_code);
-    fprintf(fp, "Total Pcs,%d\n", sim.total_pcs);
-    fprintf(fp, "Total Amount,%.0f\n", sim.total_amount);
+    fprintf(fp, "Total Pcs,%d\n", counting_data_current()->total_pcs);
+    fprintf(fp, "Total Amount,%.0f\n", counting_data_current()->total_amount);
     fprintf(fp, "Reject Pcs,%d\n\n", ui_export_data_get_reject_count());
 
     fprintf(fp, "DENOMINATION SUMMARY\n");
     fprintf(fp, "DENOM,PCS,AMOUNT\n");
-    for (i = 0; i < sim.denom_number && i < (int)(sizeof(sim.denom) / sizeof(sim.denom[0])); i++) {
-        if (sim.denom[i].value <= 0) {
+    for (i = 0; i < counting_data_current()->denom_number && i < (int)(sizeof(counting_data_current()->denom) / sizeof(counting_data_current()->denom[0])); i++) {
+        if (counting_data_current()->denom[i].value <= 0) {
             continue;
         }
 
         fprintf(fp, "%d,%u,%.0f\n",
-                sim.denom[i].value,
-                (unsigned)sim.denom[i].pcs,
-                sim.denom[i].amount);
+                counting_data_current()->denom[i].value,
+                (unsigned)counting_data_current()->denom[i].pcs,
+                counting_data_current()->denom[i].amount);
     }
 
     fprintf(fp, "\nSERIAL NUMBER LIST\n");
     fprintf(fp, "NO,SN,DENOM\n");
     {
-        int sn_limit = counting_data_serial_scan_limit(&sim);
+        int sn_limit = counting_data_serial_scan_limit(counting_data_current());
 
         for (i = 0; i < sn_limit; i++) {
-            if (sim.sn_str[i] == NULL || sim.sn_str[i][0] == '\0') {
+            if (counting_data_current()->sn_str[i] == NULL || counting_data_current()->sn_str[i][0] == '\0') {
                 continue;
             }
-            if (sim.denom_mix[i] <= 0) {
+            if (counting_data_current()->denom_mix[i] <= 0) {
                 continue;
             }
 
             no++;
-            fprintf(fp, "%d,%s,%d\n", no, sim.sn_str[i], sim.denom_mix[i]);
+            fprintf(fp, "%d,%s,%d\n", no, counting_data_current()->sn_str[i], counting_data_current()->denom_mix[i]);
             has_sn = true;
         }
     }
@@ -564,13 +564,13 @@ static bool ui_export_data_write_csv_file(const char *file_path)
     fprintf(fp, "\nREJECT REPORT\n");
     fprintf(fp, "NO,PCS,REASON\n");
     {
-        int error_count = counting_data_error_detail_count(&sim);
+        int error_count = counting_data_error_detail_count(counting_data_current());
 
         no = 0;
         for (i = 0; i < error_count; i++) {
             no++;
             lv_snprintf(reason_buf, sizeof(reason_buf), "%s",
-                        counting_reject_reason_get(sim.err_code[i]));
+                        counting_reject_reason_get(counting_data_current()->err_code[i]));
             if (strcmp(reason_buf, "Size Unknow") == 0) {
                 lv_snprintf(reason_buf, sizeof(reason_buf), "%s", "Size Unknown");
             } else if (strcmp(reason_buf, "Ort Unknow") == 0) {
@@ -579,8 +579,8 @@ static bool ui_export_data_write_csv_file(const char *file_path)
                 lv_snprintf(reason_buf, sizeof(reason_buf), "%s", "Version Unknown");
             }
 
-            if (sim.err_pcs != NULL && sim.err_pcs[i] > 0) {
-                fprintf(fp, "%d,%u,%s\n", no, (unsigned)sim.err_pcs[i], reason_buf);
+            if (counting_data_current()->err_pcs != NULL && counting_data_current()->err_pcs[i] > 0) {
+                fprintf(fp, "%d,%u,%s\n", no, (unsigned)counting_data_current()->err_pcs[i], reason_buf);
             } else {
                 fprintf(fp, "%d,0,%s\n", no, reason_buf);
             }

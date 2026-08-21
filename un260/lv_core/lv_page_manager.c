@@ -2,6 +2,7 @@
 #include "lvgl/lvgl.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_system/platform_app.h"
+#include "un260/counting/counting_data_store_internal.h"
 #include "un260/protocol/protocol_send.h"
 #include "un260/lv_core/page_01_main.h"
 #include"lv_page_declear.h"
@@ -150,7 +151,7 @@ void ui_manager_init(void) {
     // 显示主页面
 
     ui_manager_switch(UI_PAGE_MAIN);
-    sim_reset_counting_result(&sim);
+    sim_reset_counting_result(counting_data_mutable());
 
 }
 

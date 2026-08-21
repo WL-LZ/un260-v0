@@ -37,7 +37,7 @@ static void app_setting_runtime_schedule_mode_clear(void)
 {
     app_setting_runtime_cancel_mode_clear();
 
-    if (sim.total_pcs == 0 && counting_data_reject_pcs_count(&sim) == 0) {
+    if (counting_data_current()->total_pcs == 0 && counting_data_reject_pcs_count(counting_data_current()) == 0) {
         return;
     }
 
