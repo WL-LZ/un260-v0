@@ -12,7 +12,18 @@ static currency_state_snapshot_t g_currency_state = {
     .active_index = 0,
 };
 static char g_currency_sync_codes[MAX_CURRENCIES][4];
-static uint8_t g_currency_sync_count = 0;
+static bool g_currency_sync_seen[MAX_CURRENCIES];
+static uint8_t g_currency_sync_count;
+static bool g_currency_sync_active;
+
+static bool currency_state_code_is_valid(const char *code)
+{
+    return code != NULL &&
+           code[0] >= 'A' && code[0] <= 'Z' &&
+           code[1] >= 'A' && code[1] <= 'Z' &&
+           code[2] >= 'A' && code[2] <= 'Z' &&
+           code[3] == '\0';
+}
 
 static void currency_state_copy_code(char dst[4], const char* src)
 {
@@ -33,29 +44,67 @@ void currency_state_reset(void)
     g_currency_state.active_currency = CURR_CNY_ITEM;
     g_currency_state.active_index = 0;
     memset(g_currency_sync_codes, 0, sizeof(g_currency_sync_codes));
+    memset(g_currency_sync_seen, 0, sizeof(g_currency_sync_seen));
     g_currency_sync_count = 0;
+    g_currency_sync_active = false;
 }
 
 void currency_state_begin_list_sync(void)
 {
     memset(g_currency_sync_codes, 0, sizeof(g_currency_sync_codes));
+    memset(g_currency_sync_seen, 0, sizeof(g_currency_sync_seen));
     g_currency_sync_count = 0;
+    g_currency_sync_active = true;
 }
 
-void currency_state_append_list_code(uint8_t protocol_index, const char code[4])
+bool currency_state_append_list_code(uint8_t protocol_index, const char code[4])
 {
     uint8_t index;
 
-    if (protocol_index == 0 || protocol_index > MAX_CURRENCIES) return;
+    if (!g_currency_sync_active || protocol_index == 0 ||
+        protocol_index > MAX_CURRENCIES || !currency_state_code_is_valid(code)) {
+        return false;
+    }
     index = (uint8_t)(protocol_index - 1);
+    for (uint8_t i = 0; i < g_currency_sync_count; i++) {
+        if (i != index && g_currency_sync_seen[i] &&
+            strncmp(code, g_currency_sync_codes[i], 3) == 0) {
+            return false;
+        }
+    }
     currency_state_copy_code(g_currency_sync_codes[index], code);
+    g_currency_sync_seen[index] = true;
     if (g_currency_sync_count < protocol_index) g_currency_sync_count = protocol_index;
+    return true;
 }
 
-void currency_state_finish_list_sync(void)
+bool currency_state_finish_list_sync(void)
 {
-    memcpy(g_currency_state.codes, g_currency_sync_codes, sizeof(g_currency_state.codes));
-    g_currency_state.count = g_currency_sync_count;
+    bool valid = g_currency_sync_active && g_currency_sync_count > 0;
+
+    for (uint8_t i = 0; valid && i < g_currency_sync_count; i++) {
+        if (!g_currency_sync_seen[i]) {
+            valid = false;
+        }
+    }
+    if (valid) {
+        memcpy(g_currency_state.codes, g_currency_sync_codes,
+               sizeof(g_currency_state.codes));
+        g_currency_state.count = g_currency_sync_count;
+        for (uint8_t i = 0; i < g_currency_state.count; i++) {
+            if (strncmp(g_currency_state.active_code,
+                        g_currency_state.codes[i], 3) == 0) {
+                g_currency_state.active_index = i;
+                break;
+            }
+        }
+    }
+
+    memset(g_currency_sync_codes, 0, sizeof(g_currency_sync_codes));
+    memset(g_currency_sync_seen, 0, sizeof(g_currency_sync_seen));
+    g_currency_sync_count = 0;
+    g_currency_sync_active = false;
+    return valid;
 }
 
 curr_item_t currency_state_code_to_item(const char* code)
@@ -83,13 +132,40 @@ curr_item_t currency_state_code_to_item(const char* code)
     return CURR_COUNT;
 }
 
-void currency_state_confirm_active_code(const char* code)
+bool currency_state_confirm_active_code(const char* code)
 {
     curr_item_t currency;
-    if (!code) return;
+
+    if (!currency_state_code_is_valid(code)) return false;
     currency_state_copy_code(g_currency_state.active_code, code);
     currency = currency_state_code_to_item(code);
     if (currency < CURR_COUNT) g_currency_state.active_currency = currency;
+    for (uint8_t i = 0; i < g_currency_state.count; i++) {
+        if (strncmp(code, g_currency_state.codes[i], 3) == 0) {
+            g_currency_state.active_index = i;
+            break;
+        }
+    }
+    return true;
+}
+
+bool currency_state_confirm_active_selection(uint8_t index, const char code[4])
+{
+    curr_item_t currency;
+
+    if (index >= g_currency_state.count || index >= MAX_CURRENCIES ||
+        !currency_state_code_is_valid(code) ||
+        strncmp(code, g_currency_state.codes[index], 3) != 0) {
+        return false;
+    }
+
+    g_currency_state.active_index = index;
+    currency_state_copy_code(g_currency_state.active_code, code);
+    currency = currency_state_code_to_item(code);
+    if (currency < CURR_COUNT) {
+        g_currency_state.active_currency = currency;
+    }
+    return true;
 }
 
 void currency_state_confirm_active_currency(curr_item_t currency)

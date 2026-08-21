@@ -9,9 +9,6 @@ typedef struct {
     bool success;
     uint8_t target_index;
     char target_code[4];
-    char previous_code[4];
-    curr_item_t previous_currency;
-    uint8_t previous_index;
 } currency_switch_result_t;
 
 bool currency_service_request_switch(uint8_t target_index, const char target_code[4]);

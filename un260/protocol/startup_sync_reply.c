@@ -124,8 +124,12 @@ static startup_sync_reply_result_t startup_sync_handle_currency_list(
     }
 
     if (index == 0xFF && buf[5] == 0xFF && buf[6] == 0xFF && buf[7] == 0xFF) {
-        currency_state_finish_list_sync();
-        uart_printf(fd6, "0x56 currency query end, count=%d\n", currency_state_count());
+        if (!currency_state_finish_list_sync()) {
+            uart_printf(fd6, "0x56 currency query rejected, keep previous list\n");
+            return STARTUP_SYNC_REPLY_IGNORED;
+        }
+        uart_printf(fd6, "0x56 currency query end, count=%d\n",
+                    currency_state_count());
         return STARTUP_SYNC_REPLY_END;
     }
 
@@ -133,7 +137,11 @@ static startup_sync_reply_result_t startup_sync_handle_currency_list(
         return STARTUP_SYNC_REPLY_IGNORED;
     }
 
-    currency_state_append_list_code(index, currency_code);
+    if (!currency_state_append_list_code(index, currency_code)) {
+        uart_printf(fd6, "0x56 currency[%d] invalid or out of sequence\n",
+                    (int)index - 1);
+        return STARTUP_SYNC_REPLY_IGNORED;
+    }
     uart_printf(fd6, "0x56 currency[%d]=%s\n", (int)index - 1, currency_code);
     return STARTUP_SYNC_REPLY_DATA;
 }

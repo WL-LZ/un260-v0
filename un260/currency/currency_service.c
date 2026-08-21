@@ -7,9 +7,6 @@
 typedef struct {
     uint8_t target_index;
     char target_code[4];
-    char previous_code[4];
-    curr_item_t previous_currency;
-    uint8_t previous_index;
 } currency_switch_request_t;
 
 static currency_switch_request_t g_currency_switch_request;
@@ -26,15 +23,18 @@ static void currency_service_copy_code(char dst[4], const char src[4])
 
 bool currency_service_request_switch(uint8_t target_index, const char target_code[4])
 {
+    char listed_code[4];
+
     if (!target_code || target_code[0] == '\0') return false;
+    if (!currency_state_get_code(target_index, listed_code) ||
+        strncmp(listed_code, target_code, 3) != 0) {
+        return false;
+    }
     if (!protocol_request_begin(&g_currency_switch_lifecycle)) return false;
 
     memset(&g_currency_switch_request, 0, sizeof(g_currency_switch_request));
     g_currency_switch_request.target_index = target_index;
     currency_service_copy_code(g_currency_switch_request.target_code, target_code);
-    currency_state_get_active_code(g_currency_switch_request.previous_code);
-    g_currency_switch_request.previous_currency = currency_state_active_currency();
-    g_currency_switch_request.previous_index = currency_state_active_index();
     return true;
 }
 
@@ -48,9 +48,6 @@ bool currency_service_take_switch_result(uint8_t status, currency_switch_result_
     result->success = (status == 0x01);
     result->target_index = g_currency_switch_request.target_index;
     currency_service_copy_code(result->target_code, g_currency_switch_request.target_code);
-    currency_service_copy_code(result->previous_code, g_currency_switch_request.previous_code);
-    result->previous_currency = g_currency_switch_request.previous_currency;
-    result->previous_index = g_currency_switch_request.previous_index;
     memset(&g_currency_switch_request, 0, sizeof(g_currency_switch_request));
     return true;
 }
@@ -63,9 +60,6 @@ bool currency_service_take_switch_timeout(currency_switch_result_t* result)
     result->success = false;
     result->target_index = g_currency_switch_request.target_index;
     currency_service_copy_code(result->target_code, g_currency_switch_request.target_code);
-    currency_service_copy_code(result->previous_code, g_currency_switch_request.previous_code);
-    result->previous_currency = g_currency_switch_request.previous_currency;
-    result->previous_index = g_currency_switch_request.previous_index;
     memset(&g_currency_switch_request, 0, sizeof(g_currency_switch_request));
     return true;
 }

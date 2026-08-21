@@ -33,9 +33,14 @@ currency_reply_result_t currency_reply_handle(const uint8_t *buf, uint8_t len)
         }
 
         if (reply.switch_result.success) {
-            currency_state_confirm_active_code(reply.switch_result.target_code);
-            currency_state_confirm_active_index(reply.switch_result.target_index);
-            reply.kind = CURRENCY_REPLY_SWITCH_SUCCESS;
+            if (currency_state_confirm_active_selection(
+                    reply.switch_result.target_index,
+                    reply.switch_result.target_code)) {
+                reply.kind = CURRENCY_REPLY_SWITCH_SUCCESS;
+            } else {
+                reply.switch_result.success = false;
+                reply.kind = CURRENCY_REPLY_SWITCH_FAILURE;
+            }
         } else {
             reply.kind = CURRENCY_REPLY_SWITCH_FAILURE;
         }
@@ -48,7 +53,9 @@ currency_reply_result_t currency_reply_handle(const uint8_t *buf, uint8_t len)
             return reply;
         }
         currency_reply_copy_code(reply.active_code, &buf[5]);
-        currency_state_confirm_active_code(reply.active_code);
+        if (!currency_state_confirm_active_code(reply.active_code)) {
+            return reply;
+        }
         reply.kind = CURRENCY_REPLY_BOOT_ACTIVE;
         return reply;
     }
