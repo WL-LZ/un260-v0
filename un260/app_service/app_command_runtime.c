@@ -24,6 +24,7 @@
 
 #define APP_COMMAND_MAX_FRAMES_PER_TICK 64
 #define APP_COUNT_START_CMD             0x0A
+#define APP_COUNT_CLEAR_CMD             0x3B
 #define APP_COUNT_ACTION_REQUEST        0x01
 
 static counting_detail_state_t g_counting_detail_state;
@@ -48,9 +49,13 @@ bool app_command_runtime_request_count_start(void)
 
 bool app_command_runtime_clear_counting_data(const char *reason)
 {
+    const uint8_t request = APP_COUNT_ACTION_REQUEST;
+
+    app_setting_runtime_cancel_mode_clear();
     app_counting_runtime_reset_session(&g_counting_session, reason);
     g_counting_detail_state.wait_sn_after_reject_end = false;
-    if (!sim_clear_all_sn(&sim)) {
+    sim_reset_counting_result(&sim);
+    if (protocol_send(APP_COUNT_CLEAR_CMD, &request, 1) < 0) {
         uart_printf(fd6, "count clear request failed reason=%s\n",
                     reason != NULL ? reason : "unknown");
         return false;
@@ -141,6 +146,9 @@ void app_command_runtime_poll(uint32_t now_ms)
 {
     boot_stage_t stage = boot_service_get_stage();
 
+    if (app_setting_runtime_take_mode_clear()) {
+        app_command_runtime_clear_counting_data("mode change");
+    }
     app_counting_runtime_poll_history(&g_counting_session, &sim, now_ms);
     counting_denom_query_poll(&g_counting_detail_state,
                               now_ms,

@@ -23,6 +23,7 @@
 #define APP_SETTING_MODE_CLEAR_DELAY_MS 120
 
 static lv_timer_t *g_mode_clear_timer;
+static bool g_mode_clear_due;
 
 static void app_setting_runtime_mode_clear_timer_cb(lv_timer_t *timer)
 {
@@ -31,7 +32,7 @@ static void app_setting_runtime_mode_clear_timer_cb(lv_timer_t *timer)
     }
 
     g_mode_clear_timer = NULL;
-    sim_clear_all_sn(&sim);
+    g_mode_clear_due = true;
 }
 
 static void app_setting_runtime_schedule_mode_clear(void)
@@ -44,15 +45,35 @@ static void app_setting_runtime_schedule_mode_clear(void)
         lv_timer_del(g_mode_clear_timer);
         g_mode_clear_timer = NULL;
     }
+    g_mode_clear_due = false;
 
     g_mode_clear_timer = lv_timer_create(app_setting_runtime_mode_clear_timer_cb,
                                          APP_SETTING_MODE_CLEAR_DELAY_MS,
                                          NULL);
     if (g_mode_clear_timer == NULL) {
-        sim_clear_all_sn(&sim);
+        g_mode_clear_due = true;
         return;
     }
     lv_timer_set_repeat_count(g_mode_clear_timer, 1);
+}
+
+bool app_setting_runtime_take_mode_clear(void)
+{
+    if (!g_mode_clear_due) {
+        return false;
+    }
+
+    g_mode_clear_due = false;
+    return true;
+}
+
+void app_setting_runtime_cancel_mode_clear(void)
+{
+    if (g_mode_clear_timer != NULL) {
+        lv_timer_del(g_mode_clear_timer);
+        g_mode_clear_timer = NULL;
+    }
+    g_mode_clear_due = false;
 }
 
 static void app_setting_runtime_handle_basic_reply(uint8_t cmd,
@@ -165,8 +186,5 @@ void app_setting_runtime_poll(void)
 
 void app_setting_runtime_stop(void)
 {
-    if (g_mode_clear_timer != NULL) {
-        lv_timer_del(g_mode_clear_timer);
-        g_mode_clear_timer = NULL;
-    }
+    app_setting_runtime_cancel_mode_clear();
 }

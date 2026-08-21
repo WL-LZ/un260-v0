@@ -8,8 +8,6 @@
 #include "un260/lv_core/page_01_main.h"
 #include "un260/lv_core/page_01_detail_scroll.h"
 #include "un260/lv_drivers/lv_drivers.h"
-#include "un260/protocol/protocol_send.h"
-#include "un260/lv_core/page_01_main.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_components/smart_island.h"
 #include "un260/lv_system/ui_text.h"
@@ -398,8 +396,7 @@ static void safe_reset_cb(lv_timer_t* timer)
     if (timer == s_safe_reset_timer) {
         s_safe_reset_timer = NULL;
     }
-    sim_clear_all_sn(&sim);
-    ui_refresh_main_page();
+    sim_reset_counting_result(&sim);
 }
 
 static void sim_timer_stop(void)
@@ -845,7 +842,8 @@ void cleanup_counting_sim(void)
     page_01_main_page_pcs_label = NULL;
     page_01_main_scroll_container = NULL;
 
-    sim_clear_all_sn(&sim);
+    counting_data_clear_errors(&sim);
+    counting_data_clear_serials(&sim);
     memset(&sim, 0, sizeof(counting_sim_t));
 }
 
@@ -947,14 +945,10 @@ void sim_reset_for_currency(counting_sim_t* sim_data)
     sim_reset_counting_data(sim_data, true);
 }
 
-// 清空所有冠字号的函数
-bool sim_clear_all_sn(counting_sim_t* sim_data)
+void sim_reset_counting_result(counting_sim_t* sim_data)
 {
-    const uint8_t clear_data_cmd = 0x01;
-
-    if (sim_data == NULL) return false;
+    if (sim_data == NULL) return;
     sim_reset_counting_data(sim_data, false);
-    return protocol_send(0x3b, &clear_data_cmd, 1) >= 0;
 }
 
 

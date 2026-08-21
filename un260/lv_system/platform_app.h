@@ -37,7 +37,7 @@ void page_01_main_detail_refresh_rows_only(void);
 void cleanup_counting_sim(void);
 void update_label_by_name(ui_element_t* page_cfg_obj, int len, const char* name, const char* fmt, ...);
 lv_obj_t* find_obj_by_name(const char* name, ui_element_t* page_cfg_obj, int len);
-bool sim_clear_all_sn(counting_sim_t* sim_data);
+void sim_reset_counting_result(counting_sim_t* sim_data);
 void sim_reset_for_currency(counting_sim_t* sim_data);
 void update_label_with_simple_highlight(ui_element_t* page_cfg_obj, int len,
     const char* name, const char* fmt, ...);
