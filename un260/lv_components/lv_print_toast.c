@@ -327,7 +327,9 @@ void lv_print_toast_show_with_config(const lv_print_toast_config_t *config)
     if (g_print_toast_cfg.auto_hide_ms > 0) {
         g_print_toast_auto_hide_timer = lv_timer_create(print_toast_auto_hide_timer_cb,
                                                         g_print_toast_cfg.auto_hide_ms, NULL);
-        lv_timer_set_repeat_count(g_print_toast_auto_hide_timer, 1);
+        if (g_print_toast_auto_hide_timer) {
+            lv_timer_set_repeat_count(g_print_toast_auto_hide_timer, 1);
+        }
     }
 }
 

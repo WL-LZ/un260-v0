@@ -662,6 +662,9 @@ void fault_popup_schedule_auto_confirm(void)
     }
 
     g_fault_auto_confirm_timer = lv_timer_create(fault_popup_auto_confirm_timer_cb, FAULT_AUTO_CONFIRM_DELAY_MS, NULL);
+    if (g_fault_auto_confirm_timer) {
+        lv_timer_set_repeat_count(g_fault_auto_confirm_timer, 1);
+    }
 }
 
 void fault_popup_report_start_fault(uint8_t type, uint8_t code)
