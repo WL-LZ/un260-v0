@@ -163,6 +163,8 @@ static void setting_reply_handle_reject_pocket(const uint8_t *buf, uint8_t len)
 
 static void setting_reply_handle_print(const uint8_t *buf, uint8_t len)
 {
+    print_config_request_result_t result;
+
     if (len < 7) {
         uart_printf(fd6, "0x41 invalid len=%d\n", len);
         return;
@@ -178,7 +180,11 @@ static void setting_reply_handle_print(const uint8_t *buf, uint8_t len)
     }
 
     uart_printf(fd6, "0x41 print setting ack: sub=0x%02X res=0x%02X\n", buf[4], buf[5]);
-    ui_page_20_set_print_on_reply(buf[4], buf[5]);
+    if (!print_config_take_reply(buf[4], buf[5], &result)) {
+        uart_printf(fd6, "0x41 print setting ack ignored: no matching request\n");
+        return;
+    }
+    ui_page_20_set_print_on_reply(&result);
 }
 
 bool app_setting_reply_handle_detail(uint8_t cmd,

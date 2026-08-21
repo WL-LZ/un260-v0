@@ -97,17 +97,19 @@ static uint8_t print_parse_space(const char* value)
     return (uint8_t)v;
 }
 
-static bool print_send_content(print_content_t content)
+static bool print_send_content(print_content_t content,
+                               const print_config_value_t* target)
 {
     uint8_t payload[2] = { 0x01, (uint8_t)content };
-    if (!settings_detail_send_command(0x41, payload, sizeof(payload))) {
+    if (!print_config_request(payload[0], payload, sizeof(payload), target)) {
         print_set_status(ui_text_get(UI_TEXT_SETTINGS_UART_NOT_READY), lv_color_hex(0xC03A2B));
         return false;
     }
     return true;
 }
 
-static bool print_send_head(uint8_t index, const char* text)
+static bool print_send_head(uint8_t index, const char* text,
+                            const print_config_value_t* target)
 {
     uint8_t payload[2 + PRINT_HEAD_MAX_LEN];
 
@@ -123,17 +125,18 @@ static bool print_send_head(uint8_t index, const char* text)
         memcpy(&payload[2], text, len);
     }
 
-    if (!settings_detail_send_command(0x41, payload, sizeof(payload))) {
+    if (!print_config_request(payload[0], payload, sizeof(payload), target)) {
         print_set_status(ui_text_get(UI_TEXT_SETTINGS_UART_NOT_READY), lv_color_hex(0xC03A2B));
         return false;
     }
     return true;
 }
 
-static bool print_send_space(uint8_t index, uint8_t lines)
+static bool print_send_space(uint8_t index, uint8_t lines,
+                             const print_config_value_t* target)
 {
     uint8_t payload[3] = { 0x03, index, lines };
-    if (!settings_detail_send_command(0x41, payload, sizeof(payload))) {
+    if (!print_config_request(payload[0], payload, sizeof(payload), target)) {
         print_set_status(ui_text_get(UI_TEXT_SETTINGS_UART_NOT_READY), lv_color_hex(0xC03A2B));
         return false;
     }
@@ -157,39 +160,31 @@ static void print_field_keyboard_done(const char* value, void* user_data)
     switch (field) {
     case PRINT_FIELD_SPACE_TOP: {
         uint8_t lines = print_parse_space(value);
-        if (print_send_space(0x01, lines)) {
-            config.space_top = lines;
-            print_config_confirm(&config);
-        }
+        config.space_top = lines;
+        print_send_space(0x01, lines, &config);
         break;
     }
 
     case PRINT_FIELD_HEAD1: {
         char text[PRINT_HEAD_MAX_LEN + 1];
         lv_snprintf(text, sizeof(text), "%s", value ? value : "");
-        if (print_send_head(0x01, text)) {
-            lv_snprintf(config.head1, sizeof(config.head1), "%s", text);
-            print_config_confirm(&config);
-        }
+        lv_snprintf(config.head1, sizeof(config.head1), "%s", text);
+        print_send_head(0x01, text, &config);
         break;
     }
 
     case PRINT_FIELD_HEAD2: {
         char text[PRINT_HEAD_MAX_LEN + 1];
         lv_snprintf(text, sizeof(text), "%s", value ? value : "");
-        if (print_send_head(0x02, text)) {
-            lv_snprintf(config.head2, sizeof(config.head2), "%s", text);
-            print_config_confirm(&config);
-        }
+        lv_snprintf(config.head2, sizeof(config.head2), "%s", text);
+        print_send_head(0x02, text, &config);
         break;
     }
 
     case PRINT_FIELD_SPACE_BOTTOM: {
         uint8_t lines = print_parse_space(value);
-        if (print_send_space(0x02, lines)) {
-            config.space_bottom = lines;
-            print_config_confirm(&config);
-        }
+        config.space_bottom = lines;
+        print_send_space(0x02, lines, &config);
         break;
     }
 
@@ -270,12 +265,9 @@ static void print_content_cb(lv_event_t* e)
     active_content_box = index;
     print_refresh_view();
 
-    if (print_send_content(content)) {
-        print_config_get(&config);
-        config.content = (uint8_t)content;
-        print_config_confirm(&config);
-        print_refresh_view();
-    }
+    print_config_get(&config);
+    config.content = (uint8_t)content;
+    print_send_content(content, &config);
 }
 
 static lv_obj_t* print_create_value_box(lv_obj_t* parent, lv_coord_t x, lv_coord_t y,
@@ -499,6 +491,7 @@ void ui_page_20_set_print_on_boot_setting(const uint8_t* data, uint16_t len)
 
     if (!data || len < 2) return;
 
+    print_config_cancel_request();
     sub = data[0];
     print_config_get(&config);
     switch (sub) {
@@ -556,13 +549,14 @@ void ui_page_20_set_print_on_boot_setting(const uint8_t* data, uint16_t len)
     }
 }
 
-void ui_page_20_set_print_on_reply(uint8_t sub_cmd, uint8_t res)
+void ui_page_20_set_print_on_reply(const print_config_request_result_t* result)
 {
-    (void)sub_cmd;
-
+    if (!result) return;
+    active_content_box = -1;
+    if (print_page) print_refresh_view();
     if (!print_page) return;
 
-    if (res == 0x00) {
+    if (!result->success) {
         print_set_status(ui_text_get(UI_TEXT_SETTINGS_PRINT_FAIL), lv_color_hex(0xC03A2B));
     } else {
         print_set_status(ui_text_get(UI_TEXT_SETTINGS_PRINT_SUCCESS), lv_color_hex(0x24D6A1));

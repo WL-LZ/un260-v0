@@ -10,6 +10,7 @@
 #include "un260/counting/counting_data_store.h"
 #include "un260/lv_components/lv_components.h"
 #include "un260/lv_core/lv_page_event.h"
+#include "un260/lv_core/page_20_set_print.h"
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_core/page_07_curr.h"
 #include "un260/lv_core/page_22_set_double_note.h"
@@ -18,6 +19,7 @@
 #include "un260/lv_core/page_25_set_serial_number.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/machine_state/machine_state.h"
+#include "un260/print/print_config.h"
 #include "un260/serial_number/serial_number.h"
 
 #define APP_SETTING_MODE_CLEAR_DELAY_MS 120
@@ -110,6 +112,7 @@ void app_setting_runtime_poll(uint32_t now_ms)
     setting_value_result_t value_result;
     serial_number_setting_result_t serial_result;
     currency_switch_result_t currency_result;
+    print_config_request_result_t print_result;
 
     if (g_mode_clear_scheduled &&
         (uint32_t)(now_ms - g_mode_clear_tick) >=
@@ -170,6 +173,11 @@ void app_setting_runtime_poll(uint32_t now_ms)
         notify_timeout = true;
     }
 
+    if (print_config_take_timeout(&print_result)) {
+        ui_page_20_set_print_on_reply(&print_result);
+        notify_timeout = true;
+    }
+
     if (notify_timeout) {
         app_setting_runtime_notify_timeout();
     }
@@ -182,4 +190,5 @@ void app_setting_runtime_stop(void)
     serial_number_service_cancel_request();
     currency_service_cancel_switch();
     cfd_service_cancel_query();
+    print_config_cancel_request();
 }
