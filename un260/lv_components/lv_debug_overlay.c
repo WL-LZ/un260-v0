@@ -112,10 +112,11 @@ void lv_debug_overlay_set_enabled(bool enabled)
 
     if (enabled) {
         lv_obj_clear_flag(g_debug_overlay, LV_OBJ_FLAG_HIDDEN);
+        perf_stats_reset_window();
         if (g_debug_timer) {
             lv_timer_resume(g_debug_timer);
+            lv_timer_reset(g_debug_timer);
         }
-        debug_overlay_refresh_cb(NULL);
     } else {
         lv_obj_add_flag(g_debug_overlay, LV_OBJ_FLAG_HIDDEN);
         if (g_debug_timer) {

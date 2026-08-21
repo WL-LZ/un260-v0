@@ -71,6 +71,13 @@ void perf_stats_report_loop_time_us(uint32_t elapsed_us)
     perf_time_report(&g_loop_time, elapsed_us);
 }
 
+void perf_stats_reset_window(void)
+{
+    g_lvgl_time = (perf_time_accumulator_t){0};
+    g_loop_time = (perf_time_accumulator_t){0};
+    g_cpu_prev_valid = (cpu_occupy_get(&g_cpu_prev) == 0);
+}
+
 void perf_stats_sample(void)
 {
     struct cpu_occupy cpu_now;
