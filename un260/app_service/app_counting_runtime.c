@@ -66,19 +66,10 @@ static void app_counting_runtime_refresh_compact(const counting_sim_t *sim_data)
 {
     char amount_buf[32];
 
-    update_label_by_name(page_01_main_obj,
-                         page_01_main_len,
-                         "01_pcs_label",
-                         "%d",
-                         sim_data->total_pcs);
     app_counting_runtime_format_amount(amount_buf,
                                        sizeof(amount_buf),
                                        sim_data->total_amount);
-    update_label_by_name(page_01_main_obj,
-                         page_01_main_len,
-                         "01_amount_label",
-                         "%s",
-                         amount_buf);
+    page_01_main_refresh_totals(sim_data->total_pcs, amount_buf);
 }
 
 static bool app_counting_runtime_main_page_active(void)

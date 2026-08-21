@@ -21,7 +21,6 @@
 // 全局变量定义
 
 static lv_timer_t *s_sim_timer = NULL;
-lv_obj_t* page_01_main_scroll_container = NULL;
 static lv_obj_t* page_01_main_page_pcs_label = NULL;
 static lv_obj_t* page_01_main_page_amount_label = NULL;
 static lv_timer_t *s_safe_reset_timer = NULL;
@@ -183,7 +182,7 @@ static lv_obj_t* page_01_main_cache_get(lv_obj_t** slot, const char* name)
 {
     if (slot == NULL) return NULL;
     if (*slot == NULL) {
-        *slot = find_obj_by_name(name, page_01_main_obj, page_01_main_len);
+        *slot = page_01_main_find_obj(name);
     }
     return *slot;
 }
@@ -824,6 +823,7 @@ void page_01_main_detail_refresh_rows_only(void)
 void ui_refresh_main_page(void) {
     uint64_t refresh_started_us = app_clock_monotonic_us();
     counting_sim_t* sim_data = counting_data_mutable();
+    lv_obj_t *scroll_container = page_01_main_scroll_obj();
     page_01_detail_section_t section = page_01_detail_section_get();
     int first_row = page_01_detail_scroll_first_row_get(section);
     char buf[32];
@@ -852,7 +852,7 @@ void ui_refresh_main_page(void) {
     }
     if (page_01_main_page_pcs_label == NULL || !lv_obj_is_valid(page_01_main_page_pcs_label))
     {
-        page_01_main_page_pcs_label = find_obj_by_name("01_pcs_label", page_01_main_obj, page_01_main_len);
+        page_01_main_page_pcs_label = page_01_main_find_obj("01_pcs_label");
     }
     if (page_01_main_page_pcs_label && lv_obj_is_valid(page_01_main_page_pcs_label))
     {
@@ -861,7 +861,7 @@ void ui_refresh_main_page(void) {
     }
     if (page_01_main_page_amount_label == NULL || !lv_obj_is_valid(page_01_main_page_amount_label))
     {
-        page_01_main_page_amount_label = find_obj_by_name("01_amount_label", page_01_main_obj, page_01_main_len);
+        page_01_main_page_amount_label = page_01_main_find_obj("01_amount_label");
     }
     if (page_01_main_page_amount_label && lv_obj_is_valid(page_01_main_page_amount_label))
     {
@@ -896,18 +896,18 @@ void ui_refresh_main_page(void) {
         }
     }
 
-    if (apply_chrome && page_01_main_scroll_container != NULL &&
-        lv_obj_is_valid(page_01_main_scroll_container)) {
+    if (apply_chrome && scroll_container != NULL &&
+        lv_obj_is_valid(scroll_container)) {
         // 主界面详情区始终允许上下滑动
-        lv_obj_add_flag(page_01_main_scroll_container,
+        lv_obj_add_flag(scroll_container,
                         LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC);
         // B区开启惯性滑动（对齐 list 体验），A/C 关闭以避免额外抖动
         if (section == PAGE_01_DETAIL_SECTION_B) {
-            lv_obj_add_flag(page_01_main_scroll_container, LV_OBJ_FLAG_SCROLL_MOMENTUM);
-            lv_obj_set_style_anim_time(page_01_main_scroll_container, 450, 0); // 1.5x 惯性时长
+            lv_obj_add_flag(scroll_container, LV_OBJ_FLAG_SCROLL_MOMENTUM);
+            lv_obj_set_style_anim_time(scroll_container, 450, 0); // 1.5x 惯性时长
         } else {
-            lv_obj_clear_flag(page_01_main_scroll_container, LV_OBJ_FLAG_SCROLL_MOMENTUM);
-            lv_obj_set_style_anim_time(page_01_main_scroll_container, 300, 0);
+            lv_obj_clear_flag(scroll_container, LV_OBJ_FLAG_SCROLL_MOMENTUM);
+            lv_obj_set_style_anim_time(scroll_container, 300, 0);
         }
     }
     label_set_text_fmt_if_changed(
@@ -968,7 +968,6 @@ void cleanup_counting_sim(void)
 
     page_01_main_page_amount_label = NULL;
     page_01_main_page_pcs_label = NULL;
-    page_01_main_scroll_container = NULL;
     g_main_detail_row_layout_valid = false;
     g_main_detail_chrome_valid = false;
     memset(&g_main_cache, 0, sizeof(g_main_cache));

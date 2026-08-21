@@ -138,7 +138,7 @@ void page_switch_btn_event_cb(lv_event_t* e)
 
 void page_01_list_btn_event_cb(lv_event_t* e) {
     if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-        icon_feedback_comp("page_01_list_icon.png", page_01_main_obj, page_01_main_len);
+        page_01_main_icon_feedback("page_01_list_icon.png");
         /* 0x0C/0x0D 已在 0x0B 面额明细结束时提前发送，此处直接进 list */
         ui_manager_push_page(UI_PAGE_LIST);
     }
@@ -223,7 +223,7 @@ void page_01_detail_area_event_cb(lv_event_t* e)
 
 void page_01_menu_btn_event_cb(lv_event_t* e) {
     if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-        icon_feedback_comp("page_01_menu_icon.png", page_01_main_obj, page_01_main_len);
+        page_01_main_icon_feedback("page_01_menu_icon.png");
 
         ui_manager_push_page(UI_PAGE_MENU);
     }
@@ -249,7 +249,7 @@ void page_01_start_btn_event_cb(lv_event_t* e)
         return;
     }
     if (page_01_main_is_created()) {
-        icon_feedback_comp("page_01_start_icon.png", page_01_main_obj, page_01_main_len);
+        page_01_main_icon_feedback("page_01_start_icon.png");
     }
     app_command_runtime_request_count_start();
 }
@@ -260,7 +260,7 @@ void page_01_esc_btn_event_cb(lv_event_t* e)
         return;
     }
     if (page_01_main_is_created()) {
-        icon_feedback_comp("page_01_esc_icon.png", page_01_main_obj, page_01_main_len);
+        page_01_main_icon_feedback("page_01_esc_icon.png");
     }
     app_command_runtime_clear_counting_data("user clear");
     page_01_scroll_hint_force_hide();
@@ -286,7 +286,7 @@ void page_01_esc_btn_event_cb(lv_event_t* e)
 //         machine_state_confirm_mode(Temp_Mode);  // 更新当前模式
 
 //         uart_debug_printf("mode:%02X\n", Temp_Mode);
-//         icon_feedback_comp("page_01_mode_icon.png", page_01_main_obj, page_01_main_len);
+//         page_01_main_icon_feedback("page_01_mode_icon.png");
 
 //         uint8_t send_data = 0;
 
@@ -401,7 +401,7 @@ void page_01_bottom_speed_btn_event_cb(lv_event_t* e) //切换主界面底部C�
 
 void page_01_set_btn_event_cb(lv_event_t* e){
     if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-        icon_feedback_comp("page_01_set_icon.png", page_01_main_obj, page_01_main_len);
+        page_01_main_icon_feedback("page_01_set_icon.png");
         uint8_t version_cmd = 0x01;
         protocol_send(0x17, &version_cmd, 1);
         ui_manager_switch(UI_PAGE_SET_PASSAGE);

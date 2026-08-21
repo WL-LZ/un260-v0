@@ -33,7 +33,9 @@ static bool page_01_detail_section_is_valid(int section)
 
 static bool page_01_scroll_container_is_valid(void)
 {
-    return page_01_main_scroll_container && lv_obj_is_valid(page_01_main_scroll_container);
+    lv_obj_t *scroll_container = page_01_main_scroll_obj();
+
+    return scroll_container && lv_obj_is_valid(scroll_container);
 }
 
 static lv_coord_t page_01_detail_view_h_get(page_01_detail_section_t section)
@@ -133,7 +135,7 @@ int page_01_detail_scroll_first_row_get(int section)
         return (int)s_detail_first_row_cache[section];
     }
 
-    scroll_top = lv_obj_get_scroll_top(page_01_main_scroll_container);
+    scroll_top = lv_obj_get_scroll_top(page_01_main_scroll_obj());
     if (scroll_top < 0) scroll_top = 0;
     max_scroll = page_01_detail_max_scroll_y_get((page_01_detail_section_t)section);
     if (scroll_top > max_scroll) scroll_top = max_scroll;
@@ -165,7 +167,7 @@ static void page_01_detail_scroll_save_current(void)
     lv_coord_t scroll_top;
 
     if (!page_01_scroll_container_is_valid() || !page_01_detail_section_is_valid(section)) return;
-    scroll_top = lv_obj_get_scroll_top(page_01_main_scroll_container);
+    scroll_top = lv_obj_get_scroll_top(page_01_main_scroll_obj());
     if (scroll_top < 0) scroll_top = 0;
     s_detail_scroll_y[section] = scroll_top;
     s_detail_first_row_cache[section] =
@@ -179,14 +181,14 @@ static void page_01_detail_scroll_restore_current(bool anim_en)
     lv_coord_t max_scroll;
 
     if (!page_01_scroll_container_is_valid() || !page_01_detail_section_is_valid(section)) return;
-    lv_obj_set_height(page_01_main_scroll_container, page_01_detail_view_h_get(section));
+    lv_obj_set_height(page_01_main_scroll_obj(), page_01_detail_view_h_get(section));
     page_01_detail_scroll_spacer_refresh(section);
     max_scroll = page_01_detail_max_scroll_y_get(section);
     target_scroll = s_detail_scroll_y[section];
     if (target_scroll < 0) target_scroll = 0;
     if (target_scroll > max_scroll) target_scroll = max_scroll;
     s_detail_scroll_y[section] = target_scroll;
-    lv_obj_scroll_to_y(page_01_main_scroll_container, target_scroll,
+    lv_obj_scroll_to_y(page_01_main_scroll_obj(), target_scroll,
                        anim_en ? LV_ANIM_ON : LV_ANIM_OFF);
 }
 
@@ -215,7 +217,7 @@ void page_01_detail_scroll_reset_all(void)
         s_detail_last_render_first_row[i] = -1;
     }
     if (page_01_scroll_container_is_valid()) {
-        lv_obj_scroll_to_y(page_01_main_scroll_container, 0, LV_ANIM_OFF);
+        page_01_main_scroll_reset();
     }
     page_01_scroll_hint_force_hide();
 }
@@ -247,7 +249,7 @@ static void page_01_scroll_hint_refresh(void)
     row_count = page_01_detail_row_count_get(section);
     visible_limit = page_01_detail_visible_row_limit_get(section);
     max_scroll = page_01_detail_max_scroll_y_get(section);
-    top_hidden = lv_obj_get_scroll_top(page_01_main_scroll_container);
+    top_hidden = lv_obj_get_scroll_top(page_01_main_scroll_obj());
     if (top_hidden < 0) top_hidden = 0;
     top_show = top_hidden > 0;
     bottom_show = row_count > visible_limit && top_hidden + bottom_epsilon < max_scroll;
@@ -285,7 +287,7 @@ static void page_01_scroll_hint_event_cb(lv_event_t* e)
 
         if (page_01_detail_section_is_valid(section) && page_01_is_small_denom_mode() &&
             page_01_scroll_container_is_valid()) {
-            lv_obj_scroll_to_y(page_01_main_scroll_container, 0, LV_ANIM_ON);
+            lv_obj_scroll_to_y(page_01_main_scroll_obj(), 0, LV_ANIM_ON);
             s_detail_scroll_y[section] = 0;
             page_01_scroll_hint_refresh();
             return;

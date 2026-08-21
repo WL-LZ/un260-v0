@@ -616,10 +616,8 @@ void page_07_curr_apply_switch_result(const currency_switch_result_t* result)
         if (curr_page == NULL) return;
         ui_manager_switch(UI_PAGE_MAIN);
         page_01_scroll_hint_force_hide();
-        if (page_01_main_scroll_container && lv_obj_is_valid(page_01_main_scroll_container)) {
-            // 切换币种成功后再次归零，确保不会出现首行被遮挡
-            lv_obj_scroll_to_y(page_01_main_scroll_container, 0, LV_ANIM_OFF);
-        }
+        // 切换币种成功后再次归零，确保不会出现首行被遮挡
+        page_01_main_scroll_reset();
         return;
     }
 

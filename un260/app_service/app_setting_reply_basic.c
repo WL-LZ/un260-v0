@@ -37,16 +37,10 @@ app_setting_reply_action_t app_setting_reply_handle_basic(uint8_t cmd,
             }
             machine_state_confirm_mode(requested_mode);
             {
-                const char* mode_str = "NONE";
-                if (machine_state_mode() == MODE_MDC) mode_str = "MDC";
-                else if (machine_state_mode() == MODE_SDC) mode_str = "SDC";
-                else if (machine_state_mode() == MODE_CNT) mode_str = "CNT";
-
                 if (requested_mode != 0) {
-                    icon_feedback_comp("page_01_mode_icon.png", page_01_main_obj, page_01_main_len);
+                    page_01_main_icon_feedback("page_01_mode_icon.png");
                 }
-                update_label_by_name(page_01_main_obj, page_01_main_len, "mix_label", "%s", mode_str);
-                update_label_by_name(page_01_main_obj, page_01_main_len, "mode_label", "%s", mode_str);
+                page_01_mode_switch_refre();
                 page_01_bottom_a_refresh_mode(true);
             }
             actions = (app_setting_reply_action_t)(actions |

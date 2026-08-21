@@ -15,6 +15,7 @@
 #include "un260/currency/currency_state.h"
 #include "un260/counting/counting_data_store.h"
 #include "un260/lv_components/lv_print_toast.h"
+#include "un260/lv_components/lv_components.h"
 #include "un260/protocol/protocol_send.h"
 #include "un260/lv_system/machine_time.h"
 #include "un260/lv_system/ui_text.h"
@@ -23,9 +24,11 @@
 #include <stdint.h>
 
 static lv_obj_t* main_page = NULL;
+static lv_obj_t* page_01_main_scroll_container = NULL;
+static ui_element_t page_01_main_obj[];
 
 // 添加数组元素计数变量
-int page_01_main_len = 0;
+static int page_01_main_len = 0;
 
 //          "obj_name", obj_type, img_src,
 //          { x, y, w, h, r, g, b },
@@ -826,7 +829,7 @@ void page_01_bottom_c_refresh_cfd(void) //刷新主界面底部C区CFD文本
     page_01_bottom_label_anim_run(s_bottom_c_label_cfd, text_buf, PAGE_01_BOTTOM_TEXT_ANIM_NONE);
 }
 
-ui_element_t page_01_main_obj[] = {
+static ui_element_t page_01_main_obj[] = {
     //////////////////////////////////////////////////////
   //***************    BG_IMG_LIST  *******************//
 ////////////////////////////////////////////////////////
@@ -1396,12 +1399,45 @@ void ui_main_destroy(void)
         smart_island_destroy(); //销毁灵动岛
         lv_obj_del(main_page);
         main_page = NULL;
+        page_01_main_scroll_container = NULL;
     }
 }
 
 bool page_01_main_is_created(void)
 {
     return main_page != NULL && lv_obj_is_valid(main_page);
+}
+
+lv_obj_t *page_01_main_find_obj(const char *name)
+{
+    return find_obj_by_name(name, page_01_main_obj, page_01_main_len);
+}
+
+lv_obj_t *page_01_main_scroll_obj(void)
+{
+    return page_01_main_scroll_container;
+}
+
+void page_01_main_scroll_reset(void)
+{
+    if (page_01_main_scroll_container &&
+        lv_obj_is_valid(page_01_main_scroll_container)) {
+        lv_obj_scroll_to_y(page_01_main_scroll_container, 0, LV_ANIM_OFF);
+    }
+}
+
+void page_01_main_icon_feedback(const char *name)
+{
+    icon_feedback_comp(name, page_01_main_obj, page_01_main_len);
+}
+
+void page_01_main_refresh_totals(int total_pcs, const char *amount_text)
+{
+    update_label_by_name(page_01_main_obj, page_01_main_len,
+                         "01_pcs_label", "%d", total_pcs);
+    update_label_by_name(page_01_main_obj, page_01_main_len,
+                         "01_amount_label", "%s",
+                         amount_text != NULL ? amount_text : "0");
 }
 
 void page_01_main_suspend(void)
