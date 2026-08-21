@@ -140,8 +140,14 @@ static const counting_control_reply_hooks_t g_counting_control_hooks = {
     .on_start_failure = app_counting_runtime_on_start_failure,
 };
 
+static void app_counting_runtime_on_main_data_changed(void)
+{
+    ui_refresh_main_page();
+}
+
 static const counting_denom_reply_hooks_t g_counting_denom_hooks = {
     .on_history_frame = counting_history_append_frame,
+    .on_main_data_changed = app_counting_runtime_on_main_data_changed,
 };
 
 void app_counting_runtime_reset_session(counting_session_state_t *session,

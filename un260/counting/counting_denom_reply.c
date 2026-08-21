@@ -7,7 +7,6 @@
 
 #include "counting_denom_query_service.h"
 #include "un260/lv_drivers/lv_drivers.h"
-#include "un260/lv_system/platform_app.h"
 #include "un260/protocol/protocol_send.h"
 
 static void counting_denom_record_history(const counting_denom_reply_hooks_t *hooks,
@@ -16,6 +15,14 @@ static void counting_denom_record_history(const counting_denom_reply_hooks_t *ho
 {
     if (hooks != NULL && hooks->on_history_frame != NULL) {
         hooks->on_history_frame("0x0B", buf, len);
+    }
+}
+
+static void counting_denom_notify_main_data_changed(
+    const counting_denom_reply_hooks_t *hooks)
+{
+    if (hooks != NULL && hooks->on_main_data_changed != NULL) {
+        hooks->on_main_data_changed();
     }
 }
 
@@ -98,7 +105,7 @@ static counting_denom_reply_result_t counting_denom_handle_end(
             session->end_anim_wait_detail || session->last_result.valid) {
             uart_debug_printf(                        "0x0B query result discarded during counting session\n");
         } else if (counting_denom_query_commit(detail, sim_data)) {
-            ui_refresh_main_page();
+            counting_denom_notify_main_data_changed(hooks);
         } else {
             uart_debug_printf("0x0B query result commit failed\n");
         }
@@ -111,7 +118,7 @@ static counting_denom_reply_result_t counting_denom_handle_end(
     }
     detail->wait_sn_after_reject_end = true;
     if (session->phase != COUNTING_SESSION_ACTIVE) {
-        ui_refresh_main_page();
+        counting_denom_notify_main_data_changed(hooks);
     }
     return COUNTING_DENOM_REPLY_SESSION_END;
 }

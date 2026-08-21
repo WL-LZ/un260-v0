@@ -18,6 +18,7 @@ typedef enum {
 
 typedef struct {
     void (*on_history_frame)(const char *tag, const uint8_t *buf, uint8_t len);
+    void (*on_main_data_changed)(void);
 } counting_denom_reply_hooks_t;
 
 counting_denom_reply_result_t counting_denom_reply_handle(
