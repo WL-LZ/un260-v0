@@ -65,7 +65,9 @@ bool setting_service_batch_take_result(uint8_t status, setting_batch_result_t *r
 bool setting_service_batch_take_timeout(setting_batch_result_t *result);
 
 bool setting_service_request_double_note_level(uint8_t target, uint8_t previous);
-bool setting_service_take_double_note_level_result(uint8_t status, setting_value_result_t *result);
+bool setting_service_take_double_note_level_result(uint8_t response_level,
+                                                   uint8_t status,
+                                                   setting_value_result_t *result);
 bool setting_service_take_double_note_level_timeout(setting_value_result_t *result);
 void setting_service_clear_double_note_level_request(void);
 

@@ -713,13 +713,13 @@ void page_03_cfd_mode_event_cb(lv_event_t* e)
     const char* beep_str = lv_event_get_user_data(e);
     uint8_t beep_code = atoi(beep_str);
     bool target = (beep_code > 0) ? true : false;
-    page_03_menu_function_feedback(0, target);
 
     if (target == machine_state_buzzer_enabled()) {
         return;
     }
 
     if (!setting_service_request_beep(target)) return;
+    page_03_menu_function_feedback(0, target);
 #if LV_DEBUG
     printf("BEEP mode request -> %s\n", target ? "ON" : "OFF");
 #endif
@@ -731,11 +731,11 @@ void page_03_speed_mode_event_cb(lv_event_t* e)
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
     const char* speed_str = lv_event_get_user_data(e);
     uint8_t speed_code = atoi(speed_str);
-    page_03_menu_function_feedback(1, speed_code);
     if (speed_code >= SPEED_MODE || speed_code == machine_state_speed()) return;
     /* ================== 0x16 设置清分机点钞速度 ================== */
     /* 协议定义：0x01=1000张/分钟, 0x02=800张/分钟, 0x03=600张/分钟 */
     if (!setting_service_request_speed(speed_code)) return;
+    page_03_menu_function_feedback(1, speed_code);
 #if LV_DEBUG
     printf("速度模式请求切换到： %u\n", speed_code);
 #endif // LV_DEBUG
@@ -749,10 +749,10 @@ void page_03_add_mode_event_cb(lv_event_t* e)
     const char* add_str = lv_event_get_user_data(e);
     uint8_t add_code = atoi(add_str);
     bool target = (add_code > 0) ? true : false;
-    page_03_menu_function_feedback(2, target);
 
     if (target == machine_state_add_enabled()) return;
     if (!setting_service_request_add(target)) return;
+    page_03_menu_function_feedback(2, target);
 #if LV_DEBUG
     printf("ADD模式请求切换为：%s\n", target ? "ON" : "OFF");
 #endif // LV_DEBUG
@@ -764,12 +764,12 @@ void page_03_fo_mode_event_cb(lv_event_t* e)
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
     const char* fo_str = lv_event_get_user_data(e);
     uint8_t fo_code = atoi(fo_str);
-    page_03_menu_function_feedback(3, fo_code);
     if (fo_code >= FO_MODE || fo_code == machine_state_fo_mode()) return;
     if (fo_code <= 3) {
         /* 协议第31条：菜单页直接发送 0~3 编码 */
         if (!setting_service_request_fo_mode(fo_code)) return;
-    } 
+    }
+    page_03_menu_function_feedback(3, fo_code);
 #if LV_DEBUG
     char* fo[] = {"OFF","F","O","F/O"};
     printf("F/O 模式请求切换为：%s\n", fo[fo_code]);
@@ -785,9 +785,9 @@ void page_03_work_mode_event_cb(lv_event_t* e)
     if (lv_event_get_code(e) != LV_EVENT_CLICKED)return;
     const char* word_str = lv_event_get_user_data(e);
     uint8_t word_code = atoi(word_str);
-    page_03_menu_function_feedback(4, word_code);
     if (word_code >= WORK_MODE || word_code == machine_state_work_mode()) return;
     if (!setting_service_request_work_mode(word_code)) return;
+    page_03_menu_function_feedback(4, word_code);
 #if LV_DEBUG
     printf("工作模式请求切换为：%s\n", (word_code > 0) ? "MANUAL" : "AUTO");
 #endif // LV_DEBUG

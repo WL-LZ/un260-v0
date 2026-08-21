@@ -456,8 +456,11 @@ bool setting_service_request_double_note_level(uint8_t target, uint8_t previous)
                                        &target, 1, target, previous);
 }
 
-bool setting_service_take_double_note_level_result(uint8_t status, setting_value_result_t *result)
+bool setting_service_take_double_note_level_result(uint8_t response_level,
+                                                   uint8_t status,
+                                                   setting_value_result_t *result)
 {
+    if (response_level != g_double_note_request.target) return false;
     return setting_value_request_take_result(&g_double_note_request, status,
                                              0x01, 0x02, result);
 }

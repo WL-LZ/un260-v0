@@ -54,7 +54,9 @@ static void setting_reply_handle_double_note(const uint8_t *buf, uint8_t len)
         normalized_level = DOUBLE_NOTE_LEVEL_MIN;
     }
 
-    result_taken = setting_service_take_double_note_level_result(buf[5], &result);
+    result_taken = setting_service_take_double_note_level_result(normalized_level,
+                                                                 buf[5],
+                                                                 &result);
     if (result_taken && result.success) {
         machine_state_confirm_double_note_level(normalized_level);
     } else if (result_taken && result.target == normalized_level) {
