@@ -8,8 +8,10 @@
 #include "un260/cfd/cfd.h"
 #include "un260/currency/currency_service.h"
 #include "un260/counting/counting_data_store.h"
+#include "un260/data_collection/data_collection.h"
 #include "un260/lv_components/lv_components.h"
 #include "un260/lv_core/lv_page_event.h"
+#include "un260/lv_core/page_06_settings.h"
 #include "un260/lv_core/page_20_set_print.h"
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_core/page_07_curr.h"
@@ -200,6 +202,12 @@ void app_setting_runtime_poll(uint32_t now_ms)
         notify_timeout = true;
     }
 
+    if (data_collection_request_take_timeout(now_ms)) {
+        uart_printf(fd6, "data collection mode request timeout\n");
+        page_06_data_collection_refresh();
+        notify_timeout = true;
+    }
+
     if (notify_timeout) {
         app_setting_runtime_notify_timeout();
     }
@@ -214,4 +222,5 @@ void app_setting_runtime_stop(void)
     cfd_service_cancel_query();
     cfd_service_cancel_update();
     print_config_cancel_request();
+    data_collection_request_cancel();
 }

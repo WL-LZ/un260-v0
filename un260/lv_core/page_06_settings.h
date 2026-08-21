@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include "lvgl/lvgl.h"
+#include "un260/data_collection/data_collection.h"
 #include "un260/lv_resources/lv_img_init.h" 
 
 typedef enum {
@@ -62,4 +63,5 @@ bool page_06_settings_back_sub_page(void);
 
 void page_06_settings_set_status(const char* text, lv_color_t color);
 void page_06_data_collection_refresh(void);
+void page_06_data_collection_on_reply(data_collection_reply_result_t result);
 #endif // !PAGE_06_SETTINGS_H

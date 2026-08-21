@@ -1,5 +1,7 @@
 #include "app_protocol_runtime.h"
 
+#include "un260/app_service/app_clock.h"
+
 #include "un260/data_collection/data_collection.h"
 #include "un260/device_info/device_info.h"
 #include "un260/diagnostic/diagnostic.h"
@@ -115,10 +117,15 @@ bool app_protocol_runtime_handle_reply(uint8_t cmd,
         return true;
 
     case 0xC0:
-        if (data_collection_reply_handle(buf, len) != DATA_COLLECTION_REPLY_INVALID) {
-            page_06_data_collection_refresh();
+    {
+        data_collection_reply_result_t result =
+            data_collection_reply_handle(buf, len, app_clock_uptime_ms());
+        if (result != DATA_COLLECTION_REPLY_INVALID &&
+            result != DATA_COLLECTION_REPLY_IGNORED) {
+            page_06_data_collection_on_reply(result);
         }
         return true;
+    }
 
     case 0x58:
     case 0x56:

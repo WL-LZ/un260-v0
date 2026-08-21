@@ -1,5 +1,6 @@
 #include "un260/lv_core/page_06_settings.h"
 #include "un260/app_service/app_command_runtime.h"
+#include "un260/app_service/app_clock.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/lv_page_event.h"
 #include "un260/lv_core/page_09_cis_cala.h"
@@ -999,12 +1000,26 @@ static void update_data_collect_btn_style(lv_obj_t* btn, lv_obj_t* label, lv_obj
 void page_06_data_collection_refresh(void)
 {
     data_collect_mode_t mode;
+    bool request_pending;
 
     if (!pages[SETTINGS_MENU_DATA_COLLECTION]) {
         return;
     }
 
     mode = data_collection_state_mode();
+    request_pending = data_collection_request_pending();
+
+    lv_obj_t* action_buttons[] = {
+        dc_btn_all, dc_btn_false, dc_btn_start, dc_btn_disable
+    };
+    for (size_t i = 0; i < sizeof(action_buttons) / sizeof(action_buttons[0]); i++) {
+        if (!action_buttons[i] || !lv_obj_is_valid(action_buttons[i])) continue;
+        if (request_pending) {
+            lv_obj_add_state(action_buttons[i], LV_STATE_DISABLED);
+        } else {
+            lv_obj_clear_state(action_buttons[i], LV_STATE_DISABLED);
+        }
+    }
 
     update_data_collect_btn_style(dc_btn_all, dc_label_all, dc_check_all,
                                   mode == DATA_COLLECT_MODE_ALL);
@@ -1024,6 +1039,19 @@ void page_06_data_collection_refresh(void)
     }
 }
 
+void page_06_data_collection_on_reply(data_collection_reply_result_t result)
+{
+    if (result == DATA_COLLECTION_REPLY_REQUEST_CONFIRMED ||
+        result == DATA_COLLECTION_REPLY_EXITED ||
+        result == DATA_COLLECTION_REPLY_STATUS_UPDATED) {
+        settings_set_status("READY", lv_color_hex(0x24D6A1));
+    } else if (result == DATA_COLLECTION_REPLY_REQUEST_FAILED ||
+               result == DATA_COLLECTION_REPLY_UNKNOWN) {
+        settings_set_status("WARNING", lv_color_hex(0xF59D2A));
+    }
+    page_06_data_collection_refresh();
+}
+
 static void data_collect_mode_btn_event_cb(lv_event_t* e)
 {
     uint8_t sub = (uint8_t)(uintptr_t)lv_event_get_user_data(e);
@@ -1040,11 +1068,15 @@ static void data_collect_mode_btn_event_cb(lv_event_t* e)
         return;
     }
 
-    if (!settings_detail_send_command(0xC0, &sub, 1)) {
+    if (!data_collection_request_begin(mode, status,
+                                       app_clock_uptime_ms())) {
         return;
     }
-
-    data_collection_state_select_mode(mode, status);
+    if (!settings_detail_send_command(0xC0, &sub, 1)) {
+        data_collection_request_cancel();
+        page_06_data_collection_refresh();
+        return;
+    }
     settings_set_status("LOADING", color_primary());
     page_06_data_collection_refresh();
 }
@@ -1073,11 +1105,18 @@ static void data_collect_disable_btn_event_cb(lv_event_t* e)
     uint8_t sub = 0xFF;
     (void)e;
 
-    if (settings_detail_send_command(0xC0, &sub, 1)) {
-        data_collection_state_exit("Exiting collection mode");
-        settings_set_status("READY", lv_color_hex(0x24D6A1));
-        page_06_data_collection_refresh();
+    if (!data_collection_request_begin(DATA_COLLECT_MODE_NONE,
+                                       "Exiting collection mode...",
+                                       app_clock_uptime_ms())) {
+        return;
     }
+    if (!settings_detail_send_command(0xC0, &sub, 1)) {
+        data_collection_request_cancel();
+        page_06_data_collection_refresh();
+        return;
+    }
+    settings_set_status("LOADING", color_primary());
+    page_06_data_collection_refresh();
 }
 
 static lv_obj_t* create_dc_mode_button(lv_obj_t* parent, lv_coord_t x, lv_coord_t y,
