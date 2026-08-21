@@ -25,8 +25,8 @@ page_02_report_status_t page_02_c_report_status = { 0 };
 
 static lv_timer_t *s_sim_timer = NULL;
 lv_obj_t* page_01_main_scroll_container = NULL;
-lv_obj_t* page_01_main_page_pcs_label = NULL;
-lv_obj_t* page_01_main_page_amount_label = NULL;
+static lv_obj_t* page_01_main_page_pcs_label = NULL;
+static lv_obj_t* page_01_main_page_amount_label = NULL;
 static lv_timer_t *s_safe_reset_timer = NULL;
 static bool g_count_end_anim_pending = false;
 static bool g_count_end_anim_armed = false;

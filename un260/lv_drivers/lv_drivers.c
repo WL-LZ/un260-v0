@@ -13,12 +13,10 @@
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/page_08_boot.h"
 
-curr_query_state_t curr_query_state = CURR_QUERY_IDLE;
-
 static bool g_boot_waiting_log_shown = false;
 
 
-const char* g_start_error_desc[0x12] = {
+const char* const g_start_error_desc[0x12] = {
     [0x00] = "No Error",
     [0x01] = "Upper Channel Error",
     [0x02] = "Lower Channel Error",

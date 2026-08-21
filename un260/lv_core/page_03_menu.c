@@ -90,7 +90,7 @@ bool page_03_batch_num_edit_value(int* value)
 int page_03_menu_len = 0;
 
 // 定义动画和状态变量
-bool is_amount_active = false;  // 初始状态  PCS为激活状态
+static bool is_amount_active = false;  // 初始状态  PCS为激活状态
 static lv_anim_t anim_amount;
 static lv_anim_t anim_pcs;
 

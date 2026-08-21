@@ -14,13 +14,9 @@ extern page_02_report_status_t page_02_a_report_status;
 extern page_02_report_status_t page_02_b_report_status;
 extern page_02_report_status_t page_02_c_report_status;
 
-extern bool is_amount_active;
-
 extern counting_sim_t sim;
 
 extern lv_obj_t* page_01_main_scroll_container;
-extern lv_obj_t* page_01_main_page_pcs_label;
-extern lv_obj_t* page_01_main_page_amount_label;
 
 void start_counting_sim(void);
 void stop_counting_sim(void);

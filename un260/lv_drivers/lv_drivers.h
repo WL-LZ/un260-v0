@@ -11,7 +11,7 @@ extern "C" {
 
 #include "uart_io.h"
 
-extern const char* g_start_error_desc[0x12];
+extern const char* const g_start_error_desc[0x12];
 
 /* 打开串口设备 */
 int uart_open(const char *device);
@@ -28,7 +28,7 @@ int uart_config(int fd, int baud, int dataBit, char parity, int stopBit);
 /* 关闭串口 */
 void uart_close(int fd);
 
-extern void machine_handshake_send(void);
+void machine_handshake_send(void);
 
 extern int fd6;
 typedef uint8_t Machine_Mode_t;
@@ -43,16 +43,6 @@ typedef uint8_t Machine_Mode_t;
 
 #define Query_ver_cmd 0x01
 #define curr_cmd 0x01
-
-/* 获取币种状态 */
-typedef enum {
-    CURR_QUERY_IDLE = 0,
-    CURR_QUERY_RUNNING,
-    CURR_QUERY_DONE,
-    CURR_QUERY_FAIL,
-} curr_query_state_t;
-
-extern curr_query_state_t curr_query_state ;
 
 void boot_send_next_selftest(void);
 uint8_t boot_get_selftest_step(void); // 获取当前自检步骤
