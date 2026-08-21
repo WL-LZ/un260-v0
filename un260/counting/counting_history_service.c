@@ -2,7 +2,6 @@
 
 #include <stddef.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "un260/lv_core/lv_page_manager.h"
@@ -110,66 +109,6 @@ void counting_history_capture_end(const uint8_t *buf, uint8_t len)
                                   sizeof(g_last_end_frame_text));
 }
 
-static bool counting_history_copy_sim_snapshot(counting_sim_t *dst,
-                                               const counting_sim_t *src)
-{
-    int i;
-
-    if (dst == NULL || src == NULL) {
-        return false;
-    }
-
-    *dst = *src;
-    dst->sn_str = NULL;
-    dst->sn_capacity = 0;
-
-    if (src->sn_str == NULL || src->sn_capacity <= 0) {
-        return true;
-    }
-
-    dst->sn_str = calloc((size_t)src->sn_capacity, sizeof(char *));
-    if (dst->sn_str == NULL) {
-        return false;
-    }
-
-    dst->sn_capacity = src->sn_capacity;
-    for (i = 0; i < src->sn_capacity; i++) {
-        size_t text_len;
-
-        if (src->sn_str[i] == NULL) {
-            continue;
-        }
-        text_len = strlen(src->sn_str[i]);
-        dst->sn_str[i] = malloc(text_len + 1U);
-        if (dst->sn_str[i] == NULL) {
-            for (int j = 0; j < i; j++) {
-                free(dst->sn_str[j]);
-            }
-            free(dst->sn_str);
-            dst->sn_str = NULL;
-            dst->sn_capacity = 0;
-            return false;
-        }
-        memcpy(dst->sn_str[i], src->sn_str[i], text_len + 1U);
-    }
-
-    return true;
-}
-
-static void counting_history_free_sim_snapshot(counting_sim_t *sim_data)
-{
-    if (sim_data == NULL || sim_data->sn_str == NULL) {
-        return;
-    }
-
-    for (int i = 0; i < sim_data->sn_capacity; i++) {
-        free(sim_data->sn_str[i]);
-    }
-    free(sim_data->sn_str);
-    sim_data->sn_str = NULL;
-    sim_data->sn_capacity = 0;
-}
-
 static void counting_history_clear_pending(counting_session_state_t *session)
 {
     session->history_record.valid = false;
@@ -184,28 +123,21 @@ static void counting_history_clear_pending(counting_session_state_t *session)
 bool counting_history_try_commit(counting_session_state_t *session,
                                  const counting_sim_t *sim_data)
 {
-    counting_sim_t snapshot;
     bool appended;
 
     if (session == NULL || sim_data == NULL ||
         !session->history_record.valid || !session->history_record.end_seen) {
         return false;
     }
-    if (!counting_history_copy_sim_snapshot(&snapshot, sim_data)) {
-        return false;
-    }
-
-    snapshot.total_pcs = (int)session->history_record.pcs;
-    snapshot.total_amount = session->history_record.amount;
     appended = ui_history_record_append_from_session(
-        &snapshot,
+        sim_data,
         session->history_record.pcs,
+        session->history_record.amount,
         session->history_record.total_after,
         g_last_error_frame_text,
         g_last_start_frame_text,
         g_last_end_frame_text,
         g_session_log_text);
-    counting_history_free_sim_snapshot(&snapshot);
     if (!appended) {
         return false;
     }

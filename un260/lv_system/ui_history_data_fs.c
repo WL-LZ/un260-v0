@@ -214,6 +214,17 @@ static bool history_parse_bool(const char *value, bool *out)
     return true;
 }
 
+static uint32_t history_amount_to_u32(float amount)
+{
+    if (!(amount > 0.0f)) {
+        return 0;
+    }
+    if (amount >= (float)UINT32_MAX) {
+        return UINT32_MAX;
+    }
+    return (uint32_t)amount;
+}
+
 static void history_format_denom(const counting_sim_t *sim_data, char *dst, size_t size)
 {
     int i;
@@ -241,8 +252,11 @@ static void history_format_denom(const counting_sim_t *sim_data, char *dst, size
         if (written < 0) {
             break;
         }
+        if ((size_t)written >= size - pos) {
+            break;
+        }
         pos += (size_t)written;
-        if (pos + 1 >= size) {
+        if (pos + 1U >= size) {
             break;
         }
     }
@@ -274,8 +288,11 @@ static void history_format_sn(const counting_sim_t *sim_data, char *dst, size_t 
         if (written < 0) {
             break;
         }
+        if ((size_t)written >= size - pos) {
+            break;
+        }
         pos += (size_t)written;
-        if (pos + 1 >= size) {
+        if (pos + 1U >= size) {
             break;
         }
     }
@@ -310,8 +327,11 @@ static void history_format_sn_detail(const counting_sim_t *sim_data, char *dst, 
         if (written < 0) {
             break;
         }
+        if ((size_t)written >= size - pos) {
+            break;
+        }
         pos += (size_t)written;
-        if (pos + 1 >= size) {
+        if (pos + 1U >= size) {
             break;
         }
     }
@@ -850,7 +870,8 @@ void ui_history_total_notes_counted_clear(void)
 }
 
 bool ui_history_record_append_from_session(const counting_sim_t *sim_data, uint32_t pcs_total,
-                                           uint32_t total_notes_after, const char *error_frame_text,
+                                           float amount_total, uint32_t total_notes_after,
+                                           const char *error_frame_text,
                                            const char *start_frame_text, const char *end_frame_text,
                                            const char *session_log_text)
 {
@@ -860,7 +881,9 @@ bool ui_history_record_append_from_session(const counting_sim_t *sim_data, uint3
     char curr_code[4];
 
     history_ensure_loaded();
-    if (sim_data == NULL) {
+    if (sim_data == NULL || sim_data->sn_capacity < 0 ||
+        sim_data->sn_capacity > COUNTING_DATA_MAX_ITEMS ||
+        (sim_data->sn_capacity > 0 && sim_data->sn_str == NULL)) {
         return false;
     }
 
@@ -875,7 +898,7 @@ bool ui_history_record_append_from_session(const counting_sim_t *sim_data, uint3
     rec.slot_no = slot_no;
     rec.record_no = g_history_store.next_record_no;
     rec.pcs = pcs_total;
-    rec.amount = (uint32_t)((sim_data->total_amount < 0.0f) ? 0.0f : sim_data->total_amount);
+    rec.amount = history_amount_to_u32(amount_total);
     currency_state_get_active_code(curr_code);
     snprintf(rec.currency, sizeof(rec.currency), "%s", curr_code);
     machine_time_get(&now);
