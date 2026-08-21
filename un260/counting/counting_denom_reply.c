@@ -1,8 +1,8 @@
 #include "counting_denom_reply.h"
 
+#include <limits.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "counting_denom_query_service.h"
@@ -27,6 +27,56 @@ static bool counting_denom_payload_is(const uint8_t *buf, uint8_t value)
         }
     }
     return true;
+}
+
+static bool counting_denom_parse_decimal(const uint8_t *data,
+                                         size_t length,
+                                         int *out)
+{
+    unsigned int value = 0;
+    bool digit_seen = false;
+    bool trailing_padding = false;
+
+    if (data == NULL || out == NULL || length == 0) {
+        return false;
+    }
+
+    for (size_t i = 0; i < length; i++) {
+        uint8_t ch = data[i];
+
+        if (ch >= '0' && ch <= '9') {
+            unsigned int digit = (unsigned int)(ch - '0');
+
+            if (trailing_padding || value > ((unsigned int)INT_MAX - digit) / 10U) {
+                return false;
+            }
+            value = value * 10U + digit;
+            digit_seen = true;
+        } else if (ch == ' ' || ch == '\0') {
+            if (digit_seen) {
+                trailing_padding = true;
+            }
+        } else {
+            return false;
+        }
+    }
+
+    if (!digit_seen) {
+        return false;
+    }
+    *out = (int)value;
+    return true;
+}
+
+static uint16_t counting_denom_add_pcs(uint16_t current, int increment)
+{
+    if (increment <= 0) {
+        return current;
+    }
+    if ((unsigned int)increment > UINT16_MAX - current) {
+        return UINT16_MAX;
+    }
+    return (uint16_t)(current + (uint16_t)increment);
 }
 
 static counting_denom_reply_result_t counting_denom_handle_end(
@@ -67,17 +117,14 @@ static counting_denom_reply_result_t counting_denom_handle_data(
     uint8_t len,
     const counting_denom_reply_hooks_t *hooks)
 {
-    char denom_text[9] = {0};
-    char pcs_text[4] = {0};
+    int denom_capacity = (int)(sizeof(sim_data->denom) / sizeof(sim_data->denom[0]));
     int denom;
     int pcs;
 
-    memcpy(denom_text, &buf[4], 8);
-    memcpy(pcs_text, &buf[12], 3);
-    denom = atoi(denom_text);
-    pcs = atoi(pcs_text);
-
-    if (denom <= 0) {
+    if (!counting_denom_parse_decimal(&buf[4], 8, &denom) ||
+        !counting_denom_parse_decimal(&buf[12], 3, &pcs) ||
+        denom <= 0 || pcs < 0 || sim_data->denom_number > denom_capacity) {
+        uart_printf(fd6, "0x0B invalid denom detail frame\n");
         return COUNTING_DENOM_REPLY_IGNORED;
     }
 
@@ -86,22 +133,31 @@ static counting_denom_reply_result_t counting_denom_handle_data(
 
     for (int i = 0; i < sim_data->denom_number; i++) {
         if (sim_data->denom[i].value == denom) {
-            sim_data->denom[i].pcs += pcs;
-            sim_data->denom[i].amount = denom * sim_data->denom[i].pcs;
+            uint16_t old_pcs = sim_data->denom[i].pcs;
+
+            sim_data->denom[i].pcs = counting_denom_add_pcs(old_pcs, pcs);
+            if (sim_data->denom[i].pcs == UINT16_MAX &&
+                ((unsigned int)pcs > UINT16_MAX - old_pcs)) {
+                uart_printf(fd6, "0x0B denom pcs saturated value=%d\n", denom);
+            }
+            sim_data->denom[i].amount =
+                (float)denom * (float)sim_data->denom[i].pcs;
             return COUNTING_DENOM_REPLY_DATA;
         }
     }
 
-    if (sim_data->denom_number <
-        (int)(sizeof(sim_data->denom) / sizeof(sim_data->denom[0]))) {
+    if (sim_data->denom_number < denom_capacity) {
         int index = sim_data->denom_number;
         sim_data->denom[index].value = denom;
-        sim_data->denom[index].pcs = pcs;
-        sim_data->denom[index].amount = denom * pcs;
+        sim_data->denom[index].pcs = counting_denom_add_pcs(0, pcs);
+        sim_data->denom[index].amount =
+            (float)denom * (float)sim_data->denom[index].pcs;
         sim_data->denom_number++;
+        return COUNTING_DENOM_REPLY_DATA;
     }
 
-    return COUNTING_DENOM_REPLY_DATA;
+    uart_printf(fd6, "0x0B denom capacity exhausted value=%d\n", denom);
+    return COUNTING_DENOM_REPLY_IGNORED;
 }
 
 counting_denom_reply_result_t counting_denom_reply_handle(

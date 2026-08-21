@@ -8,7 +8,7 @@
 
 typedef struct {
     int value;
-    uint8_t pcs;
+    uint16_t pcs;
     float amount;
 } denom_t;
 

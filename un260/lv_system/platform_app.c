@@ -372,10 +372,10 @@ static void sim_timer_cb(lv_timer_t* timer)
     sim_data->err_num = 1;
     int ridx = lv_rand(0, sim_data->denom_number - 1);
     int delta = lv_rand(1, 5);
-    if (delta > UINT8_MAX - sim_data->denom[ridx].pcs) {
-        sim_data->denom[ridx].pcs = UINT8_MAX;
+    if (delta > UINT16_MAX - sim_data->denom[ridx].pcs) {
+        sim_data->denom[ridx].pcs = UINT16_MAX;
     } else {
-        sim_data->denom[ridx].pcs += (uint8_t)delta;
+        sim_data->denom[ridx].pcs += (uint16_t)delta;
     }
     sim_data->denom[ridx].amount = sim_data->denom[ridx].value * sim_data->denom[ridx].pcs;
     
