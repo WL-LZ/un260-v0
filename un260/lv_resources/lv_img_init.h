@@ -83,8 +83,6 @@ typedef struct {
 
 
 void lv_ui_obj_init(lv_obj_t* parent, ui_element_t* element, int count);
-ui_element_t* find_ui_element_by_name(ui_element_t* elements, int count, const char* name);
-
-extern const char* get_currency_img(const char* code);
+const char* get_currency_img(const char* code);
 
 #endif
