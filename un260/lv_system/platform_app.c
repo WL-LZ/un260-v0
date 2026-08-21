@@ -41,6 +41,8 @@ typedef struct {
     lv_obj_t* denom;
     lv_obj_t* pcs;
     lv_obj_t* amount;
+    bool visibility_valid;
+    bool visible;
 } page_01_main_row_cache_t;
 
 typedef struct {
@@ -789,14 +791,20 @@ static void page_01_main_detail_rows_refresh(page_01_detail_section_t section,
             break;
         }
 
-        if (row_show) {
-            if (denom) lv_obj_clear_flag(denom, LV_OBJ_FLAG_HIDDEN);
-            if (pcs) lv_obj_clear_flag(pcs, LV_OBJ_FLAG_HIDDEN);
-            if (amount) lv_obj_clear_flag(amount, LV_OBJ_FLAG_HIDDEN);
-        } else {
-            if (denom) lv_obj_add_flag(denom, LV_OBJ_FLAG_HIDDEN);
-            if (pcs) lv_obj_add_flag(pcs, LV_OBJ_FLAG_HIDDEN);
-            if (amount) lv_obj_add_flag(amount, LV_OBJ_FLAG_HIDDEN);
+        if (!row_cache->visibility_valid || row_cache->visible != row_show) {
+            if (row_show) {
+                if (denom) lv_obj_clear_flag(denom, LV_OBJ_FLAG_HIDDEN);
+                if (pcs) lv_obj_clear_flag(pcs, LV_OBJ_FLAG_HIDDEN);
+                if (amount) lv_obj_clear_flag(amount, LV_OBJ_FLAG_HIDDEN);
+            } else {
+                if (denom) lv_obj_add_flag(denom, LV_OBJ_FLAG_HIDDEN);
+                if (pcs) lv_obj_add_flag(pcs, LV_OBJ_FLAG_HIDDEN);
+                if (amount) lv_obj_add_flag(amount, LV_OBJ_FLAG_HIDDEN);
+            }
+            if (denom && pcs && amount) {
+                row_cache->visibility_valid = true;
+                row_cache->visible = row_show;
+            }
         }
     }
 }

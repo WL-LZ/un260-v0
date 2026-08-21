@@ -954,40 +954,13 @@ static const char* page_03_preview_state_text(uint8_t function, uint8_t value)
 
 static void page_03_preview_set_system(uint32_t color, uint16_t rotation)
 {
-    lv_obj_set_pos(g_page_03_preview_orb, 23, 88);
-    lv_obj_set_size(g_page_03_preview_orb, 51, 51);
-    lv_obj_set_style_bg_color(g_page_03_preview_orb, lv_color_hex(0x4AD5EE), 0);
-    lv_obj_set_style_bg_opa(g_page_03_preview_orb, LV_OPA_20, 0);
-    lv_obj_set_style_border_width(g_page_03_preview_orb, 1, 0);
-    lv_obj_set_style_border_color(g_page_03_preview_orb, lv_color_hex(0xCFE7FF), 0);
-    lv_obj_set_style_border_opa(g_page_03_preview_orb, LV_OPA_70, 0);
-    lv_obj_set_style_shadow_opa(g_page_03_preview_orb, LV_OPA_TRANSP, 0);
-
     if (g_page_03_preview_icon) {
-        lv_coord_t center_x = 48;
-        lv_coord_t center_y = 113;
-
-        lv_obj_set_pos(g_page_03_preview_icon,
-                       center_x - PAGE_03_PREVIEW_DOT_SIZE / 2,
-                       center_y - PAGE_03_PREVIEW_DOT_SIZE / 2);
-        lv_obj_set_size(g_page_03_preview_icon,
-                        PAGE_03_PREVIEW_DOT_SIZE,
-                        PAGE_03_PREVIEW_DOT_SIZE);
         lv_obj_set_style_bg_color(g_page_03_preview_icon, lv_color_hex(color), 0);
-        lv_obj_set_style_border_width(g_page_03_preview_icon, 2, 0);
-        lv_obj_set_style_border_color(g_page_03_preview_icon, lv_color_hex(0xE8FBFF), 0);
-        lv_obj_set_style_border_opa(g_page_03_preview_icon, LV_OPA_COVER, 0);
         lv_obj_set_style_shadow_color(g_page_03_preview_icon, lv_color_hex(color), 0);
-        lv_obj_set_style_shadow_opa(g_page_03_preview_icon, LV_OPA_40, 0);
-        lv_obj_set_style_shadow_width(g_page_03_preview_icon, 7, 0);
     }
 
     if (g_page_03_preview_flow) {
         lv_arc_set_rotation(g_page_03_preview_flow, (int16_t)rotation);
-        lv_obj_set_style_arc_color(g_page_03_preview_flow, lv_color_hex(0x0B69FF), LV_PART_INDICATOR);
-        lv_obj_set_style_arc_opa(g_page_03_preview_flow, LV_OPA_COVER, LV_PART_INDICATOR);
-        lv_obj_set_style_arc_color(g_page_03_preview_flow, lv_color_hex(0xE7EEF8), LV_PART_MAIN);
-        lv_obj_set_style_arc_opa(g_page_03_preview_flow, LV_OPA_COVER, LV_PART_MAIN);
     }
 }
 
@@ -1052,12 +1025,12 @@ static void page_03_create_preview(void)
     lv_obj_clear_flag(g_page_03_preview_flow, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_clear_flag(g_page_03_preview_flow, LV_OBJ_FLAG_SCROLLABLE);
 
-    g_page_03_preview_orb = page_03_create_plain(card, 20, 85, 57, 57,
-                                                 0x0B69FF, LV_RADIUS_CIRCLE);
-    lv_obj_set_style_bg_opa(g_page_03_preview_orb, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(g_page_03_preview_orb, 2, 0);
-    lv_obj_set_style_border_color(g_page_03_preview_orb, lv_color_hex(0xBBD9FF), 0);
-    lv_obj_set_style_border_opa(g_page_03_preview_orb, LV_OPA_TRANSP, 0);
+    g_page_03_preview_orb = page_03_create_plain(card, 23, 88, 51, 51,
+                                                 0x4AD5EE, LV_RADIUS_CIRCLE);
+    lv_obj_set_style_bg_opa(g_page_03_preview_orb, LV_OPA_20, 0);
+    lv_obj_set_style_border_width(g_page_03_preview_orb, 1, 0);
+    lv_obj_set_style_border_color(g_page_03_preview_orb, lv_color_hex(0xCFE7FF), 0);
+    lv_obj_set_style_border_opa(g_page_03_preview_orb, LV_OPA_70, 0);
     lv_obj_set_style_shadow_color(g_page_03_preview_orb, lv_color_hex(0x0B69FF), 0);
     lv_obj_set_style_shadow_opa(g_page_03_preview_orb, LV_OPA_TRANSP, 0);
     lv_obj_set_style_shadow_width(g_page_03_preview_orb, 14, 0);
@@ -1065,9 +1038,12 @@ static void page_03_create_preview(void)
 
     g_page_03_preview_icon = page_03_create_plain(card, 40, 105, 17, 17,
                                                   0x32D7E8, LV_RADIUS_CIRCLE);
+    lv_obj_set_style_border_width(g_page_03_preview_icon, 2, 0);
+    lv_obj_set_style_border_color(g_page_03_preview_icon, lv_color_hex(0xE8FBFF), 0);
+    lv_obj_set_style_border_opa(g_page_03_preview_icon, LV_OPA_COVER, 0);
     lv_obj_set_style_shadow_color(g_page_03_preview_icon, lv_color_hex(0x32D7E8), 0);
     lv_obj_set_style_shadow_opa(g_page_03_preview_icon, LV_OPA_40, 0);
-    lv_obj_set_style_shadow_width(g_page_03_preview_icon, 8, 0);
+    lv_obj_set_style_shadow_width(g_page_03_preview_icon, 7, 0);
 
     g_page_03_preview_mode = page_03_create_text(card, "",
                                                  &lv_font_instrument_sans_bold_12,
