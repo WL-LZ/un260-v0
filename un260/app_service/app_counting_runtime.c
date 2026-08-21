@@ -153,6 +153,24 @@ static const counting_denom_reply_hooks_t g_counting_denom_hooks = {
     .on_history_frame = counting_history_append_frame,
 };
 
+void app_counting_runtime_reset_session(counting_session_state_t *session,
+                                        const char *reason)
+{
+    bool history_discarded;
+
+    if (session == NULL) {
+        return;
+    }
+
+    history_discarded = counting_history_discard_pending(session);
+    memset(session, 0, sizeof(*session));
+    ui_count_end_anim_cancel();
+    if (history_discarded) {
+        uart_printf(fd6, "pending history discarded by %s\n",
+                    reason != NULL ? reason : "session reset");
+    }
+}
+
 static void app_counting_runtime_on_detail_history(void *context,
                                                    const char *tag,
                                                    const uint8_t *buf,

@@ -4,6 +4,7 @@
 
 #include "lvgl/lvgl.h"
 
+#include "un260/app_service/app_counting_runtime.h"
 #include "un260/boot/boot_reply.h"
 #include "un260/boot/boot_service.h"
 #include "un260/lv_components/lv_components.h"
@@ -31,12 +32,7 @@ static void app_boot_runtime_finish(counting_session_state_t *counting_session)
 {
     boot_selftest_list_finish();
     sim_data_init();
-    if (counting_session != NULL) {
-        counting_session->active = false;
-        counting_session->wait_start_ack = false;
-        counting_session->end_anim_wait_detail = false;
-        counting_session->last_result.valid = false;
-    }
+    app_counting_runtime_reset_session(counting_session, "boot finish");
     ui_manager_switch(ui_state_pure_count_is_enabled() ? UI_PAGE_PURE : UI_PAGE_MAIN);
 }
 

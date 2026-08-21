@@ -7,6 +7,8 @@
 #include "un260/counting/counting_detail_state.h"
 #include "un260/counting/counting_session_state.h"
 
+void app_counting_runtime_reset_session(counting_session_state_t *session,
+                                        const char *reason);
 void app_counting_runtime_handle_info(counting_session_state_t *session,
                                       counting_sim_t *sim_data,
                                       const uint8_t *buf,

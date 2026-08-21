@@ -4,9 +4,9 @@
 #include "lvgl/lvgl.h"
 
 #include "un260/app_service/app_clock.h"
+#include "un260/app_service/app_counting_runtime.h"
 #include "un260/boot/boot_service.h"
 #include "un260/counting/counting_denom_query_service.h"
-#include "un260/counting/counting_history_service.h"
 #include "un260/currency/currency_reply.h"
 #include "un260/lv_core/page_07_curr.h"
 #include "un260/lv_drivers/lv_drivers.h"
@@ -30,21 +30,6 @@ static void app_currency_runtime_trigger_denom_query(
                                  app_currency_runtime_boot_ready());
 }
 
-static void app_currency_runtime_reset_counting_session(
-    counting_session_state_t *session)
-{
-    if (counting_history_discard_pending(session)) {
-        uart_printf(fd6, "pending history discarded by currency change\n");
-    }
-    session->active = false;
-    session->wait_start_ack = false;
-    session->end_anim_wait_detail = false;
-    session->auto_wave_pending = false;
-    session->last_result.valid = false;
-    session->analysis_valid_pcs = 0;
-    session->expected_issue = 0;
-}
-
 void app_currency_runtime_handle_reply(counting_detail_state_t *detail_state,
                                        counting_session_state_t *session,
                                        const uint8_t *buf,
@@ -61,7 +46,7 @@ void app_currency_runtime_handle_reply(counting_detail_state_t *detail_state,
         const uint8_t clear_data = APP_CURRENCY_CLEAR_DATA_CMD;
 
         sim_reset_for_currency(&sim);
-        app_currency_runtime_reset_counting_session(session);
+        app_counting_runtime_reset_session(session, "currency change");
         if (protocol_send(0x3B, &clear_data, 1) < 0) {
             uart_printf(fd6, "currency changed, controller data clear send failed\n");
         }
@@ -75,7 +60,7 @@ void app_currency_runtime_handle_reply(counting_detail_state_t *detail_state,
     } else if (reply.kind == CURRENCY_REPLY_BOOT_ACTIVE) {
         uart_printf(fd6, "Boot curr: %s\n", reply.active_code);
         sim_reset_for_currency(&sim);
-        app_currency_runtime_reset_counting_session(session);
+        app_counting_runtime_reset_session(session, "boot currency sync");
         detail_state->wait_sn_after_reject_end = false;
         counting_denom_query_invalidate(detail_state);
         app_currency_runtime_trigger_denom_query(detail_state);
