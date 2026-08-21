@@ -117,14 +117,22 @@ static bool counting_sn_payload_is(const uint8_t *buf, int payload_end, uint8_t 
 }
 
 static void counting_sn_notify_item(
+    const counting_reject_sn_reply_hooks_t *hooks)
+{
+    if (hooks != NULL && hooks->on_serial_item_changed != NULL) {
+        hooks->on_serial_item_changed(hooks->context);
+    }
+}
+
+static void counting_sn_notify_live(
     const counting_reject_sn_reply_hooks_t *hooks,
     int denomination,
     const char *serial_number)
 {
-    if (hooks != NULL && hooks->on_serial_item_changed != NULL) {
-        hooks->on_serial_item_changed(hooks->context,
-                                      denomination,
-                                      serial_number);
+    if (hooks != NULL && hooks->on_live_serial_received != NULL) {
+        hooks->on_live_serial_received(hooks->context,
+                                       denomination,
+                                       serial_number);
     }
 }
 
@@ -249,7 +257,7 @@ static counting_detail_reply_result_t counting_sn_reply_handle(
         sim_data->denom_mix[index] = denom;
     }
 
-    counting_sn_notify_item(hooks, denom, cursor);
+    counting_sn_notify_item(hooks);
     return COUNTING_DETAIL_REPLY_DATA;
 }
 
@@ -272,10 +280,8 @@ static counting_detail_reply_result_t counting_sn_push_handle(
     int index;
     int serial_len;
 
-    if (session == NULL || session->phase != COUNTING_SESSION_ACTIVE) {
-        return COUNTING_DETAIL_REPLY_IGNORED;
-    }
-    if (sim_data == NULL || buf == NULL || len != PUSH_FRAME_LEN) {
+    if (session == NULL || sim_data == NULL || buf == NULL ||
+        len != PUSH_FRAME_LEN) {
         return COUNTING_DETAIL_REPLY_INVALID;
     }
 
@@ -322,7 +328,8 @@ static counting_detail_reply_result_t counting_sn_push_handle(
     sim_data->denom_mix[index] = (int)denom_value;
 
     counting_detail_record_history(hooks, "0x49", buf, len);
-    counting_sn_notify_item(hooks, (int)denom_value, serial_start);
+    counting_sn_notify_item(hooks);
+    counting_sn_notify_live(hooks, (int)denom_value, serial_start);
     return COUNTING_DETAIL_REPLY_DATA;
 }
 

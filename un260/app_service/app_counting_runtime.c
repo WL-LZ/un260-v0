@@ -285,16 +285,22 @@ static void app_counting_runtime_on_serial_ui_complete(void *context,
     }
 }
 
-static void app_counting_runtime_on_serial_item_changed(void *context,
-                                                        int denomination,
-                                                        const char *serial_number)
+static void app_counting_runtime_on_serial_item_changed(void *context)
 {
     (void)context;
-    smart_island_notify_serial_number(denomination, serial_number);
     if (app_counting_runtime_main_page_active() &&
         page_01_detail_section_get() == PAGE_01_DETAIL_SECTION_B) {
         page_01_main_detail_refresh_rows_only();
     }
+}
+
+static void app_counting_runtime_on_live_serial_received(
+    void *context,
+    int denomination,
+    const char *serial_number)
+{
+    (void)context;
+    smart_island_notify_serial_number(denomination, serial_number);
 }
 
 static void app_counting_runtime_on_reject_analysis(void *context)
@@ -504,6 +510,7 @@ void app_counting_runtime_handle_detail(uint8_t cmd,
     hooks.on_serial_report_ready = app_counting_runtime_on_serial_report_ready;
     hooks.on_serial_ui_complete = app_counting_runtime_on_serial_ui_complete;
     hooks.on_serial_item_changed = app_counting_runtime_on_serial_item_changed;
+    hooks.on_live_serial_received = app_counting_runtime_on_live_serial_received;
     hooks.on_history_record_ready = app_counting_runtime_on_history_record;
     hooks.on_detail_complete = app_counting_runtime_on_detail_complete;
 
