@@ -18,6 +18,7 @@
 #include "un260/lv_core/page_24_set_reject_pocket.h"
 #include "un260/lv_core/page_25_set_serial_number.h"
 #include "un260/lv_core/page_26_set_aging.h"
+#include "un260/lv_core/page_27_set_cfd_level.h"
 #include "un260/lv_core/page_30_set_factory.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/machine_state/machine_state.h"
@@ -173,6 +174,12 @@ void app_setting_runtime_poll(uint32_t now_ms)
     }
 
     if (cfd_service_take_query_timeout()) {
+        ui_page_27_set_cfd_level_on_request_failed();
+        notify_timeout = true;
+    }
+
+    if (cfd_service_take_update_timeout()) {
+        ui_page_27_set_cfd_level_on_request_failed();
         notify_timeout = true;
     }
 
@@ -205,5 +212,6 @@ void app_setting_runtime_stop(void)
     serial_number_service_cancel_request();
     currency_service_cancel_switch();
     cfd_service_cancel_query();
+    cfd_service_cancel_update();
     print_config_cancel_request();
 }

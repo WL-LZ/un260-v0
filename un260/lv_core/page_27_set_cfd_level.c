@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #define CFD_CELL_COUNT (CFD_SCENE_COUNT * CFD_ITEM_COUNT)
 
@@ -31,6 +32,8 @@ static lv_obj_t* table_rows[CFD_SCENE_COUNT] = { NULL };
 static lv_obj_t* table_row_labels[CFD_SCENE_COUNT] = { NULL };
 static cfd_scene_item_t scene_items[CFD_SCENE_COUNT] = { 0 };
 static uint8_t selected_scene = 0;
+static cfd_state_value_t cfd_draft;
+static bool cfd_draft_valid = false;
 
 static uint8_t cfd_normalize_level(uint8_t level)
 {
@@ -56,11 +59,15 @@ static lv_color_t cfd_level_color(uint8_t level)
 
 static void cfd_refresh_view(void)
 {
-    cfd_state_value_t config;
+    const cfd_state_value_t* config;
 
-    cfd_state_get(&config);
+    if (!cfd_draft_valid) {
+        cfd_state_get(&cfd_draft);
+        cfd_draft_valid = true;
+    }
+    config = &cfd_draft;
     if (currency_label) {
-        lv_label_set_text(currency_label, config.currency);
+        lv_label_set_text(currency_label, config->currency);
     }
 
     for (uint8_t scene = 0; scene < CFD_SCENE_COUNT; scene++) {
@@ -94,7 +101,7 @@ static void cfd_refresh_view(void)
     for (uint8_t scene = 0; scene < CFD_SCENE_COUNT; scene++) {
         for (uint8_t item = 0; item < CFD_ITEM_COUNT; item++) {
             uint8_t index = cfd_cell_index(scene, item);
-            uint8_t level = cfd_normalize_level(config.levels[scene][item]);
+            uint8_t level = cfd_normalize_level(config->levels[scene][item]);
             bool selected = (scene == selected_scene);
             lv_color_t color = cfd_level_color(level);
 
@@ -119,46 +126,22 @@ static void cfd_refresh_view(void)
 
 bool ui_page_27_set_cfd_level_query(void)
 {
-    uint8_t payload[4] = { 0x01, 0, 0, 0 };
     char query_currency[4];
-    bool sent;
 
     currency_state_get_active_code(query_currency);
-    if (!cfd_service_request_query(query_currency)) return false;
-    payload[1] = (uint8_t)query_currency[0];
-    payload[2] = (uint8_t)query_currency[1];
-    payload[3] = (uint8_t)query_currency[2];
-
-    sent = settings_detail_send_command(0x45, payload, sizeof(payload));
-    if (!sent) cfd_service_cancel_query();
-    return sent;
+    return cfd_service_request_query(query_currency);
 }
 
 static bool cfd_send_update(void)
 {
-    uint8_t payload[17];
-    uint8_t pos = 5;
-    cfd_state_value_t config;
-
-    cfd_state_get(&config);
-    payload[0] = 0x02;
-    payload[1] = (uint8_t)config.currency[0];
-    payload[2] = (uint8_t)config.currency[1];
-    payload[3] = (uint8_t)config.currency[2];
-    payload[4] = (uint8_t)(selected_scene + 1);
-
-    for (uint8_t scene = 0; scene < CFD_SCENE_COUNT; scene++) {
-        for (uint8_t item = 0; item < CFD_ITEM_COUNT; item++) {
-            payload[pos++] = cfd_normalize_level(config.levels[scene][item]);
-        }
-    }
-
-    return settings_detail_send_command(0x45, payload, sizeof(payload));
+    return cfd_draft_valid &&
+           cfd_service_request_update(&cfd_draft, selected_scene);
 }
 
 static void cfd_esc_cb(lv_event_t* e)
 {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+    if (cfd_service_busy()) return;
     ui_manager_pop_page();
 }
 
@@ -181,9 +164,9 @@ static void cfd_level_cell_cb(lv_event_t* e)
     uint8_t scene;
     uint8_t item;
     uint8_t level;
-    cfd_state_value_t config;
 
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+    if (cfd_service_busy()) return;
 
     index = (uint8_t)(uintptr_t)lv_event_get_user_data(e);
     scene = (uint8_t)(index / CFD_ITEM_COUNT);
@@ -196,11 +179,10 @@ static void cfd_level_cell_cb(lv_event_t* e)
         return;
     }
 
-    cfd_state_get(&config);
-    level = cfd_normalize_level(config.levels[scene][item]);
+    if (!cfd_draft_valid) return;
+    level = cfd_normalize_level(cfd_draft.levels[scene][item]);
     level = (uint8_t)(level >= CFD_LEVEL_MAX ? CFD_LEVEL_MIN : level + 1);
-    config.levels[scene][item] = level;
-    cfd_state_confirm(&config);
+    cfd_draft.levels[scene][item] = level;
     cfd_refresh_view();
 }
 
@@ -371,6 +353,8 @@ void ui_page_27_set_cfd_level_create(lv_obj_t* parent)
     if (cfd_level_page) return;
 
     selected_scene = 0;
+    cfd_state_get(&cfd_draft);
+    cfd_draft_valid = true;
 
     cfd_level_page = settings_detail_create_page(parent,
                                                  ui_text_get(UI_TEXT_SETTINGS_CFD_LEVEL_TITLE),
@@ -390,6 +374,8 @@ void ui_page_27_set_cfd_level_destroy(void)
     cfd_level_page = NULL;
     currency_label = NULL;
     selected_scene = 0;
+    cfd_draft_valid = false;
+    memset(&cfd_draft, 0, sizeof(cfd_draft));
 
     for (uint8_t i = 0; i < CFD_CELL_COUNT; i++) {
         level_cells[i] = NULL;
@@ -414,13 +400,8 @@ void ui_page_27_set_cfd_level_on_info(const uint8_t* data, uint16_t len)
     response_currency[1] = (char)data[1];
     response_currency[2] = (char)data[2];
     response_currency[3] = '\0';
-    if (!cfd_service_take_query_result(response_currency)) return;
-
-    cfd_state_get(&config);
+    memset(&config, 0, sizeof(config));
     memcpy(config.currency, response_currency, sizeof(config.currency));
-    if (cfd_level_page && data[3] >= 1 && data[3] <= CFD_SCENE_COUNT) {
-        selected_scene = (uint8_t)(data[3] - 1);
-    }
 
     for (uint8_t scene = 0; scene < CFD_SCENE_COUNT; scene++) {
         for (uint8_t item = 0; item < CFD_ITEM_COUNT; item++) {
@@ -428,9 +409,27 @@ void ui_page_27_set_cfd_level_on_info(const uint8_t* data, uint16_t len)
         }
     }
 
+    if (!cfd_service_take_query_result(response_currency) &&
+        !cfd_service_take_update_result(&config)) {
+        return;
+    }
+
     cfd_state_confirm(&config);
 
     if (cfd_level_page) {
+        cfd_draft = config;
+        cfd_draft_valid = true;
+        if (data[3] >= 1 && data[3] <= CFD_SCENE_COUNT) {
+            selected_scene = (uint8_t)(data[3] - 1);
+        }
         cfd_refresh_view();
     }
+}
+
+void ui_page_27_set_cfd_level_on_request_failed(void)
+{
+    if (!cfd_level_page || !lv_obj_is_valid(cfd_level_page)) return;
+    cfd_state_get(&cfd_draft);
+    cfd_draft_valid = true;
+    cfd_refresh_view();
 }
