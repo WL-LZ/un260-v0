@@ -20,6 +20,7 @@
 
 /* ================= page_10_debug.c ================= */
 #include "page_10_debug.h"
+#include "un260/lv_components/lv_debug_overlay.h"
 #include "un260/protocol/protocol_frame.h"
 #include "un260/protocol/protocol_send.h"
 #include "un260/lv_components/lv_print_toast.h"
@@ -334,6 +335,8 @@ void ui_page_10_debug_create(void) {
         page_debug = lv_obj_create(lv_scr_act());
     }
     debug_page_context_reset();
+    lv_debug_overlay_init();
+    lv_debug_overlay_set_enabled(true);
 
     lv_obj_set_size(page_debug, 1280, 400);
     lv_obj_set_style_bg_color(page_debug, lv_color_hex(0x1a1a1a), 0);
@@ -523,6 +526,7 @@ void ui_page_10_debug_create(void) {
 }
 
 void ui_page_10_debug_destroy(void) {
+    lv_debug_overlay_set_enabled(false);
     if (page_debug && lv_obj_is_valid(page_debug)) {
         lv_obj_clean(page_debug);  // 清空子对象，但不删除page_debug本身
         lv_obj_add_flag(page_debug, LV_OBJ_FLAG_HIDDEN);  // 隐藏page_debug

@@ -10,7 +10,7 @@ static lv_obj_t *g_debug_mem_label = NULL;
 static lv_obj_t *g_debug_lvgl_label = NULL;
 static lv_obj_t *g_debug_loop_label = NULL;
 static lv_timer_t *g_debug_timer = NULL;
-static bool g_debug_overlay_enabled = true;
+static bool g_debug_overlay_enabled = false;
 
 static void debug_overlay_refresh_cb(lv_timer_t *timer)
 {
@@ -86,15 +86,20 @@ void lv_debug_overlay_init(void)
 
     if (g_debug_timer == NULL) {
         g_debug_timer = lv_timer_create(debug_overlay_refresh_cb, 1000, NULL);
-    } else {
+    }
+    if (g_debug_timer && g_debug_overlay_enabled) {
         lv_timer_resume(g_debug_timer);
+    } else if (g_debug_timer) {
+        lv_timer_pause(g_debug_timer);
     }
 
     if (!g_debug_overlay_enabled) {
         lv_obj_add_flag(g_debug_overlay, LV_OBJ_FLAG_HIDDEN);
     }
 
-    debug_overlay_refresh_cb(NULL);
+    if (g_debug_overlay_enabled) {
+        debug_overlay_refresh_cb(NULL);
+    }
 }
 
 void lv_debug_overlay_set_enabled(bool enabled)
@@ -107,8 +112,15 @@ void lv_debug_overlay_set_enabled(bool enabled)
 
     if (enabled) {
         lv_obj_clear_flag(g_debug_overlay, LV_OBJ_FLAG_HIDDEN);
+        if (g_debug_timer) {
+            lv_timer_resume(g_debug_timer);
+        }
+        debug_overlay_refresh_cb(NULL);
     } else {
         lv_obj_add_flag(g_debug_overlay, LV_OBJ_FLAG_HIDDEN);
+        if (g_debug_timer) {
+            lv_timer_pause(g_debug_timer);
+        }
     }
 }
 
