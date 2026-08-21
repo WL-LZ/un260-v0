@@ -1,6 +1,6 @@
 #include "un260/lv_components/smart_island/smart_island_internal.h"
 #include "un260/lv_components/lv_fault_popup.h"
-#include "un260/lv_system/platform_app.h"
+#include "un260/lv_system/counting_ui_runtime.h"
 
 #define SMART_ISLAND_RESULT_HOLD_MS 1800U
 

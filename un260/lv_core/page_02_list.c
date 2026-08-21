@@ -6,7 +6,7 @@
 #include "un260/counting/counting_data_store.h"
 #include "lv_page_event.h"
 #include "aic_ui/aic_ui.h"
-#include "un260/lv_system/platform_app.h"
+#include "un260/lv_system/ui_object_utils.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -310,12 +310,12 @@ static int page_02_a_valid_count_get(void) // 获取A区有效面额条数
 
 static int page_02_b_valid_count_get(void) // 获取B区有效冠字号条数
 {
-    return sim_get_sn_valid_count();
+    return counting_data_serial_valid_count(counting_data_current());
 }
 
 static int page_02_b_nth_valid_index_get(int nth) // 获取B区第nth条有效数据索引
 {
-    return sim_get_sn_nth_valid_index(nth);
+    return counting_data_serial_nth_valid_index(counting_data_current(), nth);
 }
 
 static page_02_scroll_section_t *page_02_scroll_section_get(page_02_section_id_t section_id) // 获取分区配置
@@ -916,7 +916,7 @@ void page_02_list_section_data_ready(page_02_section_id_t section_id)
 
 void page_02_list_report_reset(void)
 {
-    int sn_count = sim_get_sn_valid_count();
+    int sn_count = counting_data_serial_valid_count(counting_data_current());
     int error_count = counting_data_error_detail_count(counting_data_current());
 
     page_02_a_report_status.curent_page = 1;

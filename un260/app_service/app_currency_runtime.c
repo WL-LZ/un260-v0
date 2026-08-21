@@ -11,7 +11,7 @@
 #include "un260/currency/currency_reply.h"
 #include "un260/lv_core/page_07_curr.h"
 #include "un260/lv_drivers/lv_drivers.h"
-#include "un260/lv_system/platform_app.h"
+#include "un260/lv_system/counting_ui_runtime.h"
 #include "un260/counting/counting_data_store_internal.h"
 
 static bool app_currency_runtime_boot_ready(void)

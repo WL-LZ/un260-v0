@@ -9,7 +9,7 @@
 #include "un260/lv_components/lv_upgrade_popup.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/ui_upgrade_service.h"
-#include "un260/lv_system/platform_app.h"
+#include "un260/lv_system/counting_ui_runtime.h"
 #include "un260/lv_system/ui_screenshot.h"
 
 #include <stdbool.h>

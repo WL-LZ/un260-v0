@@ -7,7 +7,6 @@
 #include "un260/lv_core/page_27_set_cfd_level.h"
 #include "un260/lv_core/settings_detail_ui.h"
 #include "un260/lv_system/machine_time.h"
-#include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/device_info/device_info.h"

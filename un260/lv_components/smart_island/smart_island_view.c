@@ -3,7 +3,6 @@
 #include "un260/currency/currency_state.h"
 #include "un260/machine_state/machine_state.h"
 #include "un260/lv_system/machine_time.h"
-#include "un260/lv_system/platform_app.h"
 #include "un260/counting/counting_data_store.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/user_cfg.h"

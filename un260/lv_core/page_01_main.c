@@ -4,7 +4,8 @@
 #include "un260/lv_resources/lv_image_declear.h" 
 #include "lv_page_event.h"
 #include <stdio.h>
-#include "un260/lv_system/platform_app.h" 
+#include "un260/lv_system/counting_ui_runtime.h"
+#include "un260/lv_system/ui_object_utils.h"
 #include <string.h>
 #include "un260/lv_resources/lv_img_init.h" 
 #include "../aic_ui/aic_ui.h"

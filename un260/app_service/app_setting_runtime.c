@@ -22,7 +22,6 @@
 #include "un260/lv_core/page_26_set_aging.h"
 #include "un260/lv_core/page_27_set_cfd_level.h"
 #include "un260/lv_core/page_30_set_factory.h"
-#include "un260/lv_system/platform_app.h"
 #include "un260/machine_state/machine_state.h"
 #include "un260/print/print_config.h"
 #include "un260/serial_number/serial_number.h"

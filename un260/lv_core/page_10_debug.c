@@ -8,7 +8,6 @@
 #include "un260/lv_resources/lv_img_init.h" 
 #include "lv_page_event.h"
 #include "un260/lv_system/user_cfg.h"
-#include "un260/lv_system/platform_app.h"
 #include <string.h>
 #include "lvgl/lvgl.h"
 #include "../aic_ui/aic_ui.h"

@@ -15,7 +15,7 @@
 #include "un260/lv_core/page_01_main.h"
 #include "un260/protocol/protocol_send.h"
 #include "un260/lv_system/ui_state_runtime.h"
-#include "un260/lv_system/platform_app.h"
+#include "un260/lv_system/counting_ui_runtime.h"
 
 #define APP_BOOT_FINISH_DELAY_MS       2000
 #define APP_BOOT_CURRENCY_LIST_CMD     0x56

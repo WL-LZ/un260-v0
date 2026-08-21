@@ -101,6 +101,59 @@ int counting_data_serial_scan_limit(const counting_sim_t *sim_data)
     return sim_data->sn_capacity;
 }
 
+int counting_data_serial_valid_count(const counting_sim_t *sim_data)
+{
+    int valid_count = 0;
+    int scan_limit = counting_data_serial_scan_limit(sim_data);
+    int mix_capacity;
+
+    if (sim_data == NULL) {
+        return 0;
+    }
+
+    mix_capacity = (int)(sizeof(sim_data->denom_mix) /
+                         sizeof(sim_data->denom_mix[0]));
+    if (scan_limit > mix_capacity) {
+        scan_limit = mix_capacity;
+    }
+
+    for (int i = 0; i < scan_limit; i++) {
+        if (sim_data->sn_str[i] != NULL && sim_data->denom_mix[i] > 0) {
+            valid_count++;
+        }
+    }
+    return valid_count;
+}
+
+int counting_data_serial_nth_valid_index(const counting_sim_t *sim_data,
+                                         int nth)
+{
+    int valid_count = 0;
+    int scan_limit = counting_data_serial_scan_limit(sim_data);
+    int mix_capacity;
+
+    if (sim_data == NULL || nth < 0) {
+        return -1;
+    }
+
+    mix_capacity = (int)(sizeof(sim_data->denom_mix) /
+                         sizeof(sim_data->denom_mix[0]));
+    if (scan_limit > mix_capacity) {
+        scan_limit = mix_capacity;
+    }
+
+    for (int i = 0; i < scan_limit; i++) {
+        if (sim_data->sn_str[i] == NULL || sim_data->denom_mix[i] <= 0) {
+            continue;
+        }
+        if (valid_count == nth) {
+            return i;
+        }
+        valid_count++;
+    }
+    return -1;
+}
+
 void counting_data_clear_errors(counting_sim_t *sim_data)
 {
     if (sim_data == NULL) {

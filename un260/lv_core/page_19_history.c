@@ -10,7 +10,6 @@
 #include "un260/lv_components/lv_print_toast.h"
 #include "un260/lv_components/lv_upgrade_popup.h"
 #include "un260/lv_drivers/lv_drivers.h"
-#include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/ui_history_data.h"
 #include "un260/lv_system/ui_history_export_data.h"
 #include "un260/lv_system/ui_text.h"

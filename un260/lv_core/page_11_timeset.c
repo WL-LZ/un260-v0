@@ -3,7 +3,6 @@
 #include "un260/lv_core/settings_detail_ui.h"
 #include "un260/lv_resources/lv_image_declear.h" 
 #include "un260/lv_resources/lv_img_init.h" 
-#include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_components/lv_components.h"

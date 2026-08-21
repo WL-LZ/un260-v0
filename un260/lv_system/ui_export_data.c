@@ -7,7 +7,6 @@
 #include <unistd.h>
 #include <ctype.h>
 #include "un260/lv_components/lv_print_toast.h"
-#include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_system/machine_time.h"
 #include "un260/machine_state/machine_state.h"

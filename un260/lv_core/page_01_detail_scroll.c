@@ -4,7 +4,7 @@
 
 #include "un260/lv_core/page_01_main.h"
 #include "un260/counting/counting_data_store.h"
-#include "un260/lv_system/platform_app.h"
+#include "un260/lv_system/counting_ui_runtime.h"
 
 #define PAGE_01_SCROLL_HINT_UP_IMG_PATH       "L:/usr/local/share/lvgl_data/main_pol_up.png"
 #define PAGE_01_SCROLL_HINT_DOWN_IMG_PATH     "L:/usr/local/share/lvgl_data/main_pol_down.png"

@@ -1,4 +1,5 @@
-#include "platform_app.h"
+#include "counting_ui_runtime.h"
+#include "ui_object_utils.h"
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -9,7 +10,6 @@
 #include "un260/lv_core/page_01_main.h"
 #include "un260/lv_core/page_01_detail_scroll.h"
 #include "un260/lv_drivers/lv_drivers.h"
-#include "un260/lv_system/platform_app.h"
 #include "un260/lv_components/smart_island.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/currency/currency_state.h"
@@ -59,45 +59,45 @@ static page_01_main_cache_t g_main_cache;
 #define COUNTING_SIM_MAX_ITEMS COUNTING_DATA_MAX_ITEMS
 
 //金额模拟
-const int USD_value[] = { 100,50,20,10,5,2,1 };
-const int CNY_value[] = { 100,50,20,10,5,1 };
-const int EUR_value[] = { 200,100,50,20,10,5 };
-const int GBP_value[] = { 50,20,10,5,2,1 };
-const int KRW_value[] = { 500,400,300,200,100,50,10,5,1 };
-const int EGP_value[] = { 200, 100, 50, 20, 10, 5, 1 };
-const int ISK_value[] = { 10000, 5000, 2000, 1000, 500, 100 };
-const int PHP_value[] = { 1000, 500, 200, 100, 50, 20 };
-const int SOS_value[] = { 1000, 500, 100, 50, 20, 10, 5, 1 };
-const int TRY_value[] = { 200, 100, 50, 20, 10, 5, 1 };
-const int AED_value[] = { 1000, 500, 200, 100, 50, 20, 10, 5};
-const int SAR_value[] = { 500, 200, 100, 50, 20, 10, 5, 1 };
-const int OMR_value[] = { 5000, 2000, 1000, 500, 100, 50 , 10 };
-const int QAR_value[] = { 500, 200, 100, 50,  10, 5, 1 };
-const int MAD_value[] = { 200, 100, 50, 20};
-const int DZD_value[] = { 2000, 1000, 500, 200};
-const int INR_value[] = { 500, 200, 100, 50, 20, 10};
-const int PKR_value[] = { 5000, 1000, 500, 100, 75, 50, 20 ,10};
-const int IQD_value[] = { 50000 , 25000, 10000, 5000, 1000, 500, 250 ,100 ,20 ,50 ,1};
+static const int USD_value[] = { 100,50,20,10,5,2,1 };
+static const int CNY_value[] = { 100,50,20,10,5,1 };
+static const int EUR_value[] = { 200,100,50,20,10,5 };
+static const int GBP_value[] = { 50,20,10,5,2,1 };
+static const int KRW_value[] = { 500,400,300,200,100,50,10,5,1 };
+static const int EGP_value[] = { 200, 100, 50, 20, 10, 5, 1 };
+static const int ISK_value[] = { 10000, 5000, 2000, 1000, 500, 100 };
+static const int PHP_value[] = { 1000, 500, 200, 100, 50, 20 };
+static const int SOS_value[] = { 1000, 500, 100, 50, 20, 10, 5, 1 };
+static const int TRY_value[] = { 200, 100, 50, 20, 10, 5, 1 };
+static const int AED_value[] = { 1000, 500, 200, 100, 50, 20, 10, 5};
+static const int SAR_value[] = { 500, 200, 100, 50, 20, 10, 5, 1 };
+static const int OMR_value[] = { 5000, 2000, 1000, 500, 100, 50 , 10 };
+static const int QAR_value[] = { 500, 200, 100, 50,  10, 5, 1 };
+static const int MAD_value[] = { 200, 100, 50, 20};
+static const int DZD_value[] = { 2000, 1000, 500, 200};
+static const int INR_value[] = { 500, 200, 100, 50, 20, 10};
+static const int PKR_value[] = { 5000, 1000, 500, 100, 75, 50, 20 ,10};
+static const int IQD_value[] = { 50000 , 25000, 10000, 5000, 1000, 500, 250 ,100 ,20 ,50 ,1};
 
-const int USD_value_num = sizeof(USD_value) / sizeof(USD_value[0]);
-const int CNY_value_num = sizeof(CNY_value) / sizeof(CNY_value[0]);
-const int EUR_value_num = sizeof(EUR_value) / sizeof(EUR_value[0]);
-const int GBP_value_num = sizeof(GBP_value) / sizeof(GBP_value[0]);
-const int KRW_value_num = sizeof(KRW_value) / sizeof(KRW_value[0]);
-const int EGP_value_num = sizeof(EGP_value) / sizeof(EGP_value[0]);
-const int ISK_value_num = sizeof(ISK_value) / sizeof(ISK_value[0]);
-const int PHP_value_num = sizeof(PHP_value) / sizeof(PHP_value[0]);
-const int SOS_value_num = sizeof(SOS_value) / sizeof(SOS_value[0]);
-const int TRY_value_num = sizeof(TRY_value) / sizeof(TRY_value[0]);
-const int AED_value_num = sizeof(AED_value) / sizeof(AED_value[0]);
-const int SAR_value_num = sizeof(SAR_value) / sizeof(SAR_value[0]);
-const int OMR_value_num = sizeof(OMR_value) / sizeof(OMR_value[0]);
-const int QAR_value_num = sizeof(QAR_value) / sizeof(QAR_value[0]);
-const int MAD_value_num = sizeof(MAD_value) / sizeof(MAD_value[0]);
-const int DZD_value_num = sizeof(DZD_value) / sizeof(DZD_value[0]);
-const int INR_value_num = sizeof(INR_value) / sizeof(INR_value[0]);
-const int PKR_value_num = sizeof(PKR_value) / sizeof(PKR_value[0]);
-const int IQD_value_num = sizeof(IQD_value) / sizeof(IQD_value[0]);
+static const int USD_value_num = sizeof(USD_value) / sizeof(USD_value[0]);
+static const int CNY_value_num = sizeof(CNY_value) / sizeof(CNY_value[0]);
+static const int EUR_value_num = sizeof(EUR_value) / sizeof(EUR_value[0]);
+static const int GBP_value_num = sizeof(GBP_value) / sizeof(GBP_value[0]);
+static const int KRW_value_num = sizeof(KRW_value) / sizeof(KRW_value[0]);
+static const int EGP_value_num = sizeof(EGP_value) / sizeof(EGP_value[0]);
+static const int ISK_value_num = sizeof(ISK_value) / sizeof(ISK_value[0]);
+static const int PHP_value_num = sizeof(PHP_value) / sizeof(PHP_value[0]);
+static const int SOS_value_num = sizeof(SOS_value) / sizeof(SOS_value[0]);
+static const int TRY_value_num = sizeof(TRY_value) / sizeof(TRY_value[0]);
+static const int AED_value_num = sizeof(AED_value) / sizeof(AED_value[0]);
+static const int SAR_value_num = sizeof(SAR_value) / sizeof(SAR_value[0]);
+static const int OMR_value_num = sizeof(OMR_value) / sizeof(OMR_value[0]);
+static const int QAR_value_num = sizeof(QAR_value) / sizeof(QAR_value[0]);
+static const int MAD_value_num = sizeof(MAD_value) / sizeof(MAD_value[0]);
+static const int DZD_value_num = sizeof(DZD_value) / sizeof(DZD_value[0]);
+static const int INR_value_num = sizeof(INR_value) / sizeof(INR_value[0]);
+static const int PKR_value_num = sizeof(PKR_value) / sizeof(PKR_value[0]);
+static const int IQD_value_num = sizeof(IQD_value) / sizeof(IQD_value[0]);
 static bool sim_append_generated_serials(counting_sim_t *sim_data, int new_total)
 {
     static const char charset[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -227,52 +227,6 @@ void update_label_by_name(ui_element_t* page_cfg_obj, int len,const char* name, 
     lv_vsnprintf(buf, sizeof(buf), fmt, args);
     va_end(args);
     label_set_text_if_changed(label, buf);
-}
-
-int sim_get_sn_valid_count(void)
-{
-    const counting_sim_t *sim_data = counting_data_current();
-    int valid_count = 0;
-    int capacity = sim_data->sn_capacity;
-    const int mix_capacity = (int)(sizeof(sim_data->denom_mix) / sizeof(sim_data->denom_mix[0]));
-
-    if (sim_data->sn_str == NULL || capacity <= 0) {
-        return 0;
-    }
-    if (capacity > mix_capacity) capacity = mix_capacity;
-
-    for (int i = 0; i < capacity; i++) {
-        if (sim_data->sn_str[i] != NULL && sim_data->denom_mix[i] > 0) {
-            valid_count++;
-        }
-    }
-
-    return valid_count;
-}
-
-int sim_get_sn_nth_valid_index(int nth)
-{
-    const counting_sim_t *sim_data = counting_data_current();
-    int valid_count = 0;
-    int capacity = sim_data->sn_capacity;
-    const int mix_capacity = (int)(sizeof(sim_data->denom_mix) / sizeof(sim_data->denom_mix[0]));
-
-    if (nth < 0 || sim_data->sn_str == NULL || capacity <= 0) {
-        return -1;
-    }
-    if (capacity > mix_capacity) capacity = mix_capacity;
-
-    for (int i = 0; i < capacity; i++) {
-        if (sim_data->sn_str[i] == NULL || sim_data->denom_mix[i] <= 0) {
-            continue;
-        }
-        if (valid_count == nth) {
-            return i;
-        }
-        valid_count++;
-    }
-
-    return -1;
 }
 
 void sim_data_init(void)
@@ -492,20 +446,21 @@ static void safe_reset_timer_schedule(void)
         lv_timer_set_repeat_count(s_safe_reset_timer, 1);
     }
 }
-void start_counting_sim(void) {
-    counting_sim_t* sim_data = counting_data_mutable();
-    
-    // 如果计时器已存在但被暂停，则恢复它
-    if (s_sim_timer && sim_data->is_paused) {
-        resume_counting_sim();
+
+void start_counting_sim(void)
+{
+    counting_sim_t *sim_data = counting_data_mutable();
+
+    if (s_sim_timer != NULL) {
+        if (sim_data->is_paused) {
+            resume_counting_sim();
+        }
         return;
     }
-    else if (!s_sim_timer) {
-        sim_data_init();
-        s_sim_timer = lv_timer_create(sim_timer_cb, 200, NULL);
-    }
-}
 
+    sim_data_init();
+    s_sim_timer = lv_timer_create(sim_timer_cb, 200, NULL);
+}
 
 void stop_counting_sim(void)
 {
@@ -552,12 +507,12 @@ void format_amount_with_comma(char* dest, size_t dest_size, float amount) {
 
 static int page_01_main_b_valid_count_get(void)
 {
-    return sim_get_sn_valid_count();
+    return counting_data_serial_valid_count(counting_data_current());
 }
 
 static int page_01_main_b_nth_valid_index_get(int nth)
 {
-    return sim_get_sn_nth_valid_index(nth);
+    return counting_data_serial_nth_valid_index(counting_data_current(), nth);
 }
 
 static void page_01_main_detail_header_apply(page_01_detail_section_t section,
@@ -1003,13 +958,6 @@ void resume_counting_sim(void)
         printf("计数模拟已恢复\n");
 #endif
     }
-}
-
-//切换mode
-void mode_switch(void)
-{
-    
-
 }
 
 static void sim_reset_counting_data(counting_sim_t *sim_data,

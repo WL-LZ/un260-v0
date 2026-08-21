@@ -18,7 +18,7 @@
 #include "un260/lv_core/page_01_main.h"
 #include "un260/lv_core/page_10_debug.h"
 #include "un260/lv_drivers/lv_drivers.h"
-#include "un260/lv_system/platform_app.h"
+#include "un260/lv_system/counting_ui_runtime.h"
 #include "un260/counting/counting_data_store_internal.h"
 #include "un260/protocol/protocol_frame.h"
 #include "un260/protocol/protocol_frame_queue.h"

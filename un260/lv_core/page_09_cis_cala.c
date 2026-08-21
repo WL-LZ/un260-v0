@@ -4,7 +4,6 @@
 #include "un260/lv_core/settings_detail_ui.h"
 #include "un260/app_service/app_clock.h"
 #include "un260/diagnostic/diagnostic.h"
-#include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/ui_text.h"
 
 #include <stdbool.h>

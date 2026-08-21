@@ -4,7 +4,6 @@
 
 #include <stdlib.h>
 
-#include "un260/lv_system/platform_app.h"
 #include "un260/counting/counting_data_store.h"
 #include "lvgl/src/misc/lv_timer.h"
 #include "un260/lv_system/machine_time.h"

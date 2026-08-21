@@ -4,7 +4,7 @@
 #include "un260/lv_resources/lv_image_declear.h" 
 #include "un260/lv_resources/lv_img_init.h" 
 #include "lv_page_event.h"
-#include "un260/lv_system/platform_app.h"
+#include "un260/lv_system/ui_object_utils.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_components/lv_components.h"
 #include "un260/machine_state/machine_state.h"

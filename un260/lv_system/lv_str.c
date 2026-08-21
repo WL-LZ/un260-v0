@@ -1,4 +1,3 @@
-#include"platform_app.h"
 #include "lvgl/lvgl.h"
 #include"lv_str.h"
 #include "ui_lang.h"

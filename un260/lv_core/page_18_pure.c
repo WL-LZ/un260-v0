@@ -3,7 +3,6 @@
 #include "un260/lv_core/lv_page_event.h"
 #include "un260/lv_components/smart_island.h"
 #include "un260/counting/counting_data_store.h"
-#include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/ui_lang.h"
 #include "un260/lv_system/ui_text.h"
 #include <stdio.h>
