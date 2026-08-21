@@ -22,6 +22,8 @@
 static ui_history_store_t g_history_store;
 static bool g_history_loaded = false;
 
+static void history_ensure_loaded(void);
+
 static void history_store_reset(void)
 {
     memset(&g_history_store, 0, sizeof(g_history_store));
@@ -43,6 +45,53 @@ static int history_ensure_dir(void)
         close(fd);
     }
 
+    return 0;
+}
+
+static void history_sync_store_dir(void)
+{
+    int fd = open(UI_HISTORY_STORE_DIR, O_RDONLY | O_DIRECTORY);
+
+    if (fd < 0) {
+        return;
+    }
+    (void)fsync(fd);
+    (void)close(fd);
+}
+
+static int history_commit_atomic_file(FILE *fp, int fd,
+                                      const char *tmp_path, const char *path,
+                                      bool sync_directory)
+{
+    bool write_failed;
+
+    if (fp == NULL || fd < 0 || tmp_path == NULL || path == NULL) {
+        return -1;
+    }
+
+    write_failed = ferror(fp) != 0;
+    if (fflush(fp) != 0) {
+        write_failed = true;
+    }
+    if (!write_failed && fsync(fd) != 0) {
+        write_failed = true;
+    }
+    if (fclose(fp) != 0) {
+        write_failed = true;
+    }
+    if (write_failed) {
+        (void)unlink(tmp_path);
+        return -1;
+    }
+    if (rename(tmp_path, path) != 0) {
+        (void)unlink(tmp_path);
+        return -1;
+    }
+
+    /* rename 已经是权威提交点；目录同步失败不能触发业务重试和重复记录。 */
+    if (sync_directory) {
+        history_sync_store_dir();
+    }
     return 0;
 }
 
@@ -311,7 +360,6 @@ static int history_write_file(const char *path, const ui_history_record_t *rec, 
     int fd;
     char tmp[160];
     int i;
-    bool write_failed;
 
     if (history_ensure_dir() != 0 || path == NULL || rec == NULL) {
         return -1;
@@ -326,6 +374,7 @@ static int history_write_file(const char *path, const ui_history_record_t *rec, 
     fp = fdopen(fd, "w");
     if (fp == NULL) {
         close(fd);
+        (void)unlink(tmp);
         return -1;
     }
 
@@ -337,7 +386,7 @@ static int history_write_file(const char *path, const ui_history_record_t *rec, 
 
     for (i = 0; i < record_count; i++) {
         char prefix[32];
-        const ui_history_record_t *item = &g_history_store.records[i];
+        const ui_history_record_t *item = &rec[i];
 
         snprintf(prefix, sizeof(prefix), "record%02d_", i);
         fprintf(fp, "%svalid=%d\n", prefix, item->valid ? 1 : 0);
@@ -359,97 +408,113 @@ static int history_write_file(const char *path, const ui_history_record_t *rec, 
         history_write_escaped_field(fp, prefix, "log", item->session_log);
     }
 
-    write_failed = ferror(fp) != 0;
-    if (fflush(fp) != 0) write_failed = true;
-    if (!write_failed && fsync(fd) != 0) write_failed = true;
-    if (fclose(fp) != 0) write_failed = true;
-    if (write_failed) {
-        unlink(tmp);
-        return -1;
-    }
-
-    if (rename(tmp, path) != 0) {
-        unlink(tmp);
-        return -1;
-    }
-
-    return 0;
+    return history_commit_atomic_file(fp, fd, tmp, path, true);
 }
 
-static void history_write_slot_file(const ui_history_record_t *rec)
+static int history_write_slot_file(const ui_history_record_t *rec)
 {
     char path[128];
     FILE *fp;
     int fd;
     char tmp[160];
-    bool write_failed;
 
     if (rec == NULL || rec->slot_no == 0 || rec->slot_no > UI_HISTORY_MAX_RECORDS) {
-        return;
+        return -1;
     }
 
     snprintf(path, sizeof(path), UI_HISTORY_SLOT_PATH_FMT, (unsigned)rec->slot_no);
     snprintf(tmp, sizeof(tmp), "%s.tmp", path);
     fd = open(tmp, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd < 0) {
-        return;
+        return -1;
     }
     fp = fdopen(fd, "w");
     if (fp == NULL) {
         close(fd);
-        return;
+        (void)unlink(tmp);
+        return -1;
     }
 
     history_write_kv(fp, rec->slot_no, rec);
-    write_failed = ferror(fp) != 0;
-    if (fflush(fp) != 0) write_failed = true;
-    if (!write_failed && fsync(fd) != 0) write_failed = true;
-    if (fclose(fp) != 0) write_failed = true;
-    if (write_failed) {
-        unlink(tmp);
-        return;
-    }
-    if (rename(tmp, path) != 0) {
-        unlink(tmp);
-    }
+    return history_commit_atomic_file(fp, fd, tmp, path, false);
 }
 
-static void history_save_all(void)
+static int history_write_meta_file(void)
+{
+    FILE *fp;
+    int fd;
+    char tmp[160];
+
+    snprintf(tmp, sizeof(tmp), "%s.tmp", UI_HISTORY_META_PATH);
+    fd = open(tmp, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd < 0) {
+        return -1;
+    }
+    fp = fdopen(fd, "w");
+    if (fp == NULL) {
+        close(fd);
+        (void)unlink(tmp);
+        return -1;
+    }
+
+    fprintf(fp, "magic=%u\nversion=%u\n", UI_HISTORY_MAGIC, UI_HISTORY_VERSION);
+    fprintf(fp, "total_notes_counted=%u\n", (unsigned)g_history_store.total_notes_counted);
+    fprintf(fp, "next_record_no=%u\n", (unsigned)g_history_store.next_record_no);
+    fprintf(fp, "next_slot_no=%u\n", (unsigned)g_history_store.next_slot_no);
+    return history_commit_atomic_file(fp, fd, tmp, UI_HISTORY_META_PATH, false);
+}
+
+static bool history_save_all(void)
 {
     int i;
+    bool slot_present[UI_HISTORY_MAX_RECORDS + 1] = { false };
 
     if (history_ensure_dir() != 0) {
-        return;
+        return false;
+    }
+
+    /* index.cfg 是唯一权威数据源；只有它提交成功，内存修改才算成功。 */
+    if (history_write_file(UI_HISTORY_INDEX_PATH, g_history_store.records,
+                           g_history_store.total_notes_counted,
+                           g_history_store.next_record_no,
+                           g_history_store.next_slot_no,
+                           g_history_store.record_count) != 0) {
+        return false;
+    }
+
+    for (i = 0; i < g_history_store.record_count; i++) {
+        uint8_t slot_no = g_history_store.records[i].slot_no;
+
+        if (slot_no > 0 && slot_no <= UI_HISTORY_MAX_RECORDS) {
+            slot_present[slot_no] = true;
+        }
+        (void)history_write_slot_file(&g_history_store.records[i]);
     }
 
     for (i = 1; i <= UI_HISTORY_MAX_RECORDS; i++) {
-        char slot_path[128];
-        snprintf(slot_path, sizeof(slot_path), UI_HISTORY_SLOT_PATH_FMT, (unsigned)i);
-        unlink(slot_path);
-    }
+        if (!slot_present[i]) {
+            char slot_path[128];
 
-    history_write_file(UI_HISTORY_INDEX_PATH, g_history_store.records,
-                       g_history_store.total_notes_counted,
-                       g_history_store.next_record_no,
-                       g_history_store.next_slot_no,
-                       g_history_store.record_count);
-
-    for (i = 0; i < g_history_store.record_count; i++) {
-        history_write_slot_file(&g_history_store.records[i]);
-    }
-
-    {
-        FILE *fp = fopen(UI_HISTORY_META_PATH, "w");
-        if (fp != NULL) {
-            fprintf(fp, "magic=%u\nversion=%u\n", UI_HISTORY_MAGIC, UI_HISTORY_VERSION);
-            fprintf(fp, "total_notes_counted=%u\n", (unsigned)g_history_store.total_notes_counted);
-            fprintf(fp, "next_record_no=%u\n", (unsigned)g_history_store.next_record_no);
-            fprintf(fp, "next_slot_no=%u\n", (unsigned)g_history_store.next_slot_no);
-            fflush(fp);
-            fsync(fileno(fp));
-            fclose(fp);
+            snprintf(slot_path, sizeof(slot_path), UI_HISTORY_SLOT_PATH_FMT, (unsigned)i);
+            (void)unlink(slot_path);
         }
     }
+
+    (void)history_write_meta_file();
+    history_sync_store_dir();
+    return true;
+}
+
+static bool history_save_or_reload(void)
+{
+    if (history_save_all()) {
+        return true;
+    }
+
+    /* 丢弃未落盘的内存修改，避免 UI 与重启后状态不一致。 */
+    g_history_loaded = false;
+    history_ensure_loaded();
+    return false;
 }
 
 static void history_parse_key_value(int record_index, const char *key, const char *value)
@@ -614,7 +679,7 @@ void ui_history_total_notes_counted_set(uint32_t total)
 {
     history_ensure_loaded();
     g_history_store.total_notes_counted = total;
-    history_save_all();
+    (void)history_save_or_reload();
 }
 
 void ui_history_total_notes_counted_clear(void)
@@ -679,8 +744,7 @@ bool ui_history_record_append_from_session(const counting_sim_t *sim_data, uint3
         g_history_store.record_count = UI_HISTORY_MAX_RECORDS;
     }
 
-    history_save_all();
-    return true;
+    return history_save_or_reload();
 }
 
 bool ui_history_record_toggle_selected(uint8_t index)
@@ -690,8 +754,7 @@ bool ui_history_record_toggle_selected(uint8_t index)
         return false;
     }
     g_history_store.records[index].selected = !g_history_store.records[index].selected;
-    history_save_all();
-    return true;
+    return history_save_or_reload();
 }
 
 bool ui_history_record_set_selected(uint8_t index, bool selected)
@@ -701,8 +764,7 @@ bool ui_history_record_set_selected(uint8_t index, bool selected)
         return false;
     }
     g_history_store.records[index].selected = selected;
-    history_save_all();
-    return true;
+    return history_save_or_reload();
 }
 
 int ui_history_record_selected_first_index_get(void)
@@ -740,7 +802,7 @@ void ui_history_record_clear_selected(void)
     for (i = 0; i < g_history_store.record_count; i++) {
         g_history_store.records[i].selected = false;
     }
-    history_save_all();
+    (void)history_save_or_reload();
 }
 
 void ui_history_record_set_all_selected(bool selected)
@@ -751,7 +813,7 @@ void ui_history_record_set_all_selected(bool selected)
     for (i = 0; i < g_history_store.record_count; i++) {
         g_history_store.records[i].selected = selected;
     }
-    history_save_all();
+    (void)history_save_or_reload();
 }
 
 bool ui_history_record_delete_selected(void)
@@ -792,8 +854,7 @@ bool ui_history_record_delete_selected(void)
     g_history_store.next_slot_no = (uint8_t)((kept_count >= UI_HISTORY_MAX_RECORDS) ? 1 : (kept_count + 1));
     g_history_store.next_record_no = next_record_no;
 
-    history_save_all();
-    return true;
+    return history_save_or_reload();
 }
 
 bool ui_history_record_get(uint8_t index, ui_history_record_t *out)
