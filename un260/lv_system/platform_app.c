@@ -948,13 +948,13 @@ void sim_reset_for_currency(counting_sim_t* sim_data)
 }
 
 // 清空所有冠字号的函数
-void sim_clear_all_sn(counting_sim_t* sim_data)
+bool sim_clear_all_sn(counting_sim_t* sim_data)
 {
     const uint8_t clear_data_cmd = 0x01;
 
-    if (sim_data == NULL) return;
+    if (sim_data == NULL) return false;
     sim_reset_counting_data(sim_data, false);
-    protocol_send(0x3b, &clear_data_cmd, 1);
+    return protocol_send(0x3b, &clear_data_cmd, 1) >= 0;
 }
 
 

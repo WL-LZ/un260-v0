@@ -20,8 +20,11 @@
 #include "un260/lv_system/platform_app.h"
 #include "un260/protocol/protocol_frame.h"
 #include "un260/protocol/protocol_frame_queue.h"
+#include "un260/protocol/protocol_send.h"
 
 #define APP_COMMAND_MAX_FRAMES_PER_TICK 64
+#define APP_COUNT_START_CMD             0x0A
+#define APP_COUNT_ACTION_REQUEST        0x01
 
 static counting_detail_state_t g_counting_detail_state;
 static counting_session_state_t g_counting_session;
@@ -30,6 +33,29 @@ static bool app_command_runtime_main_page_active(void)
 {
     return ui_manager_get_current_page() == UI_PAGE_MAIN &&
            page_01_main_is_created();
+}
+
+bool app_command_runtime_request_count_start(void)
+{
+    const uint8_t request = APP_COUNT_ACTION_REQUEST;
+
+    if (protocol_send(APP_COUNT_START_CMD, &request, 1) < 0) {
+        uart_printf(fd6, "count start request send failed\n");
+        return false;
+    }
+    return true;
+}
+
+bool app_command_runtime_clear_counting_data(const char *reason)
+{
+    app_counting_runtime_reset_session(&g_counting_session, reason);
+    g_counting_detail_state.wait_sn_after_reject_end = false;
+    if (!sim_clear_all_sn(&sim)) {
+        uart_printf(fd6, "count clear request failed reason=%s\n",
+                    reason != NULL ? reason : "unknown");
+        return false;
+    }
+    return true;
 }
 
 static void app_command_runtime_dispatch(uint8_t cmd,
