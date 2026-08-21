@@ -53,6 +53,12 @@ bool diagnostic_calibration_begin(calib_target_t target)
 
 void diagnostic_calibration_end_session(void)
 {
+    if (g_calibration_state.cis_state == CIS_CALIB_RUNNING) {
+        g_calibration_state.cis_state = CIS_CALIB_IDLE;
+    }
+    if (g_calibration_state.cb_state == CB_CALIB_RUNNING) {
+        g_calibration_state.cb_state = CB_CALIB_IDLE;
+    }
     g_calibration_state.session_active = false;
 }
 
@@ -111,12 +117,19 @@ static bool diagnostic_cb_state_decode(uint8_t raw, cb_calib_state_t *state)
     }
 }
 
-static diagnostic_reply_result_t diagnostic_calibration_reply_handle(const uint8_t *buf, uint8_t len, const diagnostic_reply_hooks_t *hooks)
+static diagnostic_reply_result_t diagnostic_calibration_reply_handle(
+    uint8_t cmd, const uint8_t *buf, uint8_t len,
+    const diagnostic_reply_hooks_t *hooks)
 {
     bool updated;
 
     /* 状态字节之后还应有校验字节。 */
     if (buf == NULL || len < 6) return DIAGNOSTIC_REPLY_INVALID;
+    if (!g_calibration_state.session_active) return DIAGNOSTIC_REPLY_IGNORED;
+    if ((cmd == 0x5B && g_calibration_state.target != CALIB_TARGET_CIS) ||
+        (cmd == 0x5F && g_calibration_state.target != CALIB_TARGET_CB)) {
+        return DIAGNOSTIC_REPLY_IGNORED;
+    }
 
     if (g_calibration_state.target == CALIB_TARGET_CB) {
         updated = diagnostic_cb_state_decode(buf[4], &g_calibration_state.cb_state);
@@ -135,7 +148,8 @@ diagnostic_reply_result_t diagnostic_reply_dispatch(uint8_t cmd, const uint8_t *
     case 0x1D:
         return diagnostic_sensor_reply_handle(buf, len);
     case 0x5B:
-        return diagnostic_calibration_reply_handle(buf, len, hooks);
+    case 0x5F:
+        return diagnostic_calibration_reply_handle(cmd, buf, len, hooks);
     default:
         return DIAGNOSTIC_REPLY_INVALID;
     }

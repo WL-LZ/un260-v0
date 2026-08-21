@@ -139,8 +139,11 @@ static void cis_start_btn_cb(lv_event_t* e)
     diagnostic_calibration_get_snapshot(&state);
     if (state.cis_state == CIS_CALIB_RUNNING ||
         state.cb_state == CB_CALIB_RUNNING) return;
-    if (!settings_detail_send_command(0x5B, &sub, 1)) return;
     if (!diagnostic_calibration_begin(CALIB_TARGET_CIS)) return;
+    if (!settings_detail_send_command(0x5B, &sub, 1)) {
+        diagnostic_calibration_end_session();
+        return;
+    }
 
     cis_calib_ui_refresh();
 }
@@ -154,8 +157,11 @@ static void cb_start_btn_cb(lv_event_t* e)
     diagnostic_calibration_get_snapshot(&state);
     if (state.cis_state == CIS_CALIB_RUNNING ||
         state.cb_state == CB_CALIB_RUNNING) return;
-    if (!settings_detail_send_command(0x5F, &sub, 1)) return;
     if (!diagnostic_calibration_begin(CALIB_TARGET_CB)) return;
+    if (!settings_detail_send_command(0x5F, &sub, 1)) {
+        diagnostic_calibration_end_session();
+        return;
+    }
 
     cis_calib_ui_refresh();
 }
