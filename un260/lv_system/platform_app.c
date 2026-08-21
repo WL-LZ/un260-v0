@@ -15,6 +15,8 @@
 #include "un260/currency/currency_state.h"
 #include "un260/counting/counting_data_store.h"
 #include "un260/counting/counting_reject_reason.h"
+#include "un260/app_service/app_clock.h"
+#include "aic_ui/perf_stats.h"
 // 全局变量定义
 counting_sim_t sim = { 0 };
 page_02_report_status_t page_02_a_report_status = { 0 };
@@ -32,6 +34,28 @@ static char g_count_end_anim_text[128];
 static bool g_main_detail_row_layout_valid = false;
 static page_01_detail_section_t g_main_detail_row_layout_section;
 static int g_main_detail_row_layout_first_row;
+static bool g_main_detail_chrome_valid = false;
+static page_01_detail_section_t g_main_detail_chrome_section;
+
+typedef struct {
+    lv_obj_t* denom;
+    lv_obj_t* pcs;
+    lv_obj_t* amount;
+} page_01_main_row_cache_t;
+
+typedef struct {
+    lv_obj_t* currency;
+    lv_obj_t* reject_pcs;
+    lv_obj_t* title_1;
+    lv_obj_t* title_2;
+    lv_obj_t* title_3;
+    lv_obj_t* total_title;
+    lv_obj_t* total_pcs;
+    lv_obj_t* total_amount;
+    page_01_main_row_cache_t rows[10];
+} page_01_main_cache_t;
+
+static page_01_main_cache_t g_main_cache;
 
 #define COUNTING_SIM_SN_LENGTH 11
 #define COUNTING_SIM_MAX_ITEMS \
@@ -155,6 +179,15 @@ lv_obj_t* find_obj_by_name(const char* name, ui_element_t* page_cfg_obj, int len
     printf("find_obj_by_name: name %s not found\n", name);
 #endif
     return NULL;
+}
+
+static lv_obj_t* page_01_main_cache_get(lv_obj_t** slot, const char* name)
+{
+    if (slot == NULL) return NULL;
+    if (*slot == NULL) {
+        *slot = find_obj_by_name(name, page_01_main_obj, page_01_main_len);
+    }
+    return *slot;
 }
 
 static void label_set_text_if_changed(lv_obj_t* label, const char* text)
@@ -528,22 +561,24 @@ static int page_01_main_b_nth_valid_index_get(int nth)
     return sim_get_sn_nth_valid_index(nth);
 }
 
-static void page_01_main_detail_header_apply(page_01_detail_section_t section)
+static void page_01_main_detail_header_apply(page_01_detail_section_t section,
+                                              bool apply_layout)
 {
-    lv_obj_t* title_1 = find_obj_by_name("list_demo_label", page_01_main_obj, page_01_main_len);
-    lv_obj_t* title_2 = find_obj_by_name("list_pcs_label", page_01_main_obj, page_01_main_len);
-    lv_obj_t* title_3 = find_obj_by_name("list_amount_label", page_01_main_obj, page_01_main_len);
-    lv_obj_t* total_title = find_obj_by_name("total_label", page_01_main_obj, page_01_main_len);
-    lv_obj_t* total_pcs = find_obj_by_name("total_pcs_label", page_01_main_obj, page_01_main_len);
-    lv_obj_t* total_amount = find_obj_by_name("total_amount_label", page_01_main_obj, page_01_main_len);
+    lv_obj_t* title_1 = page_01_main_cache_get(&g_main_cache.title_1, "list_demo_label");
+    lv_obj_t* title_2 = page_01_main_cache_get(&g_main_cache.title_2, "list_pcs_label");
+    lv_obj_t* title_3 = page_01_main_cache_get(&g_main_cache.title_3, "list_amount_label");
+    lv_obj_t* total_title = page_01_main_cache_get(&g_main_cache.total_title, "total_label");
+    lv_obj_t* total_pcs = page_01_main_cache_get(&g_main_cache.total_pcs, "total_pcs_label");
+    lv_obj_t* total_amount = page_01_main_cache_get(&g_main_cache.total_amount, "total_amount_label");
 
     if (title_1 == NULL || title_2 == NULL || title_3 == NULL) return;
 
     switch (section) {
     case PAGE_01_DETAIL_SECTION_B:
-        lv_label_set_text(title_1, ui_text_get(UI_TEXT_PAGE01_DETAIL_COL_NO));
-        lv_label_set_text(title_2, ui_text_get(UI_TEXT_PAGE01_DETAIL_COL_SN));
-        lv_label_set_text(title_3, ui_text_get(UI_TEXT_PAGE01_DETAIL_COL_DENOM));
+        label_set_text_if_changed(title_1, ui_text_get(UI_TEXT_PAGE01_DETAIL_COL_NO));
+        label_set_text_if_changed(title_2, ui_text_get(UI_TEXT_PAGE01_DETAIL_COL_SN));
+        label_set_text_if_changed(title_3, ui_text_get(UI_TEXT_PAGE01_DETAIL_COL_DENOM));
+        if (!apply_layout) break;
         lv_obj_set_pos(title_1, 728, 24);
         lv_obj_set_pos(title_2, 780, 24);
         lv_obj_set_pos(title_3, 935, 24);
@@ -558,9 +593,10 @@ static void page_01_main_detail_header_apply(page_01_detail_section_t section)
         if (total_amount) lv_obj_add_flag(total_amount, LV_OBJ_FLAG_HIDDEN);
         break;
     case PAGE_01_DETAIL_SECTION_C:
-        lv_label_set_text(title_1, ui_text_get(UI_TEXT_PAGE01_DETAIL_COL_NO));
-        lv_label_set_text(title_2, ui_text_get(UI_TEXT_PAGE01_DETAIL_COL_PCS));
-        lv_label_set_text(title_3, ui_text_get(UI_TEXT_PAGE01_DETAIL_COL_REJECT));
+        label_set_text_if_changed(title_1, ui_text_get(UI_TEXT_PAGE01_DETAIL_COL_NO));
+        label_set_text_if_changed(title_2, ui_text_get(UI_TEXT_PAGE01_DETAIL_COL_PCS));
+        label_set_text_if_changed(title_3, ui_text_get(UI_TEXT_PAGE01_DETAIL_COL_REJECT));
+        if (!apply_layout) break;
         lv_obj_set_pos(title_1, 728, 24);
         lv_obj_set_pos(title_2, 780, 24);
         lv_obj_set_pos(title_3, 850, 24);
@@ -576,9 +612,10 @@ static void page_01_main_detail_header_apply(page_01_detail_section_t section)
         break;
     case PAGE_01_DETAIL_SECTION_A:
     default:
-        lv_label_set_text(title_1, ui_text_get(UI_TEXT_PAGE01_DETAIL_COL_DENOM));
-        lv_label_set_text(title_2, ui_text_get(UI_TEXT_PAGE01_DETAIL_COL_PCS));
-        lv_label_set_text(title_3, ui_text_get(UI_TEXT_PAGE01_DETAIL_COL_AMOUNT));
+        label_set_text_if_changed(title_1, ui_text_get(UI_TEXT_PAGE01_DETAIL_COL_DENOM));
+        label_set_text_if_changed(title_2, ui_text_get(UI_TEXT_PAGE01_DETAIL_COL_PCS));
+        label_set_text_if_changed(title_3, ui_text_get(UI_TEXT_PAGE01_DETAIL_COL_AMOUNT));
+        if (!apply_layout) break;
         lv_obj_set_pos(title_1, 728, 24);
         lv_obj_set_pos(title_2, 826, 24);
         lv_obj_set_pos(title_3, 933, 24);
@@ -593,6 +630,16 @@ static void page_01_main_detail_header_apply(page_01_detail_section_t section)
         if (total_amount) lv_obj_clear_flag(total_amount, LV_OBJ_FLAG_HIDDEN);
         break;
     }
+}
+
+static bool page_01_main_detail_chrome_changed(page_01_detail_section_t section)
+{
+    bool changed = !g_main_detail_chrome_valid ||
+                   g_main_detail_chrome_section != section;
+
+    g_main_detail_chrome_valid = true;
+    g_main_detail_chrome_section = section;
+    return changed;
 }
 
 static void page_01_main_detail_row_layout_apply(page_01_detail_section_t section,
@@ -673,19 +720,22 @@ static void page_01_main_detail_rows_refresh(page_01_detail_section_t section,
     {
         int row = i + 1;
         int data_row = first_row + i;
-        char denom_buf[32], pcs_buf[32], amount_buf[32];
-        lv_obj_t* denom;
-        lv_obj_t* pcs;
-        lv_obj_t* amount;
+        page_01_main_row_cache_t* row_cache = &g_main_cache.rows[i];
+        lv_obj_t* denom = row_cache->denom;
+        lv_obj_t* pcs = row_cache->pcs;
+        lv_obj_t* amount = row_cache->amount;
         bool row_show = false;
 
-        snprintf(denom_buf, sizeof(denom_buf), "denom_%d_label", row);
-        snprintf(pcs_buf, sizeof(pcs_buf), "pcs_%d_label", row);
-        snprintf(amount_buf, sizeof(amount_buf), "amount_%d_label", row);
+        if (denom == NULL || pcs == NULL || amount == NULL) {
+            char denom_buf[32], pcs_buf[32], amount_buf[32];
 
-        denom = find_obj_by_name(denom_buf, page_01_main_obj, page_01_main_len);
-        pcs = find_obj_by_name(pcs_buf, page_01_main_obj, page_01_main_len);
-        amount = find_obj_by_name(amount_buf, page_01_main_obj, page_01_main_len);
+            snprintf(denom_buf, sizeof(denom_buf), "denom_%d_label", row);
+            snprintf(pcs_buf, sizeof(pcs_buf), "pcs_%d_label", row);
+            snprintf(amount_buf, sizeof(amount_buf), "amount_%d_label", row);
+            denom = page_01_main_cache_get(&row_cache->denom, denom_buf);
+            pcs = page_01_main_cache_get(&row_cache->pcs, pcs_buf);
+            amount = page_01_main_cache_get(&row_cache->amount, amount_buf);
+        }
 
         // 行位置按真实数据行号布局，滚动时每一行跟着内容一起移动
         if (apply_layout) {
@@ -763,6 +813,7 @@ void page_01_main_detail_refresh_rows_only(void)
 
 //主界面右侧详情数据初始化和写入
 void ui_refresh_main_page(void) {
+    uint64_t refresh_started_us = app_clock_monotonic_us();
     counting_sim_t* sim_data = &sim;
     page_01_detail_section_t section = page_01_detail_section_get();
     int first_row = page_01_detail_scroll_first_row_get(section);
@@ -771,12 +822,20 @@ void ui_refresh_main_page(void) {
     char curr_code[4];
     int right_total_pcs = 0;
     float right_total_amount = 0.0f;
+    bool cache_was_empty = g_main_cache.currency == NULL;
+    bool apply_chrome;
 
     currency_state_get_active_code(curr_code);
 
     //main_left_list
-    lv_obj_t* curr_label;
-    curr_label = find_obj_by_name("curr_icon_label", page_01_main_obj, page_01_main_len);
+    lv_obj_t* curr_label = page_01_main_cache_get(&g_main_cache.currency,
+                                                  "curr_icon_label");
+
+    if (cache_was_empty && curr_label != NULL) {
+        g_main_detail_chrome_valid = false;
+        g_main_detail_row_layout_valid = false;
+    }
+    apply_chrome = page_01_main_detail_chrome_changed(section);
 
     if (curr_label && lv_obj_is_valid(curr_label))
     {
@@ -804,7 +863,7 @@ void ui_refresh_main_page(void) {
     //main_right_list
     //清空
 
-    page_01_main_detail_header_apply(section);
+    page_01_main_detail_header_apply(section, apply_chrome);
 
     page_01_main_detail_rows_refresh(
         section, first_row,
@@ -819,17 +878,17 @@ void ui_refresh_main_page(void) {
     }
 
     if (section == PAGE_01_DETAIL_SECTION_A) {
-        update_label_by_name(page_01_main_obj, page_01_main_len, "total_pcs_label", "%d", right_total_pcs);
+        label_set_text_fmt_if_changed(g_main_cache.total_pcs, "%d", right_total_pcs);
 
         char amount_total[32];
-        lv_obj_t* total_amount = find_obj_by_name("total_amount_label", page_01_main_obj, page_01_main_len);
         format_amount_with_comma(amount_total, sizeof(amount_total), right_total_amount);
-        if (total_amount && lv_obj_is_valid(total_amount)) {
-            label_set_text_if_changed(total_amount, amount_total); //更新总金额格式
+        if (g_main_cache.total_amount) {
+            label_set_text_if_changed(g_main_cache.total_amount, amount_total); //更新总金额格式
         }
     }
 
-    if (page_01_main_scroll_container != NULL && lv_obj_is_valid(page_01_main_scroll_container)) {
+    if (apply_chrome && page_01_main_scroll_container != NULL &&
+        lv_obj_is_valid(page_01_main_scroll_container)) {
         // 主界面详情区始终允许上下滑动
         lv_obj_add_flag(page_01_main_scroll_container,
                         LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC);
@@ -842,7 +901,11 @@ void ui_refresh_main_page(void) {
             lv_obj_set_style_anim_time(page_01_main_scroll_container, 300, 0);
         }
     }
-    page_01_err_num_refre();
+    label_set_text_fmt_if_changed(
+        page_01_main_cache_get(&g_main_cache.reject_pcs, "reject_num_label"),
+        "%d", counting_data_reject_pcs_count(&sim));
+    perf_stats_report_main_refresh_time_us(app_clock_elapsed_us32(
+        refresh_started_us, app_clock_monotonic_us()));
 }
 
 void ui_count_end_anim_cancel(void)
@@ -896,6 +959,8 @@ void cleanup_counting_sim(void)
     page_01_main_page_pcs_label = NULL;
     page_01_main_scroll_container = NULL;
     g_main_detail_row_layout_valid = false;
+    g_main_detail_chrome_valid = false;
+    memset(&g_main_cache, 0, sizeof(g_main_cache));
 
     counting_data_clear_errors(&sim);
     counting_data_clear_serials(&sim);

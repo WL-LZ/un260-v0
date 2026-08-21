@@ -17,6 +17,7 @@ typedef struct {
 
 static perf_time_accumulator_t g_lvgl_time;
 static perf_time_accumulator_t g_loop_time;
+static perf_time_accumulator_t g_main_refresh_time;
 
 static void perf_time_report(perf_time_accumulator_t *time,
                              uint32_t elapsed_us)
@@ -54,10 +55,13 @@ void perf_stats_init(void)
     g_perf_stats.lvgl_max_ms = 0.0f;
     g_perf_stats.loop_avg_ms = 0.0f;
     g_perf_stats.loop_max_ms = 0.0f;
+    g_perf_stats.main_refresh_avg_ms = 0.0f;
+    g_perf_stats.main_refresh_max_ms = 0.0f;
     g_perf_stats.cpu_valid = false;
     g_perf_stats.mem_valid = false;
     g_lvgl_time = (perf_time_accumulator_t){0};
     g_loop_time = (perf_time_accumulator_t){0};
+    g_main_refresh_time = (perf_time_accumulator_t){0};
     g_cpu_prev_valid = (cpu_occupy_get(&g_cpu_prev) == 0);
 }
 
@@ -71,10 +75,16 @@ void perf_stats_report_loop_time_us(uint32_t elapsed_us)
     perf_time_report(&g_loop_time, elapsed_us);
 }
 
+void perf_stats_report_main_refresh_time_us(uint32_t elapsed_us)
+{
+    perf_time_report(&g_main_refresh_time, elapsed_us);
+}
+
 void perf_stats_reset_window(void)
 {
     g_lvgl_time = (perf_time_accumulator_t){0};
     g_loop_time = (perf_time_accumulator_t){0};
+    g_main_refresh_time = (perf_time_accumulator_t){0};
     g_cpu_prev_valid = (cpu_occupy_get(&g_cpu_prev) == 0);
 }
 
@@ -115,6 +125,11 @@ void perf_stats_sample(void)
     perf_time_sample(&g_loop_time,
                      &g_perf_stats.loop_avg_ms,
                      &g_perf_stats.loop_max_ms);
+    if (g_main_refresh_time.count > 0) {
+        perf_time_sample(&g_main_refresh_time,
+                         &g_perf_stats.main_refresh_avg_ms,
+                         &g_perf_stats.main_refresh_max_ms);
+    }
 }
 
 void perf_stats_get_snapshot(perf_stats_snapshot_t *out)
