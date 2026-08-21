@@ -11,8 +11,6 @@ extern "C" {
 
 #include "uart_io.h"
 
-extern const char* const g_start_error_desc[0x12];
-
 /* 打开串口设备 */
 int uart_open(const char *device);
 
@@ -28,29 +26,6 @@ int uart_config(int fd, int baud, int dataBit, char parity, int stopBit);
 /* 关闭串口 */
 void uart_close(int fd);
 
-void machine_handshake_send(void);
-
-typedef uint8_t Machine_Mode_t;
-
-#define Machine_MODE_MDC   0x03
-#define Machine_MODE_SDC   0x04
-#define Machine_MODE_CNT   0x05
-#define Machine_MODE_MAX   0x06
-#define Machine_AUT_MODE_MDC 0X01
-#define Machine_MUL_MODE_MDC 0X02
-#define Machine_CURR_MDOE_MAX 0X03
-
-#define Query_ver_cmd 0x01
-#define curr_cmd 0x01
-
-void boot_send_next_selftest(void);
-uint8_t boot_get_selftest_step(void); // 获取当前自检步骤
-// CIS校准命令
-void boot_handshake_waiting_log_reset(void);
-
-#define BOOT_FAULT_QUERY_WAIT_MS      1000
-
-#define CIS_Calib_cmd  0x01
 #ifdef __cplusplus
 }
 #endif

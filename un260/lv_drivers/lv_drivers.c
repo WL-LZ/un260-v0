@@ -1,37 +1,11 @@
 #include "lv_drivers.h"
 #include "uart_io.h"
-#include "un260/lv_system/app_clock.h"
-#include "un260/protocol/protocol_send.h"
-#include "un260/boot/boot_service.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
 #include <termios.h>
 #include <string.h>
 #include <unistd.h>
-#include "un260/lv_system/user_cfg.h"
-#include "un260/lv_core/lv_page_manager.h"
-#include "un260/lv_core/page_08_boot.h"
-
-static bool g_boot_waiting_log_shown = false;
-
-
-const char* const g_start_error_desc[0x12] = {
-    [0x00] = "No Error",
-    [0x01] = "Upper Channel Error",
-    [0x02] = "Lower Channel Error",
-    [0x03] = "Reject Exit Error",
-    [0x04] = "Reject Pocket Error",
-    [0x05] = "Reject Pocket Full Only",
-    [0x06] = "Stacker Pocket Error",
-    [0x07] = "Stacker Pocket Full Only",
-    [0x08] = "Stacker and Reject Pockets Full",
-    [0x09] = "Upper and Lower Channels Not Closed",
-    [0x0A] = "Genuine Note Exit Error",
-    [0x0B] = "Dust Cover / Baffle Closure Error",
-    [0x0C] = "Flap Error",
-    [0x0D] = "Encoder Disk Error",
-};
 
 
 /* 打开串口 */
@@ -109,35 +83,4 @@ int uart_config(int fd, int baud, int dataBit, char parity, int stopBit)
 void uart_close(int fd)
 {
     if (fd >= 0) close(fd);
-}
-
-
-void machine_handshake_send(void)
-{
-    uint32_t now = app_clock_uptime_ms();
-    uint8_t payload = 0x01;
-
-    boot_service_start(now);
-    boot_service_request_handshake(now);
-    protocol_send(0x01, &payload, 1);
-}
-
-void boot_send_next_selftest(void)
-{
-    uint8_t protocol_step;
-
-    boot_selftest_list_sync_step(boot_service_self_test_sequence_index());
-    if (boot_service_next_self_test_protocol_step(&protocol_step)) {
-        protocol_send(0x37, &protocol_step, 1);
-    }
-}
-
-uint8_t boot_get_selftest_step(void) // 获取当前自检步骤
-{
-    return boot_service_self_test_sequence_index();
-}
-
-void boot_handshake_waiting_log_reset(void)
-{
-    g_boot_waiting_log_shown = false;
 }

@@ -129,12 +129,14 @@ static void app_counting_runtime_on_error_frame(const char *tag,
 
 static const char *app_counting_runtime_start_ui_error_desc(uint8_t code)
 {
+    const char *description;
+
     if (code == 0x00) {
         return ui_text_get(UI_TEXT_WIDGET_FAULT_NO_NOTE_MAIN);
     }
-    if (code < sizeof(g_start_error_desc) / sizeof(g_start_error_desc[0]) &&
-        g_start_error_desc[code] != NULL) {
-        return g_start_error_desc[code];
+    description = machine_start_error_desc(code);
+    if (description != NULL) {
+        return description;
     }
     return ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_COUNT_ERROR);
 }

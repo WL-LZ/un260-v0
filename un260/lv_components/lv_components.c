@@ -6,7 +6,6 @@
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_core/page_01_main.h"
-#include "un260/lv_drivers/lv_drivers.h"
 #include "un260/protocol/protocol_send.h"
 #include "un260/app_service/setting_service.h"
 #include "un260/machine_state/machine_state.h"
@@ -725,13 +724,15 @@ const char* get_counting_error_desc(uint8_t type, uint8_t code)
 
 static const char* get_counting_ui_error_desc(uint8_t type, uint8_t code)
 {
+    const char *description;
+
     if (type == 0x01 && (code == 0x00 || code == 0x02)) {
         return ui_text_get(UI_TEXT_WIDGET_FAULT_NO_NOTE_MAIN);
     }
 
-    if (code < sizeof(g_start_error_desc) / sizeof(g_start_error_desc[0]) &&
-        g_start_error_desc[code] != NULL) {
-        return g_start_error_desc[code];
+    description = machine_start_error_desc(code);
+    if (description != NULL) {
+        return description;
     }
 
     return ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_COUNT_ERROR);

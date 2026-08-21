@@ -11,7 +11,6 @@
 #include "un260/lv_components/lv_fault_popup.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/page_08_boot.h"
-#include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_core/page_01_main.h"
 #include "un260/protocol/protocol_send.h"
 #include "un260/lv_system/ui_state_runtime.h"
@@ -37,6 +36,25 @@ static void app_boot_runtime_request_currency_list(void)
     const uint8_t request = APP_BOOT_CURRENCY_LIST_REQUEST;
 
     protocol_send(APP_BOOT_CURRENCY_LIST_CMD, &request, 1);
+}
+
+static void app_boot_runtime_send_handshake(uint32_t now_ms)
+{
+    const uint8_t payload = 0x01;
+
+    boot_service_start(now_ms);
+    boot_service_request_handshake(now_ms);
+    protocol_send(0x01, &payload, 1);
+}
+
+static void app_boot_runtime_send_next_selftest(void)
+{
+    uint8_t protocol_step;
+
+    boot_selftest_list_sync_step(boot_service_self_test_sequence_index());
+    if (boot_service_next_self_test_protocol_step(&protocol_step)) {
+        protocol_send(0x37, &protocol_step, 1);
+    }
 }
 
 static void app_boot_runtime_finish(counting_session_state_t *counting_session)
@@ -69,7 +87,7 @@ void app_boot_runtime_handle_reply(counting_session_state_t *counting_session,
 
     if (reply.kind == BOOT_REPLY_HANDSHAKE_ACCEPTED) {
         boot_progress_set(20);
-        boot_send_next_selftest();
+        app_boot_runtime_send_next_selftest();
         return;
     }
     if (reply.kind != BOOT_REPLY_SELF_TEST_RECORDED) {
@@ -80,7 +98,7 @@ void app_boot_runtime_handle_reply(counting_session_state_t *counting_session,
     boot_progress_set((uint8_t)(30 + reply.self_test_index * 10));
 
     if (reply.self_test_event == BOOT_SELF_TEST_EVENT_NONE) {
-        boot_send_next_selftest();
+        app_boot_runtime_send_next_selftest();
     } else if (reply.self_test_event == BOOT_SELF_TEST_EVENT_SUCCESS) {
         boot_progress_set(100);
         if (g_boot_finish_timer != NULL) {
@@ -110,7 +128,7 @@ void app_boot_runtime_poll(uint32_t now_ms, bool boot_page_active)
 
     action = boot_service_poll(now_ms);
     if (action == BOOT_SERVICE_ACTION_SEND_HANDSHAKE) {
-        machine_handshake_send();
+        app_boot_runtime_send_handshake(now_ms);
     } else if (action == BOOT_SERVICE_ACTION_HANDSHAKE_TIMEOUT) {
         show_boot_selftest_error_popup(
             "Controller handshake timeout.\nPress CONFIRM to enter sensor page.");

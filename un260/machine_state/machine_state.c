@@ -21,6 +21,23 @@ static machine_state_snapshot_t g_machine_state = {
     .reject_pocket_max = REJECT_POCKET_MIN_CAPACITY,
 };
 
+static const char *const g_machine_start_error_desc[] = {
+    [0x00] = "No Error",
+    [0x01] = "Upper Channel Error",
+    [0x02] = "Lower Channel Error",
+    [0x03] = "Reject Exit Error",
+    [0x04] = "Reject Pocket Error",
+    [0x05] = "Reject Pocket Full Only",
+    [0x06] = "Stacker Pocket Error",
+    [0x07] = "Stacker Pocket Full Only",
+    [0x08] = "Stacker and Reject Pockets Full",
+    [0x09] = "Upper and Lower Channels Not Closed",
+    [0x0A] = "Genuine Note Exit Error",
+    [0x0B] = "Dust Cover / Baffle Closure Error",
+    [0x0C] = "Flap Error",
+    [0x0D] = "Encoder Disk Error",
+};
+
 void machine_state_get_snapshot(machine_state_snapshot_t *snapshot)
 {
     if (snapshot != NULL) *snapshot = g_machine_state;
@@ -187,4 +204,13 @@ void machine_state_confirm_reject_pocket_max(uint8_t capacity)
 uint8_t machine_state_reject_pocket_max(void)
 {
     return g_machine_state.reject_pocket_max;
+}
+
+const char *machine_start_error_desc(uint8_t code)
+{
+    if (code >= sizeof(g_machine_start_error_desc) /
+                sizeof(g_machine_start_error_desc[0])) {
+        return NULL;
+    }
+    return g_machine_start_error_desc[code];
 }

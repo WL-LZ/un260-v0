@@ -67,4 +67,7 @@ uint8_t machine_state_flap_position(void);
 void machine_state_confirm_reject_pocket_max(uint8_t capacity);
 uint8_t machine_state_reject_pocket_max(void);
 
+/* Returns NULL when the controller start-error code is unknown. */
+const char *machine_start_error_desc(uint8_t code);
+
 #endif
