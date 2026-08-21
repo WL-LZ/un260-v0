@@ -4,11 +4,15 @@
 #include "un260/diagnostic/diagnostic.h"
 #include "un260/lv_components/lv_components.h"
 #include "un260/lv_core/page_09_cis_cala.h"
+#include "un260/lv_core/page_28_get_image.h"
+#include "un260/lv_core/page_31_get_wave.h"
 #include "un260/lv_components/lv_upgrade_popup.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/ui_upgrade_service.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/ui_screenshot.h"
+
+#include <stdbool.h>
 
 #define APP_UI_UPGRADE_DETECT_INTERVAL_MS 500U
 
@@ -35,9 +39,20 @@ static void app_ui_runtime_poll_upgrade(uint32_t now_ms)
 
 void app_ui_runtime_poll(uint32_t now_ms)
 {
+    bool stream_timed_out = false;
+
     app_setting_runtime_poll(now_ms);
     if (diagnostic_calibration_poll(now_ms)) {
         cis_calib_ui_refresh();
+        show_communication_error_popup();
+    }
+    if (ui_page_28_get_image_poll(now_ms)) {
+        stream_timed_out = true;
+    }
+    if (ui_page_31_get_wave_poll(now_ms)) {
+        stream_timed_out = true;
+    }
+    if (stream_timed_out) {
         show_communication_error_popup();
     }
     ui_screenshot_indicator_poll();

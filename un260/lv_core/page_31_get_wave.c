@@ -1,6 +1,7 @@
 #include "page_31_get_wave.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/settings_detail_ui.h"
+#include "un260/app_service/app_clock.h"
 #include "un260/lv_system/ui_text.h"
 
 #include <stdbool.h>
@@ -11,6 +12,8 @@
 #define WAVE_POINT_MAX 256
 #define WAVE_PREVIEW_W 760
 #define WAVE_PREVIEW_H 210
+#define WAVE_REQUEST_TIMEOUT_MS 5000U
+#define WAVE_LATE_FRAME_GUARD_MS 3000U
 
 typedef struct {
     uint8_t id;
@@ -40,12 +43,55 @@ static lv_obj_t* wave_line = NULL;
 static lv_obj_t* wave_placeholder = NULL;
 static lv_obj_t* wave_status_label = NULL;
 static lv_obj_t* wave_title_label = NULL;
+static lv_obj_t* wave_request_button = NULL;
 static wave_source_item_t source_items[WAVE_SOURCE_COUNT] = { 0 };
 static lv_point_t wave_points[WAVE_POINT_MAX];
 static uint8_t wave_values[WAVE_SOURCE_COUNT][WAVE_POINT_MAX];
 static uint16_t wave_value_counts[WAVE_SOURCE_COUNT] = { 0 };
 static uint16_t wave_current_count = 0;
 static uint8_t selected_wave_id = 1;
+static bool wave_request_active = false;
+static uint32_t wave_request_deadline = 0;
+static uint32_t wave_late_guard_deadline = 0;
+
+static bool wave_time_reached(uint32_t now_ms, uint32_t deadline_ms)
+{
+    return deadline_ms != 0 && (int32_t)(now_ms - deadline_ms) >= 0;
+}
+
+static bool wave_guard_active(uint32_t now_ms)
+{
+    if (wave_time_reached(now_ms, wave_late_guard_deadline)) {
+        wave_late_guard_deadline = 0;
+    }
+    return wave_late_guard_deadline != 0;
+}
+
+static void wave_refresh_request_button(uint32_t now_ms)
+{
+    if (!wave_request_button || !lv_obj_is_valid(wave_request_button)) return;
+
+    if (wave_request_active || wave_guard_active(now_ms)) {
+        lv_obj_add_state(wave_request_button, LV_STATE_DISABLED);
+    } else {
+        lv_obj_clear_state(wave_request_button, LV_STATE_DISABLED);
+    }
+}
+
+static void wave_request_touch(uint32_t now_ms)
+{
+    wave_request_deadline = now_ms + WAVE_REQUEST_TIMEOUT_MS;
+}
+
+static void wave_request_finish(uint32_t now_ms, bool guard_late_frames)
+{
+    wave_request_active = false;
+    wave_request_deadline = 0;
+    if (guard_late_frames) {
+        wave_late_guard_deadline = now_ms + WAVE_LATE_FRAME_GUARD_MS;
+    }
+    wave_refresh_request_button(now_ms);
+}
 
 static const wave_source_t* wave_find_source(uint8_t id)
 {
@@ -211,10 +257,16 @@ static void wave_request_cb(lv_event_t* e)
 
 bool ui_page_31_get_wave_request(void)
 {
+    uint32_t now_ms = app_clock_uptime_ms();
+
     if (!wave_page || !lv_obj_is_valid(wave_page)) return false;
+    if (wave_request_active || wave_guard_active(now_ms)) return false;
 
     wave_clear_data();
     if (wave_send_request()) {
+        wave_request_active = true;
+        wave_request_touch(now_ms);
+        wave_refresh_request_button(now_ms);
         for (size_t i = 0; i < WAVE_SOURCE_COUNT; i++) {
             wave_value_counts[i] = 0;
         }
@@ -384,14 +436,21 @@ void ui_page_31_get_wave_create(lv_obj_t* parent)
 
     wave_create_left_panel(content);
     wave_create_preview(content);
-    settings_detail_create_button(wave_page, 1004, 10, 136, 35,
-                                  ui_text_get(UI_TEXT_SETTINGS_WAVE_GET_BUTTON),
-                                  lv_color_hex(0x0878C8), wave_request_cb, NULL);
+    wave_request_button = settings_detail_create_button(
+        wave_page, 1004, 10, 136, 35,
+        ui_text_get(UI_TEXT_SETTINGS_WAVE_GET_BUTTON),
+        lv_color_hex(0x0878C8), wave_request_cb, NULL);
+    wave_refresh_request_button(app_clock_uptime_ms());
     wave_refresh_sources();
 }
 
 void ui_page_31_get_wave_destroy(void)
 {
+    uint32_t now_ms = app_clock_uptime_ms();
+
+    if (wave_request_active) {
+        wave_request_finish(now_ms, true);
+    }
     if (wave_page && lv_obj_is_valid(wave_page)) {
         lv_obj_del(wave_page);
     }
@@ -402,6 +461,7 @@ void ui_page_31_get_wave_destroy(void)
     wave_placeholder = NULL;
     wave_status_label = NULL;
     wave_title_label = NULL;
+    wave_request_button = NULL;
     selected_wave_id = 1;
     wave_current_count = 0;
     for (size_t i = 0; i < WAVE_SOURCE_COUNT; i++) {
@@ -418,13 +478,17 @@ void ui_page_31_get_wave_destroy(void)
 void ui_page_31_get_wave_on_frame(const uint8_t* data, uint16_t len)
 {
     uint8_t sub;
+    uint32_t now_ms;
     const wave_source_t* source;
 
     if (!data || len < 1) return;
     if (!wave_page || !lv_obj_is_valid(wave_page)) return;
+    if (!wave_request_active) return;
 
     sub = data[0];
+    now_ms = app_clock_uptime_ms();
     if (sub == 0x00) {
+        wave_request_finish(now_ms, false);
         wave_clear_data();
         wave_set_status(ui_text_get(UI_TEXT_SETTINGS_WAVE_GET_NO_DATA),
                         lv_color_hex(0xF59D2A));
@@ -432,6 +496,7 @@ void ui_page_31_get_wave_on_frame(const uint8_t* data, uint16_t len)
     }
 
     if (sub < 0x01 || sub > WAVE_SOURCE_COUNT) return;
+    wave_request_touch(now_ms);
 
     if (sub == selected_wave_id) {
         source = wave_find_source(selected_wave_id);
@@ -441,4 +506,23 @@ void ui_page_31_get_wave_on_frame(const uint8_t* data, uint16_t len)
         wave_refresh_sources();
     }
     wave_store_values(sub, &data[1], (uint16_t)(len - 1));
+    if (sub == WAVE_SOURCE_COUNT) {
+        wave_request_finish(now_ms, false);
+    }
+}
+
+bool ui_page_31_get_wave_poll(uint32_t now_ms)
+{
+    bool timed_out = false;
+
+    if (wave_request_active && wave_time_reached(now_ms, wave_request_deadline)) {
+        wave_request_finish(now_ms, true);
+        wave_set_status(ui_text_get(UI_TEXT_SETTINGS_WAVE_GET_TIMEOUT),
+                        lv_color_hex(0xC03A2B));
+        timed_out = true;
+    } else {
+        wave_refresh_request_button(now_ms);
+    }
+
+    return timed_out;
 }

@@ -1,6 +1,7 @@
 #include "page_28_get_image.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/settings_detail_ui.h"
+#include "un260/app_service/app_clock.h"
 #include "un260/lv_system/ui_text.h"
 
 #include <stdbool.h>
@@ -12,6 +13,8 @@
 #define IMAGE_MAX_HEIGHT 384
 #define IMAGE_PREVIEW_W 760
 #define IMAGE_PREVIEW_H 230
+#define IMAGE_REQUEST_TIMEOUT_MS 5000U
+#define IMAGE_LATE_FRAME_GUARD_MS 3000U
 
 typedef struct {
     uint8_t id;
@@ -47,10 +50,53 @@ static lv_obj_t* image_canvas = NULL;
 static lv_obj_t* image_placeholder = NULL;
 static lv_obj_t* image_status_label = NULL;
 static lv_obj_t* image_title_label = NULL;
+static lv_obj_t* image_request_button = NULL;
 static image_source_item_t source_items[IMAGE_SOURCE_COUNT] = { 0 };
 static image_buffer_t image_buffers[IMAGE_SOURCE_COUNT] = { 0 };
 static uint16_t reported_image_length = 0;
 static uint8_t selected_image_id = 1;
+static bool image_request_active = false;
+static uint32_t image_request_deadline = 0;
+static uint32_t image_late_guard_deadline = 0;
+
+static bool image_time_reached(uint32_t now_ms, uint32_t deadline_ms)
+{
+    return deadline_ms != 0 && (int32_t)(now_ms - deadline_ms) >= 0;
+}
+
+static bool image_guard_active(uint32_t now_ms)
+{
+    if (image_time_reached(now_ms, image_late_guard_deadline)) {
+        image_late_guard_deadline = 0;
+    }
+    return image_late_guard_deadline != 0;
+}
+
+static void image_refresh_request_button(uint32_t now_ms)
+{
+    if (!image_request_button || !lv_obj_is_valid(image_request_button)) return;
+
+    if (image_request_active || image_guard_active(now_ms)) {
+        lv_obj_add_state(image_request_button, LV_STATE_DISABLED);
+    } else {
+        lv_obj_clear_state(image_request_button, LV_STATE_DISABLED);
+    }
+}
+
+static void image_request_touch(uint32_t now_ms)
+{
+    image_request_deadline = now_ms + IMAGE_REQUEST_TIMEOUT_MS;
+}
+
+static void image_request_finish(uint32_t now_ms, bool guard_late_frames)
+{
+    image_request_active = false;
+    image_request_deadline = 0;
+    if (guard_late_frames) {
+        image_late_guard_deadline = now_ms + IMAGE_LATE_FRAME_GUARD_MS;
+    }
+    image_refresh_request_button(now_ms);
+}
 
 static const image_source_t* image_find_source(uint8_t id)
 {
@@ -326,10 +372,18 @@ static bool image_send_request(void)
 
 static void image_request_cb(lv_event_t* e)
 {
+    uint32_t now_ms;
+
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+
+    now_ms = app_clock_uptime_ms();
+    if (image_request_active || image_guard_active(now_ms)) return;
 
     image_clear_buffer();
     if (image_send_request()) {
+        image_request_active = true;
+        image_request_touch(now_ms);
+        image_refresh_request_button(now_ms);
         image_set_status(ui_text_get(UI_TEXT_SETTINGS_IMAGE_GET_WAITING),
                          lv_color_hex(0x0878C8));
     }
@@ -469,14 +523,21 @@ void ui_page_28_get_image_create(lv_obj_t* parent)
 
     image_create_left_panel(content);
     image_create_preview(content);
-    settings_detail_create_button(image_page, 1004, 10, 136, 35,
-                                  ui_text_get(UI_TEXT_SETTINGS_IMAGE_GET_BUTTON),
-                                  lv_color_hex(0x0878C8), image_request_cb, NULL);
+    image_request_button = settings_detail_create_button(
+        image_page, 1004, 10, 136, 35,
+        ui_text_get(UI_TEXT_SETTINGS_IMAGE_GET_BUTTON),
+        lv_color_hex(0x0878C8), image_request_cb, NULL);
+    image_refresh_request_button(app_clock_uptime_ms());
     image_refresh_sources();
 }
 
 void ui_page_28_get_image_destroy(void)
 {
+    uint32_t now_ms = app_clock_uptime_ms();
+
+    if (image_request_active) {
+        image_request_finish(now_ms, true);
+    }
     image_clear_buffer();
 
     if (image_page && lv_obj_is_valid(image_page)) {
@@ -488,6 +549,7 @@ void ui_page_28_get_image_destroy(void)
     image_placeholder = NULL;
     image_status_label = NULL;
     image_title_label = NULL;
+    image_request_button = NULL;
     selected_image_id = 1;
 
     for (size_t i = 0; i < IMAGE_SOURCE_COUNT; i++) {
@@ -500,11 +562,14 @@ void ui_page_28_get_image_destroy(void)
 void ui_page_28_get_image_on_frame(const uint8_t* data, uint16_t len)
 {
     uint8_t sub;
+    uint32_t now_ms;
 
     if (!data || len < 1) return;
     if (!image_page || !lv_obj_is_valid(image_page)) return;
+    if (!image_request_active) return;
 
     sub = data[0];
+    now_ms = app_clock_uptime_ms();
     if (sub == 0x00) {
         uint8_t image_id;
         uint16_t length;
@@ -512,6 +577,7 @@ void ui_page_28_get_image_on_frame(const uint8_t* data, uint16_t len)
         if (len < 6) return;
         image_id = data[1];
         if (image_id < 1 || image_id > IMAGE_SOURCE_COUNT) return;
+        image_request_touch(now_ms);
         length = (uint16_t)(((uint16_t)data[2] << 8) | data[3]);
         image_clear_buffer();
         reported_image_length = length;
@@ -523,6 +589,7 @@ void ui_page_28_get_image_on_frame(const uint8_t* data, uint16_t len)
     }
 
     if (sub == 0xFF) {
+        image_request_finish(now_ms, false);
         for (size_t i = 0; i < IMAGE_SOURCE_COUNT; i++) {
             image_buffers[i].receiving = false;
         }
@@ -538,7 +605,24 @@ void ui_page_28_get_image_on_frame(const uint8_t* data, uint16_t len)
         uint16_t row;
 
         if (len < 4) return;
+        image_request_touch(now_ms);
         row = (uint16_t)(((uint16_t)data[1] << 8) | data[2]);
         image_draw_row(sub, row, &data[3], (uint16_t)(len - 3));
     }
+}
+
+bool ui_page_28_get_image_poll(uint32_t now_ms)
+{
+    bool timed_out = false;
+
+    if (image_request_active && image_time_reached(now_ms, image_request_deadline)) {
+        image_request_finish(now_ms, true);
+        image_set_status(ui_text_get(UI_TEXT_SETTINGS_IMAGE_GET_TIMEOUT),
+                         lv_color_hex(0xC03A2B));
+        timed_out = true;
+    } else {
+        image_refresh_request_button(now_ms);
+    }
+
+    return timed_out;
 }
