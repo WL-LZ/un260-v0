@@ -1,6 +1,7 @@
 #include "counting_denom_query_service.h"
 
 #include <stddef.h>
+#include <string.h>
 
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/protocol/protocol_send.h"
@@ -39,11 +40,16 @@ void counting_denom_query_invalidate(counting_detail_state_t *detail)
     }
 }
 
-void counting_denom_query_mark_start(counting_detail_state_t *detail)
+bool counting_denom_query_mark_start(counting_detail_state_t *detail)
 {
-    if (detail != NULL && detail->query_pending) {
-        detail->query_started = true;
+    if (detail == NULL || !detail->query_pending) {
+        return false;
     }
+
+    memset(detail->query_denom, 0, sizeof(detail->query_denom));
+    detail->query_denom_number = 0;
+    detail->query_started = true;
+    return true;
 }
 
 bool counting_denom_query_accepts_data(const counting_detail_state_t *detail)
@@ -72,6 +78,19 @@ bool counting_denom_query_complete(counting_detail_state_t *detail)
     }
     detail->query_started = false;
     return was_pending;
+}
+
+bool counting_denom_query_commit(const counting_detail_state_t *detail,
+                                 counting_sim_t *sim_data)
+{
+    if (detail == NULL || sim_data == NULL || !detail->query_complete ||
+        detail->query_denom_number > COUNTING_DENOM_MAX_ITEMS) {
+        return false;
+    }
+
+    memcpy(sim_data->denom, detail->query_denom, sizeof(sim_data->denom));
+    sim_data->denom_number = detail->query_denom_number;
+    return true;
 }
 
 void counting_denom_query_trigger(counting_detail_state_t *detail,

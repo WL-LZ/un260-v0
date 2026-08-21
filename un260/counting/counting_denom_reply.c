@@ -82,6 +82,7 @@ static uint16_t counting_denom_add_pcs(uint16_t current, int increment)
 static counting_denom_reply_result_t counting_denom_handle_end(
     counting_detail_state_t *detail,
     const counting_session_state_t *session,
+    counting_sim_t *sim_data,
     const uint8_t *buf,
     uint8_t len,
     const counting_denom_reply_hooks_t *hooks)
@@ -93,8 +94,14 @@ static counting_denom_reply_result_t counting_denom_handle_end(
     counting_denom_record_history(hooks, buf, len);
 
     if (query_was_pending) {
-        if (!session->active) {
+        if (session->active || session->wait_start_ack ||
+            session->end_anim_wait_detail || session->last_result.valid) {
+            uart_printf(fd6,
+                        "0x0B query result discarded during counting session\n");
+        } else if (counting_denom_query_commit(detail, sim_data)) {
             ui_refresh_main_page();
+        } else {
+            uart_printf(fd6, "0x0B query result commit failed\n");
         }
         return COUNTING_DENOM_REPLY_QUERY_END;
     }
@@ -117,13 +124,15 @@ static counting_denom_reply_result_t counting_denom_handle_data(
     uint8_t len,
     const counting_denom_reply_hooks_t *hooks)
 {
-    int denom_capacity = (int)(sizeof(sim_data->denom) / sizeof(sim_data->denom[0]));
+    denom_t *denom_items;
+    uint8_t *denom_count;
+    int denom_capacity = COUNTING_DENOM_MAX_ITEMS;
     int denom;
     int pcs;
 
     if (!counting_denom_parse_decimal(&buf[4], 8, &denom) ||
         !counting_denom_parse_decimal(&buf[12], 3, &pcs) ||
-        denom <= 0 || pcs < 0 || sim_data->denom_number > denom_capacity) {
+        denom <= 0 || pcs < 0) {
         uart_printf(fd6, "0x0B invalid denom detail frame\n");
         return COUNTING_DENOM_REPLY_IGNORED;
     }
@@ -131,31 +140,44 @@ static counting_denom_reply_result_t counting_denom_handle_data(
         uart_printf(fd6, "0x0B query data ignored before start frame\n");
         return COUNTING_DENOM_REPLY_IGNORED;
     }
+    if (detail->query_pending) {
+        denom_items = detail->query_denom;
+        denom_count = &detail->query_denom_number;
+    } else {
+        denom_items = sim_data->denom;
+        denom_count = &sim_data->denom_number;
+    }
+    if (*denom_count > denom_capacity) {
+        uart_printf(fd6, "0x0B invalid denom item count=%u\n",
+                    (unsigned int)*denom_count);
+        return COUNTING_DENOM_REPLY_IGNORED;
+    }
 
     counting_denom_record_history(hooks, buf, len);
 
-    for (int i = 0; i < sim_data->denom_number; i++) {
-        if (sim_data->denom[i].value == denom) {
-            uint16_t old_pcs = sim_data->denom[i].pcs;
+    for (int i = 0; i < *denom_count; i++) {
+        if (denom_items[i].value == denom) {
+            uint16_t old_pcs = denom_items[i].pcs;
 
-            sim_data->denom[i].pcs = counting_denom_add_pcs(old_pcs, pcs);
-            if (sim_data->denom[i].pcs == UINT16_MAX &&
+            denom_items[i].pcs = counting_denom_add_pcs(old_pcs, pcs);
+            if (denom_items[i].pcs == UINT16_MAX &&
                 ((unsigned int)pcs > UINT16_MAX - old_pcs)) {
                 uart_printf(fd6, "0x0B denom pcs saturated value=%d\n", denom);
             }
-            sim_data->denom[i].amount =
-                (float)denom * (float)sim_data->denom[i].pcs;
+            denom_items[i].amount =
+                (float)denom * (float)denom_items[i].pcs;
             return COUNTING_DENOM_REPLY_DATA;
         }
     }
 
-    if (sim_data->denom_number < denom_capacity) {
-        int index = sim_data->denom_number;
-        sim_data->denom[index].value = denom;
-        sim_data->denom[index].pcs = counting_denom_add_pcs(0, pcs);
-        sim_data->denom[index].amount =
-            (float)denom * (float)sim_data->denom[index].pcs;
-        sim_data->denom_number++;
+    if (*denom_count < denom_capacity) {
+        int index = *denom_count;
+
+        denom_items[index].value = denom;
+        denom_items[index].pcs = counting_denom_add_pcs(0, pcs);
+        denom_items[index].amount =
+            (float)denom * (float)denom_items[index].pcs;
+        (*denom_count)++;
         return COUNTING_DENOM_REPLY_DATA;
     }
 
@@ -176,16 +198,18 @@ counting_denom_reply_result_t counting_denom_reply_handle(
     }
 
     if (counting_denom_payload_is(buf, 0x00)) {
-        memset(sim_data->denom, 0, sizeof(sim_data->denom));
-        sim_data->denom_number = 0;
-        counting_denom_query_mark_start(detail);
+        if (!counting_denom_query_mark_start(detail)) {
+            memset(sim_data->denom, 0, sizeof(sim_data->denom));
+            sim_data->denom_number = 0;
+        }
         counting_denom_record_history(hooks, buf, len);
         uart_printf(fd6, "0x0B denom detail receive start\n");
         return COUNTING_DENOM_REPLY_START;
     }
 
     if (counting_denom_payload_is(buf, 0xFF)) {
-        return counting_denom_handle_end(detail, session, buf, len, hooks);
+        return counting_denom_handle_end(detail, session, sim_data,
+                                         buf, len, hooks);
     }
 
     return counting_denom_handle_data(detail, sim_data, buf, len, hooks);

@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #define COUNTING_DATA_MAX_ITEMS 10000
+#define COUNTING_DENOM_MAX_ITEMS 15
 
 typedef struct {
     int value;
@@ -13,7 +14,7 @@ typedef struct {
 } denom_t;
 
 typedef struct {
-    denom_t denom[15];
+    denom_t denom[COUNTING_DENOM_MAX_ITEMS];
     uint8_t denom_number;
     int total_pcs;
     float total_amount;
