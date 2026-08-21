@@ -19,9 +19,6 @@
 #include "aic_ui/perf_stats.h"
 // 全局变量定义
 counting_sim_t sim = { 0 };
-page_02_report_status_t page_02_a_report_status = { 0 };
-page_02_report_status_t page_02_b_report_status = { 0 };
-page_02_report_status_t page_02_c_report_status = { 0 };
 
 static lv_timer_t *s_sim_timer = NULL;
 lv_obj_t* page_01_main_scroll_container = NULL;
@@ -1011,24 +1008,6 @@ void mode_switch(void)
 {
     
 
-}
-
-void page_02_report_init(void)
-{
-    page_02_a_report_status.curent_page = 1;
-    page_02_a_report_status.total_page = sim.denom_number == 0 ? 1 : (sim.denom_number + PAGE_02_A_ITEM - 1) / PAGE_02_A_ITEM;
-    page_02_b_report_status.curent_page = 1;
-    page_02_b_report_status.total_page = (sim_get_sn_valid_count() == 0)
-        ? 1
-        : ((sim_get_sn_valid_count() + PAGE_02_B_ITEM - 1) / PAGE_02_B_ITEM);
-
-    page_02_c_report_status.curent_page = 1;
-    {
-        int error_count = counting_data_error_detail_count(&sim);
-
-        page_02_c_report_status.total_page = (error_count == 0)
-            ? 1 : ((error_count + PAGE_02_C_ITEM - 1) / PAGE_02_C_ITEM);
-    }
 }
 
 static void sim_reset_counting_data(counting_sim_t *sim_data,

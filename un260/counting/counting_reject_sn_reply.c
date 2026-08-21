@@ -33,24 +33,10 @@ static bool counting_detail_is_main_page_active(
            hooks->is_main_page_active(hooks->context);
 }
 
-static uint8_t counting_reject_page_count(uint16_t item_count)
-{
-    unsigned int page_count;
-
-    if (item_count == 0) {
-        return 1;
-    }
-
-    page_count = ((unsigned int)item_count + PAGE_02_C_ITEM - 1U) / PAGE_02_C_ITEM;
-    return page_count > UINT8_MAX ? UINT8_MAX : (uint8_t)page_count;
-}
-
 static void counting_reject_refresh_pages(const counting_sim_t *sim_data)
 {
-    page_02_c_report_status.total_page = counting_reject_page_count(
-        (uint16_t)counting_data_error_detail_count(sim_data));
-    page_02_c_page_refre();
-    page_02_c_page_num_refre();
+    (void)sim_data;
+    page_02_list_section_data_ready(PAGE_02_SECTION_C);
 }
 
 static counting_detail_reply_result_t counting_reject_reply_handle(
@@ -77,7 +63,6 @@ static counting_detail_reply_result_t counting_reject_reply_handle(
 
     if (err_code == 0xFF && pcs == 0xFF) {
         counting_detail_record_history(hooks, "0x0C", buf, len);
-        page_02_c_report_status.curent_page = 1;
         counting_reject_refresh_pages(sim_data);
         if (hooks != NULL && hooks->on_reject_analysis_ready != NULL) {
             hooks->on_reject_analysis_ready(hooks->context);
@@ -166,9 +151,8 @@ static counting_detail_reply_result_t counting_sn_reply_handle(
     }
 
     if (counting_sn_payload_is(buf, payload_end, 0xFF)) {
-        page_02_report_init();
-        page_02_b_page_refre();
-        page_02_b_page_num_refre();
+        page_02_list_report_reset();
+        page_02_list_section_data_ready(PAGE_02_SECTION_B);
         counting_detail_record_history(hooks, "0x0D", buf, len);
         session->history_record.end_seen = true;
         if (hooks != NULL && hooks->on_history_record_ready != NULL) {

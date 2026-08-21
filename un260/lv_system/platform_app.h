@@ -5,15 +5,6 @@
 #include "un260/lv_resources/lv_img_init.h"
 #include "user_cfg.h"
 
-typedef struct {
-    bool printing;
-    uint8_t curent_page;
-    uint8_t total_page;
-} page_02_report_status_t;
-extern page_02_report_status_t page_02_a_report_status;
-extern page_02_report_status_t page_02_b_report_status;
-extern page_02_report_status_t page_02_c_report_status;
-
 extern counting_sim_t sim;
 
 extern lv_obj_t* page_01_main_scroll_container;
@@ -38,6 +29,5 @@ void sim_reset_for_currency(counting_sim_t* sim_data);
 void update_label_with_simple_highlight(ui_element_t* page_cfg_obj, int len,
     const char* name, const char* fmt, ...);
 void mode_switch(void);
-void page_02_report_init(void);
 void sim_clear_err_only(counting_sim_t* sim_data);
 #endif // !PLATFORM_APP_H

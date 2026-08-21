@@ -12,6 +12,15 @@
 
 static lv_obj_t* list_page = NULL;
 
+typedef struct {
+    uint8_t curent_page;
+    uint8_t total_page;
+} page_02_report_status_t;
+
+static page_02_report_status_t page_02_a_report_status;
+static page_02_report_status_t page_02_b_report_status;
+static page_02_report_status_t page_02_c_report_status;
+
 // 添加长度变量
 int page_02_list_len = 0;
 
@@ -63,6 +72,13 @@ static bool page_02_scroll_section_small_data(page_02_scroll_section_t *section)
 static uint16_t page_02_scroll_section_last_page_first_row_get(page_02_scroll_section_t *section); // 获取最后一页的起始行
 static lv_coord_t page_02_scroll_section_real_bottom_scroll_y_get(page_02_scroll_section_t *section); // 获取真实内容底部的滚动位置
 static lv_coord_t page_02_scroll_section_max_scroll_y_get(page_02_scroll_section_t *section); // 获取分区允许的最大滚动距离
+static void page_02_a_page_refre(void);
+static void page_02_b_page_refre(void);
+static void page_02_c_page_refre(void);
+static void page_02_curr_refre(void);
+static void page_02_a_page_num_refre(void);
+static void page_02_b_page_num_refre(void);
+static void page_02_c_page_num_refre(void);
 
 ui_element_t page_02_list_obj[] = {
 
@@ -760,7 +776,7 @@ static void page_02_scroll_section_event_cb(lv_event_t *e) // 处理滚动与点
     }
 }
 
-void page_02_a_page_refre(void)
+static void page_02_a_page_refre(void)
 {
     update_label_by_name(page_02_list_obj, page_02_list_len,
                          "02_a_pcs_amount", "%d", sim.total_pcs);
@@ -769,19 +785,19 @@ void page_02_a_page_refre(void)
     page_02_list_section_refresh(PAGE_02_SECTION_A);
 }
 
-void page_02_b_page_refre(void)
+static void page_02_b_page_refre(void)
 {
     if (page_02_list_len <= 0) return;
     page_02_list_section_refresh(PAGE_02_SECTION_B);
 }
 
-void page_02_c_page_refre(void)
+static void page_02_c_page_refre(void)
 {
     if (page_02_list_len <= 0) return;
     page_02_list_section_refresh(PAGE_02_SECTION_C);
 }
 
-void page_02_curr_refre(void)
+static void page_02_curr_refre(void)
 {
     char curr_code[4];
 
@@ -790,7 +806,7 @@ void page_02_curr_refre(void)
                          "02_page_curr", "%s", curr_code);
 }
 
-void page_02_a_page_num_refre(void)
+static void page_02_a_page_num_refre(void)
 {
     char page_text[16];
 
@@ -801,7 +817,7 @@ void page_02_a_page_num_refre(void)
                          "02_a_page_refre", "%s", page_text);
 }
 
-void page_02_b_page_num_refre(void)
+static void page_02_b_page_num_refre(void)
 {
     char page_text[16];
     int valid_total = page_02_b_valid_count_get();
@@ -823,7 +839,7 @@ void page_02_b_page_num_refre(void)
                          "02_b_page_refre", "%s", page_text);
 }
 
-void page_02_c_page_num_refre(void)
+static void page_02_c_page_num_refre(void)
 {
     char page_text[16];
 
@@ -848,6 +864,70 @@ void page_02_list_section_refresh_all(void) // 刷新全部分区滚动内容
     for (int i = 0; i < PAGE_02_SECTION_COUNT; i++) {
         page_02_list_section_refresh((page_02_section_id_t)i);
     }
+}
+
+void page_02_list_section_data_ready(page_02_section_id_t section_id)
+{
+    page_02_report_status_t *status = NULL;
+    int item_count;
+    int page_size;
+
+    switch (section_id) {
+    case PAGE_02_SECTION_A:
+        status = &page_02_a_report_status;
+        item_count = page_02_a_valid_count_get();
+        page_size = PAGE_02_A_ITEM;
+        break;
+    case PAGE_02_SECTION_B:
+        status = &page_02_b_report_status;
+        item_count = page_02_b_valid_count_get();
+        page_size = PAGE_02_B_ITEM;
+        break;
+    case PAGE_02_SECTION_C:
+        status = &page_02_c_report_status;
+        item_count = counting_data_error_detail_count(&sim);
+        page_size = PAGE_02_C_ITEM;
+        break;
+    default:
+        return;
+    }
+
+    status->curent_page = 1;
+    status->total_page = item_count == 0 ? 1
+        : (item_count + page_size - 1) / page_size;
+
+    switch (section_id) {
+    case PAGE_02_SECTION_A:
+        page_02_a_page_refre();
+        page_02_a_page_num_refre();
+        break;
+    case PAGE_02_SECTION_B:
+        page_02_b_page_refre();
+        page_02_b_page_num_refre();
+        break;
+    case PAGE_02_SECTION_C:
+        page_02_c_page_refre();
+        page_02_c_page_num_refre();
+        break;
+    default:
+        break;
+    }
+}
+
+void page_02_list_report_reset(void)
+{
+    int sn_count = sim_get_sn_valid_count();
+    int error_count = counting_data_error_detail_count(&sim);
+
+    page_02_a_report_status.curent_page = 1;
+    page_02_a_report_status.total_page = sim.denom_number == 0
+        ? 1 : (sim.denom_number + PAGE_02_A_ITEM - 1) / PAGE_02_A_ITEM;
+    page_02_b_report_status.curent_page = 1;
+    page_02_b_report_status.total_page = sn_count == 0
+        ? 1 : (sn_count + PAGE_02_B_ITEM - 1) / PAGE_02_B_ITEM;
+    page_02_c_report_status.curent_page = 1;
+    page_02_c_report_status.total_page = error_count == 0
+        ? 1 : (error_count + PAGE_02_C_ITEM - 1) / PAGE_02_C_ITEM;
 }
 
 void page_02_list_section_scroll_to_page(page_02_section_id_t section_id, bool anim_en) // 按页码同步滚动位置
@@ -900,7 +980,7 @@ void page_02_list_section_page_step(page_02_section_id_t section_id, int step, b
 void ui_page_02_list_create(lv_obj_t* parent)
 {
     (void)parent;
-    page_02_report_init();
+    page_02_list_report_reset();
 
     //creat page_main 
     if (list_page) return;
