@@ -20,6 +20,12 @@
 #define UI_HISTORY_EXPORT_TEXT_EXPORTING   "Exporting..."
 #define UI_HISTORY_EXPORT_TEXT_COUNT_FIRST "Please Count First"
 #define UI_HISTORY_EXPORT_TEXT_FAILED      "Export Failed"
+#define UI_HISTORY_EXPORT_PATH_SIZE        256U
+
+typedef struct {
+    char csv_path[UI_HISTORY_EXPORT_PATH_SIZE];
+    char html_path[UI_HISTORY_EXPORT_PATH_SIZE];
+} history_export_output_t;
 
 static bool g_history_export_lock = false;
 static lv_timer_t *g_history_export_unlock_timer = NULL;
@@ -783,7 +789,8 @@ static bool history_export_write_html_file(const char *file_path, const ui_histo
     return history_export_flush_and_verify(fp, file_path);
 }
 
-static bool history_export_write_selected_record(const ui_history_record_t *rec)
+static bool history_export_write_selected_record(const ui_history_record_t *rec,
+                                                 history_export_output_t *output)
 {
     history_export_denom_entry_t *denoms = NULL;
     history_export_sn_entry_t *sns = NULL;
@@ -792,16 +799,15 @@ static bool history_export_write_selected_record(const ui_history_record_t *rec)
     int sn_count = 0;
     int reject_count = 0;
     char export_name[96] = {0};
-    char csv_path[256] = {0};
-    char html_path[256] = {0};
-    char csv_tmp_path[sizeof(csv_path) + 5] = {0};
-    char html_tmp_path[sizeof(html_path) + 5] = {0};
+    char csv_tmp_path[UI_HISTORY_EXPORT_PATH_SIZE + 5U] = {0};
+    char html_tmp_path[UI_HISTORY_EXPORT_PATH_SIZE + 5U] = {0};
     int written;
     bool ok = false;
 
-    if (rec == NULL || !rec->valid) {
+    if (rec == NULL || !rec->valid || output == NULL) {
         return false;
     }
+    memset(output, 0, sizeof(*output));
 
     if (!history_export_parse_denom_entries(rec, &denoms, &denom_count) ||
         !history_export_parse_sn_entries(rec, &sns, &sn_count) ||
@@ -811,15 +817,19 @@ static bool history_export_write_selected_record(const ui_history_record_t *rec)
 
     history_export_build_name_for_record(export_name, sizeof(export_name), rec);
     if (!usb_storage_make_unique_file_pair(export_name,
-                                           ".csv", csv_path, sizeof(csv_path),
-                                           ".html", html_path, sizeof(html_path))) {
+                                           ".csv", output->csv_path,
+                                           sizeof(output->csv_path),
+                                           ".html", output->html_path,
+                                           sizeof(output->html_path))) {
         goto cleanup;
     }
-    written = lv_snprintf(csv_tmp_path, sizeof(csv_tmp_path), "%s.tmp", csv_path);
+    written = lv_snprintf(csv_tmp_path, sizeof(csv_tmp_path), "%s.tmp",
+                          output->csv_path);
     if (written < 0 || (size_t)written >= sizeof(csv_tmp_path)) {
         goto cleanup;
     }
-    written = lv_snprintf(html_tmp_path, sizeof(html_tmp_path), "%s.tmp", html_path);
+    written = lv_snprintf(html_tmp_path, sizeof(html_tmp_path), "%s.tmp",
+                          output->html_path);
     if (written < 0 || (size_t)written >= sizeof(html_tmp_path)) {
         goto cleanup;
     }
@@ -830,8 +840,8 @@ static bool history_export_write_selected_record(const ui_history_record_t *rec)
                                         sns, sn_count, rejects, reject_count)) {
         goto cleanup;
     }
-    if (!usb_storage_commit_file_pair(csv_tmp_path, csv_path,
-                                      html_tmp_path, html_path)) {
+    if (!usb_storage_commit_file_pair(csv_tmp_path, output->csv_path,
+                                      html_tmp_path, output->html_path)) {
         goto cleanup;
     }
     ok = true;
@@ -846,12 +856,32 @@ cleanup:
     free(denoms);
     free(sns);
     free(rejects);
+    if (!ok) memset(output, 0, sizeof(*output));
     return ok;
+}
+
+static void history_export_rollback_outputs(history_export_output_t *outputs,
+                                            size_t output_count)
+{
+    size_t i;
+
+    if (outputs == NULL) return;
+
+    for (i = 0; i < output_count; i++) {
+        if (outputs[i].csv_path[0] != '\0') {
+            (void)unlink(outputs[i].csv_path);
+        }
+        if (outputs[i].html_path[0] != '\0') {
+            (void)unlink(outputs[i].html_path);
+        }
+    }
 }
 
 bool ui_history_export_data_request(void)
 {
     const ui_history_store_t *store;
+    history_export_output_t *outputs = NULL;
+    size_t output_count = 0U;
     int i;
     int selected_count = 0;
 
@@ -870,6 +900,10 @@ bool ui_history_export_data_request(void)
         history_export_show_toast(UI_HISTORY_EXPORT_TEXT_COUNT_FIRST, true);
         return false;
     }
+    if (store->record_count > UI_HISTORY_MAX_RECORDS) {
+        history_export_show_toast(UI_HISTORY_EXPORT_TEXT_FAILED, true);
+        return false;
+    }
 
     for (i = 0; i < store->record_count; i++) {
         if (store->records[i].selected) {
@@ -881,6 +915,12 @@ bool ui_history_export_data_request(void)
         return false;
     }
 
+    outputs = calloc((size_t)selected_count, sizeof(*outputs));
+    if (outputs == NULL) {
+        history_export_show_toast(UI_HISTORY_EXPORT_TEXT_FAILED, true);
+        return false;
+    }
+
     history_export_start_lock();
     history_export_show_toast(UI_HISTORY_EXPORT_TEXT_EXPORTING, false);
 
@@ -888,11 +928,17 @@ bool ui_history_export_data_request(void)
         if (!store->records[i].selected) {
             continue;
         }
-        if (!history_export_write_selected_record(&store->records[i])) {
+        if (output_count >= (size_t)selected_count ||
+            !history_export_write_selected_record(&store->records[i],
+                                                  &outputs[output_count])) {
+            history_export_rollback_outputs(outputs, output_count);
+            free(outputs);
             history_export_show_toast(UI_HISTORY_EXPORT_TEXT_FAILED, true);
             return false;
         }
+        output_count++;
     }
 
+    free(outputs);
     return true;
 }
