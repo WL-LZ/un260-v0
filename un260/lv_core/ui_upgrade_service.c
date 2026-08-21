@@ -2,7 +2,6 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <glob.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,9 +13,9 @@
 #include <stdint.h>
 
 #include "un260/app_service/app_clock.h"
+#include "un260/storage/usb_storage.h"
 
-#define UI_UPGRADE_USB_MNT             "/mnt/usb"
-#define UI_UPGRADE_FILE_PATH           "/mnt/usb/update/test_lvgl"
+#define UI_UPGRADE_FILE_PATH           USB_STORAGE_MOUNT_POINT "/update/test_lvgl"
 #define UI_UPGRADE_RUNNING_FILE_PATH   "/proc/self/exe"
 #define UI_UPGRADE_SCRIPT_PATH         "/usr/bin/ui_update.sh"  
 #define UI_UPGRADE_STATUS_FILE_PATH    "/tmp/ui_update.status"
@@ -174,144 +173,6 @@ ui_upgrade_service_get_package_hash_status(void)
     return package_hash == g_ui_upgrade_running_hash ?
            UI_UPGRADE_PACKAGE_HASH_MATCH :
            UI_UPGRADE_PACKAGE_HASH_DIFFERENT;
-}
-
-static bool ui_upgrade_service_find_usb_device_path(char* path, size_t path_size)
-{
-    static const char* patterns[] = {
-        "/dev/sd[a-z][0-9]*",
-        "/dev/sd[a-z]"
-    };
-    size_t i;
-
-    if (path == NULL || path_size == 0) return false;
-    path[0] = '\0';
-
-    for (i = 0; i < sizeof(patterns) / sizeof(patterns[0]); i++) {
-        glob_t glob_buf;
-        size_t j;
-
-        memset(&glob_buf, 0, sizeof(glob_buf));
-        if (glob(patterns[i], 0, NULL, &glob_buf) != 0) {
-            globfree(&glob_buf);
-            continue;
-        }
-
-        for (j = 0; j < glob_buf.gl_pathc; j++) {
-            const char* dev = glob_buf.gl_pathv[j];
-            struct stat st;
-
-            if (dev == NULL) continue;
-            if (stat(dev, &st) != 0) continue;
-            if (!S_ISBLK(st.st_mode)) continue;
-
-            snprintf(path, path_size, "%s", dev);
-            globfree(&glob_buf);
-            return true;
-        }
-
-        globfree(&glob_buf);
-    }
-
-    return false;
-}
-
-static bool ui_upgrade_service_get_mounted_device(char* dev_path, size_t dev_path_size)
-{
-    FILE* fp = fopen("/proc/mounts", "r");
-    char dev[128];
-    char dir[128];
-    char fstype[64];
-    bool found = false;
-
-    if (dev_path == NULL || dev_path_size == 0) return false;
-    dev_path[0] = '\0';
-
-    if (fp == NULL) return false;
-
-    while (fscanf(fp, "%127s %127s %63s %*s %*d %*d\n", dev, dir, fstype) == 3) {
-        if (strcmp(dir, UI_UPGRADE_USB_MNT) == 0) {
-            snprintf(dev_path, dev_path_size, "%s", dev);
-            found = true;
-            break;
-        }
-    }
-
-    fclose(fp);
-    return found;
-}
-
-static bool ui_upgrade_service_usb_mounted(void)
-{
-    FILE* fp = fopen("/proc/mounts", "r");
-    char dev[128];
-    char dir[128];
-    char fstype[64];
-    bool mounted = false;
-
-    if (fp == NULL) return false;
-
-    while (fscanf(fp, "%127s %127s %63s %*s %*d %*d\n", dev, dir, fstype) == 3) {
-        if (strcmp(dir, UI_UPGRADE_USB_MNT) == 0) {
-            mounted = true;
-            break;
-        }
-    }
-
-    fclose(fp);
-    return mounted;
-}
-
-static bool ui_upgrade_service_mount_dir_prepare(void)
-{
-    struct stat st;
-
-    if (stat(UI_UPGRADE_USB_MNT, &st) == 0) {
-        return S_ISDIR(st.st_mode);
-    }
-    if (errno != ENOENT) {
-        return false;
-    }
-    return mkdir(UI_UPGRADE_USB_MNT, 0755) == 0;
-}
-
-static bool ui_upgrade_service_try_umount_usb(void)
-{
-    if (!ui_upgrade_service_usb_mounted()) {
-        return true;
-    }
-    if (system("umount /mnt/usb 2>/dev/null") != 0) {
-        return false;
-    }
-    return !ui_upgrade_service_usb_mounted();
-}
-
-static bool ui_upgrade_service_try_mount_usb(const char* usb_dev)
-{
-    char mounted_dev[128];
-    char cmd[192];
-
-    if (usb_dev == NULL || usb_dev[0] == '\0') {
-        return false;
-    }
-    if (ui_upgrade_service_get_mounted_device(mounted_dev,
-                                              sizeof(mounted_dev))) {
-        if (access(mounted_dev, F_OK) == 0) {
-            return true;
-        }
-        if (!ui_upgrade_service_try_umount_usb()) {
-            return false;
-        }
-    }
-    if (!ui_upgrade_service_mount_dir_prepare()) {
-        return false;
-    }
-
-    snprintf(cmd, sizeof(cmd), "mount '%s' %s 2>/dev/null", usb_dev, UI_UPGRADE_USB_MNT);
-    if (system(cmd) != 0) {
-        return false;
-    }
-    return ui_upgrade_service_usb_mounted();
 }
 
 static void ui_upgrade_service_set_status(bool running,
@@ -579,18 +440,13 @@ void ui_upgrade_service_reset(void)
 
 void ui_upgrade_service_detect(ui_upgrade_detect_info_t* info)
 {
-    char usb_dev[128];
+    usb_storage_status_t storage_status;
 
     if (info == NULL) return;
 
-    info->usb_present =
-        ui_upgrade_service_find_usb_device_path(usb_dev, sizeof(usb_dev));
-    if (info->usb_present) {
-        info->usb_mounted = ui_upgrade_service_try_mount_usb(usb_dev);
-    } else {
-        (void)ui_upgrade_service_try_umount_usb();
-        info->usb_mounted = ui_upgrade_service_usb_mounted();
-    }
+    usb_storage_refresh(&storage_status);
+    info->usb_present = storage_status.device_present;
+    info->usb_mounted = storage_status.mounted;
     info->package_found = info->usb_present && info->usb_mounted &&
                           ui_upgrade_service_file_exists(UI_UPGRADE_FILE_PATH);
     info->package_hash_status = UI_UPGRADE_PACKAGE_HASH_NOT_CHECKED;

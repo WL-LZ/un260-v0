@@ -4,18 +4,14 @@
 #include "un260/lv_components/lv_print_toast.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/user_cfg.h"
+#include "un260/storage/usb_storage.h"
 
-#include <errno.h>
 #include <stdbool.h>
-#include <glob.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
 
-#define UI_SCREENSHOT_USB_DIR "/mnt/usb"
 #define UI_SCREENSHOT_POLL_MS 1000U
 
 static lv_obj_t* g_screenshot_indicator = NULL;
@@ -27,109 +23,6 @@ typedef enum {
     UI_SCREENSHOT_SAVE_FAILED
 } ui_screenshot_result_t;
 
-static bool ui_screenshot_usb_is_mounted(void)
-{
-    char device[128];
-    char mount_path[256];
-    char fs_type[64];
-    char options[256];
-    FILE* fp;
-    struct stat st;
-    int dump;
-    int pass;
-
-    if (stat(UI_SCREENSHOT_USB_DIR, &st) != 0 || !S_ISDIR(st.st_mode)) {
-        return false;
-    }
-
-    fp = fopen("/proc/self/mounts", "r");
-    if (fp == NULL) {
-        return false;
-    }
-
-    while (fscanf(fp, "%127s %255s %63s %255s %d %d",
-                  device, mount_path, fs_type, options, &dump, &pass) == 6) {
-        if (strcmp(mount_path, UI_SCREENSHOT_USB_DIR) == 0) {
-            fclose(fp);
-            return true;
-        }
-    }
-
-    fclose(fp);
-    return false;
-}
-
-static bool ui_screenshot_find_usb_device(char* device_path, size_t device_path_size)
-{
-    static const char* patterns[] = {
-        "/dev/sd[a-z][0-9]*",
-        "/dev/sd[a-z]"
-    };
-    size_t i;
-
-    if (device_path == NULL || device_path_size == 0U) {
-        return false;
-    }
-    device_path[0] = '\0';
-
-    for (i = 0; i < sizeof(patterns) / sizeof(patterns[0]); i++) {
-        glob_t matches;
-        size_t j;
-
-        memset(&matches, 0, sizeof(matches));
-        if (glob(patterns[i], 0, NULL, &matches) != 0) {
-            globfree(&matches);
-            continue;
-        }
-
-        for (j = 0; j < matches.gl_pathc; j++) {
-            struct stat st;
-            const char* path = matches.gl_pathv[j];
-
-            if (path != NULL && stat(path, &st) == 0 && S_ISBLK(st.st_mode)) {
-                snprintf(device_path, device_path_size, "%s", path);
-                globfree(&matches);
-                return true;
-            }
-        }
-        globfree(&matches);
-    }
-
-    return false;
-}
-
-static bool ui_screenshot_usb_available(void)
-{
-    char device_path[128];
-
-    return ui_screenshot_usb_is_mounted() ||
-           ui_screenshot_find_usb_device(device_path, sizeof(device_path));
-}
-
-static bool ui_screenshot_usb_prepare(void)
-{
-    char device_path[128];
-    char command[256];
-
-    if (ui_screenshot_usb_is_mounted()) {
-        return true;
-    }
-    if (!ui_screenshot_find_usb_device(device_path, sizeof(device_path))) {
-        return false;
-    }
-
-    if (mkdir(UI_SCREENSHOT_USB_DIR, 0755) != 0 && errno != EEXIST) {
-        return false;
-    }
-
-    snprintf(command, sizeof(command), "mount '%s' '%s' 2>/dev/null",
-             device_path, UI_SCREENSHOT_USB_DIR);
-    if (system(command) != 0) {
-        return false;
-    }
-    return ui_screenshot_usb_is_mounted();
-}
-
 static ui_screenshot_result_t ui_screenshot_save_to_usb(void)
 {
     char path[256];
@@ -138,7 +31,7 @@ static ui_screenshot_result_t ui_screenshot_save_to_usb(void)
     time_t now;
     int suffix = 0;
 
-    if (!ui_screenshot_usb_prepare()) {
+    if (!usb_storage_prepare()) {
         return UI_SCREENSHOT_USB_NOT_MOUNTED;
     }
 
@@ -151,10 +44,10 @@ static ui_screenshot_result_t ui_screenshot_save_to_usb(void)
     do {
         if (suffix == 0) {
             snprintf(path, sizeof(path), "%s/screenshot_%s.bmp",
-                     UI_SCREENSHOT_USB_DIR, timestamp);
+                     USB_STORAGE_MOUNT_POINT, timestamp);
         } else {
             snprintf(path, sizeof(path), "%s/screenshot_%s_%02d.bmp",
-                     UI_SCREENSHOT_USB_DIR, timestamp, suffix);
+                     USB_STORAGE_MOUNT_POINT, timestamp, suffix);
         }
         suffix++;
     } while (suffix <= 99 && access(path, F_OK) == 0);
@@ -256,7 +149,7 @@ void ui_screenshot_indicator_poll(void)
     }
     g_screenshot_poll_tick = now;
 
-    ready = ui_screenshot_usb_available();
+    ready = usb_storage_available();
     if (ready) {
         lv_obj_clear_flag(g_screenshot_indicator, LV_OBJ_FLAG_HIDDEN);
     } else {

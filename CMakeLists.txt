@@ -70,6 +70,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/currency/currency_service.c
     un260/currency/currency_reply.c
     un260/serial_number/serial_number.c
+    un260/storage/usb_storage.c
     un260/print/print_config.c
     un260/cfd/cfd.c
     un260/protocol/mode_codec.c

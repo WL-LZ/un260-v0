@@ -7,14 +7,13 @@
 #include <unistd.h>
 #include <ctype.h>
 #include "un260/lv_components/lv_print_toast.h"
-#include "un260/lv_core/ui_upgrade_service.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_system/machine_time.h"
 #include "un260/machine_state/machine_state.h"
 #include "un260/currency/currency_state.h"
+#include "un260/storage/usb_storage.h"
 
-#define UI_EXPORT_USB_DIR                  "/mnt/usb"
 #define UI_EXPORT_LOCK_MS                  2000U
 #define UI_EXPORT_TOAST_TEXT_EXPORTING     "Exporting..."
 #define UI_EXPORT_TOAST_TEXT_COUNT_FIRST   "Please Count First"
@@ -22,43 +21,6 @@
 
 static bool g_ui_export_data_lock = false;
 static lv_timer_t *g_ui_export_data_unlock_timer = NULL;
-
-static bool ui_export_data_usb_mount_get_device(char *dev_path, size_t dev_path_size)
-{
-    FILE *fp;
-    char dev[128];
-    char dir[128];
-    char fstype[64];
-    bool mounted = false;
-
-    if (dev_path == NULL || dev_path_size == 0) {
-        return false;
-    }
-    dev_path[0] = '\0';
-
-    fp = fopen("/proc/mounts", "r");
-    if (fp == NULL) {
-        return false;
-    }
-
-    while (fscanf(fp, "%127s %127s %63s %*s %*d %*d\n", dev, dir, fstype) == 3) {
-        if (strcmp(dir, UI_EXPORT_USB_DIR) == 0) {
-            lv_snprintf(dev_path, dev_path_size, "%s", dev);
-            mounted = true;
-            break;
-        }
-    }
-
-    fclose(fp);
-    return mounted;
-}
-
-static bool ui_export_data_usb_mount_ready(void)
-{
-    char dev_path[128];
-
-    return ui_export_data_usb_mount_get_device(dev_path, sizeof(dev_path));
-}
 
 static void ui_export_data_show_alarm_toast(const char *text)
 {
@@ -668,7 +630,6 @@ static void ui_export_data_start_lock(void)
 
 bool ui_export_data_request(void)
 {
-    struct stat st;
     char export_name[96] = {0};
     char csv_path[256] = {0};
     char html_path[256] = {0};
@@ -687,7 +648,7 @@ bool ui_export_data_request(void)
         return false;
     }
 
-    if (!ui_export_data_usb_mount_ready()) {
+    if (!usb_storage_prepare()) {
         ui_export_data_show_alarm_toast(UI_EXPORT_TOAST_TEXT_EXPORT_FAILED);
         return false;
     }
@@ -695,19 +656,14 @@ bool ui_export_data_request(void)
     ui_export_data_start_lock();
     ui_export_data_show_normal_toast(UI_EXPORT_TOAST_TEXT_EXPORTING);
 
-    if (stat(UI_EXPORT_USB_DIR, &st) != 0 || !S_ISDIR(st.st_mode)) {
-        ui_export_data_show_alarm_toast(UI_EXPORT_TOAST_TEXT_EXPORT_FAILED);
-        return false;
-    }
-
     ui_export_data_build_export_name(export_name, sizeof(export_name));
     written = lv_snprintf(csv_path, sizeof(csv_path), "%s/%s.csv",
-                          UI_EXPORT_USB_DIR, export_name);
+                          USB_STORAGE_MOUNT_POINT, export_name);
     if (written < 0 || (size_t)written >= sizeof(csv_path)) {
         goto cleanup;
     }
     written = lv_snprintf(html_path, sizeof(html_path), "%s/%s.html",
-                          UI_EXPORT_USB_DIR, export_name);
+                          USB_STORAGE_MOUNT_POINT, export_name);
     if (written < 0 || (size_t)written >= sizeof(html_path)) {
         goto cleanup;
     }
@@ -747,7 +703,6 @@ ui_export_text_result_t ui_export_text_lines(const char *file_prefix,
                                              const char *const *lines,
                                              size_t line_count)
 {
-    ui_upgrade_detect_info_t detect_info;
     char safe_prefix[48];
     char timestamp[32];
     char file_path[256];
@@ -762,9 +717,7 @@ ui_export_text_result_t ui_export_text_lines(const char *file_prefix,
         return UI_EXPORT_TEXT_EMPTY;
     }
 
-    ui_upgrade_service_detect(&detect_info);
-    if (!detect_info.usb_present || !detect_info.usb_mounted ||
-        !ui_export_data_usb_mount_ready()) {
+    if (!usb_storage_prepare()) {
         return UI_EXPORT_TEXT_USB_NOT_READY;
     }
 
@@ -792,10 +745,10 @@ ui_export_text_result_t ui_export_text_lines(const char *file_prefix,
     for (suffix = 0; suffix <= 99; suffix++) {
         if (suffix == 0) {
             written = lv_snprintf(file_path, sizeof(file_path), "%s/%s_%s.txt",
-                                  UI_EXPORT_USB_DIR, safe_prefix, timestamp);
+                                  USB_STORAGE_MOUNT_POINT, safe_prefix, timestamp);
         } else {
             written = lv_snprintf(file_path, sizeof(file_path), "%s/%s_%s_%02d.txt",
-                                  UI_EXPORT_USB_DIR, safe_prefix, timestamp, suffix);
+                                  USB_STORAGE_MOUNT_POINT, safe_prefix, timestamp, suffix);
         }
         if (written < 0 || (size_t)written >= sizeof(file_path)) {
             return UI_EXPORT_TEXT_FAILED;

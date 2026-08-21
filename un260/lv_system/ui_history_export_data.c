@@ -14,8 +14,8 @@
 #include "un260/lv_system/ui_history_data.h"
 #include "un260/currency/currency_state.h"
 #include "un260/machine_state/machine_state.h"
+#include "un260/storage/usb_storage.h"
 
-#define UI_HISTORY_EXPORT_USB_DIR          "/mnt/usb"
 #define UI_HISTORY_EXPORT_LOCK_MS          2000U
 #define UI_HISTORY_EXPORT_TEXT_EXPORTING   "Exporting..."
 #define UI_HISTORY_EXPORT_TEXT_COUNT_FIRST "Please Count First"
@@ -38,16 +38,6 @@ static void history_export_show_toast(const char *text, bool alarm)
     toast_cfg.auto_hide_ms = UI_HISTORY_EXPORT_LOCK_MS;
 
     lv_print_toast_show_with_config(&toast_cfg);
-}
-
-static bool history_export_usb_ready(void)
-{
-    struct stat st;
-
-    if (stat(UI_HISTORY_EXPORT_USB_DIR, &st) != 0 || !S_ISDIR(st.st_mode)) {
-        return false;
-    }
-    return true;
 }
 
 static void history_export_unlock_timer_cb(lv_timer_t *timer)
@@ -821,12 +811,12 @@ static bool history_export_write_selected_record(const ui_history_record_t *rec)
 
     history_export_build_name_for_record(export_name, sizeof(export_name), rec);
     written = lv_snprintf(csv_path, sizeof(csv_path), "%s/%s.csv",
-                          UI_HISTORY_EXPORT_USB_DIR, export_name);
+                          USB_STORAGE_MOUNT_POINT, export_name);
     if (written < 0 || (size_t)written >= sizeof(csv_path)) {
         goto cleanup;
     }
     written = lv_snprintf(html_path, sizeof(html_path), "%s/%s.html",
-                          UI_HISTORY_EXPORT_USB_DIR, export_name);
+                          USB_STORAGE_MOUNT_POINT, export_name);
     if (written < 0 || (size_t)written >= sizeof(html_path)) {
         goto cleanup;
     }
@@ -875,7 +865,7 @@ bool ui_history_export_data_request(void)
         return false;
     }
 
-    if (!history_export_usb_ready()) {
+    if (!usb_storage_prepare()) {
         history_export_show_toast(UI_HISTORY_EXPORT_TEXT_FAILED, true);
         return false;
     }
