@@ -1,4 +1,5 @@
 #include "platform_app.h"
+#include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -153,6 +154,35 @@ lv_obj_t* find_obj_by_name(const char* name, ui_element_t* page_cfg_obj, int len
     return NULL;
 }
 
+static void label_set_text_if_changed(lv_obj_t* label, const char* text)
+{
+    const char* current;
+
+    if (!label || !lv_obj_is_valid(label) ||
+        !lv_obj_check_type(label, &lv_label_class)) {
+        return;
+    }
+
+    text = text ? text : "";
+    current = lv_label_get_text(label);
+    if (current && strcmp(current, text) == 0) {
+        return;
+    }
+    lv_label_set_text(label, text);
+}
+
+static void label_set_text_fmt_if_changed(lv_obj_t* label,
+                                          const char* fmt, ...)
+{
+    char buf[64];
+    va_list args;
+
+    va_start(args, fmt);
+    lv_vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+    label_set_text_if_changed(label, buf);
+}
+
 //刷新字符串
 void update_label_by_name(ui_element_t* page_cfg_obj, int len,const char* name, const char* fmt, ...) {
     lv_obj_t* label = find_obj_by_name(name, page_cfg_obj, len);
@@ -163,7 +193,7 @@ void update_label_by_name(ui_element_t* page_cfg_obj, int len,const char* name, 
     va_start(args, fmt);
     lv_vsnprintf(buf, sizeof(buf), fmt, args);
     va_end(args);
-    lv_label_set_text(label, buf);
+    label_set_text_if_changed(label, buf);
 }
 
 int sim_get_sn_valid_count(void)
@@ -652,9 +682,9 @@ static void page_01_main_detail_rows_refresh(page_01_detail_section_t section, i
                 actual_idx = page_01_main_b_nth_valid_index_get(data_row);
             }
             if (actual_idx >= 0) {
-                update_label_by_name(page_01_main_obj, page_01_main_len, denom_buf, "%d", data_row + 1);
-                update_label_by_name(page_01_main_obj, page_01_main_len, pcs_buf, "%s", sim_data->sn_str[actual_idx]);
-                update_label_by_name(page_01_main_obj, page_01_main_len, amount_buf, "%d", sim_data->denom_mix[actual_idx]);
+                label_set_text_fmt_if_changed(denom, "%d", data_row + 1);
+                label_set_text_if_changed(pcs, sim_data->sn_str[actual_idx]);
+                label_set_text_fmt_if_changed(amount, "%d", sim_data->denom_mix[actual_idx]);
                 row_show = true;
             }
             break;
@@ -664,26 +694,26 @@ static void page_01_main_detail_rows_refresh(page_01_detail_section_t section, i
                 data_row < 10) {
                 const char* err_text = "Unknown Error";
 
-                update_label_by_name(page_01_main_obj, page_01_main_len, denom_buf, "%d", data_row + 1);
+                label_set_text_fmt_if_changed(denom, "%d", data_row + 1);
                 if (sim_data->err_pcs != NULL) {
-                    update_label_by_name(page_01_main_obj, page_01_main_len, pcs_buf, "%d", sim_data->err_pcs[data_row]);
+                    label_set_text_fmt_if_changed(pcs, "%d", sim_data->err_pcs[data_row]);
                 } else {
-                    update_label_by_name(page_01_main_obj, page_01_main_len, pcs_buf, "%s", "-");
+                    label_set_text_if_changed(pcs, "-");
                 }
                 if (sim_data->err_code != NULL) {
                     err_text = counting_reject_reason_get(
                         sim_data->err_code[data_row]);
                 }
-                update_label_by_name(page_01_main_obj, page_01_main_len, amount_buf, "%s", err_text);
+                label_set_text_if_changed(amount, err_text);
                 row_show = true;
             }
             break;
         case PAGE_01_DETAIL_SECTION_A:
         default:
             if (data_row < sim_data->denom_number && sim_data->denom[data_row].value) {
-                update_label_by_name(page_01_main_obj, page_01_main_len, denom_buf, "%d", sim_data->denom[data_row].value);
-                update_label_by_name(page_01_main_obj, page_01_main_len, pcs_buf, "%d", sim_data->denom[data_row].pcs);
-                update_label_by_name(page_01_main_obj, page_01_main_len, amount_buf, "%.0f", sim_data->denom[data_row].amount);
+                label_set_text_fmt_if_changed(denom, "%d", sim_data->denom[data_row].value);
+                label_set_text_fmt_if_changed(pcs, "%d", sim_data->denom[data_row].pcs);
+                label_set_text_fmt_if_changed(amount, "%.0f", sim_data->denom[data_row].amount);
                 row_show = true;
             }
             break;
@@ -728,25 +758,25 @@ void ui_refresh_main_page(void) {
 
     if (curr_label && lv_obj_is_valid(curr_label))
     {
-        update_label_by_name(page_01_main_obj, page_01_main_len, "curr_icon_label", curr_code);
+        label_set_text_if_changed(curr_label, curr_code);
     }
     if (page_01_main_page_pcs_label == NULL || !lv_obj_is_valid(page_01_main_page_pcs_label))
     {
         page_01_main_page_pcs_label = find_obj_by_name("01_pcs_label", page_01_main_obj, page_01_main_len);
     }
-    if (page_01_main_page_pcs_label || lv_obj_is_valid(page_01_main_page_pcs_label))
+    if (page_01_main_page_pcs_label && lv_obj_is_valid(page_01_main_page_pcs_label))
     {
         snprintf(buf, sizeof(buf), "%d", sim_data->total_pcs);
-        lv_label_set_text(page_01_main_page_pcs_label, buf);
+        label_set_text_if_changed(page_01_main_page_pcs_label, buf);
     }
     if (page_01_main_page_amount_label == NULL || !lv_obj_is_valid(page_01_main_page_amount_label))
     {
         page_01_main_page_amount_label = find_obj_by_name("01_amount_label", page_01_main_obj, page_01_main_len);
     }
-    if (page_01_main_page_amount_label || lv_obj_is_valid(page_01_main_page_amount_label))
+    if (page_01_main_page_amount_label && lv_obj_is_valid(page_01_main_page_amount_label))
     {
         format_amount_with_comma(amount_buf, sizeof(amount_buf), sim_data->total_amount);
-        lv_label_set_text(page_01_main_page_amount_label, amount_buf);
+        label_set_text_if_changed(page_01_main_page_amount_label, amount_buf);
     }
 
     //main_right_list
@@ -771,7 +801,7 @@ void ui_refresh_main_page(void) {
         lv_obj_t* total_amount = find_obj_by_name("total_amount_label", page_01_main_obj, page_01_main_len);
         format_amount_with_comma(amount_total, sizeof(amount_total), right_total_amount);
         if (total_amount && lv_obj_is_valid(total_amount)) {
-            lv_label_set_text(total_amount, amount_total); //更新总金额格式
+            label_set_text_if_changed(total_amount, amount_total); //更新总金额格式
         }
     }
 
