@@ -1286,6 +1286,7 @@ void ui_page_03_menu_create(lv_obj_t* parent)
 
 void ui_page_03_menu_destroy(void)
 {
+    page_03_function_button_cache_reset();
     if (g_page_03_preview_timer) {
         lv_timer_del(g_page_03_preview_timer);
         g_page_03_preview_timer = NULL;

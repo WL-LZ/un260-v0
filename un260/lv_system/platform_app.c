@@ -29,6 +29,9 @@ static lv_timer_t *s_safe_reset_timer = NULL;
 static bool g_count_end_anim_pending = false;
 static bool g_count_end_anim_armed = false;
 static char g_count_end_anim_text[128];
+static bool g_main_detail_row_layout_valid = false;
+static page_01_detail_section_t g_main_detail_row_layout_section;
+static int g_main_detail_row_layout_first_row;
 
 #define COUNTING_SIM_SN_LENGTH 11
 #define COUNTING_SIM_MAX_ITEMS \
@@ -647,7 +650,22 @@ static void page_01_main_detail_row_layout_apply(page_01_detail_section_t sectio
     lv_obj_set_style_text_font(col_3, col_3_font, 0);
 }
 
-static void page_01_main_detail_rows_refresh(page_01_detail_section_t section, int first_row)
+static bool page_01_main_detail_row_layout_changed(
+    page_01_detail_section_t section, int first_row)
+{
+    bool changed = !g_main_detail_row_layout_valid ||
+                   g_main_detail_row_layout_section != section ||
+                   g_main_detail_row_layout_first_row != first_row;
+
+    g_main_detail_row_layout_valid = true;
+    g_main_detail_row_layout_section = section;
+    g_main_detail_row_layout_first_row = first_row;
+    return changed;
+}
+
+static void page_01_main_detail_rows_refresh(page_01_detail_section_t section,
+                                              int first_row,
+                                              bool apply_layout)
 {
     counting_sim_t* sim_data = &sim;
 
@@ -670,7 +688,9 @@ static void page_01_main_detail_rows_refresh(page_01_detail_section_t section, i
         amount = find_obj_by_name(amount_buf, page_01_main_obj, page_01_main_len);
 
         // 行位置按真实数据行号布局，滚动时每一行跟着内容一起移动
-        page_01_main_detail_row_layout_apply(section, denom, pcs, amount, data_row);
+        if (apply_layout) {
+            page_01_main_detail_row_layout_apply(section, denom, pcs, amount, data_row);
+        }
 
         switch (section) {
         case PAGE_01_DETAIL_SECTION_B:
@@ -735,7 +755,9 @@ void page_01_main_detail_refresh_rows_only(void)
 {
     page_01_detail_section_t section = page_01_detail_section_get();
     int first_row = page_01_detail_scroll_first_row_get(section);
-    page_01_main_detail_rows_refresh(section, first_row);
+    bool apply_layout = page_01_main_detail_row_layout_changed(section, first_row);
+
+    page_01_main_detail_rows_refresh(section, first_row, apply_layout);
 }
 
 
@@ -784,7 +806,9 @@ void ui_refresh_main_page(void) {
 
     page_01_main_detail_header_apply(section);
 
-    page_01_main_detail_rows_refresh(section, first_row);
+    page_01_main_detail_rows_refresh(
+        section, first_row,
+        page_01_main_detail_row_layout_changed(section, first_row));
 
     for (int i = 0; i < sim_data->denom_number &&
                     i < (int)(sizeof(sim_data->denom) / sizeof(sim_data->denom[0])); i++) {
@@ -871,6 +895,7 @@ void cleanup_counting_sim(void)
     page_01_main_page_amount_label = NULL;
     page_01_main_page_pcs_label = NULL;
     page_01_main_scroll_container = NULL;
+    g_main_detail_row_layout_valid = false;
 
     counting_data_clear_errors(&sim);
     counting_data_clear_serials(&sim);

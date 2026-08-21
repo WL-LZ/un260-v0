@@ -1340,8 +1340,8 @@ void ui_main_create(lv_obj_t* parent)
     page_01_detail_section_set((page_01_detail_section_t)ui_state_page01_detail_section_get(), false);
     // 创建滚动容器并将标签放入容器
    // sim_data_init();           // 初始化面额列表、count=0、amount=0
-    ui_refresh_main_page();    // 把面额+"0"+"0.00"写到每一行
     page_01_create_main_scrollable_container();
+    ui_refresh_main_page();    // 创建滚动容器后再按当前分区布局并写入数据
     page_01_add_refre();
     page_01_work_refre();
     page_01_batch_refre();

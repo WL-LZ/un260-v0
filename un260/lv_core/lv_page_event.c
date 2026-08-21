@@ -27,6 +27,79 @@
 
 bool pcs_batch_num_lock_200 = false;
 
+typedef struct {
+    lv_obj_t* beep[2];
+    lv_obj_t* speed[3];
+    lv_obj_t* add[2];
+    lv_obj_t* fo[4];
+    lv_obj_t* work[2];
+    bool ready;
+} page_03_function_button_cache_t;
+
+static page_03_function_button_cache_t g_page_03_button_cache;
+
+static const char* const g_page_03_beep_names[] = {
+    "03_beep_on_btn", "03_beep_off_btn"
+};
+static const char* const g_page_03_speed_names[] = {
+    "03_speed_800_btn", "03_speed_1000_btn", "03_speed_1200_btn"
+};
+static const char* const g_page_03_add_names[] = {
+    "03_add_on_btn", "03_add_off_btn"
+};
+static const char* const g_page_03_fo_names[] = {
+    "03_fo_OFF_btn", "03_fo_F_btn", "03_fo_O_btn", "03_fo_FO_btn"
+};
+static const char* const g_page_03_work_names[] = {
+    "03_work_auto_btn", "03_work_manaul_btn"
+};
+
+void page_03_function_button_cache_reset(void)
+{
+    g_page_03_button_cache = (page_03_function_button_cache_t){ 0 };
+}
+
+static bool page_03_function_button_cache_prepare(void)
+{
+    if (g_page_03_button_cache.ready) {
+        return true;
+    }
+
+    for (size_t i = 0; i < 2; i++) {
+        g_page_03_button_cache.beep[i] = find_obj_by_name(
+            g_page_03_beep_names[i], page_03_menu_obj, page_03_menu_len);
+        g_page_03_button_cache.add[i] = find_obj_by_name(
+            g_page_03_add_names[i], page_03_menu_obj, page_03_menu_len);
+        g_page_03_button_cache.work[i] = find_obj_by_name(
+            g_page_03_work_names[i], page_03_menu_obj, page_03_menu_len);
+        if (!g_page_03_button_cache.beep[i] ||
+            !g_page_03_button_cache.add[i] ||
+            !g_page_03_button_cache.work[i]) {
+            page_03_function_button_cache_reset();
+            return false;
+        }
+    }
+    for (size_t i = 0; i < 3; i++) {
+        g_page_03_button_cache.speed[i] = find_obj_by_name(
+            g_page_03_speed_names[i], page_03_menu_obj, page_03_menu_len);
+        if (!g_page_03_button_cache.speed[i]) {
+            page_03_function_button_cache_reset();
+            return false;
+        }
+    }
+    for (size_t i = 0; i < 4; i++) {
+        g_page_03_button_cache.fo[i] = find_obj_by_name(
+            g_page_03_fo_names[i], page_03_menu_obj, page_03_menu_len);
+        if (!g_page_03_button_cache.fo[i]) {
+            page_03_function_button_cache_reset();
+            return false;
+        }
+    }
+
+    g_page_03_button_cache.ready = true;
+    return true;
+}
+
 static void page_01_qr_show_toast(ui_text_id_t text_id) //显示二维码相关提示框
 {
     lv_print_toast_config_t toast_cfg = lv_print_toast_get_default_config();
@@ -628,11 +701,9 @@ void page_03_update_menu_button_states_refresh(void)
         return;
     }
 
-    const char* page_03_beep_mode_obj[] = {"03_beep_on_btn","03_beep_off_btn"};
-    const char* page_03_speed_mode_obj[] = { "03_speed_800_btn","03_speed_1000_btn","03_speed_1200_btn" };
-    const char* page_03_add_mode_obj[] = {"03_add_on_btn","03_add_off_btn"};
-    const char* page_03_fo_mode_obj[] = {"03_fo_OFF_btn","03_fo_F_btn","03_fo_O_btn","03_fo_FO_btn"};
-    const char* page_03_work_mode_obj[] = { "03_work_auto_btn", "03_work_manaul_btn"};
+    if (!page_03_function_button_cache_prepare()) {
+        return;
+    }
     lv_color_t selected_blue_color = lv_color_hex(0x0B69FF);
     lv_color_t selected_off_color = lv_color_hex(0x9AA6B2);
     lv_color_t unselected_color = lv_color_hex(0xEEF2F7);
@@ -662,8 +733,8 @@ void page_03_update_menu_button_states_refresh(void)
     } while (0)
 
     // BEEP 处理（配色与 ADD 一致）
-    lv_obj_t* tmp_beep_on_obj = find_obj_by_name(page_03_beep_mode_obj[0], page_03_menu_obj, page_03_menu_len);
-    lv_obj_t* tmp_beep_off_obj = find_obj_by_name(page_03_beep_mode_obj[1], page_03_menu_obj, page_03_menu_len);
+    lv_obj_t* tmp_beep_on_obj = g_page_03_button_cache.beep[0];
+    lv_obj_t* tmp_beep_off_obj = g_page_03_button_cache.beep[1];
     bool beep_on = machine_state_buzzer_enabled();
     if (tmp_beep_on_obj && tmp_beep_off_obj) {
         PAGE_03_APPLY_FUNCTION_BTN(tmp_beep_on_obj, beep_on, false);
@@ -672,7 +743,7 @@ void page_03_update_menu_button_states_refresh(void)
     //speed 处理
     for (int i = 0; i < SPEED_MODE; i++)
     {
-        lv_obj_t* tmp_speed_obj = find_obj_by_name(page_03_speed_mode_obj[i], page_03_menu_obj, page_03_menu_len);
+        lv_obj_t* tmp_speed_obj = g_page_03_button_cache.speed[i];
         bool sel = (i == machine_state_speed());
         if (!tmp_speed_obj) continue;
         PAGE_03_APPLY_FUNCTION_BTN(tmp_speed_obj, sel, false);
@@ -680,7 +751,7 @@ void page_03_update_menu_button_states_refresh(void)
     //FO处理
     for (int i = 0; i < FO_MODE; i++)
     {
-        lv_obj_t* tmp_fo_obj = find_obj_by_name(page_03_fo_mode_obj[i], page_03_menu_obj, page_03_menu_len);
+        lv_obj_t* tmp_fo_obj = g_page_03_button_cache.fo[i];
         bool sel = (i == machine_state_fo_mode());
         if (!tmp_fo_obj) continue;
         PAGE_03_APPLY_FUNCTION_BTN(tmp_fo_obj, sel, i == 0);
@@ -688,14 +759,14 @@ void page_03_update_menu_button_states_refresh(void)
     //work处理
     for (int i = 0; i < WORK_MODE; i++)
     {
-        lv_obj_t* tmp_work_obj = find_obj_by_name(page_03_work_mode_obj[i], page_03_menu_obj, page_03_menu_len);
+        lv_obj_t* tmp_work_obj = g_page_03_button_cache.work[i];
         bool sel = (i == machine_state_work_mode());
         if (!tmp_work_obj) continue;
         PAGE_03_APPLY_FUNCTION_BTN(tmp_work_obj, sel, false);
     }
     //ADD 处理
-        lv_obj_t* tmp_add_on_obj = find_obj_by_name(page_03_add_mode_obj[0], page_03_menu_obj, page_03_menu_len);
-        lv_obj_t* tmp_add_off_obj = find_obj_by_name(page_03_add_mode_obj[1], page_03_menu_obj, page_03_menu_len);
+        lv_obj_t* tmp_add_on_obj = g_page_03_button_cache.add[0];
+        lv_obj_t* tmp_add_off_obj = g_page_03_button_cache.add[1];
         bool sel = machine_state_add_enabled();
         if (!tmp_add_on_obj || !tmp_add_off_obj) return;
         PAGE_03_APPLY_FUNCTION_BTN(tmp_add_on_obj, sel, false);
