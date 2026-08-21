@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include <stdint.h>
 
-#include "un260/app_service/app_clock.h"
+#include "un260/lv_system/app_clock.h"
 #include "un260/storage/usb_storage.h"
 
 #define UI_UPGRADE_FILE_PATH           USB_STORAGE_MOUNT_POINT "/update/test_lvgl"

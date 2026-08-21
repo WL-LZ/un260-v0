@@ -41,7 +41,7 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_components/qrcodegen.c
     un260/lv_components/lv_capsule_pagination.c
     un260/app_service/setting_service.c
-    un260/app_service/app_clock.c
+    un260/lv_system/app_clock.c
     un260/app_service/app_boot_runtime.c
     un260/app_service/app_command_runtime.c
     un260/app_service/app_counting_runtime.c

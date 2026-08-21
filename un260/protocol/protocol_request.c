@@ -2,7 +2,7 @@
 
 #include <stddef.h>
 
-#include "un260/app_service/app_clock.h"
+#include "un260/lv_system/app_clock.h"
 
 uint64_t protocol_request_now_ms(void)
 {

@@ -16,7 +16,7 @@
 #include "un260/counting/counting_data_store.h"
 #include "un260/counting/counting_data_store_internal.h"
 #include "un260/counting/counting_reject_reason.h"
-#include "un260/app_service/app_clock.h"
+#include "un260/lv_system/app_clock.h"
 #include "aic_ui/perf_stats.h"
 // 全局变量定义
 

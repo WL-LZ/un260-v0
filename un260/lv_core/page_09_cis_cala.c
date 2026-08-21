@@ -2,7 +2,7 @@
 
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/settings_detail_ui.h"
-#include "un260/app_service/app_clock.h"
+#include "un260/lv_system/app_clock.h"
 #include "un260/diagnostic/diagnostic.h"
 #include "un260/lv_system/ui_text.h"
 

@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include "lvgl/lvgl.h"
 
-#include "un260/app_service/app_clock.h"
+#include "un260/lv_system/app_clock.h"
 #include "un260/app_service/app_counting_runtime.h"
 #include "un260/boot/boot_service.h"
 #include "un260/counting/counting_denom_query_service.h"

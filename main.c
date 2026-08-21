@@ -5,7 +5,7 @@
 #include "aic_ui.h"
 #include "aic_dec.h"
 #include "un260/lv_core/lv_page_manager.h"
-#include "un260/app_service/app_clock.h"
+#include "un260/lv_system/app_clock.h"
 #include "un260/app_service/app_boot_runtime.h"
 #include "un260/app_service/app_command_runtime.h"
 #include "un260/app_service/app_serial_runtime.h"

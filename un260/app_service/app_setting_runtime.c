@@ -2,7 +2,7 @@
 
 #include <stddef.h>
 
-#include "un260/app_service/app_clock.h"
+#include "un260/lv_system/app_clock.h"
 #include "un260/app_service/app_setting_reply.h"
 #include "un260/app_service/setting_service.h"
 #include "un260/cfd/cfd.h"

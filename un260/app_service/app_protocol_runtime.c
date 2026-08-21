@@ -1,6 +1,6 @@
 #include "app_protocol_runtime.h"
 
-#include "un260/app_service/app_clock.h"
+#include "un260/lv_system/app_clock.h"
 
 #include "un260/data_collection/data_collection.h"
 #include "un260/device_info/device_info.h"
