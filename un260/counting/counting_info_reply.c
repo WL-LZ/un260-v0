@@ -14,6 +14,15 @@ static counting_info_reply_result_t counting_info_reply_result(counting_info_rep
     return result;
 }
 
+static uint32_t counting_info_saturating_add_u32(uint32_t value,
+                                                 uint32_t increment)
+{
+    if (increment > UINT32_MAX - value) {
+        return UINT32_MAX;
+    }
+    return value + increment;
+}
+
 static void counting_info_commit_previous_result(counting_session_state_t *session,
                                                  counting_sim_t *sim_data)
 {
@@ -66,6 +75,10 @@ static counting_info_reply_result_t counting_info_handle_finished(counting_sessi
 {
     counting_info_reply_result_t result = counting_info_reply_result(COUNTING_INFO_REPLY_FINISHED);
 
+    if (session->wait_start_ack) {
+        return counting_info_reply_result(COUNTING_INFO_REPLY_IGNORED);
+    }
+
     session->active = false;
     session->wait_start_ack = true;
     session->end_anim_wait_detail = true;
@@ -97,8 +110,8 @@ static counting_info_reply_result_t counting_info_handle_finished(counting_sessi
     session->history_record.valid = (result.final_pcs > 0);
     session->history_record.end_seen = false;
     session->history_record.pcs = (uint32_t)result.final_pcs;
-    session->history_record.total_after =
-        history_total_notes_counted + (uint32_t)result.final_pcs;
+    session->history_record.total_after = counting_info_saturating_add_u32(
+        history_total_notes_counted, (uint32_t)result.final_pcs);
     session->history_record.amount = result.final_amount;
 
     return result;
