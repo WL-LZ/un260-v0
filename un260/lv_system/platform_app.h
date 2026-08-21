@@ -25,5 +25,4 @@ void sim_reset_for_currency(counting_sim_t* sim_data);
 void update_label_with_simple_highlight(ui_element_t* page_cfg_obj, int len,
     const char* name, const char* fmt, ...);
 void mode_switch(void);
-void sim_clear_err_only(counting_sim_t* sim_data);
 #endif // !PLATFORM_APP_H

@@ -25,9 +25,14 @@ typedef struct {
                              const uint8_t *buf,
                              uint8_t len);
     void (*on_reject_analysis_ready)(void *context);
+    void (*on_reject_report_changed)(void *context);
+    void (*on_summary_changed)(void *context, bool refresh_main);
+    void (*on_serial_data_started)(void *context);
+    void (*on_serial_report_ready)(void *context);
+    void (*on_serial_ui_complete)(void *context, bool begin_end_anim);
+    void (*on_serial_item_changed)(void *context);
     void (*on_history_record_ready)(void *context);
     void (*on_detail_complete)(void *context);
-    bool (*is_main_page_active)(void *context);
 } counting_reject_sn_reply_hooks_t;
 
 counting_detail_reply_result_t counting_reject_sn_reply_dispatch(

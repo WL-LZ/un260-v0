@@ -19,7 +19,9 @@
 #include "un260/lv_components/lv_fault_popup.h"
 #include "un260/lv_components/smart_island.h"
 #include "un260/lv_core/lv_page_manager.h"
+#include "un260/lv_core/page_01_detail_scroll.h"
 #include "un260/lv_core/page_01_main.h"
+#include "un260/lv_core/page_02_list.h"
 #include "un260/lv_core/page_06_settings.h"
 #include "un260/lv_core/page_31_get_wave.h"
 #include "un260/lv_drivers/lv_drivers.h"
@@ -239,6 +241,56 @@ static void app_counting_runtime_on_detail_history(void *context,
     counting_history_append_frame(tag, buf, len);
 }
 
+static void app_counting_runtime_on_reject_report_changed(void *context)
+{
+    (void)context;
+    page_02_list_section_data_ready(PAGE_02_SECTION_C);
+}
+
+static void app_counting_runtime_on_summary_changed(void *context,
+                                                    bool refresh_main)
+{
+    (void)context;
+    smart_island_refresh_summary();
+    if (refresh_main && app_counting_runtime_main_page_active()) {
+        ui_refresh_main_page();
+    }
+}
+
+static void app_counting_runtime_on_serial_data_started(void *context)
+{
+    (void)context;
+    page_01_detail_scroll_reset_all();
+}
+
+static void app_counting_runtime_on_serial_report_ready(void *context)
+{
+    (void)context;
+    page_02_list_report_reset();
+    page_02_list_section_data_ready(PAGE_02_SECTION_B);
+}
+
+static void app_counting_runtime_on_serial_ui_complete(void *context,
+                                                       bool begin_end_anim)
+{
+    (void)context;
+    if (app_counting_runtime_main_page_active()) {
+        ui_refresh_main_page();
+    }
+    if (begin_end_anim) {
+        ui_count_end_anim_begin(NULL);
+    }
+}
+
+static void app_counting_runtime_on_serial_item_changed(void *context)
+{
+    (void)context;
+    if (app_counting_runtime_main_page_active() &&
+        page_01_detail_section_get() == PAGE_01_DETAIL_SECTION_B) {
+        page_01_main_detail_refresh_rows_only();
+    }
+}
+
 static void app_counting_runtime_on_reject_analysis(void *context)
 {
     app_counting_detail_context_t *detail_context = context;
@@ -322,12 +374,6 @@ static void app_counting_runtime_on_detail_complete(void *context)
     if (detail_context != NULL) {
         app_counting_runtime_handle_detail_complete(detail_context->session);
     }
-}
-
-static bool app_counting_runtime_is_main_page_active(void *context)
-{
-    (void)context;
-    return app_counting_runtime_main_page_active();
 }
 
 static void app_counting_runtime_schedule_auto_wave(counting_session_state_t *session)
@@ -431,9 +477,14 @@ void app_counting_runtime_handle_detail(uint8_t cmd,
     hooks.context = &context;
     hooks.on_history_frame = app_counting_runtime_on_detail_history;
     hooks.on_reject_analysis_ready = app_counting_runtime_on_reject_analysis;
+    hooks.on_reject_report_changed = app_counting_runtime_on_reject_report_changed;
+    hooks.on_summary_changed = app_counting_runtime_on_summary_changed;
+    hooks.on_serial_data_started = app_counting_runtime_on_serial_data_started;
+    hooks.on_serial_report_ready = app_counting_runtime_on_serial_report_ready;
+    hooks.on_serial_ui_complete = app_counting_runtime_on_serial_ui_complete;
+    hooks.on_serial_item_changed = app_counting_runtime_on_serial_item_changed;
     hooks.on_history_record_ready = app_counting_runtime_on_history_record;
     hooks.on_detail_complete = app_counting_runtime_on_detail_complete;
-    hooks.is_main_page_active = app_counting_runtime_is_main_page_active;
 
     counting_reject_sn_reply_dispatch(cmd,
                                       detail_state,

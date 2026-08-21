@@ -1062,11 +1062,3 @@ void sim_reset_counting_result(counting_sim_t* sim_data)
     if (sim_data == NULL) return;
     sim_reset_counting_data(sim_data, false);
 }
-
-
-void sim_clear_err_only(counting_sim_t* sim_data)
-{
-    if (!sim_data) return;
-    counting_data_clear_errors(sim_data);
-    /* Keep expected reject count from 0x0E for main-page reject display. */
-}

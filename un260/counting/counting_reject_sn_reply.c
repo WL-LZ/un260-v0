@@ -7,12 +7,7 @@
 #include <string.h>
 
 #include "un260/counting/counting_data_store.h"
-#include "un260/lv_components/smart_island.h"
-#include "un260/lv_core/page_01_detail_scroll.h"
-#include "un260/lv_core/page_01_main.h"
-#include "un260/lv_core/page_02_list.h"
 #include "un260/lv_drivers/lv_drivers.h"
-#include "un260/lv_system/platform_app.h"
 #include "un260/protocol/protocol_send.h"
 
 static void counting_detail_record_history(
@@ -26,17 +21,21 @@ static void counting_detail_record_history(
     }
 }
 
-static bool counting_detail_is_main_page_active(
-    const counting_reject_sn_reply_hooks_t *hooks)
+static void counting_detail_notify(
+    const counting_reject_sn_reply_hooks_t *hooks,
+    void (*callback)(void *context))
 {
-    return hooks != NULL && hooks->is_main_page_active != NULL &&
-           hooks->is_main_page_active(hooks->context);
+    if (hooks != NULL && callback != NULL) {
+        callback(hooks->context);
+    }
 }
 
-static void counting_reject_refresh_pages(const counting_sim_t *sim_data)
+static void counting_detail_notify_summary(
+    const counting_reject_sn_reply_hooks_t *hooks, bool refresh_main)
 {
-    (void)sim_data;
-    page_02_list_section_data_ready(PAGE_02_SECTION_C);
+    if (hooks != NULL && hooks->on_summary_changed != NULL) {
+        hooks->on_summary_changed(hooks->context, refresh_main);
+    }
 }
 
 static counting_detail_reply_result_t counting_reject_reply_handle(
@@ -56,24 +55,23 @@ static counting_detail_reply_result_t counting_reject_reply_handle(
     err_code = buf[4];
     pcs = buf[5];
     if (err_code == 0x00 && pcs == 0x00) {
-        sim_clear_err_only(sim_data);
+        counting_data_clear_errors(sim_data);
+        /* Keep err_expected from 0x0E for the main-page reject count. */
         counting_detail_record_history(hooks, "0x0C", buf, len);
         return COUNTING_DETAIL_REPLY_START;
     }
 
     if (err_code == 0xFF && pcs == 0xFF) {
         counting_detail_record_history(hooks, "0x0C", buf, len);
-        counting_reject_refresh_pages(sim_data);
+        counting_detail_notify(hooks, hooks != NULL
+            ? hooks->on_reject_report_changed : NULL);
         if (hooks != NULL && hooks->on_reject_analysis_ready != NULL) {
             hooks->on_reject_analysis_ready(hooks->context);
         }
         uart_debug_printf("0x0C reject detail receive end, parsed=%u expected=%u\n",
                     (unsigned int)counting_data_error_detail_count(sim_data),
                     (unsigned int)sim_data->err_expected);
-        smart_island_refresh_summary();
-        if (counting_detail_is_main_page_active(hooks)) {
-            ui_refresh_main_page();
-        }
+        counting_detail_notify_summary(hooks, true);
         if (detail->wait_sn_after_reject_end) {
             uint8_t sn_req[2] = {0x01, 0x01};
             protocol_send(0x0D, sn_req, 2);
@@ -102,8 +100,9 @@ static counting_detail_reply_result_t counting_reject_reply_handle(
         sim_data->err_num++;
     }
 
-    counting_reject_refresh_pages(sim_data);
-    smart_island_refresh_summary();
+    counting_detail_notify(hooks, hooks != NULL
+        ? hooks->on_reject_report_changed : NULL);
+    counting_detail_notify_summary(hooks, false);
     return COUNTING_DETAIL_REPLY_DATA;
 }
 
@@ -145,25 +144,27 @@ static counting_detail_reply_result_t counting_sn_reply_handle(
 
     if (counting_sn_payload_is(buf, payload_end, 0x00)) {
         counting_data_clear_serials(sim_data);
-        page_01_detail_scroll_reset_all();
+        counting_detail_notify(hooks, hooks != NULL
+            ? hooks->on_serial_data_started : NULL);
         counting_detail_record_history(hooks, "0x0D", buf, len);
         return COUNTING_DETAIL_REPLY_START;
     }
 
     if (counting_sn_payload_is(buf, payload_end, 0xFF)) {
-        page_02_list_report_reset();
-        page_02_list_section_data_ready(PAGE_02_SECTION_B);
+        bool begin_end_anim = session->end_anim_wait_detail;
+
+        counting_detail_notify(hooks, hooks != NULL
+            ? hooks->on_serial_report_ready : NULL);
         counting_detail_record_history(hooks, "0x0D", buf, len);
         session->history_record.end_seen = true;
         if (hooks != NULL && hooks->on_history_record_ready != NULL) {
             hooks->on_history_record_ready(hooks->context);
         }
-        if (counting_detail_is_main_page_active(hooks)) {
-            ui_refresh_main_page();
-        }
         if (session->end_anim_wait_detail) {
             session->end_anim_wait_detail = false;
-            ui_count_end_anim_begin(NULL);
+        }
+        if (hooks != NULL && hooks->on_serial_ui_complete != NULL) {
+            hooks->on_serial_ui_complete(hooks->context, begin_end_anim);
         }
         if (hooks != NULL && hooks->on_detail_complete != NULL) {
             hooks->on_detail_complete(hooks->context);
@@ -236,10 +237,8 @@ static counting_detail_reply_result_t counting_sn_reply_handle(
         sim_data->denom_mix[index] = denom;
     }
 
-    if (counting_detail_is_main_page_active(hooks) &&
-        page_01_detail_section_get() == PAGE_01_DETAIL_SECTION_B) {
-        page_01_main_detail_refresh_rows_only();
-    }
+    counting_detail_notify(hooks, hooks != NULL
+        ? hooks->on_serial_item_changed : NULL);
     return COUNTING_DETAIL_REPLY_DATA;
 }
 
