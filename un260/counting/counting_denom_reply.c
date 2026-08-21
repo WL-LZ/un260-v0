@@ -127,8 +127,11 @@ static counting_denom_reply_result_t counting_denom_handle_data(
         uart_printf(fd6, "0x0B invalid denom detail frame\n");
         return COUNTING_DENOM_REPLY_IGNORED;
     }
+    if (!counting_denom_query_accepts_data(detail)) {
+        uart_printf(fd6, "0x0B query data ignored before start frame\n");
+        return COUNTING_DENOM_REPLY_IGNORED;
+    }
 
-    counting_denom_query_mark_frame_received(detail);
     counting_denom_record_history(hooks, buf, len);
 
     for (int i = 0; i < sim_data->denom_number; i++) {
@@ -175,7 +178,7 @@ counting_denom_reply_result_t counting_denom_reply_handle(
     if (counting_denom_payload_is(buf, 0x00)) {
         memset(sim_data->denom, 0, sizeof(sim_data->denom));
         sim_data->denom_number = 0;
-        counting_denom_query_mark_frame_received(detail);
+        counting_denom_query_mark_start(detail);
         counting_denom_record_history(hooks, buf, len);
         uart_printf(fd6, "0x0B denom detail receive start\n");
         return COUNTING_DENOM_REPLY_START;
