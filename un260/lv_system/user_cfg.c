@@ -34,6 +34,17 @@ static bool user_cfg_password_is_valid(const char* password)
     return true;
 }
 
+static void user_cfg_password_store(const char *password)
+{
+    size_t len = strlen(password);
+
+    if (len > USER_PASSWORD_MAX_LEN) {
+        len = USER_PASSWORD_MAX_LEN;
+    }
+    memcpy(g_user_password, password, len);
+    g_user_password[len] = '\0';
+}
+
 bool user_cfg_password_load(void)
 {
     FILE* fp;
@@ -58,7 +69,7 @@ bool user_cfg_password_load(void)
         return false;
     }
 
-    lv_snprintf(g_user_password, sizeof(g_user_password), "%s", buf);
+    user_cfg_password_store(buf);
     return true;
 }
 
@@ -78,7 +89,7 @@ bool user_cfg_password_save(const char* password)
 
     fprintf(fp, "%s\n", password);
     fclose(fp);
-    lv_snprintf(g_user_password, sizeof(g_user_password), "%s", password);
+    user_cfg_password_store(password);
     return true;
 }
 

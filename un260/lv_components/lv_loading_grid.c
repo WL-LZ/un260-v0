@@ -32,7 +32,6 @@ static const uint8_t g_loading_grid_wave_group[LOADING_GRID_DOT_COUNT] = {
 };
 
 static lv_coord_t loading_grid_clamp_coord(lv_coord_t value, lv_coord_t min_value);
-static uint16_t loading_grid_clamp_u16(uint16_t value, uint16_t min_value);
 static void lv_loading_grid_config_init(lv_loading_grid_config_t *cfg);
 static void loading_grid_anim_opa_cb(void *var, int32_t v);
 static void loading_grid_start_dot_anim(lv_obj_t *dot, const lv_loading_grid_config_t *cfg,
@@ -67,11 +66,6 @@ void lv_loading_grid_set_opa(lv_obj_t *grid, lv_opa_t opa)
 }
 
 static lv_coord_t loading_grid_clamp_coord(lv_coord_t value, lv_coord_t min_value)
-{
-    return value < min_value ? min_value : value;
-}
-
-static uint16_t loading_grid_clamp_u16(uint16_t value, uint16_t min_value)
 {
     return value < min_value ? min_value : value;
 }
