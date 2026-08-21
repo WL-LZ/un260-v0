@@ -109,18 +109,13 @@ static const ui_text_item_t g_ui_text_widget_group[UI_TEXT_MAX - UI_TEXT_WIDGET_
         "请放入钞票",
         "지폐를 넣어 주세요"
     },
-    [UI_TEXT_WIDGET_SMART_ISLAND_RESULT_OK_TITLE - UI_TEXT_WIDGET_BASE] = {"Batch verified", "批次已校验", "배치 검증 완료"},
+    [UI_TEXT_WIDGET_SMART_ISLAND_RESULT_OK_TITLE - UI_TEXT_WIDGET_BASE] = {"All notes normal", "钞票全部正常", "모든 지폐 정상"},
     [UI_TEXT_WIDGET_SMART_ISLAND_RESULT_OK_DETAIL - UI_TEXT_WIDGET_BASE] = {"All notes accepted", "全部钞票通过", "모든 지폐 정상"},
-    [UI_TEXT_WIDGET_SMART_ISLAND_RESULT_ISSUE_TITLE - UI_TEXT_WIDGET_BASE] = {"Processed with issues", "本批次存在异常", "이슈 포함 처리"},
+    [UI_TEXT_WIDGET_SMART_ISLAND_RESULT_ISSUE_TITLE - UI_TEXT_WIDGET_BASE] = {"Abnormal notes found", "发现异常钞票", "이상 지폐 발견"},
     [UI_TEXT_WIDGET_SMART_ISLAND_RESULT_ISSUE_DETAIL_FMT - UI_TEXT_WIDGET_BASE] = {
         "#FF5A5F %d# #FFFFFF Suspect# #737373 |# #FF5A5F %d# #FFFFFF Damaged#",
         "#FF5A5F %d# #FFFFFF 可疑# #737373 |# #FF5A5F %d# #FFFFFF 破损#",
         "#FF5A5F %d# #FFFFFF 의심# #737373 |# #FF5A5F %d# #FFFFFF 손상#"
-    },
-    [UI_TEXT_WIDGET_SMART_ISLAND_RESULT_RATIO_FMT - UI_TEXT_WIDGET_BASE] = {
-        "Normal %u%% | Abnormal %u%%",
-        "正常 %u%% | 异常 %u%%",
-        "정상 %u%% | 이상 %u%%"
     },
     [UI_TEXT_WIDGET_SMART_ISLAND_NO_REJECT - UI_TEXT_WIDGET_BASE] = {"No reject note", "无退钞", "리젝트 없음"},
     [UI_TEXT_WIDGET_SMART_ISLAND_SWIPE_ACTIONS - UI_TEXT_WIDGET_BASE] = {"Swipe for actions", "滑动查看功能", "밀어서 기능 보기"},

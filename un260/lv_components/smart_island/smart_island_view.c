@@ -487,11 +487,10 @@ static void smart_island_rebuild_scene_texts(void)
             lv_snprintf(g_si_ctx.text.info_footer, sizeof(g_si_ctx.text.info_footer), "%s",
                 ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_IDLE_NO_COUNT));
         } else {
-            unsigned normal_percent = current_total > 0
-                ? (unsigned)((current_valid * 100) / current_total) : 0U;
-            lv_snprintf(g_si_ctx.text.info_footer, sizeof(g_si_ctx.text.info_footer),
-                ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_RESULT_RATIO_FMT),
-                normal_percent, 100U - normal_percent);
+            lv_snprintf(g_si_ctx.text.info_footer, sizeof(g_si_ctx.text.info_footer), "%s",
+                g_si_ctx.text.idle_has_issue
+                    ? ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_RESULT_ISSUE_TITLE)
+                    : ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_RESULT_OK_TITLE));
         }
 
         if (g_si_ctx.text.idle_line3[0] != '\0') {
