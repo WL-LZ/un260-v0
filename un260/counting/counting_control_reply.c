@@ -56,7 +56,7 @@ static void counting_control_handle_runtime_fault(const uint8_t *buf,
         hide_fault_popup();
         fault_popup_clear_pending();
         fault_popup_reset_auto_retry();
-        g_sys_err_last_code = 0x00;
+        system_error_state_reset();
         smart_island_restore_idle();
         return;
     }

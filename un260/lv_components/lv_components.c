@@ -587,7 +587,12 @@ const char* get_system_error_desc(uint8_t code)
 static lv_obj_t* g_sys_err_mask = NULL;
 static lv_obj_t* g_sys_err_popup = NULL;
 static lv_obj_t* g_sys_err_info_label = NULL;
-uint8_t g_sys_err_last_code = 0x00;
+static uint8_t g_sys_err_last_code = 0x00;
+
+void system_error_state_reset(void)
+{
+    g_sys_err_last_code = 0x00;
+}
 
 void hide_system_error_popup(void)
 {
@@ -610,7 +615,7 @@ void system_error_confirm_cb(lv_event_t* e)
     uint8_t clear_cmd = 0x01;
     protocol_send(0x3D, &clear_cmd, 1); /* FD DF 06 3D 01 0A */
     hide_system_error_popup();
-    g_sys_err_last_code = 0x00;
+    system_error_state_reset();
 }
 
 void show_system_error_popup(uint8_t code)
