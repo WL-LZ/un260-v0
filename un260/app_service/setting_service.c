@@ -110,6 +110,61 @@ static setting_value_request_slot_t g_flap_request =
 static setting_value_request_slot_t g_reject_pocket_request =
     SETTING_VALUE_REQUEST_SLOT_INITIALIZER;
 
+typedef struct {
+    protocol_request_t request;
+} setting_action_request_slot_t;
+
+#define SETTING_ACTION_REQUEST_SLOT_INITIALIZER \
+    { PROTOCOL_REQUEST_INITIALIZER(SETTING_REQUEST_TIMEOUT_MS) }
+
+static setting_action_request_slot_t g_aging_request =
+    SETTING_ACTION_REQUEST_SLOT_INITIALIZER;
+static setting_action_request_slot_t g_factory_request =
+    SETTING_ACTION_REQUEST_SLOT_INITIALIZER;
+
+static bool setting_action_request_begin(setting_action_request_slot_t *slot,
+                                         uint8_t cmd_g)
+{
+    const uint8_t payload = 0x01;
+
+    if (slot == NULL || !protocol_request_begin(&slot->request)) return false;
+    if (protocol_send(cmd_g, &payload, 1) < 0) {
+        protocol_request_finish(&slot->request);
+        return false;
+    }
+    return true;
+}
+
+static bool setting_action_request_take_result(setting_action_request_slot_t *slot,
+                                               uint8_t status,
+                                               uint8_t success_status,
+                                               uint8_t failure_status,
+                                               setting_action_result_t *result)
+{
+    if (slot == NULL || result == NULL ||
+        (status != success_status && status != failure_status) ||
+        !protocol_request_take_result(&slot->request)) {
+        return false;
+    }
+
+    result->success = status == success_status;
+    result->timeout = false;
+    return true;
+}
+
+static bool setting_action_request_take_timeout(setting_action_request_slot_t *slot,
+                                                setting_action_result_t *result)
+{
+    if (slot == NULL || result == NULL ||
+        !protocol_request_take_timeout(&slot->request)) {
+        return false;
+    }
+
+    result->success = false;
+    result->timeout = true;
+    return true;
+}
+
 static bool setting_value_request_begin(setting_value_request_slot_t *slot,
                                         uint8_t cmd_g,
                                         const uint8_t *payload,
@@ -517,6 +572,40 @@ void setting_service_clear_reject_pocket_max_request(void)
     setting_value_request_clear(&g_reject_pocket_request);
 }
 
+bool setting_service_request_aging_start(void)
+{
+    return setting_action_request_begin(&g_aging_request, 0x46);
+}
+
+bool setting_service_take_aging_result(uint8_t status,
+                                       setting_action_result_t *result)
+{
+    return setting_action_request_take_result(&g_aging_request, status,
+                                              0x00, 0x01, result);
+}
+
+bool setting_service_take_aging_timeout(setting_action_result_t *result)
+{
+    return setting_action_request_take_timeout(&g_aging_request, result);
+}
+
+bool setting_service_request_factory_reset(void)
+{
+    return setting_action_request_begin(&g_factory_request, 0x44);
+}
+
+bool setting_service_take_factory_result(uint8_t status,
+                                         setting_action_result_t *result)
+{
+    return setting_action_request_take_result(&g_factory_request, status,
+                                              0x01, 0x02, result);
+}
+
+bool setting_service_take_factory_timeout(setting_action_result_t *result)
+{
+    return setting_action_request_take_timeout(&g_factory_request, result);
+}
+
 void setting_service_cancel_all(void)
 {
     setting_basic_request_cancel(&g_mode_request);
@@ -532,4 +621,6 @@ void setting_service_cancel_all(void)
     setting_value_request_clear(&g_double_note_request);
     setting_value_request_clear(&g_flap_request);
     setting_value_request_clear(&g_reject_pocket_request);
+    protocol_request_finish(&g_aging_request.request);
+    protocol_request_finish(&g_factory_request.request);
 }

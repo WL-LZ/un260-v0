@@ -28,6 +28,11 @@ typedef struct {
     bool timeout;
 } setting_value_result_t;
 
+typedef struct {
+    bool success;
+    bool timeout;
+} setting_action_result_t;
+
 typedef enum {
     SETTING_REQUEST_TIMEOUT_NONE = 0,
     SETTING_REQUEST_TIMEOUT_MODE = 1U << 0,
@@ -79,6 +84,16 @@ bool setting_service_request_reject_pocket_max(uint8_t target, uint8_t previous)
 bool setting_service_take_reject_pocket_max_result(uint8_t status, setting_value_result_t *result);
 bool setting_service_take_reject_pocket_max_timeout(setting_value_result_t *result);
 void setting_service_clear_reject_pocket_max_request(void);
+
+bool setting_service_request_aging_start(void);
+bool setting_service_take_aging_result(uint8_t status,
+                                       setting_action_result_t *result);
+bool setting_service_take_aging_timeout(setting_action_result_t *result);
+
+bool setting_service_request_factory_reset(void);
+bool setting_service_take_factory_result(uint8_t status,
+                                         setting_action_result_t *result);
+bool setting_service_take_factory_timeout(setting_action_result_t *result);
 void setting_service_cancel_all(void);
 
 #endif

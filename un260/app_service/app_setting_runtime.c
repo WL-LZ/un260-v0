@@ -17,6 +17,8 @@
 #include "un260/lv_core/page_23_set_flap.h"
 #include "un260/lv_core/page_24_set_reject_pocket.h"
 #include "un260/lv_core/page_25_set_serial_number.h"
+#include "un260/lv_core/page_26_set_aging.h"
+#include "un260/lv_core/page_30_set_factory.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/machine_state/machine_state.h"
 #include "un260/print/print_config.h"
@@ -113,6 +115,7 @@ void app_setting_runtime_poll(uint32_t now_ms)
     serial_number_setting_result_t serial_result;
     currency_switch_result_t currency_result;
     print_config_request_result_t print_result;
+    setting_action_result_t action_result;
 
     if (g_mode_clear_scheduled &&
         (uint32_t)(now_ms - g_mode_clear_tick) >=
@@ -175,6 +178,18 @@ void app_setting_runtime_poll(uint32_t now_ms)
 
     if (print_config_take_timeout(&print_result)) {
         ui_page_20_set_print_on_reply(&print_result);
+        notify_timeout = true;
+    }
+
+    if (setting_service_take_aging_timeout(&action_result)) {
+        uart_printf(fd6, "aging start request timeout\n");
+        ui_page_26_set_aging_on_reply(0x01);
+        notify_timeout = true;
+    }
+
+    if (setting_service_take_factory_timeout(&action_result)) {
+        uart_printf(fd6, "factory reset request timeout\n");
+        ui_page_30_set_factory_on_reply(0x02);
         notify_timeout = true;
     }
 

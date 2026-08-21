@@ -212,8 +212,14 @@ bool app_setting_reply_handle_detail(uint8_t cmd,
     case 0x44:
         if (len < 6) uart_printf(fd6, "0x44 invalid len=%d\n", len);
         else {
+            setting_action_result_t result;
+
             uart_printf(fd6, "0x44 factory setting reply: res=0x%02X\n", buf[4]);
-            ui_page_30_set_factory_on_reply(buf[4]);
+            if (setting_service_take_factory_result(buf[4], &result)) {
+                ui_page_30_set_factory_on_reply(result.success ? 0x01 : 0x02);
+            } else {
+                uart_printf(fd6, "0x44 factory setting reply ignored: no matching request\n");
+            }
         }
         return true;
     case 0x45:
@@ -227,7 +233,17 @@ bool app_setting_reply_handle_detail(uint8_t cmd,
         if (len < 6) uart_printf(fd6, "0x46 invalid len=%d\n", len);
         else {
             uart_printf(fd6, "0x46 aging setting reply: sx=0x%02X\n", buf[4]);
-            ui_page_26_set_aging_on_reply(buf[4]);
+            if (buf[4] == 0x02) {
+                ui_page_26_set_aging_on_reply(buf[4]);
+            } else {
+                setting_action_result_t result;
+
+                if (setting_service_take_aging_result(buf[4], &result)) {
+                    ui_page_26_set_aging_on_reply(result.success ? 0x00 : 0x01);
+                } else {
+                    uart_printf(fd6, "0x46 aging setting reply ignored: no matching request\n");
+                }
+            }
         }
         return true;
     default:

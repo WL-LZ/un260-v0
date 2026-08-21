@@ -3,6 +3,7 @@
 #include "un260/lv_core/settings_detail_ui.h"
 #include "un260/lv_core/ui_upgrade_service.h"
 #include "un260/lv_system/ui_text.h"
+#include "un260/app_service/setting_service.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -16,13 +17,6 @@ static lv_timer_t* factory_anim_timer = NULL;
 static lv_timer_t* factory_reboot_timer = NULL;
 static uint16_t anim_tick = 0;
 
-static bool factory_send_start(void)
-{
-    uint8_t payload = 0x01;
-
-    return settings_detail_send_command(0x44, &payload, 1);
-}
-
 static bool factory_send_clear_detail(void)
 {
     uint8_t payload = 0x01;
@@ -33,7 +27,7 @@ static bool factory_send_clear_detail(void)
 static void factory_confirm_start(void* user_data)
 {
     (void)user_data;
-    (void)factory_send_start();
+    (void)setting_service_request_factory_reset();
 }
 
 static void factory_reboot_timer_cb(lv_timer_t* timer)
@@ -273,6 +267,10 @@ void ui_page_30_set_factory_destroy(void)
 
 void ui_page_30_set_factory_on_reply(uint8_t res)
 {
+    if (!factory_page || !lv_obj_is_valid(factory_page)) {
+        return;
+    }
+
     if (res == 0x01) {
         settings_detail_dialog_show(ui_text_get(UI_TEXT_SETTINGS_FACTORY_SUCCESS_TITLE),
                                     ui_text_get(UI_TEXT_SETTINGS_FACTORY_SUCCESS_CONTENT),

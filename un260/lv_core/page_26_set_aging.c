@@ -3,6 +3,7 @@
 #include "un260/lv_core/settings_detail_ui.h"
 #include "un260/machine_state/machine_state.h"
 #include "un260/lv_system/ui_text.h"
+#include "un260/app_service/setting_service.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -77,20 +78,13 @@ static void aging_anim_stop(void)
     }
 }
 
-static bool aging_send_start(void)
-{
-    uint8_t payload = 0x01;
-
-    return settings_detail_send_command(0x46, &payload, 1);
-}
-
 static void aging_confirm_start(void* user_data)
 {
     (void)user_data;
 
     if (machine_state_aging_running()) return;
 
-    if (!aging_send_start()) {
+    if (!setting_service_request_aging_start()) {
         return;
     }
 }
@@ -322,10 +316,12 @@ void ui_page_26_set_aging_on_reply(uint8_t res)
         if (aging_page) {
             aging_refresh_view();
         }
-        settings_detail_dialog_show(ui_text_get(UI_TEXT_SETTINGS_AGING_COMPLETE_TITLE),
-                                    ui_text_get(UI_TEXT_SETTINGS_AGING_COMPLETE_CONTENT),
-                                    ui_text_get(UI_TEXT_SETTINGS_DIALOG_CONFIRM),
-                                    NULL, NULL, NULL, NULL);
+        if (aging_page) {
+            settings_detail_dialog_show(ui_text_get(UI_TEXT_SETTINGS_AGING_COMPLETE_TITLE),
+                                        ui_text_get(UI_TEXT_SETTINGS_AGING_COMPLETE_CONTENT),
+                                        ui_text_get(UI_TEXT_SETTINGS_DIALOG_CONFIRM),
+                                        NULL, NULL, NULL, NULL);
+        }
         return;
     }
 
@@ -334,9 +330,11 @@ void ui_page_26_set_aging_on_reply(uint8_t res)
         if (aging_page) {
             aging_refresh_view();
         }
-        settings_detail_dialog_show(ui_text_get(UI_TEXT_SETTINGS_AGING_FAIL_TITLE),
-                                    ui_text_get(UI_TEXT_SETTINGS_AGING_FAIL_CONTENT),
-                                    ui_text_get(UI_TEXT_SETTINGS_DIALOG_CONFIRM),
-                                    NULL, NULL, NULL, NULL);
+        if (aging_page) {
+            settings_detail_dialog_show(ui_text_get(UI_TEXT_SETTINGS_AGING_FAIL_TITLE),
+                                        ui_text_get(UI_TEXT_SETTINGS_AGING_FAIL_CONTENT),
+                                        ui_text_get(UI_TEXT_SETTINGS_DIALOG_CONFIRM),
+                                        NULL, NULL, NULL, NULL);
+        }
     }
 }
