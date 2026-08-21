@@ -19,7 +19,6 @@ typedef struct {
     float total_amount;
     char **sn_str;
     int sn_capacity;
-    char **err_str;
     uint8_t *err_pcs;
     uint8_t *err_code;
     int err_capacity;

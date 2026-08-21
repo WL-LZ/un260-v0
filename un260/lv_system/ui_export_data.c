@@ -13,6 +13,8 @@
 #include "un260/machine_state/machine_state.h"
 #include "un260/currency/currency_state.h"
 #include "un260/storage/usb_storage.h"
+#include "un260/counting/counting_data_store.h"
+#include "un260/counting/counting_reject_reason.h"
 
 #define UI_EXPORT_LOCK_MS                  2000U
 #define UI_EXPORT_TOAST_TEXT_EXPORTING     "Exporting..."
@@ -426,8 +428,10 @@ static bool ui_export_data_write_html_file(const char *file_path)
         "<div class=\"sn-table-wrap\"><table><thead><tr><th>No.</th><th>Serial Number</th><th class=\"text-right\">Value</th></tr></thead><tbody id=\"snTableBody\">\n",
         total_pcs);
 
-    if (sim.sn_str != NULL) {
-        for (i = 0; i < sim.total_pcs; i++) {
+    {
+        int sn_limit = counting_data_serial_scan_limit(&sim);
+
+        for (i = 0; i < sn_limit; i++) {
             if (sim.sn_str[i] == NULL || sim.sn_str[i][0] == '\0') {
                 continue;
             }
@@ -452,15 +456,12 @@ static bool ui_export_data_write_html_file(const char *file_path)
         "const reportData={totalAmount:%.0f,totalNotes:%d,rejectCount:%d,suspectNotes:%d,damagedNotes:0,rejectDetails:[",
         total_amount, total_pcs, reject_total, reject_total);
 
-    if (sim.err_num > 0 && sim.err_str != NULL) {
+    if (sim.err_num > 0 && sim.err_code != NULL) {
         for (i = 0; i < sim.err_num; i++) {
             unsigned int pcs = 0;
 
-            if (sim.err_str[i] == NULL || sim.err_str[i][0] == '\0') {
-                continue;
-            }
-
-            lv_snprintf(reason_buf, sizeof(reason_buf), "%s", sim.err_str[i]);
+            lv_snprintf(reason_buf, sizeof(reason_buf), "%s",
+                        counting_reject_reason_get(sim.err_code[i]));
             if (strcmp(reason_buf, "Size Unknow") == 0) {
                 lv_snprintf(reason_buf, sizeof(reason_buf), "%s", "Size Unknown");
             } else if (strcmp(reason_buf, "Ort Unknow") == 0) {
@@ -552,8 +553,10 @@ static bool ui_export_data_write_csv_file(const char *file_path)
 
     fprintf(fp, "\nSERIAL NUMBER LIST\n");
     fprintf(fp, "NO,SN,DENOM\n");
-    if (sim.sn_str != NULL) {
-        for (i = 0; i < sim.total_pcs; i++) {
+    {
+        int sn_limit = counting_data_serial_scan_limit(&sim);
+
+        for (i = 0; i < sn_limit; i++) {
             if (sim.sn_str[i] == NULL || sim.sn_str[i][0] == '\0') {
                 continue;
             }
@@ -572,15 +575,12 @@ static bool ui_export_data_write_csv_file(const char *file_path)
 
     fprintf(fp, "\nREJECT REPORT\n");
     fprintf(fp, "NO,PCS,REASON\n");
-    if (sim.err_num > 0 && sim.err_str != NULL) {
+    if (sim.err_num > 0 && sim.err_code != NULL) {
         no = 0;
         for (i = 0; i < sim.err_num; i++) {
-            if (sim.err_str[i] == NULL || sim.err_str[i][0] == '\0') {
-                continue;
-            }
-
             no++;
-            lv_snprintf(reason_buf, sizeof(reason_buf), "%s", sim.err_str[i]);
+            lv_snprintf(reason_buf, sizeof(reason_buf), "%s",
+                        counting_reject_reason_get(sim.err_code[i]));
             if (strcmp(reason_buf, "Size Unknow") == 0) {
                 lv_snprintf(reason_buf, sizeof(reason_buf), "%s", "Size Unknown");
             } else if (strcmp(reason_buf, "Ort Unknow") == 0) {

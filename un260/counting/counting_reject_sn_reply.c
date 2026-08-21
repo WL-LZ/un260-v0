@@ -7,7 +7,6 @@
 #include <string.h>
 
 #include "un260/counting/counting_data_store.h"
-#include "un260/counting/counting_reject_reason.h"
 #include "un260/lv_components/smart_island.h"
 #include "un260/lv_core/page_01_detail_scroll.h"
 #include "un260/lv_core/page_01_main.h"
@@ -110,16 +109,7 @@ static counting_detail_reply_result_t counting_reject_reply_handle(
 
     {
         int index = sim_data->err_num;
-        const char *description = counting_reject_reason_get(err_code);
-        size_t description_len = strlen(description);
-        char *description_copy = malloc(description_len + 1);
 
-        if (description_copy == NULL) {
-            uart_printf(fd6, "0x0C: err malloc fail idx=%d\n", index);
-            return COUNTING_DETAIL_REPLY_MEMORY_ERROR;
-        }
-        memcpy(description_copy, description, description_len + 1);
-        sim_data->err_str[index] = description_copy;
         sim_data->err_pcs[index] = pcs;
         sim_data->err_code[index] = err_code;
         sim_data->err_num++;

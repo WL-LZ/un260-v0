@@ -79,25 +79,23 @@ bool counting_data_ensure_serial_capacity(counting_sim_t *sim_data,
     return true;
 }
 
+int counting_data_serial_scan_limit(const counting_sim_t *sim_data)
+{
+    if (sim_data == NULL || sim_data->sn_str == NULL ||
+        !counting_data_capacity_is_valid(sim_data->sn_capacity)) {
+        return 0;
+    }
+    return sim_data->sn_capacity;
+}
+
 void counting_data_clear_errors(counting_sim_t *sim_data)
 {
-    int capacity;
-
     if (sim_data == NULL) {
         return;
     }
 
-    capacity = counting_data_capacity_is_valid(sim_data->err_capacity)
-        ? sim_data->err_capacity : 0;
-    if (sim_data->err_str != NULL) {
-        for (int i = 0; i < capacity; i++) {
-            free(sim_data->err_str[i]);
-        }
-        free(sim_data->err_str);
-    }
     free(sim_data->err_pcs);
     free(sim_data->err_code);
-    sim_data->err_str = NULL;
     sim_data->err_pcs = NULL;
     sim_data->err_code = NULL;
     sim_data->err_capacity = 0;
@@ -107,7 +105,6 @@ void counting_data_clear_errors(counting_sim_t *sim_data)
 bool counting_data_ensure_error_capacity(counting_sim_t *sim_data,
                                          int required_count)
 {
-    char **new_text;
     uint8_t *new_pcs;
     uint8_t *new_code;
     int old_capacity;
@@ -120,8 +117,7 @@ bool counting_data_ensure_error_capacity(counting_sim_t *sim_data,
 
     old_capacity = sim_data->err_capacity;
     if (!counting_data_capacity_is_valid(old_capacity) ||
-        (old_capacity > 0 && (sim_data->err_str == NULL ||
-                              sim_data->err_pcs == NULL ||
+        (old_capacity > 0 && (sim_data->err_pcs == NULL ||
                               sim_data->err_code == NULL))) {
         return false;
     }
@@ -130,29 +126,23 @@ bool counting_data_ensure_error_capacity(counting_sim_t *sim_data,
     }
 
     new_capacity = counting_data_next_capacity(old_capacity, required_count);
-    new_text = calloc((size_t)new_capacity, sizeof(*new_text));
     new_pcs = calloc((size_t)new_capacity, sizeof(*new_pcs));
     new_code = calloc((size_t)new_capacity, sizeof(*new_code));
-    if (new_text == NULL || new_pcs == NULL || new_code == NULL) {
-        free(new_text);
+    if (new_pcs == NULL || new_code == NULL) {
         free(new_pcs);
         free(new_code);
         return false;
     }
 
     if (old_capacity > 0) {
-        memcpy(new_text, sim_data->err_str,
-               sizeof(*new_text) * (size_t)old_capacity);
         memcpy(new_pcs, sim_data->err_pcs,
                sizeof(*new_pcs) * (size_t)old_capacity);
         memcpy(new_code, sim_data->err_code,
                sizeof(*new_code) * (size_t)old_capacity);
     }
 
-    free(sim_data->err_str);
     free(sim_data->err_pcs);
     free(sim_data->err_code);
-    sim_data->err_str = new_text;
     sim_data->err_pcs = new_pcs;
     sim_data->err_code = new_code;
     sim_data->err_capacity = new_capacity;

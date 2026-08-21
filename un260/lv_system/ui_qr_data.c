@@ -2,6 +2,8 @@
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/machine_time.h"
 #include "un260/currency/currency_state.h"
+#include "un260/counting/counting_data_store.h"
+#include "un260/counting/counting_reject_reason.h"
 #include <stdarg.h>
 #include <stdio.h>
 
@@ -80,10 +82,7 @@ bool ui_qr_data_build(char* buf, size_t buf_size) //组装当前点钞结果二�
         return false;
     }
 
-    for (i = 0; i < sim.err_num; i++) {
-        if (sim.err_str == NULL || sim.err_str[i] == NULL || sim.err_str[i][0] == '\0') {
-            continue;
-        }
+    for (i = 0; i < sim.err_num && sim.err_code != NULL; i++) {
 
         if (has_err) {
             if (!ui_qr_data_append(buf, buf_size, &used, ",")) {
@@ -91,7 +90,8 @@ bool ui_qr_data_build(char* buf, size_t buf_size) //组装当前点钞结果二�
             }
         }
 
-        if (!ui_qr_data_append(buf, buf_size, &used, "%s", sim.err_str[i])) {
+        if (!ui_qr_data_append(buf, buf_size, &used, "%s",
+                               counting_reject_reason_get(sim.err_code[i]))) {
             return false;
         }
 
@@ -118,8 +118,8 @@ bool ui_qr_data_build(char* buf, size_t buf_size) //组装当前点钞结果二�
         return false;
     }
 
-    for (i = 0; i < sim.total_pcs; i++) {
-        if (sim.sn_str == NULL || sim.sn_str[i] == NULL || sim.sn_str[i][0] == '\0') {
+    for (i = 0; i < counting_data_serial_scan_limit(&sim); i++) {
+        if (sim.sn_str[i] == NULL || sim.sn_str[i][0] == '\0') {
             continue;
         }
         sn_count++;
@@ -140,7 +140,7 @@ bool ui_qr_data_build(char* buf, size_t buf_size) //组装当前点钞结果二�
         return true;
     }
 
-    for (i = 0; i < sim.total_pcs; i++) {
+    for (i = 0; i < counting_data_serial_scan_limit(&sim); i++) {
         char sn_item[32];
         int sn_item_len;
         const char* tail = NULL;
@@ -148,7 +148,7 @@ bool ui_qr_data_build(char* buf, size_t buf_size) //组装当前点钞结果二�
         size_t remain = 0;
         const size_t reserve_for_omitted_note = 48; //预留尾部空间，用于写入省略提示
 
-        if (sim.sn_str == NULL || sim.sn_str[i] == NULL || sim.sn_str[i][0] == '\0') {
+        if (sim.sn_str[i] == NULL || sim.sn_str[i][0] == '\0') {
             continue;
         }
 

@@ -15,6 +15,7 @@
 #include "un260/lv_system/ui_text.h"
 #include "un260/currency/currency_state.h"
 #include "un260/counting/counting_data_store.h"
+#include "un260/counting/counting_reject_reason.h"
 // 全局变量定义
 counting_sim_t sim = { 0 };
 page_02_report_status_t page_02_a_report_status = { 0 };
@@ -682,8 +683,9 @@ static void page_01_main_detail_rows_refresh(page_01_detail_section_t section, i
                 } else {
                     update_label_by_name(page_01_main_obj, page_01_main_len, pcs_buf, "%s", "-");
                 }
-                if (sim_data->err_str != NULL && sim_data->err_str[data_row] != NULL) {
-                    err_text = sim_data->err_str[data_row];
+                if (sim_data->err_code != NULL) {
+                    err_text = counting_reject_reason_get(
+                        sim_data->err_code[data_row]);
                 }
                 update_label_by_name(page_01_main_obj, page_01_main_len, amount_buf, "%s", err_text);
                 row_show = true;

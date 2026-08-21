@@ -2,6 +2,7 @@
 #include "un260/lv_resources/lv_image_declear.h" 
 #include "un260/lv_resources/lv_img_init.h" 
 #include "un260/currency/currency_state.h"
+#include "un260/counting/counting_reject_reason.h"
 #include "lv_page_event.h"
 #include "aic_ui/aic_ui.h"
 #include "un260/lv_system/platform_app.h"
@@ -546,8 +547,9 @@ static void page_02_scroll_section_row_bind(page_02_scroll_section_t *section, u
         } else {
             lv_label_set_text(section->cell[pool_row][1], "-");
         }
-        if (sim.err_str != NULL && sim.err_str[data_index] != NULL) {
-            lv_label_set_text(section->cell[pool_row][2], sim.err_str[data_index]);
+        if (sim.err_code != NULL) {
+            lv_label_set_text(section->cell[pool_row][2],
+                              counting_reject_reason_get(sim.err_code[data_index]));
         } else {
             lv_label_set_text(section->cell[pool_row][2], "Unknown Error");
         }
