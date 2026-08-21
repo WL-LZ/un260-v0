@@ -90,6 +90,7 @@ const ui_text_item_t g_ui_text_page_group[UI_TEXT_PAGE_MAX] = {
     [UI_TEXT_SETTINGS_CB_STARTED] = {"Color Balance Started", "色彩平衡已开始", "Color Balance Started"},
     [UI_TEXT_SETTINGS_CB_SUCCESS] = {"Color Balance Success", "色彩平衡成功", "Color Balance Success"},
     [UI_TEXT_SETTINGS_CB_FAIL_IR] = {"Color Balance Fail (IR)", "色彩平衡失败（IR）", "Color Balance Fail (IR)"},
+    [UI_TEXT_SETTINGS_CALIB_TIMEOUT] = {"Calibration timed out", "校准等待超时", "Calibration timed out"},
     [UI_TEXT_SETTINGS_MAIN_UPGRADE_TITLE] = {"MAIN BOARD UPGRADE", "主板升级", "MAIN BOARD UPGRADE"},
     [UI_TEXT_SETTINGS_IMAGE_UPGRADE_TITLE] = {"IMAGE BOARD UPGRADE", "图像板升级", "IMAGE BOARD UPGRADE"},
     [UI_TEXT_SETTINGS_PRESS_START_MAIN_UPGRADE] = {"Press START to begin main-board upgrade", "点击开始进行主板升级", "Press START to begin main-board upgrade"},

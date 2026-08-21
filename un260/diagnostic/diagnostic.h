@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #define SENSOR_VOLTAGE_CH_NUM 11
+#define DIAGNOSTIC_CALIBRATION_TIMEOUT_MS 300000U
 
 typedef enum {
     CIS_CALIB_IDLE = 0,
@@ -32,6 +33,7 @@ typedef struct {
     cb_calib_state_t cb_state;
     calib_target_t target;
     bool session_active;
+    bool timed_out;
 } calibration_state_snapshot_t;
 
 typedef struct {
@@ -58,9 +60,12 @@ void sensor_state_set_voltage(uint8_t channel, uint8_t raw);
 void sensor_state_get_snapshot(sensor_voltage_snapshot_t *snapshot);
 
 void diagnostic_calibration_get_snapshot(calibration_state_snapshot_t *snapshot);
-bool diagnostic_calibration_begin(calib_target_t target);
+bool diagnostic_calibration_begin(calib_target_t target, uint32_t now_ms);
 void diagnostic_calibration_end_session(void);
+bool diagnostic_calibration_poll(uint32_t now_ms);
 
-diagnostic_reply_result_t diagnostic_reply_dispatch(uint8_t cmd, const uint8_t *buf, uint8_t len, const diagnostic_reply_hooks_t *hooks);
+diagnostic_reply_result_t diagnostic_reply_dispatch(
+    uint8_t cmd, const uint8_t *buf, uint8_t len, uint32_t now_ms,
+    const diagnostic_reply_hooks_t *hooks);
 
 #endif

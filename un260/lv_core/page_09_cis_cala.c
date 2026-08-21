@@ -2,6 +2,7 @@
 
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/settings_detail_ui.h"
+#include "un260/app_service/app_clock.h"
 #include "un260/diagnostic/diagnostic.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/ui_text.h"
@@ -139,7 +140,8 @@ static void cis_start_btn_cb(lv_event_t* e)
     diagnostic_calibration_get_snapshot(&state);
     if (state.cis_state == CIS_CALIB_RUNNING ||
         state.cb_state == CB_CALIB_RUNNING) return;
-    if (!diagnostic_calibration_begin(CALIB_TARGET_CIS)) return;
+    if (!diagnostic_calibration_begin(CALIB_TARGET_CIS,
+                                      app_clock_uptime_ms())) return;
     if (!settings_detail_send_command(0x5B, &sub, 1)) {
         diagnostic_calibration_end_session();
         return;
@@ -157,7 +159,8 @@ static void cb_start_btn_cb(lv_event_t* e)
     diagnostic_calibration_get_snapshot(&state);
     if (state.cis_state == CIS_CALIB_RUNNING ||
         state.cb_state == CB_CALIB_RUNNING) return;
-    if (!diagnostic_calibration_begin(CALIB_TARGET_CB)) return;
+    if (!diagnostic_calibration_begin(CALIB_TARGET_CB,
+                                      app_clock_uptime_ms())) return;
     if (!settings_detail_send_command(0x5F, &sub, 1)) {
         diagnostic_calibration_end_session();
         return;
@@ -256,6 +259,17 @@ void cis_calib_ui_refresh(void)
     diagnostic_calibration_get_snapshot(&state);
     cis_panel_refresh(state.cis_state);
     cb_panel_refresh(state.cb_state);
+    if (state.timed_out) {
+        if (state.target == CALIB_TARGET_CB) {
+            calib_update_panel(&cb_panel,
+                               ui_text_get(UI_TEXT_SETTINGS_CALIB_TIMEOUT),
+                               lv_color_hex(0xE5484D), LV_SYMBOL_CLOSE);
+        } else {
+            calib_update_panel(&cis_panel,
+                               ui_text_get(UI_TEXT_SETTINGS_CALIB_TIMEOUT),
+                               lv_color_hex(0xE5484D), LV_SYMBOL_CLOSE);
+        }
+    }
 
     running = state.cis_state == CIS_CALIB_RUNNING ||
               state.cb_state == CB_CALIB_RUNNING;

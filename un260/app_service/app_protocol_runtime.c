@@ -102,7 +102,8 @@ bool app_protocol_runtime_handle_reply(uint8_t cmd,
     case 0x1D:
     case 0x5B:
     case 0x5F:
-        diagnostic_reply_dispatch(cmd, buf, len, &g_diagnostic_reply_hooks);
+        diagnostic_reply_dispatch(cmd, buf, len, app_clock_uptime_ms(),
+                                  &g_diagnostic_reply_hooks);
         return true;
 
     case 0x40:

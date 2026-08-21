@@ -9,7 +9,9 @@ static calibration_state_snapshot_t g_calibration_state = {
     .cb_state = CB_CALIB_IDLE,
     .target = CALIB_TARGET_CIS,
     .session_active = false,
+    .timed_out = false,
 };
+static uint32_t g_calibration_activity_ms;
 
 void sensor_state_clear(void)
 {
@@ -35,7 +37,7 @@ void diagnostic_calibration_get_snapshot(calibration_state_snapshot_t *snapshot)
     if (snapshot != NULL) *snapshot = g_calibration_state;
 }
 
-bool diagnostic_calibration_begin(calib_target_t target)
+bool diagnostic_calibration_begin(calib_target_t target, uint32_t now_ms)
 {
     if (target != CALIB_TARGET_CIS && target != CALIB_TARGET_CB) return false;
     if (g_calibration_state.cis_state == CIS_CALIB_RUNNING ||
@@ -43,6 +45,8 @@ bool diagnostic_calibration_begin(calib_target_t target)
 
     g_calibration_state.target = target;
     g_calibration_state.session_active = true;
+    g_calibration_state.timed_out = false;
+    g_calibration_activity_ms = now_ms;
     if (target == CALIB_TARGET_CB) {
         g_calibration_state.cb_state = CB_CALIB_RUNNING;
     } else {
@@ -60,6 +64,27 @@ void diagnostic_calibration_end_session(void)
         g_calibration_state.cb_state = CB_CALIB_IDLE;
     }
     g_calibration_state.session_active = false;
+    g_calibration_state.timed_out = false;
+    g_calibration_activity_ms = 0;
+}
+
+bool diagnostic_calibration_poll(uint32_t now_ms)
+{
+    if (!g_calibration_state.session_active ||
+        (uint32_t)(now_ms - g_calibration_activity_ms) <
+            DIAGNOSTIC_CALIBRATION_TIMEOUT_MS) {
+        return false;
+    }
+
+    if (g_calibration_state.target == CALIB_TARGET_CB) {
+        g_calibration_state.cb_state = CB_CALIB_IDLE;
+    } else {
+        g_calibration_state.cis_state = CIS_CALIB_IDLE;
+    }
+    g_calibration_state.session_active = false;
+    g_calibration_state.timed_out = true;
+    g_calibration_activity_ms = 0;
+    return true;
 }
 
 static int diagnostic_sensor_index_to_channel(uint8_t index)
@@ -118,7 +143,7 @@ static bool diagnostic_cb_state_decode(uint8_t raw, cb_calib_state_t *state)
 }
 
 static diagnostic_reply_result_t diagnostic_calibration_reply_handle(
-    uint8_t cmd, const uint8_t *buf, uint8_t len,
+    uint8_t cmd, const uint8_t *buf, uint8_t len, uint32_t now_ms,
     const diagnostic_reply_hooks_t *hooks)
 {
     bool updated;
@@ -138,18 +163,30 @@ static diagnostic_reply_result_t diagnostic_calibration_reply_handle(
     }
     if (!updated) return DIAGNOSTIC_REPLY_IGNORED;
 
+    g_calibration_state.timed_out = false;
+    g_calibration_activity_ms = now_ms;
+    if ((g_calibration_state.target == CALIB_TARGET_CB &&
+         g_calibration_state.cb_state != CB_CALIB_RUNNING) ||
+        (g_calibration_state.target == CALIB_TARGET_CIS &&
+         g_calibration_state.cis_state != CIS_CALIB_RUNNING)) {
+        g_calibration_state.session_active = false;
+        g_calibration_activity_ms = 0;
+    }
+
     if (hooks != NULL && hooks->on_calibration_changed != NULL) hooks->on_calibration_changed();
     return DIAGNOSTIC_REPLY_CALIBRATION_UPDATED;
 }
 
-diagnostic_reply_result_t diagnostic_reply_dispatch(uint8_t cmd, const uint8_t *buf, uint8_t len, const diagnostic_reply_hooks_t *hooks)
+diagnostic_reply_result_t diagnostic_reply_dispatch(
+    uint8_t cmd, const uint8_t *buf, uint8_t len, uint32_t now_ms,
+    const diagnostic_reply_hooks_t *hooks)
 {
     switch (cmd) {
     case 0x1D:
         return diagnostic_sensor_reply_handle(buf, len);
     case 0x5B:
     case 0x5F:
-        return diagnostic_calibration_reply_handle(cmd, buf, len, hooks);
+        return diagnostic_calibration_reply_handle(cmd, buf, len, now_ms, hooks);
     default:
         return DIAGNOSTIC_REPLY_INVALID;
     }
