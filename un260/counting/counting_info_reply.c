@@ -45,14 +45,14 @@ static counting_info_reply_result_t counting_info_handle_live(counting_session_s
                                                               uint16_t qty,
                                                               uint8_t issue)
 {
-    if (session->wait_start_ack) {
+    if (session->phase == COUNTING_SESSION_FINISHED_WAIT_START) {
         return counting_info_reply_result(COUNTING_INFO_REPLY_IGNORED);
     }
 
-    if (!session->active) {
+    if (session->phase != COUNTING_SESSION_ACTIVE) {
         counting_info_commit_previous_result(session, sim_data);
         session->auto_wave_pending = false;
-        session->active = true;
+        session->phase = COUNTING_SESSION_ACTIVE;
         session->expected_issue = 0;
     }
 
@@ -75,12 +75,11 @@ static counting_info_reply_result_t counting_info_handle_finished(counting_sessi
 {
     counting_info_reply_result_t result = counting_info_reply_result(COUNTING_INFO_REPLY_FINISHED);
 
-    if (session->wait_start_ack) {
+    if (session->phase == COUNTING_SESSION_FINISHED_WAIT_START) {
         return counting_info_reply_result(COUNTING_INFO_REPLY_IGNORED);
     }
 
-    session->active = false;
-    session->wait_start_ack = true;
+    session->phase = COUNTING_SESSION_FINISHED_WAIT_START;
     session->end_anim_wait_detail = true;
     session->last_result.valid = true;
 

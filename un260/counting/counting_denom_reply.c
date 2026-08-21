@@ -94,7 +94,7 @@ static counting_denom_reply_result_t counting_denom_handle_end(
     counting_denom_record_history(hooks, buf, len);
 
     if (query_was_pending) {
-        if (session->active || session->wait_start_ack ||
+        if (session->phase != COUNTING_SESSION_IDLE ||
             session->end_anim_wait_detail || session->last_result.valid) {
             uart_printf(fd6,
                         "0x0B query result discarded during counting session\n");
@@ -111,7 +111,7 @@ static counting_denom_reply_result_t counting_denom_handle_end(
         protocol_send(0x0C, &reject_cmd, 1);
     }
     detail->wait_sn_after_reject_end = true;
-    if (!session->active) {
+    if (session->phase != COUNTING_SESSION_ACTIVE) {
         ui_refresh_main_page();
     }
     return COUNTING_DENOM_REPLY_SESSION_END;

@@ -25,9 +25,14 @@ typedef struct {
     float amount;
 } counting_pending_history_record_t;
 
+typedef enum {
+    COUNTING_SESSION_IDLE = 0,
+    COUNTING_SESSION_ACTIVE,
+    COUNTING_SESSION_FINISHED_WAIT_START,
+} counting_session_phase_t;
+
 typedef struct {
-    bool active;
-    bool wait_start_ack;
+    counting_session_phase_t phase;
     bool end_anim_wait_detail;
     bool auto_wave_pending;
     counting_pending_result_t last_result;

@@ -91,7 +91,7 @@ static void counting_control_handle_start(const uint8_t *buf,
         hide_counting_error_popup();
         fault_popup_clear_pending();
         fault_popup_reset_auto_retry();
-        session->wait_start_ack = false;
+        session->phase = COUNTING_SESSION_IDLE;
         session->end_anim_wait_detail = false;
         session->expected_issue = 0;
         if (hooks != NULL && hooks->on_start_success != NULL) {
