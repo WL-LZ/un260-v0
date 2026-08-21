@@ -31,6 +31,10 @@ typedef struct {
     lv_obj_t *clear_btn_label;
     lv_timer_t *refresh_timer;
     language_t language;
+    char displayed_amount[32];
+    char displayed_pcs[32];
+    int displayed_reject;
+    bool values_valid;
     bool exiting;
 } pure_page_context_t;
 
@@ -157,19 +161,33 @@ static void pure_refresh_values(void)
     char pcs_buf[32];
     int reject_cnt = counting_data_reject_pcs_count(&sim);
 
-    if (g_pure_page.amount_value && lv_obj_is_valid(g_pure_page.amount_value)) {
-        pure_format_amount(amount_buf, sizeof(amount_buf), sim.total_amount);
+    pure_format_amount(amount_buf, sizeof(amount_buf), sim.total_amount);
+    pure_format_pcs(pcs_buf, sizeof(pcs_buf), sim.total_pcs);
+
+    if ((!g_pure_page.values_valid ||
+         strcmp(g_pure_page.displayed_amount, amount_buf) != 0) &&
+        g_pure_page.amount_value && lv_obj_is_valid(g_pure_page.amount_value)) {
         lv_label_set_text(g_pure_page.amount_value, amount_buf);
     }
 
-    if (g_pure_page.pcs_value && lv_obj_is_valid(g_pure_page.pcs_value)) {
-        pure_format_pcs(pcs_buf, sizeof(pcs_buf), sim.total_pcs);
+    if ((!g_pure_page.values_valid ||
+         strcmp(g_pure_page.displayed_pcs, pcs_buf) != 0) &&
+        g_pure_page.pcs_value && lv_obj_is_valid(g_pure_page.pcs_value)) {
         lv_label_set_text(g_pure_page.pcs_value, pcs_buf);
     }
 
-    if (g_pure_page.reject_value && lv_obj_is_valid(g_pure_page.reject_value)) {
+    if ((!g_pure_page.values_valid ||
+         g_pure_page.displayed_reject != reject_cnt) &&
+        g_pure_page.reject_value && lv_obj_is_valid(g_pure_page.reject_value)) {
         lv_label_set_text_fmt(g_pure_page.reject_value, "%d", reject_cnt);
     }
+
+    lv_snprintf(g_pure_page.displayed_amount,
+                sizeof(g_pure_page.displayed_amount), "%s", amount_buf);
+    lv_snprintf(g_pure_page.displayed_pcs,
+                sizeof(g_pure_page.displayed_pcs), "%s", pcs_buf);
+    g_pure_page.displayed_reject = reject_cnt;
+    g_pure_page.values_valid = true;
 }
 
 static void pure_refresh_language_texts(void)
@@ -205,9 +223,12 @@ static void pure_refresh_language_texts(void)
 
 static void pure_refresh_timer_cb(lv_timer_t* t)
 {
+    language_t language;
+
     (void)t;
-    if (g_pure_page.language != ui_lang_get()) {
-        g_pure_page.language = ui_lang_get();
+    language = ui_lang_get();
+    if (g_pure_page.language != language) {
+        g_pure_page.language = language;
         pure_refresh_language_texts();
     }
     pure_refresh_values();
