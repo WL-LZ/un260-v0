@@ -13,20 +13,25 @@
 
 static pthread_mutex_t g_uart_tx_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t g_uart_log_mutex = PTHREAD_MUTEX_INITIALIZER;
+static int g_uart_debug_fd = -1;
 
 #define UART_HEX_LOG_BUFFER_SIZE 1024U
 
-static void uart_log_write(int fd, const char *data, size_t data_len)
+static void uart_log_write_locked(int fd, const char *data, size_t data_len)
 {
     int write_result;
 
-    pthread_mutex_lock(&g_uart_log_mutex);
     write_result = uart_write_all(fd, data, data_len);
-    pthread_mutex_unlock(&g_uart_log_mutex);
-
     if (write_result != (int)data_len) {
         fprintf(stderr, "UART log write failed: %d/%zu\n", write_result, data_len);
     }
+}
+
+static void uart_log_write(int fd, const char *data, size_t data_len)
+{
+    pthread_mutex_lock(&g_uart_log_mutex);
+    uart_log_write_locked(fd, data, data_len);
+    pthread_mutex_unlock(&g_uart_log_mutex);
 }
 
 int uart_write_all(int fd, const void *data, size_t data_len)
@@ -133,6 +138,43 @@ void uart_printf(int fd, const char *fmt, ...)
     }
 
     uart_log_write(fd, buf, output_len);
+}
+
+void uart_debug_set_fd(int fd)
+{
+    pthread_mutex_lock(&g_uart_log_mutex);
+    g_uart_debug_fd = fd;
+    pthread_mutex_unlock(&g_uart_log_mutex);
+}
+
+void uart_debug_printf(const char *fmt, ...)
+{
+    char buf[256];
+    va_list args;
+    int formatted_len;
+    size_t output_len;
+
+    if (fmt == NULL) {
+        return;
+    }
+
+    va_start(args, fmt);
+    formatted_len = vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+    if (formatted_len <= 0) {
+        return;
+    }
+
+    output_len = (size_t)formatted_len;
+    if (output_len >= sizeof(buf)) {
+        output_len = sizeof(buf) - 1;
+    }
+
+    pthread_mutex_lock(&g_uart_log_mutex);
+    if (g_uart_debug_fd >= 0) {
+        uart_log_write_locked(g_uart_debug_fd, buf, output_len);
+    }
+    pthread_mutex_unlock(&g_uart_log_mutex);
 }
 
 void uart_log_hex(int fd,

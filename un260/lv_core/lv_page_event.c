@@ -284,7 +284,7 @@ void page_01_esc_btn_event_cb(lv_event_t* e)
 //         Machine_Mode_t Temp_Mode = mode_next(machine_state_mode());
 //         machine_state_confirm_mode(Temp_Mode);  // 更新当前模式
 
-//         uart_printf(fd6, "mode:%02X\n", Temp_Mode);
+//         uart_debug_printf("mode:%02X\n", Temp_Mode);
 //         icon_feedback_comp("page_01_mode_icon.png", page_01_main_obj, page_01_main_len);
 
 //         uint8_t send_data = 0;
@@ -305,7 +305,7 @@ void page_01_esc_btn_event_cb(lv_event_t* e)
 
 //         protocol_send(0x04, &send_data, 1);  // 发送字节
 //         Machine_work_code.mode_code = send_data; // 保存当前发送的模式代码
-//         uart_printf(fd6, "send_data:%02X\n", send_data);
+//         uart_debug_printf("send_data:%02X\n", send_data);
         
 //     }
 // }

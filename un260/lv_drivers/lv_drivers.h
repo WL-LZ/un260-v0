@@ -30,7 +30,6 @@ void uart_close(int fd);
 
 void machine_handshake_send(void);
 
-extern int fd6;
 typedef uint8_t Machine_Mode_t;
 
 #define Machine_MODE_MDC   0x03

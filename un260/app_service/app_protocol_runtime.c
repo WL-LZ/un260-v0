@@ -21,13 +21,13 @@ static void handle_device_reply(uint8_t cmd, const uint8_t *buf, uint8_t len)
     device_reply_result_t reply = device_reply_dispatch(cmd, buf, len);
 
     if (reply.kind == DEVICE_REPLY_VERSION_UPDATED) {
-        uart_printf(fd6, "Version Info Received\n");
+        uart_debug_printf("Version Info Received\n");
     } else if (reply.kind == DEVICE_REPLY_MAIN_UPGRADE_STATUS) {
         ui_page_14_main_upgrade_on_reply(0xA1, reply.status);
-        uart_printf(fd6, "0xA1 res=0x%02X\n", reply.status);
+        uart_debug_printf("0xA1 res=0x%02X\n", reply.status);
     } else if (reply.kind == DEVICE_REPLY_IMAGE_UPGRADE_STATUS) {
         ui_page_15_image_upgrade_on_reply(0xB0, reply.status);
-        uart_printf(fd6, "0xB0 res=0x%02X\n", reply.status);
+        uart_debug_printf("0xB0 res=0x%02X\n", reply.status);
     }
 }
 
@@ -46,29 +46,29 @@ static void handle_auxiliary_reply(uint8_t cmd, const uint8_t *buf, uint8_t len)
 
     switch (reply.kind) {
     case AUXILIARY_REPLY_DISPLAY_MAIN:
-        uart_printf(fd6, "0x40 switch to main SUCCESS\n");
+        uart_debug_printf("0x40 switch to main SUCCESS\n");
         break;
     case AUXILIARY_REPLY_DISPLAY_DETAIL:
-        uart_printf(fd6, "0x40 switch to detail SUCCESS\n");
+        uart_debug_printf("0x40 switch to detail SUCCESS\n");
         break;
     case AUXILIARY_REPLY_DISPLAY_UNKNOWN:
-        uart_printf(fd6, "0x40 unknown result=0x%02X\n", reply.value);
+        uart_debug_printf("0x40 unknown result=0x%02X\n", reply.value);
         break;
     case AUXILIARY_REPLY_PRINT_DETAIL:
-        uart_printf(fd6, "0x3C print detail frame\n");
+        uart_debug_printf("0x3C print detail frame\n");
         break;
     case AUXILIARY_REPLY_PRINT_DONE:
-        uart_printf(fd6, "0x3C print done\n");
+        uart_debug_printf("0x3C print done\n");
         break;
     case AUXILIARY_REPLY_PRINT_UNKNOWN:
-        uart_printf(fd6, "0x3C unknown len=%d\n", reply.frame_len);
+        uart_debug_printf("0x3C unknown len=%d\n", reply.frame_len);
         break;
     case AUXILIARY_REPLY_CLEAR_DATA_ACK:
-        uart_printf(fd6, "0x3B clear data ack: res=0x%02X\n", reply.value);
+        uart_debug_printf("0x3B clear data ack: res=0x%02X\n", reply.value);
         break;
     case AUXILIARY_REPLY_INVALID:
     default:
-        uart_printf(fd6, "0x%02X invalid len=%d\n", cmd, len);
+        uart_debug_printf("0x%02X invalid len=%d\n", cmd, len);
         break;
     }
 }
@@ -84,7 +84,7 @@ static void handle_stream_data_reply(uint8_t cmd,
     } else if (reply.kind == STREAM_DATA_REPLY_WAVE) {
         ui_page_31_get_wave_on_frame(reply.payload, reply.payload_len);
     } else {
-        uart_printf(fd6, "0x%02X invalid len=%d\n", cmd, len);
+        uart_debug_printf("0x%02X invalid len=%d\n", cmd, len);
     }
 }
 

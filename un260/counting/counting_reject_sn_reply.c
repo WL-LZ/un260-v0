@@ -82,7 +82,7 @@ static counting_detail_reply_result_t counting_reject_reply_handle(
         if (hooks != NULL && hooks->on_reject_analysis_ready != NULL) {
             hooks->on_reject_analysis_ready(hooks->context);
         }
-        uart_printf(fd6, "0x0C reject detail receive end, parsed=%u expected=%u\n",
+        uart_debug_printf("0x0C reject detail receive end, parsed=%u expected=%u\n",
                     (unsigned int)counting_data_error_detail_count(sim_data),
                     (unsigned int)sim_data->err_expected);
         smart_island_refresh_summary();
@@ -98,13 +98,13 @@ static counting_detail_reply_result_t counting_reject_reply_handle(
     }
 
     if (sim_data->err_expected == 0) {
-        uart_printf(fd6, "0x0C detail ignored because err_expected=0\n");
+        uart_debug_printf("0x0C detail ignored because err_expected=0\n");
         return COUNTING_DETAIL_REPLY_IGNORED;
     }
 
     if (!counting_data_ensure_error_capacity(
             sim_data, (int)sim_data->err_num + 1)) {
-        uart_printf(fd6, "0x0C: err capacity fail idx=%u\n", sim_data->err_num);
+        uart_debug_printf("0x0C: err capacity fail idx=%u\n", sim_data->err_num);
         return COUNTING_DETAIL_REPLY_MEMORY_ERROR;
     }
     counting_detail_record_history(hooks, "0x0C", buf, len);
@@ -235,7 +235,7 @@ static counting_detail_reply_result_t counting_sn_reply_handle(
     }
 
     if (!counting_data_ensure_serial_capacity(sim_data, index + 1)) {
-        uart_printf(fd6, "0x0D: SN capacity fail idx=%d\n", index);
+        uart_debug_printf("0x0D: SN capacity fail idx=%d\n", index);
         return COUNTING_DETAIL_REPLY_MEMORY_ERROR;
     }
 
@@ -243,7 +243,7 @@ static counting_detail_reply_result_t counting_sn_reply_handle(
         size_t sn_len = strlen(cursor);
         char *sn_copy = malloc(sn_len + 1);
         if (sn_copy == NULL) {
-            uart_printf(fd6, "0x0D: SN malloc fail idx=%d\n", index);
+            uart_debug_printf("0x0D: SN malloc fail idx=%d\n", index);
             return COUNTING_DETAIL_REPLY_MEMORY_ERROR;
         }
         memcpy(sn_copy, cursor, sn_len + 1);

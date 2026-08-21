@@ -27,7 +27,7 @@ currency_reply_result_t currency_reply_handle(const uint8_t *buf, uint8_t len)
     status = buf[4];
     if (status == 0x01 || status == 0x02) {
         if (!currency_service_take_switch_result(status, &reply.switch_result)) {
-            uart_printf(fd6, "0x03 stale switch reply ignored: status=0x%02X\n", status);
+            uart_debug_printf("0x03 stale switch reply ignored: status=0x%02X\n", status);
             reply.kind = CURRENCY_REPLY_IGNORED;
             return reply;
         }

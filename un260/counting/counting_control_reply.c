@@ -63,7 +63,7 @@ static void counting_control_handle_runtime_fault(const uint8_t *buf,
 
     fault_popup_report_runtime_fault(fault);
     counting_control_report_error(hooks, "0x0F", buf, len);
-    uart_printf(fd6, "0x0F fault=0x%02X %s\n", fault, get_system_error_desc(fault));
+    uart_debug_printf("0x0F fault=0x%02X %s\n", fault, get_system_error_desc(fault));
     smart_island_notify_warning_level(get_system_error_desc(fault),
                                       SMART_ISLAND_WARNING_LEVEL_ERROR);
 }
@@ -86,7 +86,7 @@ static void counting_control_handle_start(const uint8_t *buf,
 
     if (type == 0x01 && value == 0x01) {
         if (counting_history_discard_pending(session)) {
-            uart_printf(fd6, "pending history discarded by new counting session\n");
+            uart_debug_printf("pending history discarded by new counting session\n");
         }
         hide_counting_error_popup();
         fault_popup_clear_pending();
@@ -104,7 +104,7 @@ static void counting_control_handle_start(const uint8_t *buf,
     if (type == 0x01 && value == 0x02) {
         fault_popup_report_start_no_note();
         counting_control_report_error(hooks, "0x0A", buf, len);
-        uart_printf(fd6, "0x0A start fail (no note)\n");
+        uart_debug_printf("0x0A start fail (no note)\n");
         smart_island_notify_warning_level(
             ui_text_get(UI_TEXT_WIDGET_FAULT_NO_NOTE_MAIN),
             SMART_ISLAND_WARNING_LEVEL_WARNING);
@@ -117,19 +117,19 @@ static void counting_control_handle_start(const uint8_t *buf,
     description = get_counting_error_desc(type, value);
 
     if (type == 0x01) {
-        uart_printf(fd6, "0x0A start fail (normal): val=%02X desc=%s\n",
+        uart_debug_printf("0x0A start fail (normal): val=%02X desc=%s\n",
                     value, description);
         smart_island_notify_warning_level(counting_start_ui_error_desc(value),
                                           SMART_ISLAND_WARNING_LEVEL_ERROR);
         counting_control_report_start_failure(hooks, description);
     } else if (type == 0x02) {
-        uart_printf(fd6, "0x0A start fail (fault): code=%02X desc=%s\n",
+        uart_debug_printf("0x0A start fail (fault): code=%02X desc=%s\n",
                     value, description);
         smart_island_notify_warning_level(counting_start_ui_error_desc(value),
                                           SMART_ISLAND_WARNING_LEVEL_ERROR);
         counting_control_report_start_failure(hooks, description);
     } else {
-        uart_printf(fd6, "0x0A start fail (unknown type): type=%02X val=%02X\n",
+        uart_debug_printf("0x0A start fail (unknown type): type=%02X val=%02X\n",
                     type, value);
         smart_island_notify_warning_level(
             ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_COUNT_ERROR),

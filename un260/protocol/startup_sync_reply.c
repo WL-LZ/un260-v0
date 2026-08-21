@@ -22,17 +22,17 @@ static startup_sync_reply_result_t startup_sync_handle_user_preference(
 
     sub = buf[4];
     if (sub == 0x00) {
-        uart_printf(fd6, "0x58 user preference receive start\n");
+        uart_debug_printf("0x58 user preference receive start\n");
         return STARTUP_SYNC_REPLY_START;
     }
     if (sub == 0xFF) {
-        uart_printf(fd6, "0x58 user preference receive end\n");
+        uart_debug_printf("0x58 user preference receive end\n");
         return STARTUP_SYNC_REPLY_END;
     }
 
     /* 普通参数至少需要 sub、value 和校验字节，避免把校验值误当参数。 */
     if (len < 7) {
-        uart_printf(fd6, "0x58 sub=0x%02X invalid len=%d\n", sub, len);
+        uart_debug_printf("0x58 sub=0x%02X invalid len=%d\n", sub, len);
         return STARTUP_SYNC_REPLY_INVALID;
     }
     value = buf[5];
@@ -119,16 +119,16 @@ static startup_sync_reply_result_t startup_sync_handle_currency_list(
 
     if (index == 0x00 && buf[5] == 0x00 && buf[6] == 0x00 && buf[7] == 0x00) {
         currency_state_begin_list_sync();
-        uart_printf(fd6, "0x56 currency query start\n");
+        uart_debug_printf("0x56 currency query start\n");
         return STARTUP_SYNC_REPLY_START;
     }
 
     if (index == 0xFF && buf[5] == 0xFF && buf[6] == 0xFF && buf[7] == 0xFF) {
         if (!currency_state_finish_list_sync()) {
-            uart_printf(fd6, "0x56 currency query rejected, keep previous list\n");
+            uart_debug_printf("0x56 currency query rejected, keep previous list\n");
             return STARTUP_SYNC_REPLY_IGNORED;
         }
-        uart_printf(fd6, "0x56 currency query end, count=%d\n",
+        uart_debug_printf("0x56 currency query end, count=%d\n",
                     currency_state_count());
         return STARTUP_SYNC_REPLY_END;
     }
@@ -138,11 +138,11 @@ static startup_sync_reply_result_t startup_sync_handle_currency_list(
     }
 
     if (!currency_state_append_list_code(index, currency_code)) {
-        uart_printf(fd6, "0x56 currency[%d] invalid or out of sequence\n",
+        uart_debug_printf("0x56 currency[%d] invalid or out of sequence\n",
                     (int)index - 1);
         return STARTUP_SYNC_REPLY_IGNORED;
     }
-    uart_printf(fd6, "0x56 currency[%d]=%s\n", (int)index - 1, currency_code);
+    uart_debug_printf("0x56 currency[%d]=%s\n", (int)index - 1, currency_code);
     return STARTUP_SYNC_REPLY_DATA;
 }
 

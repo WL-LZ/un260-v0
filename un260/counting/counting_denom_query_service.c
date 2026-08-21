@@ -23,12 +23,12 @@ static bool counting_denom_query_send(counting_detail_state_t *detail,
     detail->query_complete = false;
     if (protocol_send(DENOM_QUERY_CMD, &subcmd, 1) < 0) {
         detail->query_pending = false;
-        uart_printf(fd6, "request denom list send failed\n");
+        uart_debug_printf("request denom list send failed\n");
         return false;
     }
 
     detail->query_pending = true;
-    uart_printf(fd6, "request denom list: 0x0B 0x01\n");
+    uart_debug_printf("request denom list: 0x0B 0x01\n");
     return true;
 }
 
@@ -74,7 +74,7 @@ bool counting_denom_query_complete(counting_detail_state_t *detail)
     } else if (was_pending) {
         detail->query_complete = false;
         detail->query_idle_retry_tick = detail->query_tick;
-        uart_printf(fd6, "0x0B query end ignored before start frame\n");
+        uart_debug_printf("0x0B query end ignored before start frame\n");
     }
     detail->query_started = false;
     return was_pending;
@@ -107,7 +107,7 @@ void counting_denom_query_trigger(counting_detail_state_t *detail,
     detail->query_complete = false;
     if (!boot_ready) {
         detail->query_deferred = true;
-        uart_printf(fd6, "defer denom query until boot done\n");
+        uart_debug_printf("defer denom query until boot done\n");
         return;
     }
 
@@ -132,7 +132,7 @@ void counting_denom_query_poll(counting_detail_state_t *detail,
         detail->query_started = false;
         if (detail->query_retry < DENOM_QUERY_MAX_RETRY) {
             detail->query_retry++;
-            uart_printf(fd6, "0x0B query %s, retry %u/%u\n",
+            uart_debug_printf("0x0B query %s, retry %u/%u\n",
                         stream_started ? "incomplete response" : "timeout",
                         detail->query_retry, DENOM_QUERY_MAX_RETRY);
             counting_denom_query_send(detail, now_ms);
@@ -140,8 +140,7 @@ void counting_denom_query_poll(counting_detail_state_t *detail,
         }
 
         detail->query_idle_retry_tick = now_ms;
-        uart_printf(fd6,
-                    "0x0B query %s, keep master-only mode (no local fallback)\n",
+        uart_debug_printf(                    "0x0B query %s, keep master-only mode (no local fallback)\n",
                     stream_started ? "incomplete response" : "timeout");
         return;
     }
@@ -157,7 +156,7 @@ void counting_denom_query_poll(counting_detail_state_t *detail,
         (uint32_t)(now_ms - detail->query_idle_retry_tick) >= DENOM_QUERY_IDLE_RETRY_MS) {
         detail->query_idle_retry_tick = now_ms;
         detail->query_retry = 0;
-        uart_printf(fd6, "0x0B idle retry on main page\n");
+        uart_debug_printf("0x0B idle retry on main page\n");
         counting_denom_query_send(detail, now_ms);
     }
 }

@@ -166,7 +166,7 @@ void app_counting_runtime_reset_session(counting_session_state_t *session,
     memset(session, 0, sizeof(*session));
     ui_count_end_anim_cancel();
     if (history_discarded) {
-        uart_printf(fd6, "pending history discarded by %s\n",
+        uart_debug_printf("pending history discarded by %s\n",
                     reason != NULL ? reason : "session reset");
     }
 }
@@ -195,8 +195,7 @@ static void app_counting_runtime_on_reject_analysis(void *context)
     smart_island_set_count_analysis(detail_context->session->analysis_valid_pcs,
                                     result.suspect_pcs,
                                     result.damaged_pcs);
-    uart_printf(fd6,
-                "count analysis valid=%d expected=%d current=%u delta=%u source=%s suspect=%d damaged=%d\n",
+    uart_debug_printf(                "count analysis valid=%d expected=%d current=%u delta=%u source=%s suspect=%d damaged=%d\n",
                 detail_context->session->analysis_valid_pcs,
                 result.expected_issue,
                 result.current_total,
@@ -217,13 +216,13 @@ static void app_counting_runtime_report_history_commit(
     }
 
     if (result == COUNTING_HISTORY_COMMIT_RETRY_PENDING) {
-        uart_printf(fd6, "history save failed, retry scheduled attempt=%u\n",
+        uart_debug_printf("history save failed, retry scheduled attempt=%u\n",
                     session->history_record.save_attempts);
     } else if (result == COUNTING_HISTORY_COMMIT_FAILED) {
-        uart_printf(fd6, "history save failed after %u attempts\n",
+        uart_debug_printf("history save failed after %u attempts\n",
                     session->history_record.save_attempts);
     } else if (result == COUNTING_HISTORY_COMMIT_SAVED && previous_attempts > 0) {
-        uart_printf(fd6, "history save recovered after %u retries\n",
+        uart_debug_printf("history save recovered after %u retries\n",
                     previous_attempts);
     }
 }
@@ -281,7 +280,7 @@ static void app_counting_runtime_schedule_auto_wave(counting_session_state_t *se
     }
 
     session->auto_wave_pending = true;
-    uart_printf(fd6, "auto wave scheduled after count\n");
+    uart_debug_printf("auto wave scheduled after count\n");
 }
 
 void app_counting_runtime_handle_info(counting_session_state_t *session,
@@ -306,7 +305,7 @@ void app_counting_runtime_handle_info(counting_session_state_t *session,
             smart_island_refresh_summary();
         }
     } else if (result.kind == COUNTING_INFO_REPLY_FINISHED) {
-        uart_printf(fd6, "Count finished\n");
+        uart_debug_printf("Count finished\n");
         counting_history_capture_end(buf, len);
         smart_island_set_count_analysis(session->analysis_valid_pcs,
                                         result.final_issue,
@@ -401,7 +400,7 @@ void app_counting_runtime_handle_detail_complete(counting_session_state_t *sessi
     }
 
     sent = ui_page_31_get_wave_request();
-    uart_printf(fd6, "auto wave after count: sent=%d\n", sent ? 1 : 0);
+    uart_debug_printf("auto wave after count: sent=%d\n", sent ? 1 : 0);
 }
 
 void app_counting_runtime_poll_history(counting_session_state_t *session,

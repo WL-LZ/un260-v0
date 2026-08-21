@@ -36,7 +36,7 @@ static bool app_command_runtime_main_page_active(void)
 bool app_command_runtime_request_count_start(void)
 {
     if (!counting_action_request_start()) {
-        uart_printf(fd6, "count start request rejected or send failed\n");
+        uart_debug_printf("count start request rejected or send failed\n");
         return false;
     }
     return true;
@@ -50,7 +50,7 @@ bool app_command_runtime_clear_counting_data(const char *reason)
     g_counting_detail_state.wait_sn_after_reject_end = false;
     sim_reset_counting_result(&sim);
     if (!counting_action_request_clear()) {
-        uart_printf(fd6, "count clear request rejected or send failed reason=%s\n",
+        uart_debug_printf("count clear request rejected or send failed reason=%s\n",
                     reason != NULL ? reason : "unknown");
         return false;
     }
@@ -106,7 +106,7 @@ static void app_command_runtime_dispatch(uint8_t cmd,
                                            len);
         break;
     default:
-        uart_printf(fd6, "Unknown command 0x%02X\n", cmd);
+        uart_debug_printf("Unknown command 0x%02X\n", cmd);
         break;
     }
 }
@@ -130,7 +130,7 @@ void app_command_runtime_process_frames(void)
         }
 
         if (len < PROTOCOL_FRAME_MIN_SIZE) {
-            uart_printf(fd6, "Queued frame dropped: invalid len=%u\n", len);
+            uart_debug_printf("Queued frame dropped: invalid len=%u\n", len);
             continue;
         }
 
@@ -144,10 +144,10 @@ void app_command_runtime_poll(uint32_t now_ms)
     uint32_t action_timeouts = counting_action_take_timeouts();
 
     if ((action_timeouts & COUNTING_ACTION_TIMEOUT_START) != 0U) {
-        uart_printf(fd6, "count start request timeout\n");
+        uart_debug_printf("count start request timeout\n");
     }
     if ((action_timeouts & COUNTING_ACTION_TIMEOUT_CLEAR) != 0U) {
-        uart_printf(fd6, "count clear request timeout\n");
+        uart_debug_printf("count clear request timeout\n");
     }
 
     if (app_setting_runtime_take_mode_clear()) {

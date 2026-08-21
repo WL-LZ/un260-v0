@@ -16,7 +16,7 @@
 
 static int fd4 = -1;
 static int fd5 = -1;
-int fd6 = -1;
+static int fd6 = -1;
 
 static bool g_rx_started;
 static bool g_bridge_started;
@@ -51,6 +51,7 @@ int protocol_send(uint8_t cmd_g, const uint8_t *cmd_s, uint16_t cmd_s_len)
 
 static void app_serial_runtime_close_devices(void)
 {
+    uart_debug_set_fd(-1);
     if (fd4 >= 0) {
         uart_close(fd4);
         fd4 = -1;
@@ -89,6 +90,7 @@ bool app_serial_runtime_start(void)
         return false;
     }
     printf("UART配置完成\n");
+    uart_debug_set_fd(fd6);
 
     protocol_frame_queue_clear();
     if (!protocol_rx_service_start(fd4, fd6)) {

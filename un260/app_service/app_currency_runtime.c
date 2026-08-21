@@ -45,17 +45,17 @@ void app_currency_runtime_handle_reply(counting_detail_state_t *detail_state,
         app_counting_runtime_reset_session(session, "currency change");
         counting_action_cancel_all();
         if (!counting_action_request_clear()) {
-            uart_printf(fd6, "currency changed, controller data clear send failed\n");
+            uart_debug_printf("currency changed, controller data clear send failed\n");
         }
         page_07_curr_apply_switch_result(&reply.switch_result);
-        uart_printf(fd6, "Set %s curr success\n", reply.active_code);
+        uart_debug_printf("Set %s curr success\n", reply.active_code);
         detail_state->wait_sn_after_reject_end = false;
         app_currency_runtime_trigger_denom_query(detail_state);
     } else if (reply.kind == CURRENCY_REPLY_SWITCH_FAILURE) {
         page_07_curr_apply_switch_result(&reply.switch_result);
-        uart_printf(fd6, "Set %s curr fail\n", reply.active_code);
+        uart_debug_printf("Set %s curr fail\n", reply.active_code);
     } else if (reply.kind == CURRENCY_REPLY_BOOT_ACTIVE) {
-        uart_printf(fd6, "Boot curr: %s\n", reply.active_code);
+        uart_debug_printf("Boot curr: %s\n", reply.active_code);
         sim_reset_for_currency(&sim);
         app_counting_runtime_reset_session(session, "boot currency sync");
         detail_state->wait_sn_after_reject_end = false;

@@ -130,7 +130,7 @@ void app_setting_runtime_poll(uint32_t now_ms)
 
     basic_timeouts = setting_service_take_basic_timeouts();
     if (basic_timeouts != SETTING_REQUEST_TIMEOUT_NONE) {
-        uart_printf(fd6, "basic setting request timeout mask=0x%02X\n",
+        uart_debug_printf("basic setting request timeout mask=0x%02X\n",
                     (unsigned int)basic_timeouts);
         notify_timeout = true;
     }
@@ -171,7 +171,7 @@ void app_setting_runtime_poll(uint32_t now_ms)
 
     if (currency_service_take_switch_timeout(&currency_result)) {
         page_07_curr_apply_switch_result(&currency_result);
-        uart_printf(fd6, "currency switch request timeout\n");
+        uart_debug_printf("currency switch request timeout\n");
         notify_timeout = true;
     }
 
@@ -191,19 +191,19 @@ void app_setting_runtime_poll(uint32_t now_ms)
     }
 
     if (setting_service_take_aging_timeout(&action_result)) {
-        uart_printf(fd6, "aging start request timeout\n");
+        uart_debug_printf("aging start request timeout\n");
         ui_page_26_set_aging_on_reply(0x01);
         notify_timeout = true;
     }
 
     if (setting_service_take_factory_timeout(&action_result)) {
-        uart_printf(fd6, "factory reset request timeout\n");
+        uart_debug_printf("factory reset request timeout\n");
         ui_page_30_set_factory_on_reply(0x02);
         notify_timeout = true;
     }
 
     if (data_collection_request_take_timeout(now_ms)) {
-        uart_printf(fd6, "data collection mode request timeout\n");
+        uart_debug_printf("data collection mode request timeout\n");
         page_06_data_collection_refresh();
         notify_timeout = true;
     }
