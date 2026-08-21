@@ -10,6 +10,7 @@
 #include "un260/counting/counting_data_store.h"
 #include "un260/lv_components/lv_components.h"
 #include "un260/lv_core/lv_page_event.h"
+#include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_core/page_07_curr.h"
 #include "un260/lv_core/page_22_set_double_note.h"
 #include "un260/lv_core/page_23_set_flap.h"
@@ -120,6 +121,8 @@ void app_setting_runtime_poll(uint32_t now_ms)
 
     basic_timeouts = setting_service_take_basic_timeouts();
     if (basic_timeouts != SETTING_REQUEST_TIMEOUT_NONE) {
+        uart_printf(fd6, "basic setting request timeout mask=0x%02X\n",
+                    (unsigned int)basic_timeouts);
         notify_timeout = true;
     }
 
@@ -159,6 +162,8 @@ void app_setting_runtime_poll(uint32_t now_ms)
 
     if (currency_service_take_switch_timeout(&currency_result)) {
         page_07_curr_apply_switch_result(&currency_result);
+        uart_printf(fd6, "currency switch request timeout\n");
+        notify_timeout = true;
     }
 
     if (cfd_service_take_query_timeout()) {
@@ -173,4 +178,8 @@ void app_setting_runtime_poll(uint32_t now_ms)
 void app_setting_runtime_stop(void)
 {
     app_setting_runtime_cancel_mode_clear();
+    setting_service_cancel_all();
+    serial_number_service_cancel_request();
+    currency_service_cancel_switch();
+    cfd_service_cancel_query();
 }

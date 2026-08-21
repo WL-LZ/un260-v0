@@ -68,3 +68,9 @@ bool currency_service_switch_pending(void)
 {
     return protocol_request_is_pending(&g_currency_switch_lifecycle);
 }
+
+void currency_service_cancel_switch(void)
+{
+    protocol_request_finish(&g_currency_switch_lifecycle);
+    memset(&g_currency_switch_request, 0, sizeof(g_currency_switch_request));
+}

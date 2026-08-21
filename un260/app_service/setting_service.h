@@ -79,5 +79,6 @@ bool setting_service_request_reject_pocket_max(uint8_t target, uint8_t previous)
 bool setting_service_take_reject_pocket_max_result(uint8_t status, setting_value_result_t *result);
 bool setting_service_take_reject_pocket_max_timeout(setting_value_result_t *result);
 void setting_service_clear_reject_pocket_max_request(void);
+void setting_service_cancel_all(void);
 
 #endif

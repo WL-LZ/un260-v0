@@ -516,3 +516,20 @@ void setting_service_clear_reject_pocket_max_request(void)
 {
     setting_value_request_clear(&g_reject_pocket_request);
 }
+
+void setting_service_cancel_all(void)
+{
+    setting_basic_request_cancel(&g_mode_request);
+    setting_basic_request_cancel(&g_add_request);
+    setting_basic_request_cancel(&g_fo_request);
+    setting_basic_request_cancel(&g_speed_request);
+    setting_basic_request_cancel(&g_work_request);
+    setting_basic_request_cancel(&g_beep_request);
+
+    protocol_request_finish(&g_batch_request.request);
+    g_batch_request.type = SETTING_BATCH_REQUEST_NONE;
+
+    setting_value_request_clear(&g_double_note_request);
+    setting_value_request_clear(&g_flap_request);
+    setting_value_request_clear(&g_reject_pocket_request);
+}
