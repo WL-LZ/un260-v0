@@ -1364,7 +1364,11 @@ void ui_main_create(lv_obj_t* parent)
     s_time_label = NULL;
     machine_time_init();
     main_time_refresh();
-    if (!s_time_timer) s_time_timer = lv_timer_create(main_time_timer_cb, 1000, NULL);
+    if (!s_time_timer) {
+        s_time_timer = lv_timer_create(main_time_timer_cb, 1000, NULL);
+    } else {
+        lv_timer_resume(s_time_timer);
+    }
     lv_print_toast_create();
     ui_state_apply_common_runtime();
     page_01_main_send_init_protocol();
@@ -1376,6 +1380,12 @@ void ui_main_create(lv_obj_t* parent)
 
 void ui_main_destroy(void)
 {
+    if (s_time_timer) {
+        lv_timer_del(s_time_timer);
+        s_time_timer = NULL;
+    }
+    s_time_label = NULL;
+
     if (page_01_main_is_created()) {
         // 安全清理所有资源和定时器
         cleanup_counting_sim();
@@ -1401,6 +1411,9 @@ void page_01_main_suspend(void)
     }
 
     pause_counting_sim();
+    if (s_time_timer) {
+        lv_timer_pause(s_time_timer);
+    }
     lv_obj_add_flag(main_page, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -1413,6 +1426,10 @@ bool page_01_main_resume(void)
     lv_obj_clear_flag(main_page, LV_OBJ_FLAG_HIDDEN);
     resume_counting_sim();
     smart_island_create(main_page);
+    main_time_timer_cb(NULL);
+    if (s_time_timer) {
+        lv_timer_resume(s_time_timer);
+    }
     if (page_01_main_scroll_container && lv_obj_is_valid(page_01_main_scroll_container)) {
         lv_obj_scroll_to_y(page_01_main_scroll_container, 0, LV_ANIM_OFF);
     }

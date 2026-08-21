@@ -265,7 +265,6 @@ void ui_page_30_set_factory_destroy(void)
 
     factory_page = NULL;
     sweep_line = NULL;
-    factory_reboot_timer = NULL;
     anim_tick = 0;
     for (uint8_t i = 0; i < FACTORY_BLOCK_COUNT; i++) {
         blocks[i] = NULL;

@@ -21,6 +21,17 @@
 #define APP_BOOT_CURRENCY_LIST_CMD     0x56
 #define APP_BOOT_CURRENCY_LIST_REQUEST 0x01
 
+static lv_timer_t *g_boot_finish_timer = NULL;
+
+static void app_boot_runtime_cancel_finish(void)
+{
+    if (g_boot_finish_timer == NULL) {
+        return;
+    }
+    lv_timer_del(g_boot_finish_timer);
+    g_boot_finish_timer = NULL;
+}
+
 static void app_boot_runtime_request_currency_list(void)
 {
     const uint8_t request = APP_BOOT_CURRENCY_LIST_REQUEST;
@@ -44,6 +55,7 @@ static void app_boot_runtime_finish_timer_cb(lv_timer_t *timer)
         return;
     }
     counting_session = (counting_session_state_t *)timer->user_data;
+    g_boot_finish_timer = NULL;
     app_boot_runtime_finish(counting_session);
     lv_timer_del(timer);
 }
@@ -70,14 +82,15 @@ void app_boot_runtime_handle_reply(counting_session_state_t *counting_session,
     if (reply.self_test_event == BOOT_SELF_TEST_EVENT_NONE) {
         boot_send_next_selftest();
     } else if (reply.self_test_event == BOOT_SELF_TEST_EVENT_SUCCESS) {
-        lv_timer_t *finish_timer;
-
         boot_progress_set(100);
+        if (g_boot_finish_timer != NULL) {
+            return;
+        }
         app_boot_runtime_request_currency_list();
-        finish_timer = lv_timer_create(app_boot_runtime_finish_timer_cb,
-                                       APP_BOOT_FINISH_DELAY_MS,
-                                       counting_session);
-        if (finish_timer == NULL) {
+        g_boot_finish_timer = lv_timer_create(app_boot_runtime_finish_timer_cb,
+                                              APP_BOOT_FINISH_DELAY_MS,
+                                              counting_session);
+        if (g_boot_finish_timer == NULL) {
             app_boot_runtime_finish(counting_session);
         }
     } else if (reply.self_test_event == BOOT_SELF_TEST_EVENT_FAILURE) {
@@ -91,6 +104,7 @@ void app_boot_runtime_poll(uint32_t now_ms, bool boot_page_active)
     boot_service_action_t action;
 
     if (!boot_page_active) {
+        app_boot_runtime_cancel_finish();
         return;
     }
 
