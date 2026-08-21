@@ -155,11 +155,6 @@ lv_obj_t* find_obj_by_name(const char* name, ui_element_t* page_cfg_obj, int len
     return NULL;
 }
 
-/* 把字符串码映射到枚举 */
-curr_item_t get_curr_item(const char* code) {
-    return currency_state_code_to_item(code);
-}
-
 //刷新字符串
 void update_label_by_name(ui_element_t* page_cfg_obj, int len,const char* name, const char* fmt, ...) {
     lv_obj_t* label = find_obj_by_name(name, page_cfg_obj, len);
@@ -217,30 +212,6 @@ int sim_get_sn_nth_valid_index(int nth)
     return -1;
 }
 
-//设置国家curr
-void set_curr(curr_item_t curr)
-{
-    char curr_code[4];
-
-    currency_state_get_active_code(curr_code);
-    if (curr >= CURR_COUNT) {
-#if LV_DEBUG
-        printf("set_curr unknown enum, keep curr_code=%s\n", curr_code);
-#endif
-    } else {
-        if (curr != currency_state_active_currency()) {
-            currency_state_confirm_active_currency(curr);
-        }
-    }
-    sim_clear_all_sn(&sim);
-
-    if (page_01_main_scroll_container && lv_obj_is_valid(page_01_main_scroll_container)) {
-        lv_obj_scroll_to_y(page_01_main_scroll_container, 0, LV_ANIM_OFF);
-    }
-
-    ui_refresh_main_page();
-}
-
 void sim_data_init(void)
 {
     char curr_code[4];
@@ -255,7 +226,7 @@ void sim_data_init(void)
     const int* arr = NULL;
     int count = 0;
 
-    switch (get_curr_item(curr_code))
+    switch (currency_state_code_to_item(curr_code))
     {
     case CURR_USD_ITEM:
         arr = USD_value;
@@ -931,8 +902,8 @@ void page_02_report_init(void)
     }
 }
 
-// 清空所有冠字号的函数
-void sim_clear_all_sn(counting_sim_t* sim_data)
+static void sim_reset_counting_data(counting_sim_t *sim_data,
+                                    bool clear_denominations)
 {
     int denom_count;
 
@@ -940,26 +911,49 @@ void sim_clear_all_sn(counting_sim_t* sim_data)
     counting_data_clear_errors(sim_data);
     counting_data_clear_serials(sim_data);
 
-    // 重置所有计数
-    denom_count = sim_data->denom_number;
-    if (denom_count > (int)(sizeof(sim_data->denom) / sizeof(sim_data->denom[0]))) {
-        denom_count = (int)(sizeof(sim_data->denom) / sizeof(sim_data->denom[0]));
-    }
-    for (int i = 0; i < denom_count; i++)
-    {
-        sim_data->denom[i].pcs = 0;
-        sim_data->denom[i].amount = 0;
+    if (clear_denominations) {
+        memset(sim_data->denom, 0, sizeof(sim_data->denom));
+        sim_data->denom_number = 0;
+        sim_data->last_total_pcs = 0;
+        sim_data->last_total_amount = 0.0f;
+        sim_data->last_valid_pcs = 0;
+        sim_data->last_issue_pcs = 0;
+        sim_data->last_suspect_pcs = 0;
+        sim_data->last_damaged_pcs = 0;
+    } else {
+        denom_count = sim_data->denom_number;
+        if (denom_count >
+            (int)(sizeof(sim_data->denom) / sizeof(sim_data->denom[0]))) {
+            denom_count =
+                (int)(sizeof(sim_data->denom) / sizeof(sim_data->denom[0]));
+        }
+        for (int i = 0; i < denom_count; i++) {
+            sim_data->denom[i].pcs = 0;
+            sim_data->denom[i].amount = 0;
+        }
     }
 
     sim_data->total_pcs = 0;
-    sim_data->total_amount = 0;
-    sim_data->err_num = 0;
+    sim_data->total_amount = 0.0f;
     sim_data->err_expected = 0;
     smart_island_clear_count_analysis();
     page_01_detail_scroll_reset_all();
     ui_refresh_main_page();
     smart_island_refresh_summary();
+}
+
+void sim_reset_for_currency(counting_sim_t* sim_data)
+{
+    sim_reset_counting_data(sim_data, true);
+}
+
+// 清空所有冠字号的函数
+void sim_clear_all_sn(counting_sim_t* sim_data)
+{
     const uint8_t clear_data_cmd = 0x01;
+
+    if (sim_data == NULL) return;
+    sim_reset_counting_data(sim_data, false);
     protocol_send(0x3b, &clear_data_cmd, 1);
 }
 

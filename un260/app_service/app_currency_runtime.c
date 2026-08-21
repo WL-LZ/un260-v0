@@ -1,20 +1,19 @@
 #include "app_currency_runtime.h"
 
 #include <stdbool.h>
-#include <string.h>
-
 #include "lvgl/lvgl.h"
 
 #include "un260/app_service/app_clock.h"
 #include "un260/boot/boot_service.h"
 #include "un260/counting/counting_denom_query_service.h"
+#include "un260/counting/counting_history_service.h"
 #include "un260/currency/currency_reply.h"
-#include "un260/lv_components/smart_island.h"
-#include "un260/lv_core/lv_page_manager.h"
-#include "un260/lv_core/page_01_main.h"
 #include "un260/lv_core/page_07_curr.h"
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_system/platform_app.h"
+#include "un260/protocol/protocol_send.h"
+
+#define APP_CURRENCY_CLEAR_DATA_CMD 0x01
 
 static bool app_currency_runtime_boot_ready(void)
 {
@@ -23,18 +22,27 @@ static bool app_currency_runtime_boot_ready(void)
     return stage == BOOT_STAGE_DONE || stage == BOOT_STAGE_FAIL;
 }
 
-static bool app_currency_runtime_main_page_active(void)
-{
-    return ui_manager_get_current_page() == UI_PAGE_MAIN &&
-           page_01_main_is_created();
-}
-
 static void app_currency_runtime_trigger_denom_query(
     counting_detail_state_t *detail_state)
 {
     counting_denom_query_trigger(detail_state,
                                  app_clock_uptime_ms(),
                                  app_currency_runtime_boot_ready());
+}
+
+static void app_currency_runtime_reset_counting_session(
+    counting_session_state_t *session)
+{
+    if (counting_history_discard_pending(session)) {
+        uart_printf(fd6, "pending history discarded by currency change\n");
+    }
+    session->active = false;
+    session->wait_start_ack = false;
+    session->end_anim_wait_detail = false;
+    session->auto_wave_pending = false;
+    session->last_result.valid = false;
+    session->analysis_valid_pcs = 0;
+    session->expected_issue = 0;
 }
 
 void app_currency_runtime_handle_reply(counting_detail_state_t *detail_state,
@@ -50,25 +58,26 @@ void app_currency_runtime_handle_reply(counting_detail_state_t *detail_state,
 
     reply = currency_reply_handle(buf, len);
     if (reply.kind == CURRENCY_REPLY_SWITCH_SUCCESS) {
-        set_curr(get_curr_item(reply.switch_result.target_code));
-        sim_clear_all_sn(&sim);
+        const uint8_t clear_data = APP_CURRENCY_CLEAR_DATA_CMD;
+
+        sim_reset_for_currency(&sim);
+        app_currency_runtime_reset_counting_session(session);
+        if (protocol_send(0x3B, &clear_data, 1) < 0) {
+            uart_printf(fd6, "currency changed, controller data clear send failed\n");
+        }
         page_07_curr_apply_switch_result(&reply.switch_result);
         uart_printf(fd6, "Set %s curr success\n", reply.active_code);
-        session->end_anim_wait_detail = false;
+        detail_state->wait_sn_after_reject_end = false;
         app_currency_runtime_trigger_denom_query(detail_state);
-        smart_island_refresh_summary();
     } else if (reply.kind == CURRENCY_REPLY_SWITCH_FAILURE) {
         page_07_curr_apply_switch_result(&reply.switch_result);
         uart_printf(fd6, "Set %s curr fail\n", reply.active_code);
     } else if (reply.kind == CURRENCY_REPLY_BOOT_ACTIVE) {
         uart_printf(fd6, "Boot curr: %s\n", reply.active_code);
-        memset(sim.denom, 0, sizeof(sim.denom));
-        sim.denom_number = 0;
+        sim_reset_for_currency(&sim);
+        app_currency_runtime_reset_counting_session(session);
+        detail_state->wait_sn_after_reject_end = false;
         counting_denom_query_invalidate(detail_state);
-        if (app_currency_runtime_main_page_active()) {
-            ui_refresh_main_page();
-        }
         app_currency_runtime_trigger_denom_query(detail_state);
-        smart_island_refresh_summary();
     }
 }

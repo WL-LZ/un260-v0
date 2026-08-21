@@ -610,10 +610,6 @@ void page_07_curr_apply_switch_result(const currency_switch_result_t* result)
 
     if (!result) return;
     if (result->success) {
-        memset(sim.denom, 0, sizeof(sim.denom)); //切币种时清空旧币种面额缓存，避免三角提示残留
-        sim.denom_number = 0;
-        sim.total_pcs = 0;
-        sim.total_amount = 0.0f;
         g_page07_curr.model.selected_abs_idx = result->target_index;
         g_page07_curr.model.selected_visible_idx = page07_curr_model_find_visible_pos(g_page07_curr.model.selected_abs_idx);
         page07_curr_model_save();
