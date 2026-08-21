@@ -18,5 +18,8 @@ void page_03_menu_clear_batch_tip(void);
 void page_03_menu_show_batch_saved_tip(void);
 void page_03_menu_refresh_batch_number(void);
 void page_03_menu_refresh_batch_mode(void);
+void page_03_batch_num_edit_reset(void);
+void page_03_batch_num_edit_input(char input_num);
+bool page_03_batch_num_edit_value(int* value);
 
 #endif // !PAGE_03_MENU_H

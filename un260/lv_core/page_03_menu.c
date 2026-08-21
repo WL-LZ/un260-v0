@@ -19,22 +19,69 @@ static lv_timer_t* g_batch_tip_timer = NULL;
 static lv_obj_t* g_batch_amount_label = NULL;
 static lv_obj_t* g_batch_pcs_label = NULL;
 
-lv_obj_t* batch_num_display;
-
-int batch_num = 0;
-int batch_num_index=0;
- char input_batch_num[9]= {0};
+static lv_obj_t* g_batch_num_display;
+static int g_batch_num_index;
+static char g_input_batch_num[9];
+static bool g_pcs_batch_num_lock_200;
 
 void page_03_batch_num_edit_reset(void) //清空batch编辑态，只保留已保存的batch值
 {
-    pcs_batch_num_lock_200 = false;
-    memset(input_batch_num, 0, sizeof(input_batch_num));
-    batch_num_index = 0;
+    g_pcs_batch_num_lock_200 = false;
+    memset(g_input_batch_num, 0, sizeof(g_input_batch_num));
+    g_batch_num_index = 0;
 
-    if (batch_num_display && lv_obj_is_valid(batch_num_display)) {
-        lv_label_set_text(batch_num_display, "0");
-        lv_obj_set_align(batch_num_display, LV_ALIGN_RIGHT_MID);
+    if (g_batch_num_display && lv_obj_is_valid(g_batch_num_display)) {
+        lv_label_set_text(g_batch_num_display, "0");
+        lv_obj_set_align(g_batch_num_display, LV_ALIGN_RIGHT_MID);
     }
+}
+
+void page_03_batch_num_edit_input(char input_num)
+{
+    if (input_num < '0' || input_num > '9' ||
+        !g_batch_num_display || !lv_obj_is_valid(g_batch_num_display)) {
+        return;
+    }
+    if (machine_state_batch_mode() == PCS_BATCH_MODE &&
+        g_pcs_batch_num_lock_200) {
+        lv_label_set_text(g_batch_num_display, "200");
+        lv_obj_set_align(g_batch_num_display, LV_ALIGN_RIGHT_MID);
+        return;
+    }
+
+    if (input_num == '0' &&
+        (g_batch_num_index == 0 ||
+         (g_batch_num_index == 1 && g_input_batch_num[0] == '0'))) {
+        g_input_batch_num[0] = '0';
+        g_input_batch_num[1] = '\0';
+        g_batch_num_index = 1;
+    } else if (g_batch_num_index == 1 && input_num != '0' &&
+               g_input_batch_num[0] == '0') {
+        g_input_batch_num[0] = input_num;
+        g_input_batch_num[1] = '\0';
+    } else if (g_batch_num_index >= 8) {
+        memmove(g_input_batch_num, &g_input_batch_num[1], 7);
+        g_input_batch_num[7] = input_num;
+        g_input_batch_num[8] = '\0';
+    } else {
+        g_input_batch_num[g_batch_num_index++] = input_num;
+        g_input_batch_num[g_batch_num_index] = '\0';
+    }
+
+    if (atoi(g_input_batch_num) > 200) {
+        g_pcs_batch_num_lock_200 = true;
+        strcpy(g_input_batch_num, "200");
+        g_batch_num_index = 3;
+    }
+    lv_label_set_text(g_batch_num_display, g_input_batch_num);
+    lv_obj_set_align(g_batch_num_display, LV_ALIGN_RIGHT_MID);
+}
+
+bool page_03_batch_num_edit_value(int* value)
+{
+    if (!value || g_batch_num_index <= 0) return false;
+    *value = atoi(g_input_batch_num);
+    return true;
 }
 
 
@@ -233,11 +280,11 @@ static void page_03_create_batch_num_area(void)
     lv_obj_clear_flag(batch_num_area, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_scrollbar_mode(batch_num_area, LV_SCROLLBAR_MODE_OFF);
 
-    batch_num_display = lv_label_create(batch_num_area);
-    lv_obj_set_style_text_font(batch_num_display, &lv_font_manrope_bold_32, 0);
-    lv_obj_set_style_text_color(batch_num_display, lv_color_hex(0x000000), 0);
-    lv_obj_set_align(batch_num_display, LV_ALIGN_RIGHT_MID);
-    lv_label_set_text(batch_num_display, "0");
+    g_batch_num_display = lv_label_create(batch_num_area);
+    lv_obj_set_style_text_font(g_batch_num_display, &lv_font_manrope_bold_32, 0);
+    lv_obj_set_style_text_color(g_batch_num_display, lv_color_hex(0x000000), 0);
+    lv_obj_set_align(g_batch_num_display, LV_ALIGN_RIGHT_MID);
+    lv_label_set_text(g_batch_num_display, "0");
 
     lv_obj_t* amount_obj;
     lv_obj_t* pcs_obj;
@@ -807,8 +854,8 @@ static void page_03_apply_modern_style(void)
         lv_obj_set_style_text_align(pcs, LV_TEXT_ALIGN_LEFT, 0);
     }
 
-    if (batch_num_display) {
-        lv_obj_t* input = lv_obj_get_parent(batch_num_display);
+    if (g_batch_num_display) {
+        lv_obj_t* input = lv_obj_get_parent(g_batch_num_display);
         lv_obj_set_pos(input, 85, 99);
         lv_obj_set_size(input, 405, 77);
         lv_obj_set_style_bg_color(input, lv_color_hex(0xFFFFFF), 0);
@@ -818,8 +865,8 @@ static void page_03_apply_modern_style(void)
         lv_obj_set_style_border_width(input, 1, 0);
         lv_obj_set_style_radius(input, 6, 0);
         lv_obj_set_style_pad_right(input, 24, 0);
-        lv_obj_set_style_text_font(batch_num_display, &lv_font_manrope_bold_40, 0);
-        lv_obj_set_style_text_color(batch_num_display, lv_color_hex(0x000000), 0);
+        lv_obj_set_style_text_font(g_batch_num_display, &lv_font_manrope_bold_40, 0);
+        lv_obj_set_style_text_color(g_batch_num_display, lv_color_hex(0x000000), 0);
     }
 
     lv_obj_t* batch_mode = pcs ? lv_obj_get_parent(pcs) : NULL;
@@ -1196,13 +1243,13 @@ void switch_to_pcs_batch(void)
     lv_obj_set_style_text_opa(amount_obj, 40, 0);  
     lv_obj_set_style_text_opa(pcs_obj, 255, 0);  
 
-    int num = atoi(input_batch_num);
+    int num = atoi(g_input_batch_num);
     if (num > 200) {
-        pcs_batch_num_lock_200 = true;
-        strcpy(input_batch_num, "200");
-        batch_num_index = 3;
-        lv_label_set_text(batch_num_display, "200");
-        lv_obj_set_align(batch_num_display, LV_ALIGN_RIGHT_MID);
+        g_pcs_batch_num_lock_200 = true;
+        strcpy(g_input_batch_num, "200");
+        g_batch_num_index = 3;
+        lv_label_set_text(g_batch_num_display, "200");
+        lv_obj_set_align(g_batch_num_display, LV_ALIGN_RIGHT_MID);
     }
 
 }
@@ -1281,7 +1328,7 @@ void ui_page_03_menu_destroy(void)
         lv_obj_del(menu_page);
     }
     menu_page = NULL;
-    batch_num_display = NULL;
+    g_batch_num_display = NULL;
     g_batch_amount_label = NULL;
     g_batch_pcs_label = NULL;
     g_page_03_preview_icon = NULL;

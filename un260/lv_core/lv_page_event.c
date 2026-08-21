@@ -23,10 +23,6 @@
 #include "un260/currency/currency_state.h"
 
 #define PAGE_01_DETAIL_TAP_THRESHOLD     10
-// 声明外部变量
-
-bool pcs_batch_num_lock_200 = false;
-
 typedef struct {
     lv_obj_t* beep[2];
     lv_obj_t* speed[3];
@@ -572,64 +568,7 @@ void page_03_batch_num_keypad_event_cb(lv_event_t* e)
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
     const char* password_get_txt = lv_event_get_user_data(e);
     if (!password_get_txt) return;
-    char input_num = password_get_txt[0];
-
-    if (machine_state_batch_mode() == PCS_BATCH_MODE && pcs_batch_num_lock_200) {
-        lv_label_set_text(batch_num_display, "200");
-        lv_obj_set_align(batch_num_display, LV_ALIGN_RIGHT_MID);
-        return;
-    }
-    // 禁止多位前导0
-    if (input_num == '0')
-    {
-        if (batch_num_index == 0 || (batch_num_index == 1 && input_batch_num[0] == '0'))  {
-            
-            input_batch_num[0] = '0';
-            input_batch_num[1] = '\0';
-            batch_num_index = 1;
-            lv_label_set_text(batch_num_display, input_batch_num);
-            lv_obj_set_align(batch_num_display, LV_ALIGN_RIGHT_MID);
-            return;
-        }
-    }
-    if (batch_num_index == 1 && input_num != '0'&& input_batch_num[0] == '0')   //判断当前是否在第一位为0时做预置数输入
-    {
-        input_batch_num[0] = input_num;
-        input_batch_num[1] = '\0';
-        batch_num_index = 1;
-        lv_label_set_text(batch_num_display, input_batch_num);
-        lv_obj_set_align(batch_num_display, LV_ALIGN_RIGHT_MID);
-        return;
-    }
-    if (batch_num_index >= 8)
-    {
-        for (int i = 0; i < 7; i++)
-        {
-            input_batch_num[i] = input_batch_num[i+1];
-
-        }
-        input_batch_num[7] = input_num;
-        input_batch_num[8] = '\0';
-
-    }
-    else
-    {
-        input_batch_num[batch_num_index] = input_num;
-        batch_num_index++;
-        input_batch_num[batch_num_index] = '\0';
-
-    }
-    lv_label_set_text(batch_num_display,input_batch_num);
-    /* 数字键仅负责输入，协议发送统一在确认键处理 */
-    lv_obj_set_align(batch_num_display, LV_ALIGN_RIGHT_MID);
-
-    if (atoi(input_batch_num) > 200) {
-        pcs_batch_num_lock_200 = true;
-        strcpy(input_batch_num, "200");
-        batch_num_index = 3;
-        lv_label_set_text(batch_num_display, "200");
-        lv_obj_set_align(batch_num_display, LV_ALIGN_RIGHT_MID);
-    }
+    page_03_batch_num_edit_input(password_get_txt[0]);
 }
 
 void page_03_batch_num_keypad_clear_event_cb(lv_event_t* e)
@@ -649,9 +588,7 @@ void page_03_batch_num_keypad_enter_event_cb(lv_event_t* e)
 
     page_03_menu_clear_batch_tip();
     int num = 0;
-    if (batch_num_index > 0) {
-        num = atoi(input_batch_num);
-    } else {
+    if (!page_03_batch_num_edit_value(&num)) {
         num = machine_state_batch_num();
     }
     if (num <= 0) num = 200;
