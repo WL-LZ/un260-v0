@@ -35,7 +35,7 @@ bool ui_qr_data_is_ready(void) //判断当前是否有有效点钞数据
 {
     if (sim.total_pcs > 0) return true;
     if (sim.total_amount > 0.0f) return true;
-    if (sim.err_num > 0) return true;
+    if (counting_data_reject_pcs_count(&sim) > 0) return true;
     return false;
 }
 
@@ -50,6 +50,7 @@ bool ui_qr_data_build(char* buf, size_t buf_size) //组装当前点钞结果二�
     int sn_col = 0;
     int emitted_sn = 0;
     int omitted_sn = 0;
+    int error_count;
     char curr_code[4];
 
     if (buf == NULL || buf_size == 0 || !ui_qr_data_is_ready()) {
@@ -59,6 +60,7 @@ bool ui_qr_data_build(char* buf, size_t buf_size) //组装当前点钞结果二�
     buf[0] = '\0';
     machine_time_get(&now);
     currency_state_get_active_code(curr_code);
+    error_count = counting_data_error_detail_count(&sim);
 
     if (!ui_qr_data_append(buf, buf_size, &used,
         "Total Amount: %.2f %s;" QR_LINE_BREAK,
@@ -82,7 +84,7 @@ bool ui_qr_data_build(char* buf, size_t buf_size) //组装当前点钞结果二�
         return false;
     }
 
-    for (i = 0; i < sim.err_num && sim.err_code != NULL; i++) {
+    for (i = 0; i < error_count; i++) {
 
         if (has_err) {
             if (!ui_qr_data_append(buf, buf_size, &used, ",")) {

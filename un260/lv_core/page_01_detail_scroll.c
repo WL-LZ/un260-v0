@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include "un260/lv_core/page_01_main.h"
+#include "un260/counting/counting_data_store.h"
 #include "un260/lv_system/platform_app.h"
 
 #define PAGE_01_SCROLL_HINT_UP_IMG_PATH       "L:/usr/local/share/lvgl_data/main_pol_up.png"
@@ -100,7 +101,7 @@ static int page_01_detail_row_count_get(page_01_detail_section_t section)
         }
         break;
     case PAGE_01_DETAIL_SECTION_C:
-        count = sim.err_num;
+        count = counting_data_error_detail_count(&sim);
         if (count > 10) count = 10;
         break;
     default:

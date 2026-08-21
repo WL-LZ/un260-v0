@@ -2,6 +2,7 @@
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/lv_page_event.h"
 #include "un260/lv_components/smart_island.h"
+#include "un260/counting/counting_data_store.h"
 #include "un260/lv_system/platform_app.h"
 #include "un260/lv_system/ui_lang.h"
 #include "un260/lv_system/ui_text.h"
@@ -154,7 +155,7 @@ static void pure_refresh_values(void)
 {
     char amount_buf[32];
     char pcs_buf[32];
-    int reject_cnt = (sim.err_expected > sim.err_num) ? sim.err_expected : sim.err_num;
+    int reject_cnt = counting_data_reject_pcs_count(&sim);
 
     if (g_pure_page.amount_value && lv_obj_is_valid(g_pure_page.amount_value)) {
         pure_format_amount(amount_buf, sizeof(amount_buf), sim.total_amount);

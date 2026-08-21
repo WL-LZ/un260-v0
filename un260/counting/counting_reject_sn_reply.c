@@ -47,7 +47,8 @@ static uint8_t counting_reject_page_count(uint16_t item_count)
 
 static void counting_reject_refresh_pages(const counting_sim_t *sim_data)
 {
-    page_02_c_report_status.total_page = counting_reject_page_count(sim_data->err_num);
+    page_02_c_report_status.total_page = counting_reject_page_count(
+        (uint16_t)counting_data_error_detail_count(sim_data));
     page_02_c_page_refre();
     page_02_c_page_num_refre();
 }
@@ -82,7 +83,8 @@ static counting_detail_reply_result_t counting_reject_reply_handle(
             hooks->on_reject_analysis_ready(hooks->context);
         }
         uart_printf(fd6, "0x0C reject detail receive end, parsed=%u expected=%u\n",
-                    sim_data->err_num, sim_data->err_expected);
+                    (unsigned int)counting_data_error_detail_count(sim_data),
+                    (unsigned int)sim_data->err_expected);
         smart_island_refresh_summary();
         if (counting_detail_is_main_page_active(hooks)) {
             ui_refresh_main_page();

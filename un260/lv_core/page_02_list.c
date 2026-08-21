@@ -3,6 +3,7 @@
 #include "un260/lv_resources/lv_img_init.h" 
 #include "un260/currency/currency_state.h"
 #include "un260/counting/counting_reject_reason.h"
+#include "un260/counting/counting_data_store.h"
 #include "lv_page_event.h"
 #include "aic_ui/aic_ui.h"
 #include "un260/lv_system/platform_app.h"
@@ -435,7 +436,7 @@ static void page_02_scroll_section_total_page_refresh(page_02_scroll_section_t *
         page_02_b_report_status.total_page = (section->total_row == 0) ? 1 : ((section->total_row + PAGE_02_B_ITEM - 1) / PAGE_02_B_ITEM);
         break;
     case PAGE_02_SECTION_C:
-        section->total_row = sim.err_num;
+        section->total_row = counting_data_error_detail_count(&sim);
         page_02_c_report_status.total_page = (section->total_row == 0) ? 1 : ((section->total_row + PAGE_02_C_ITEM - 1) / PAGE_02_C_ITEM);
         break;
     default:

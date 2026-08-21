@@ -1,5 +1,6 @@
 #include "counting_data_store.h"
 
+#include <limits.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -147,4 +148,42 @@ bool counting_data_ensure_error_capacity(counting_sim_t *sim_data,
     sim_data->err_code = new_code;
     sim_data->err_capacity = new_capacity;
     return true;
+}
+
+int counting_data_error_detail_count(const counting_sim_t *sim_data)
+{
+    int count;
+
+    if (sim_data == NULL || sim_data->err_pcs == NULL ||
+        sim_data->err_code == NULL ||
+        !counting_data_capacity_is_valid(sim_data->err_capacity)) {
+        return 0;
+    }
+
+    count = (int)sim_data->err_num;
+    return count < sim_data->err_capacity ? count : sim_data->err_capacity;
+}
+
+int counting_data_reject_pcs_count(const counting_sim_t *sim_data)
+{
+    int detail_count;
+    int total = 0;
+
+    if (sim_data == NULL) {
+        return 0;
+    }
+    if (sim_data->err_expected > 0) {
+        return (int)sim_data->err_expected;
+    }
+
+    detail_count = counting_data_error_detail_count(sim_data);
+    for (int i = 0; i < detail_count; i++) {
+        int pcs = (int)sim_data->err_pcs[i];
+
+        if (pcs > INT_MAX - total) {
+            return INT_MAX;
+        }
+        total += pcs;
+    }
+    return total;
 }

@@ -358,6 +358,21 @@ void sim_data_init(void)
 }
 
 
+static bool sim_reject_detail_update(counting_sim_t *sim_data)
+{
+    if (!counting_data_ensure_error_capacity(sim_data, 1)) {
+        sim_data->err_num = 0;
+        sim_data->err_expected = 0;
+        return false;
+    }
+
+    sim_data->err_code[0] = 0x15; /* UV */
+    sim_data->err_pcs[0] = 1;
+    sim_data->err_num = 1;
+    sim_data->err_expected = 1;
+    return true;
+}
+
 static void sim_timer_cb(lv_timer_t* timer)
 {
     (void)timer;
@@ -370,7 +385,6 @@ static void sim_timer_cb(lv_timer_t* timer)
 #endif
         return;
     }
-    sim_data->err_num = 1;
     int ridx = lv_rand(0, sim_data->denom_number - 1);
     int delta = lv_rand(1, 5);
     if (delta > UINT16_MAX - sim_data->denom[ridx].pcs) {
@@ -399,7 +413,11 @@ static void sim_timer_cb(lv_timer_t* timer)
     
     sim_data->total_pcs = total_pcs;
     sim_data->total_amount = total_amount;
-    sim_data->err_num = 1;
+    if (!sim_reject_detail_update(sim_data)) {
+#if LV_DEBUG
+        printf("Failed to update simulated reject detail\n");
+#endif
+    }
 
     ui_refresh_main_page();
 }
@@ -674,7 +692,8 @@ static void page_01_main_detail_rows_refresh(page_01_detail_section_t section, i
             break;
         }
         case PAGE_01_DETAIL_SECTION_C:
-            if (data_row < sim_data->err_num && data_row < 10) {
+            if (data_row < counting_data_error_detail_count(sim_data) &&
+                data_row < 10) {
                 const char* err_text = "Unknown Error";
 
                 update_label_by_name(page_01_main_obj, page_01_main_len, denom_buf, "%d", data_row + 1);
@@ -904,7 +923,12 @@ void page_02_report_init(void)
         : ((sim_get_sn_valid_count() + PAGE_02_B_ITEM - 1) / PAGE_02_B_ITEM);
 
     page_02_c_report_status.curent_page = 1;
-    page_02_c_report_status.total_page = (sim.err_num == 0) ? 1 : ((sim.err_num + PAGE_02_C_ITEM - 1) / PAGE_02_C_ITEM);
+    {
+        int error_count = counting_data_error_detail_count(&sim);
+
+        page_02_c_report_status.total_page = (error_count == 0)
+            ? 1 : ((error_count + PAGE_02_C_ITEM - 1) / PAGE_02_C_ITEM);
+    }
 }
 
 // 清空所有冠字号的函数

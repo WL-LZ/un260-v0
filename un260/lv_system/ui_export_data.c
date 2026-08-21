@@ -58,21 +58,7 @@ static void ui_export_data_show_normal_toast(const char *text)
 
 static int ui_export_data_get_reject_count(void)
 {
-    if (sim.err_expected > 0) {
-        return sim.err_expected;
-    }
-
-    if (sim.err_num > 0 && sim.err_pcs != NULL) {
-        int i;
-        int total = 0;
-
-        for (i = 0; i < sim.err_num; i++) {
-            total += sim.err_pcs[i];
-        }
-        return total;
-    }
-
-    return 0;
+    return counting_data_reject_pcs_count(&sim);
 }
 
 static bool ui_export_data_is_empty(void)
@@ -456,8 +442,10 @@ static bool ui_export_data_write_html_file(const char *file_path)
         "const reportData={totalAmount:%.0f,totalNotes:%d,rejectCount:%d,suspectNotes:%d,damagedNotes:0,rejectDetails:[",
         total_amount, total_pcs, reject_total, reject_total);
 
-    if (sim.err_num > 0 && sim.err_code != NULL) {
-        for (i = 0; i < sim.err_num; i++) {
+    {
+        int error_count = counting_data_error_detail_count(&sim);
+
+        for (i = 0; i < error_count; i++) {
             unsigned int pcs = 0;
 
             lv_snprintf(reason_buf, sizeof(reason_buf), "%s",
@@ -575,9 +563,11 @@ static bool ui_export_data_write_csv_file(const char *file_path)
 
     fprintf(fp, "\nREJECT REPORT\n");
     fprintf(fp, "NO,PCS,REASON\n");
-    if (sim.err_num > 0 && sim.err_code != NULL) {
+    {
+        int error_count = counting_data_error_detail_count(&sim);
+
         no = 0;
-        for (i = 0; i < sim.err_num; i++) {
+        for (i = 0; i < error_count; i++) {
             no++;
             lv_snprintf(reason_buf, sizeof(reason_buf), "%s",
                         counting_reject_reason_get(sim.err_code[i]));

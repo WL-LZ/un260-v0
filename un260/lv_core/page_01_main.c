@@ -13,6 +13,7 @@
 #include "un260/lv_system/user_cfg.h"
 #include "un260/machine_state/machine_state.h"
 #include "un260/currency/currency_state.h"
+#include "un260/counting/counting_data_store.h"
 #include "un260/lv_components/lv_print_toast.h"
 #include "un260/protocol/protocol_send.h"
 #include "un260/lv_system/machine_time.h"
@@ -206,7 +207,7 @@ void page_01_err_num_refre(void)
 {
     char buf[12];
 
-    snprintf(buf, sizeof(buf), "%d", sim.err_expected);
+    snprintf(buf, sizeof(buf), "%d", counting_data_reject_pcs_count(&sim));
     update_label_by_name(page_01_main_obj, page_01_main_len,
                          "reject_num_label", "%s", buf);
 }

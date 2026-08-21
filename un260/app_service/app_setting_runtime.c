@@ -8,6 +8,7 @@
 #include "un260/app_service/setting_service.h"
 #include "un260/cfd/cfd.h"
 #include "un260/currency/currency_service.h"
+#include "un260/counting/counting_data_store.h"
 #include "un260/lv_components/lv_components.h"
 #include "un260/lv_core/lv_page_event.h"
 #include "un260/lv_core/page_07_curr.h"
@@ -35,7 +36,7 @@ static void app_setting_runtime_mode_clear_timer_cb(lv_timer_t *timer)
 
 static void app_setting_runtime_schedule_mode_clear(void)
 {
-    if (sim.total_pcs == 0 && sim.err_num == 0 && sim.err_expected == 0) {
+    if (sim.total_pcs == 0 && counting_data_reject_pcs_count(&sim) == 0) {
         return;
     }
 

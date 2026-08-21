@@ -3,6 +3,8 @@
 #include <stddef.h>
 #include <string.h>
 
+#include "un260/counting/counting_data_store.h"
+
 #define COUNTING_REJECT_CODE_COUNT 0x100U
 
 static uint32_t g_reject_pocket_snapshot[COUNTING_REJECT_CODE_COUNT];
@@ -63,14 +65,19 @@ bool counting_reject_analysis_update(counting_session_state_t *session,
     uint32_t damaged = 0;
     uint32_t issue;
     int expected_issue;
+    int detail_count;
 
     if (session == NULL || sim_data == NULL || result == NULL ||
-        !session->last_result.valid || sim_data->err_num == 0 ||
-        sim_data->err_pcs == NULL || sim_data->err_code == NULL) {
+        !session->last_result.valid) {
         return false;
     }
 
-    for (uint16_t i = 0; i < sim_data->err_num; i++) {
+    detail_count = counting_data_error_detail_count(sim_data);
+    if (detail_count == 0) {
+        return false;
+    }
+
+    for (int i = 0; i < detail_count; i++) {
         current_by_code[sim_data->err_code[i]] += sim_data->err_pcs[i];
     }
 
