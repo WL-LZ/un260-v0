@@ -7,13 +7,11 @@
 #include "un260/app_service/app_counting_runtime.h"
 #include "un260/boot/boot_service.h"
 #include "un260/counting/counting_denom_query_service.h"
+#include "un260/counting/counting_action_service.h"
 #include "un260/currency/currency_reply.h"
 #include "un260/lv_core/page_07_curr.h"
 #include "un260/lv_drivers/lv_drivers.h"
 #include "un260/lv_system/platform_app.h"
-#include "un260/protocol/protocol_send.h"
-
-#define APP_CURRENCY_CLEAR_DATA_CMD 0x01
 
 static bool app_currency_runtime_boot_ready(void)
 {
@@ -43,11 +41,10 @@ void app_currency_runtime_handle_reply(counting_detail_state_t *detail_state,
 
     reply = currency_reply_handle(buf, len);
     if (reply.kind == CURRENCY_REPLY_SWITCH_SUCCESS) {
-        const uint8_t clear_data = APP_CURRENCY_CLEAR_DATA_CMD;
-
         sim_reset_for_currency(&sim);
         app_counting_runtime_reset_session(session, "currency change");
-        if (protocol_send(0x3B, &clear_data, 1) < 0) {
+        counting_action_cancel_all();
+        if (!counting_action_request_clear()) {
             uart_printf(fd6, "currency changed, controller data clear send failed\n");
         }
         page_07_curr_apply_switch_result(&reply.switch_result);
