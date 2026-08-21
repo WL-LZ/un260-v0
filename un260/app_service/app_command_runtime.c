@@ -52,6 +52,7 @@ bool app_command_runtime_clear_counting_data(const char *reason)
     const uint8_t request = APP_COUNT_ACTION_REQUEST;
 
     app_setting_runtime_cancel_mode_clear();
+    stop_counting_sim();
     app_counting_runtime_reset_session(&g_counting_session, reason);
     g_counting_detail_state.wait_sn_after_reject_end = false;
     sim_reset_counting_result(&sim);

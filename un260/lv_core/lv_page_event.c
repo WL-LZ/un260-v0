@@ -192,7 +192,6 @@ void page_01_esc_btn_event_cb(lv_event_t* e)
     if (page_01_main_is_created()) {
         icon_feedback_comp("page_01_esc_icon.png", page_01_main_obj, page_01_main_len);
     }
-    stop_counting_sim();
     app_command_runtime_clear_counting_data("user clear");
     page_01_scroll_hint_force_hide();
 }

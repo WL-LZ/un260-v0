@@ -1,4 +1,5 @@
 #include "un260/lv_core/page_06_settings.h"
+#include "un260/app_service/app_command_runtime.h"
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/lv_page_event.h"
 #include "un260/lv_core/page_09_cis_cala.h"
@@ -1050,7 +1051,6 @@ static void data_collect_mode_btn_event_cb(lv_event_t* e)
 
 static void data_collect_start_btn_event_cb(lv_event_t* e)
 {
-    uint8_t start_cmd = 0x01;
     (void)e;
 
     if (data_collection_state_mode() == DATA_COLLECT_MODE_NONE) {
@@ -1060,7 +1060,7 @@ static void data_collect_start_btn_event_cb(lv_event_t* e)
         return;
     }
 
-    if (settings_detail_send_command(0x0A, &start_cmd, 1)) {
+    if (app_command_runtime_request_count_start()) {
         data_collection_state_reset_pcs();
         data_collection_state_set_status("Counting command sent. Waiting for controller reply...");
         settings_set_status("LOADING", color_primary());
