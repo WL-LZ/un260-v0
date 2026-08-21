@@ -4,6 +4,7 @@
 #include "un260/lv_system/ui_text.h"
 #include "un260/diagnostic/diagnostic.h"
 
+#include <stdbool.h>
 #include <string.h>
 
 #define SENSOR_SCALE_Y_DEFAULT 330
@@ -14,6 +15,9 @@ typedef struct {
     lv_obj_t *value_labels[SENSOR_VOLTAGE_CH_NUM];
     lv_timer_t *poll_timer;
     uint32_t last_update_count;
+    bool values_initialized;
+    bool displayed_valid[SENSOR_VOLTAGE_CH_NUM];
+    uint8_t displayed_raw[SENSOR_VOLTAGE_CH_NUM];
 } sensor_page_context_t;
 
 static sensor_page_context_t g_sensor_page;
@@ -50,6 +54,12 @@ static void sensor_refresh_view(void)
         lv_obj_t *value_label = g_sensor_page.value_labels[i];
 
         if (!value_label || !lv_obj_is_valid(value_label)) continue;
+        if (g_sensor_page.values_initialized &&
+            g_sensor_page.displayed_valid[i] == snapshot.valid[i] &&
+            (!snapshot.valid[i] ||
+             g_sensor_page.displayed_raw[i] == snapshot.raw[i])) {
+            continue;
+        }
 
         if (snapshot.valid[i]) {
             const uint8_t raw = snapshot.raw[i];
@@ -60,7 +70,10 @@ static void sensor_refresh_view(void)
             lv_label_set_text(value_label, "-- V");
             lv_obj_set_style_text_color(value_label, lv_color_hex(0xdee2de), 0);
         }
+        g_sensor_page.displayed_valid[i] = snapshot.valid[i];
+        g_sensor_page.displayed_raw[i] = snapshot.raw[i];
     }
+    g_sensor_page.values_initialized = true;
 }
 
 static void sensor_poll_timer_cb(lv_timer_t* timer)

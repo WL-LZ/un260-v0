@@ -811,11 +811,14 @@ static void page_01_main_detail_rows_refresh(page_01_detail_section_t section,
 
 void page_01_main_detail_refresh_rows_only(void)
 {
+    uint64_t refresh_started_us = app_clock_monotonic_us();
     page_01_detail_section_t section = page_01_detail_section_get();
     int first_row = page_01_detail_scroll_first_row_get(section);
     bool apply_layout = page_01_main_detail_row_layout_changed(section, first_row);
 
     page_01_main_detail_rows_refresh(section, first_row, apply_layout);
+    perf_stats_report_main_refresh_time_us(app_clock_elapsed_us32(
+        refresh_started_us, app_clock_monotonic_us()));
 }
 
 
