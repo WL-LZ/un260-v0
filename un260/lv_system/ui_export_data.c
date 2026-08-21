@@ -657,14 +657,9 @@ bool ui_export_data_request(void)
     ui_export_data_show_normal_toast(UI_EXPORT_TOAST_TEXT_EXPORTING);
 
     ui_export_data_build_export_name(export_name, sizeof(export_name));
-    written = lv_snprintf(csv_path, sizeof(csv_path), "%s/%s.csv",
-                          USB_STORAGE_MOUNT_POINT, export_name);
-    if (written < 0 || (size_t)written >= sizeof(csv_path)) {
-        goto cleanup;
-    }
-    written = lv_snprintf(html_path, sizeof(html_path), "%s/%s.html",
-                          USB_STORAGE_MOUNT_POINT, export_name);
-    if (written < 0 || (size_t)written >= sizeof(html_path)) {
+    if (!usb_storage_make_unique_file_pair(export_name,
+                                           ".csv", csv_path, sizeof(csv_path),
+                                           ".html", html_path, sizeof(html_path))) {
         goto cleanup;
     }
     written = lv_snprintf(csv_tmp_path, sizeof(csv_tmp_path), "%s.tmp", csv_path);
@@ -680,8 +675,8 @@ bool ui_export_data_request(void)
         !ui_export_data_write_html_file(html_tmp_path)) {
         goto cleanup;
     }
-    if (rename(csv_tmp_path, csv_path) != 0 ||
-        rename(html_tmp_path, html_path) != 0) {
+    if (!usb_storage_commit_file_pair(csv_tmp_path, csv_path,
+                                      html_tmp_path, html_path)) {
         goto cleanup;
     }
     ok = true;

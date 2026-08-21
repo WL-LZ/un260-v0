@@ -810,14 +810,9 @@ static bool history_export_write_selected_record(const ui_history_record_t *rec)
     }
 
     history_export_build_name_for_record(export_name, sizeof(export_name), rec);
-    written = lv_snprintf(csv_path, sizeof(csv_path), "%s/%s.csv",
-                          USB_STORAGE_MOUNT_POINT, export_name);
-    if (written < 0 || (size_t)written >= sizeof(csv_path)) {
-        goto cleanup;
-    }
-    written = lv_snprintf(html_path, sizeof(html_path), "%s/%s.html",
-                          USB_STORAGE_MOUNT_POINT, export_name);
-    if (written < 0 || (size_t)written >= sizeof(html_path)) {
+    if (!usb_storage_make_unique_file_pair(export_name,
+                                           ".csv", csv_path, sizeof(csv_path),
+                                           ".html", html_path, sizeof(html_path))) {
         goto cleanup;
     }
     written = lv_snprintf(csv_tmp_path, sizeof(csv_tmp_path), "%s.tmp", csv_path);
@@ -835,8 +830,8 @@ static bool history_export_write_selected_record(const ui_history_record_t *rec)
                                         sns, sn_count, rejects, reject_count)) {
         goto cleanup;
     }
-    if (rename(csv_tmp_path, csv_path) != 0 ||
-        rename(html_tmp_path, html_path) != 0) {
+    if (!usb_storage_commit_file_pair(csv_tmp_path, csv_path,
+                                      html_tmp_path, html_path)) {
         goto cleanup;
     }
     ok = true;

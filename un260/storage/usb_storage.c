@@ -163,3 +163,97 @@ bool usb_storage_available(void)
     }
     return usb_storage_find_device(device, sizeof(device));
 }
+
+static int usb_storage_path_exists(const char* path)
+{
+    struct stat st;
+
+    if (lstat(path, &st) == 0) return 1;
+    return errno == ENOENT ? 0 : -1;
+}
+
+bool usb_storage_make_unique_file_pair(const char* base_name,
+                                       const char* first_extension,
+                                       char* first_path,
+                                       size_t first_path_size,
+                                       const char* second_extension,
+                                       char* second_path,
+                                       size_t second_path_size)
+{
+    int suffix;
+
+    if (base_name == NULL || base_name[0] == '\0' ||
+        first_extension == NULL || first_extension[0] == '\0' ||
+        second_extension == NULL || second_extension[0] == '\0' ||
+        first_path == NULL || first_path_size == 0U ||
+        second_path == NULL || second_path_size == 0U) {
+        return false;
+    }
+
+    first_path[0] = '\0';
+    second_path[0] = '\0';
+
+    for (suffix = 0; suffix <= 99; suffix++) {
+        int first_written;
+        int second_written;
+        int first_exists;
+        int second_exists;
+
+        if (suffix == 0) {
+            first_written = snprintf(first_path, first_path_size, "%s/%s%s",
+                                     USB_STORAGE_MOUNT_POINT, base_name,
+                                     first_extension);
+            second_written = snprintf(second_path, second_path_size, "%s/%s%s",
+                                      USB_STORAGE_MOUNT_POINT, base_name,
+                                      second_extension);
+        } else {
+            first_written = snprintf(first_path, first_path_size,
+                                     "%s/%s_%02d%s",
+                                     USB_STORAGE_MOUNT_POINT, base_name, suffix,
+                                     first_extension);
+            second_written = snprintf(second_path, second_path_size,
+                                      "%s/%s_%02d%s",
+                                      USB_STORAGE_MOUNT_POINT, base_name, suffix,
+                                      second_extension);
+        }
+
+        if (first_written < 0 || (size_t)first_written >= first_path_size ||
+            second_written < 0 || (size_t)second_written >= second_path_size) {
+            first_path[0] = '\0';
+            second_path[0] = '\0';
+            return false;
+        }
+
+        first_exists = usb_storage_path_exists(first_path);
+        second_exists = usb_storage_path_exists(second_path);
+        if (first_exists < 0 || second_exists < 0) {
+            first_path[0] = '\0';
+            second_path[0] = '\0';
+            return false;
+        }
+        if (first_exists == 0 && second_exists == 0) return true;
+    }
+
+    first_path[0] = '\0';
+    second_path[0] = '\0';
+    return false;
+}
+
+bool usb_storage_commit_file_pair(const char* first_temp_path,
+                                  const char* first_final_path,
+                                  const char* second_temp_path,
+                                  const char* second_final_path)
+{
+    if (first_temp_path == NULL || first_temp_path[0] == '\0' ||
+        first_final_path == NULL || first_final_path[0] == '\0' ||
+        second_temp_path == NULL || second_temp_path[0] == '\0' ||
+        second_final_path == NULL || second_final_path[0] == '\0') {
+        return false;
+    }
+
+    if (rename(first_temp_path, first_final_path) != 0) return false;
+    if (rename(second_temp_path, second_final_path) == 0) return true;
+
+    (void)unlink(first_final_path);
+    return false;
+}
