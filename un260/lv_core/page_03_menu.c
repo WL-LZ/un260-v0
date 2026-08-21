@@ -16,6 +16,8 @@
 static lv_obj_t* menu_page = NULL;
 static lv_obj_t* g_batch_tip_label = NULL;
 static lv_timer_t* g_batch_tip_timer = NULL;
+static lv_obj_t* g_batch_amount_label = NULL;
+static lv_obj_t* g_batch_pcs_label = NULL;
 
 lv_obj_t* batch_num_display;
 
@@ -77,10 +79,16 @@ static bool page_03_get_batch_labels(lv_obj_t** amount, lv_obj_t** pcs)
         return false;
     }
 
-    *amount = find_obj_by_name("03_amount_batch_label", page_03_menu_obj,
-                               page_03_menu_len);
-    *pcs = find_obj_by_name("03_pcs_batch_label", page_03_menu_obj,
-                            page_03_menu_len);
+    if (!g_batch_amount_label || !lv_obj_is_valid(g_batch_amount_label)) {
+        g_batch_amount_label = find_obj_by_name(
+            "03_amount_batch_label", page_03_menu_obj, page_03_menu_len);
+    }
+    if (!g_batch_pcs_label || !lv_obj_is_valid(g_batch_pcs_label)) {
+        g_batch_pcs_label = find_obj_by_name(
+            "03_pcs_batch_label", page_03_menu_obj, page_03_menu_len);
+    }
+    *amount = g_batch_amount_label;
+    *pcs = g_batch_pcs_label;
     return *amount != NULL && lv_obj_is_valid(*amount) &&
            *pcs != NULL && lv_obj_is_valid(*pcs);
 }
@@ -231,12 +239,12 @@ static void page_03_create_batch_num_area(void)
     lv_obj_set_align(batch_num_display, LV_ALIGN_RIGHT_MID);
     lv_label_set_text(batch_num_display, "0");
 
-    lv_obj_t* amount_obj = find_obj_by_name("03_amount_batch_label", page_03_menu_obj,
-                                            page_03_menu_len);
-    lv_obj_t* pcs_obj = find_obj_by_name("03_pcs_batch_label", page_03_menu_obj,
-                                         page_03_menu_len);
-    lv_obj_set_style_text_opa(pcs_obj, 255, 0);
-    lv_obj_set_style_text_opa(amount_obj, 40, 0);
+    lv_obj_t* amount_obj;
+    lv_obj_t* pcs_obj;
+    if (page_03_get_batch_labels(&amount_obj, &pcs_obj)) {
+        lv_obj_set_style_text_opa(pcs_obj, 255, 0);
+        lv_obj_set_style_text_opa(amount_obj, 40, 0);
+    }
 }
 
 // 定义初始位置常量（相对于容器的坐标）
@@ -1159,12 +1167,13 @@ void switch_to_amount_batch(void)
 
 void switch_to_pcs_batch(void)
 {
+    lv_obj_t* amount_obj;
+    lv_obj_t* pcs_obj;
+
     if (!is_amount_active) return;
+    if (!page_03_get_batch_labels(&amount_obj, &pcs_obj)) return;
 
     is_amount_active = false;  
-    
-    lv_obj_t* amount_obj = find_obj_by_name("03_amount_batch_label", page_03_menu_obj, page_03_menu_len);
-    lv_obj_t* pcs_obj = find_obj_by_name("03_pcs_batch_label", page_03_menu_obj, page_03_menu_len);
     
     lv_anim_init(&anim_pcs);
     lv_anim_set_var(&anim_pcs, pcs_obj);
@@ -1273,6 +1282,8 @@ void ui_page_03_menu_destroy(void)
     }
     menu_page = NULL;
     batch_num_display = NULL;
+    g_batch_amount_label = NULL;
+    g_batch_pcs_label = NULL;
     g_page_03_preview_icon = NULL;
     g_page_03_preview_mode = NULL;
     g_page_03_preview_state = NULL;
