@@ -115,6 +115,7 @@ void app_command_runtime_poll(uint32_t now_ms)
 {
     boot_stage_t stage = boot_service_get_stage();
 
+    app_counting_runtime_poll_history(&g_counting_session, &sim, now_ms);
     counting_denom_query_poll(&g_counting_detail_state,
                               now_ms,
                               stage == BOOT_STAGE_DONE || stage == BOOT_STAGE_FAIL,

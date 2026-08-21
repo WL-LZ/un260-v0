@@ -2,6 +2,7 @@
 
 #include <stddef.h>
 
+#include "un260/counting/counting_history_service.h"
 #include "un260/lv_components/lv_components.h"
 #include "un260/lv_components/lv_fault_popup.h"
 #include "un260/lv_components/smart_island.h"
@@ -84,6 +85,9 @@ static void counting_control_handle_start(const uint8_t *buf,
     value = buf[5];
 
     if (type == 0x01 && value == 0x01) {
+        if (counting_history_discard_pending(session)) {
+            uart_printf(fd6, "pending history discarded by new counting session\n");
+        }
         hide_counting_error_popup();
         fault_popup_clear_pending();
         fault_popup_reset_auto_retry();

@@ -28,5 +28,8 @@ void app_counting_runtime_handle_detail(uint8_t cmd,
                                         uint8_t len);
 void app_counting_runtime_handle_detail_complete(
     counting_session_state_t *session);
+void app_counting_runtime_poll_history(counting_session_state_t *session,
+                                       const counting_sim_t *sim_data,
+                                       uint32_t now_ms);
 
 #endif

@@ -189,13 +189,53 @@ static void app_counting_runtime_on_reject_analysis(void *context)
                 result.damaged_pcs);
 }
 
+static void app_counting_runtime_report_history_commit(
+    const counting_session_state_t *session,
+    counting_history_commit_result_t result,
+    uint8_t previous_attempts)
+{
+    if (session == NULL) {
+        return;
+    }
+
+    if (result == COUNTING_HISTORY_COMMIT_RETRY_PENDING) {
+        uart_printf(fd6, "history save failed, retry scheduled attempt=%u\n",
+                    session->history_record.save_attempts);
+    } else if (result == COUNTING_HISTORY_COMMIT_FAILED) {
+        uart_printf(fd6, "history save failed after %u attempts\n",
+                    session->history_record.save_attempts);
+    } else if (result == COUNTING_HISTORY_COMMIT_SAVED && previous_attempts > 0) {
+        uart_printf(fd6, "history save recovered after %u retries\n",
+                    previous_attempts);
+    }
+}
+
+static void app_counting_runtime_try_history_commit(
+    counting_session_state_t *session,
+    const counting_sim_t *sim_data,
+    uint32_t now_ms)
+{
+    counting_history_commit_result_t result;
+    uint8_t previous_attempts;
+
+    if (session == NULL || sim_data == NULL) {
+        return;
+    }
+
+    previous_attempts = session->history_record.save_attempts;
+    result = counting_history_try_commit(session, sim_data, now_ms);
+    app_counting_runtime_report_history_commit(session, result,
+                                               previous_attempts);
+}
+
 static void app_counting_runtime_on_history_record(void *context)
 {
     app_counting_detail_context_t *detail_context = context;
 
     if (detail_context != NULL) {
-        counting_history_try_commit(detail_context->session,
-                                    detail_context->sim_data);
+        app_counting_runtime_try_history_commit(detail_context->session,
+                                                detail_context->sim_data,
+                                                lv_tick_get());
     }
 }
 
@@ -253,7 +293,8 @@ void app_counting_runtime_handle_info(counting_session_state_t *session,
         smart_island_set_count_analysis(session->analysis_valid_pcs,
                                         result.final_issue,
                                         0);
-        counting_history_try_commit(session, sim_data);
+        app_counting_runtime_try_history_commit(session, sim_data,
+                                                lv_tick_get());
         if (app_counting_runtime_main_page_active()) {
             ui_refresh_main_page();
         }
@@ -343,4 +384,21 @@ void app_counting_runtime_handle_detail_complete(counting_session_state_t *sessi
 
     sent = ui_page_31_get_wave_request();
     uart_printf(fd6, "auto wave after count: sent=%d\n", sent ? 1 : 0);
+}
+
+void app_counting_runtime_poll_history(counting_session_state_t *session,
+                                       const counting_sim_t *sim_data,
+                                       uint32_t now_ms)
+{
+    counting_history_commit_result_t result;
+    uint8_t previous_attempts;
+
+    if (session == NULL || sim_data == NULL) {
+        return;
+    }
+
+    previous_attempts = session->history_record.save_attempts;
+    result = counting_history_poll_commit(session, sim_data, now_ms);
+    app_counting_runtime_report_history_commit(session, result,
+                                               previous_attempts);
 }

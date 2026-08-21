@@ -18,6 +18,8 @@ typedef struct {
 typedef struct {
     bool valid;
     bool end_seen;
+    uint8_t save_attempts;
+    uint32_t retry_tick;
     uint32_t pcs;
     uint32_t total_after;
     float amount;

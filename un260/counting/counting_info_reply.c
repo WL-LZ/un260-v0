@@ -109,6 +109,8 @@ static counting_info_reply_result_t counting_info_handle_finished(counting_sessi
 
     session->history_record.valid = (result.final_pcs > 0);
     session->history_record.end_seen = false;
+    session->history_record.save_attempts = 0;
+    session->history_record.retry_tick = 0;
     session->history_record.pcs = (uint32_t)result.final_pcs;
     session->history_record.total_after = counting_info_saturating_add_u32(
         history_total_notes_counted, (uint32_t)result.final_pcs);
