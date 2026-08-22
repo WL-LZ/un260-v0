@@ -5,6 +5,7 @@
 #include "aic_ui.h"
 #include "aic_dec.h"
 #include "un260/lv_core/lv_page_manager.h"
+#include "un260/lv_core/page_00_boot_anim.h"
 #include "un260/lv_system/app_clock.h"
 #include "un260/app_service/app_boot_runtime.h"
 #include "un260/app_service/app_command_runtime.h"
@@ -30,9 +31,10 @@ int main(void) {
     user_cfg_performance_monitor_load();
     device_info_init(UI_VERSION);
     ui_history_data_init();
-    ui_manager_switch(UI_PAGE_BOOT_ANIM);
+    ui_manager_switch(UI_PAGE_BOOT);
     perf_stats_init();
     app_ui_runtime_init();
+    ui_page_00_boot_anim_create(lv_layer_top());
 
     if (!app_serial_runtime_start()) {
         return -1;
@@ -55,7 +57,9 @@ int main(void) {
 
         app_command_runtime_poll(now);
 
-        app_boot_runtime_poll(now, current_page == UI_PAGE_BOOT);
+        app_boot_runtime_poll(
+            now, current_page == UI_PAGE_BOOT &&
+                 !ui_page_00_boot_anim_is_active());
 
         loop_end_us = app_clock_monotonic_us();
         perf_stats_report_loop_time_us(

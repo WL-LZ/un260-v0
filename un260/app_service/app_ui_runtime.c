@@ -5,6 +5,7 @@
 #include "un260/lv_components/lv_components.h"
 #include "un260/lv_components/lv_debug_overlay.h"
 #include "un260/lv_core/page_09_cis_cala.h"
+#include "un260/lv_core/page_00_boot_anim.h"
 #include "un260/lv_core/page_28_get_image.h"
 #include "un260/lv_core/page_31_get_wave.h"
 #include "un260/lv_components/lv_upgrade_popup.h"
@@ -64,7 +65,9 @@ void app_ui_runtime_poll(uint32_t now_ms)
     if (stream_timed_out) {
         show_communication_error_popup();
     }
-    ui_screenshot_indicator_poll();
+    if (!ui_page_00_boot_anim_is_active()) {
+        ui_screenshot_indicator_poll();
+    }
     ui_screen_recording_indicator_poll();
     ui_count_end_anim_poll();
     app_ui_runtime_poll_upgrade(now_ms);
