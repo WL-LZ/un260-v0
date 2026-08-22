@@ -41,7 +41,10 @@ typedef enum {
 #define PAGE_02_C_ITEM 9
 #define PAGE_02_DEBUG 1
 #define PAGE_07_CURRENCIES 4
-#define MAX_CURRENCIES 32
+#define CONTROLLER_MAX_CURRENCIES 32
+/* AUTO is shown before controller currencies; reserve one more slot for MIX. */
+#define CURRENCY_FEATURE_SLOT_COUNT 2
+#define MAX_CURRENCIES (CONTROLLER_MAX_CURRENCIES + CURRENCY_FEATURE_SLOT_COUNT)
 
 #define PRINT_SETTING_HEAD_MAX_LEN 20
 #define PRINT_SETTING_SPACE_MAX_LINES 99

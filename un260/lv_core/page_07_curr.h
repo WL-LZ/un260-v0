@@ -13,6 +13,9 @@ void ui_page_07_curr_destroy(void);
 void page_07_curr_img_refre(void);
 void page_07_curr_img_reset(void);
 void page_07_curr_apply_switch_result(const currency_switch_result_t* result);
+void page_07_curr_apply_mode_result(uint8_t requested_mode, bool success);
+void page_07_curr_poll_selection(void);
+void page_07_curr_cancel_pending_selection(void);
 
 #ifdef __cplusplus
 }

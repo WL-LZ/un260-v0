@@ -8,11 +8,13 @@
 #include "lvgl/lvgl.h"
 
 #include "un260/counting/counting_control_reply.h"
+#include "un260/counting/counting_data_store.h"
 #include "un260/counting/counting_denom_reply.h"
 #include "un260/counting/counting_history_service.h"
 #include "un260/counting/counting_info_reply.h"
 #include "un260/counting/counting_reject_analysis_service.h"
 #include "un260/counting/counting_reject_sn_reply.h"
+#include "un260/currency/currency_state.h"
 #include "un260/data_collection/data_collection.h"
 #include "un260/diagnostic/diagnostic.h"
 #include "un260/lv_components/lv_components.h"
@@ -30,6 +32,8 @@
 #include "un260/lv_system/counting_ui_runtime.h"
 #include "un260/lv_system/ui_history_data.h"
 #include "un260/lv_system/ui_text.h"
+#include "un260/innovation/page_32_innovation.h"
+#include "un260/innovation/multi_pass_verification.h"
 
 typedef struct {
     counting_session_state_t *session;
@@ -104,10 +108,27 @@ static bool app_counting_runtime_cb_calibration_active(void)
 
 static void app_counting_runtime_on_start_success(const uint8_t *buf, uint8_t len)
 {
+    currency_state_begin_count_session();
+    page_01_curr_img_refre();
     hide_counting_error_popup();
     fault_popup_clear_pending();
     fault_popup_reset_auto_retry();
     counting_history_session_start(buf, len);
+    if (multi_pass_verification_is_active()) {
+        if (machine_state_add_enabled()) {
+            multi_pass_capture_event_t verification_event = { 0 };
+            multi_pass_verify_view_t verification_view;
+
+            multi_pass_verification_on_count_start(true);
+            multi_pass_verification_get_view(&verification_view);
+            verification_event.kind = MULTI_PASS_CAPTURE_ADD_REQUIRED;
+            verification_event.captured_passes = verification_view.captured_passes;
+            verification_event.target_passes = verification_view.target_passes;
+            page_32_innovation_notify_verification_event(&verification_event);
+        } else {
+            multi_pass_verification_on_count_start(false);
+        }
+    }
 
     if (data_collection_state_mode() != DATA_COLLECT_MODE_NONE) {
         data_collection_state_set_status("Counting started...");
@@ -523,11 +544,21 @@ void app_counting_runtime_handle_detail(uint8_t cmd,
 
 void app_counting_runtime_handle_detail_complete(counting_session_state_t *session)
 {
+    multi_pass_capture_event_t verification_event;
+    multi_pass_capture_kind_t verification_result;
     bool sent;
 
-    if (session == NULL || !session->auto_wave_pending) {
+    if (session == NULL) {
         return;
     }
+
+    verification_result = multi_pass_verification_capture(
+        session, counting_data_current(), &verification_event);
+    if (verification_result != MULTI_PASS_CAPTURE_IGNORED) {
+        page_32_innovation_notify_verification_event(&verification_event);
+    }
+
+    if (!session->auto_wave_pending) return;
     session->auto_wave_pending = false;
 
     if (machine_state_work_mode() != 0 ||

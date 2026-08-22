@@ -20,6 +20,7 @@ void page_01_main_icon_feedback(const char *name);
 void page_01_main_refresh_totals(int total_pcs, const char *amount_text);
 void page_01_main_suspend(void);
 bool page_01_main_resume(void);
+void page_01_main_reveal_for_transition(void);
 void page_01_update_language_texts(void);
 void page_01_mode_switch_refre(void);
 void page_01_add_refre(void);

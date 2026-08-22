@@ -241,17 +241,14 @@ void smart_island_update_idle_time(void)
 static void smart_island_get_currency_code(char *buf, size_t size)
 {
     char curr_code[4];
-    char selected_code[4];
-    uint8_t selected_index;
 
     if (buf == NULL || size == 0U) return;
 
-    currency_state_get_active_code(curr_code);
-    selected_index = currency_state_active_index();
+    /* Keep the island consistent with the main page: AUTO is shown until
+     * the controller explicitly reports a detected currency via 0x50. */
+    currency_state_get_effective_code(curr_code);
     if (curr_code[0] != '\0') {
-        lv_snprintf(buf, size, "%s", curr_code);
-    } else if (currency_state_get_code(selected_index, selected_code) && selected_code[0] != '\0') {
-        lv_snprintf(buf, size, "%s", selected_code);
+        lv_snprintf(buf, size, "%s", currency_state_display_code(curr_code));
     } else {
         lv_snprintf(buf, size, "%s", "CUR");
     }

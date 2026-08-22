@@ -73,6 +73,7 @@ static const ui_page_registration_t g_page_registry[UI_PAGE_COUNT] = {
     [UI_PAGE_PASSWORD_CHANGE] = { ui_page_29_set_password_create, ui_page_29_set_password_destroy },
     [UI_PAGE_FACTORY_SETTING] = { ui_page_30_set_factory_create, ui_page_30_set_factory_destroy },
     [UI_PAGE_WAVE_GET] = { ui_page_31_get_wave_create, ui_page_31_get_wave_destroy },
+    [UI_PAGE_INNOVATION_CENTER] = { ui_page_32_innovation_create, ui_page_32_innovation_destroy },
 };
 
 static bool ui_manager_page_is_registered(ui_page_t page)
@@ -177,6 +178,28 @@ void ui_manager_push_page(ui_page_t page)
         }
     }
     ui_manager_switch(page);
+}
+
+bool ui_manager_adopt_precreated_page(ui_page_t page)
+{
+    int i;
+    ui_page_t from = g_page_manager.current;
+
+    if (page == from || !ui_manager_page_is_registered(page)) return false;
+    if (from != UI_PAGE_INVALID) {
+        if (g_page_manager.stack_top < UI_PAGE_STACK_CAPACITY - 1) {
+            g_page_manager.stack[++g_page_manager.stack_top] = from;
+        } else {
+            for (i = 0; i < UI_PAGE_STACK_CAPACITY - 1; i++) {
+                g_page_manager.stack[i] = g_page_manager.stack[i + 1];
+            }
+            g_page_manager.stack[UI_PAGE_STACK_CAPACITY - 1] = from;
+        }
+    }
+    ui_manager_notify_page_switch(from, page);
+    destroy_current_page();
+    g_page_manager.current = page;
+    return true;
 }
 
 bool ui_manager_pop_page(void)

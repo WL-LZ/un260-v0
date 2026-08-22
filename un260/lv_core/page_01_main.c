@@ -22,6 +22,7 @@
 #include "un260/lv_system/ui_text.h"
 #include "un260/lv_system/ui_export_data.h"
 #include "un260/lv_system/ui_state_runtime.h"
+#include "un260/innovation/page_32_innovation.h"
 #include <stdint.h>
 
 static lv_obj_t* main_page = NULL;
@@ -221,12 +222,16 @@ void page_01_curr_img_refre(void)
     char curr_code[4];
     lv_obj_t* curr_img = find_obj_by_name("curr_USD_img", page_01_main_obj,
                                           page_01_main_len);
+    lv_obj_t* curr_label = find_obj_by_name("curr_icon_label", page_01_main_obj,
+                                            page_01_main_len);
 
-    if (!curr_img || !lv_obj_is_valid(curr_img)) {
-        return;
+    currency_state_get_effective_code(curr_code);
+    if (curr_img && lv_obj_is_valid(curr_img)) {
+        lv_img_set_src(curr_img, get_currency_img(curr_code));
     }
-    currency_state_get_active_code(curr_code);
-    lv_img_set_src(curr_img, get_currency_img(curr_code));
+    if (curr_label && lv_obj_is_valid(curr_label)) {
+        lv_label_set_text(curr_label, currency_state_display_code(curr_code));
+    }
 }
 
 static void page_01_smart_island_action_cb(uint8_t action_id)
@@ -1071,7 +1076,7 @@ static ui_element_t page_01_main_obj[] = {
         NULL, 0, NULL, NULL },
 
     { "curr_icon_label", LV_OBJ_TYPE_LABEL, NULL,
-        { 145, 254, 60, 27, 0, 0, 0 },
+        { 145, 254, 75, 27, 0, 0, 0 },
         { "USD", 0, 115, 255, &lv_font_instrument_sans_semibold_24, LV_TEXT_ALIGN_CENTER },
         { 255, 0, 0, false },
         NULL, 0, NULL, NULL },
@@ -1379,6 +1384,7 @@ void ui_main_create(lv_obj_t* parent)
     smart_island_create(main_page); //创建主界面B区灵动岛
     smart_island_register_action_cb(page_01_smart_island_action_cb);
     smart_island_refresh_time(); //初始化时间显示
+    page_32_innovation_handle_attach(main_page);
 
 }
 
@@ -1398,6 +1404,7 @@ void ui_main_destroy(void)
         page_01_detail_section_btn_destroy_all();
         page_01_bottom_bg_destroy_all();
         smart_island_destroy(); //销毁灵动岛
+        page_32_innovation_handle_detach();
         lv_obj_del(main_page);
         main_page = NULL;
         page_01_main_scroll_container = NULL;
@@ -1484,6 +1491,13 @@ bool page_01_main_resume(void)
     }
     page_01_scroll_hint_on_enter();
     return true;
+}
+
+void page_01_main_reveal_for_transition(void)
+{
+    if (!page_01_main_is_created()) return;
+    lv_obj_clear_flag(main_page, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_background(main_page);
 }
 
 //// 更新页面上的所有多语言文本

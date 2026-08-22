@@ -40,12 +40,14 @@ typedef enum {
     UI_PAGE_PASSWORD_CHANGE,
     UI_PAGE_FACTORY_SETTING,
     UI_PAGE_WAVE_GET,
+    UI_PAGE_INNOVATION_CENTER,
     UI_PAGE_COUNT
 } ui_page_t;
 
 void ui_manager_init(void); // page管理
 void ui_manager_switch(ui_page_t page); // page切换
 void ui_manager_push_page(ui_page_t page); // 页面堆栈：进入新页面
+bool ui_manager_adopt_precreated_page(ui_page_t page); // 接管已创建页面，避免过渡结束后重复创建
 bool ui_manager_pop_page(void); // 页面堆栈：返回上一页
 void ui_manager_clear_stack(void); // 清空页面堆栈
 ui_page_t ui_manager_get_current_page(void); // 获取当前页

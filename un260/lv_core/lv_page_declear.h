@@ -31,5 +31,6 @@
 #include "page_30_set_factory.h"
 #include "page_31_get_wave.h"
 #include "page_00_boot_anim.h"
+#include "un260/innovation/page_32_innovation.h"
 
 #endif // !LV_PAGE_DECLEAR_H

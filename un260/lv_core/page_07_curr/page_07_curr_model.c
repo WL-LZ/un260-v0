@@ -46,12 +46,11 @@ void page07_curr_model_load(void)
         curr_add_favorite_code(state.fav_codes[i]);
     }
 
-    currency_state_get_active_code(curr_code);
-    if (state.selected_abs_idx >= 0 && state.selected_abs_idx < currency_state_count()) {
-        g_page07_curr.model.selected_abs_idx = state.selected_abs_idx;
-    } else {
-        g_page07_curr.model.selected_abs_idx = page07_curr_model_find_abs_idx(curr_code);
-    }
+    currency_state_get_selected_code(curr_code);
+    /* The controller-confirmed selection is authoritative. Saved indices can
+     * shift when virtual entries such as AUTO/MIX are inserted. */
+    g_page07_curr.model.selected_abs_idx =
+        page07_curr_model_find_abs_idx(curr_code);
 }
 
 bool page07_curr_model_code_equal(const char* a, const char* b)

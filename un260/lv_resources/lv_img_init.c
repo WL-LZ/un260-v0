@@ -1,5 +1,6 @@
 #include "lv_img_init.h"
 #include "un260/lv_resources/lv_image_declear.h"
+#include "un260/currency/currency_state.h"
 #include"un260/lv_system/lv_str.h"
 #include "../aic_ui/aic_ui.h"
 
@@ -231,7 +232,11 @@ const char* get_currency_img(const char* code)
     // 使用路径加载货币图片
     static char img_path[256];
     
-    if (strcmp(code, "USD") == 0) {
+    if (strcmp(code, CURRENCY_AUTO_CODE) == 0) {
+        snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_AUTO.png");
+        return img_path;
+    }
+    else if (strcmp(code, "USD") == 0) {
         snprintf(img_path, sizeof(img_path), "L:/usr/local/share/lvgl_data/%s","CURR_USD.png");
         return img_path;
     }
@@ -364,7 +369,5 @@ const char* get_currency_img(const char* code)
 
     return NULL;
 }
-
-
 
 

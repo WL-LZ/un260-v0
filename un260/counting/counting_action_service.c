@@ -70,6 +70,11 @@ uint32_t counting_action_take_timeouts(void)
     return timeouts;
 }
 
+bool counting_action_clear_pending(void)
+{
+    return protocol_request_is_pending(&g_clear_request);
+}
+
 void counting_action_cancel_all(void)
 {
     protocol_request_finish(&g_start_request);

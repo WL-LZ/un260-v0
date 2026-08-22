@@ -53,6 +53,11 @@ int main(void) {
         perf_stats_report_lvgl_time_us(
             app_clock_elapsed_us32(lvgl_start_us, lvgl_end_us));
         app_command_runtime_process_frames();
+
+        /* Frame handlers may start protocol timeouts.  Refresh the loop time
+         * afterwards so pollers never compare a newly-created deadline with
+         * the older timestamp captured before frame processing. */
+        now = app_clock_uptime_ms();
         app_ui_runtime_poll(now);
 
         app_command_runtime_poll(now);

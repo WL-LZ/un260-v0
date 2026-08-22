@@ -40,6 +40,8 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_components/lv_selftest_list.c
     un260/lv_components/qrcodegen.c
     un260/lv_components/lv_capsule_pagination.c
+    un260/lv_components/lv_damped_button.c
+    un260/lv_components/lv_content_pager.c
     un260/app_service/setting_service.c
     un260/lv_system/app_clock.c
     un260/app_service/app_boot_runtime.c
@@ -62,6 +64,8 @@ add_executable(${PROJECT_NAME} main.c
     un260/counting/counting_reject_analysis_service.c
     un260/counting/counting_reject_reason.c
     un260/counting/counting_reject_sn_reply.c
+    un260/innovation/multi_pass_verification.c
+    un260/innovation/page_32_innovation.c
     un260/device_info/device_info.c
     un260/data_collection/data_collection.c
     un260/diagnostic/diagnostic.c

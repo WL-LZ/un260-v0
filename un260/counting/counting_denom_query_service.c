@@ -12,6 +12,15 @@
 #define DENOM_QUERY_MAX_RETRY     2
 #define DENOM_QUERY_IDLE_RETRY_MS 2500
 
+static bool counting_denom_query_elapsed(uint32_t now_ms,
+                                         uint32_t started_ms,
+                                         uint32_t interval_ms)
+{
+    /* Signed modular subtraction tolerates the uint32_t clock wrap and also
+     * rejects a timestamp sampled just before the request was started. */
+    return (int32_t)(now_ms - started_ms) >= (int32_t)interval_ms;
+}
+
 static bool counting_denom_query_send(counting_detail_state_t *detail,
                                       uint32_t now_ms)
 {
@@ -125,7 +134,8 @@ void counting_denom_query_poll(counting_detail_state_t *detail,
     }
 
     if (detail->query_pending &&
-        (uint32_t)(now_ms - detail->query_tick) >= DENOM_QUERY_TIMEOUT_MS) {
+        counting_denom_query_elapsed(now_ms, detail->query_tick,
+                                     DENOM_QUERY_TIMEOUT_MS)) {
         bool stream_started = detail->query_started;
 
         detail->query_pending = false;
@@ -153,7 +163,8 @@ void counting_denom_query_poll(counting_detail_state_t *detail,
 
     if (!detail->query_pending && !detail->query_complete &&
         main_page_active && boot_ready &&
-        (uint32_t)(now_ms - detail->query_idle_retry_tick) >= DENOM_QUERY_IDLE_RETRY_MS) {
+        counting_denom_query_elapsed(now_ms, detail->query_idle_retry_tick,
+                                     DENOM_QUERY_IDLE_RETRY_MS)) {
         detail->query_idle_retry_tick = now_ms;
         detail->query_retry = 0;
         uart_debug_printf("0x0B idle retry on main page\n");

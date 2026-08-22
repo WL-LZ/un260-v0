@@ -783,13 +783,12 @@ void ui_refresh_main_page(void) {
     int first_row = page_01_detail_scroll_first_row_get(section);
     char buf[32];
     char amount_buf[32];
-    char curr_code[4];
     int right_total_pcs = 0;
     float right_total_amount = 0.0f;
     bool cache_was_empty = g_main_cache.currency == NULL;
     bool apply_chrome;
 
-    currency_state_get_active_code(curr_code);
+    page_01_curr_img_refre();
 
     //main_left_list
     lv_obj_t* curr_label = page_01_main_cache_get(&g_main_cache.currency,
@@ -801,10 +800,6 @@ void ui_refresh_main_page(void) {
     }
     apply_chrome = page_01_main_detail_chrome_changed(section);
 
-    if (curr_label && lv_obj_is_valid(curr_label))
-    {
-        label_set_text_if_changed(curr_label, curr_code);
-    }
     if (page_01_main_page_pcs_label == NULL || !lv_obj_is_valid(page_01_main_page_pcs_label))
     {
         page_01_main_page_pcs_label = page_01_main_find_obj("01_pcs_label");
