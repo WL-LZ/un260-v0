@@ -99,10 +99,8 @@ static counting_info_reply_result_t counting_info_handle_finished(counting_sessi
     session->last_result.issue_pcs = result.final_issue;
     session->last_result.suspect_pcs = result.final_issue;
     session->last_result.damaged_pcs = 0;
-    session->last_result.valid_pcs = result.final_pcs - result.final_issue;
-    if (session->last_result.valid_pcs < 0) {
-        session->last_result.valid_pcs = 0;
-    }
+    /* 0x0E qty already represents accepted notes, not accepted + rejected. */
+    session->last_result.valid_pcs = result.final_pcs;
     session->last_result.expected_issue = result.final_issue;
     session->analysis_valid_pcs = (int)qty;
 

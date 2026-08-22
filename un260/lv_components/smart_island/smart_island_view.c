@@ -380,10 +380,10 @@ static void smart_island_rebuild_scene_texts(void)
     switch (g_si_ctx.view.scene) {
     case SMART_ISLAND_SCENE_COUNTING:
         if (machine_state_mode() == MODE_MDC || machine_state_mode() == MODE_SDC) {
-            lv_snprintf(g_si_ctx.text.compact, sizeof(g_si_ctx.text.compact), "%s",
-                g_si_ctx.text.serial_ticker[0] != '\0'
-                    ? g_si_ctx.text.serial_ticker
-                    : ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_SERIAL_WAITING));
+            if (g_si_ctx.text.serial_ticker[0] != '\0') {
+                lv_snprintf(g_si_ctx.text.compact, sizeof(g_si_ctx.text.compact), "%s",
+                    g_si_ctx.text.serial_ticker);
+            }
         } else {
             lv_snprintf(g_si_ctx.text.compact, sizeof(g_si_ctx.text.compact), "%s",
                 ui_text_get(UI_TEXT_WIDGET_SMART_ISLAND_COUNTING_TITLE));

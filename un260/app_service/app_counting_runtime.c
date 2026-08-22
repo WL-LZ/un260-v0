@@ -435,10 +435,8 @@ void app_counting_runtime_handle_info(counting_session_state_t *session,
             current_pcs >= sim_data->last_total_pcs) {
             current_pcs -= sim_data->last_total_pcs;
         }
-        session->analysis_valid_pcs = current_pcs - result.final_issue;
-        if (session->analysis_valid_pcs < 0) {
-            session->analysis_valid_pcs = 0;
-        }
+        /* 0x0E qty is the accepted-note count; issue is reported separately. */
+        session->analysis_valid_pcs = current_pcs;
         smart_island_set_count_analysis(session->analysis_valid_pcs,
                                         result.final_issue,
                                         0);

@@ -1,5 +1,6 @@
 #include "counting_reject_analysis_service.h"
 
+#include <limits.h>
 #include <stddef.h>
 #include <string.h>
 
@@ -34,19 +35,13 @@ static int counting_reject_expected_issue(counting_session_state_t *session,
                                           uint32_t delta_total)
 {
     int expected = session->last_result.expected_issue;
-    int pcs_limit = session->last_result.pcs;
 
-    if (pcs_limit < 0) {
-        pcs_limit = 0;
-    }
     if (expected <= 0 && delta_total > 0U) {
-        expected = delta_total > (uint32_t)pcs_limit ?
-                   pcs_limit : (int)delta_total;
+        expected = delta_total > (uint32_t)INT_MAX ?
+                   INT_MAX : (int)delta_total;
     }
     if (expected < 0) {
         expected = 0;
-    } else if (expected > pcs_limit) {
-        expected = pcs_limit;
     }
     session->last_result.expected_issue = expected;
     return expected;
@@ -127,10 +122,8 @@ bool counting_reject_analysis_update(counting_session_state_t *session,
     session->last_result.issue_pcs = expected_issue;
     session->last_result.suspect_pcs = (int)suspect;
     session->last_result.damaged_pcs = (int)damaged;
-    session->last_result.valid_pcs = session->last_result.pcs - expected_issue;
-    if (session->last_result.valid_pcs < 0) {
-        session->last_result.valid_pcs = 0;
-    }
+    /* Accepted and rejected counts are independent fields in 0x0E. */
+    session->last_result.valid_pcs = session->last_result.pcs;
 
     memcpy(g_reject_pocket_snapshot, current_by_code,
            sizeof(g_reject_pocket_snapshot));
