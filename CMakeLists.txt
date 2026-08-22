@@ -135,11 +135,13 @@ add_executable(${PROJECT_NAME} main.c
     un260/lv_system/ui_text_widget.c
     un260/lv_system/ui_qr_data.c
     un260/lv_system/ui_screenshot.c
+    un260/lv_system/ui_screen_recording.c
     un260/lv_system/ui_export_data.c
     un260/lv_system/ui_history_data_fs.c
     un260/lv_system/ui_history_export_data.c
     un260/lv_system/user_cfg.c
     un260/lv_system/machine_time.c
+    un260/recording/screen_recording_service.c
     un260/lv_drivers/lv_drivers.c
     un260/lv_drivers/uart_io.c
     un260/lv_drivers/uart_bridge_service.c
@@ -290,7 +292,8 @@ find_library(LIBMPP_GE libmpp_ge.so)
 find_library(LIBMPP_BASE libmpp_base.so)
 find_library(LIBMPP_VE libmpp_ve.so)
 find_library(LIBMPP_DEC libmpp_decoder.so)
-target_link_libraries(${PROJECT_NAME} ${LIBMPP_GE} ${LIBMPP_DEC} ${LIBMPP_BASE} ${LIBMPP_VE})
+find_library(LIBMPP_ENC libmpp_encoder.so)
+target_link_libraries(${PROJECT_NAME} ${LIBMPP_GE} ${LIBMPP_DEC} ${LIBMPP_ENC} ${LIBMPP_BASE} ${LIBMPP_VE})
 #target_link_libraries(${PROJECT_NAME} lvgl lvgl_examples lvgl_demos)
 target_link_libraries(${PROJECT_NAME} lvgl )
 target_link_libraries(${PROJECT_NAME} media_player)

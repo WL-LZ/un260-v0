@@ -25,6 +25,7 @@
 #include "un260/lv_components/lv_print_toast.h"
 #include "un260/lv_system/ui_export_data.h"
 #include "un260/lv_system/ui_text.h"
+#include "un260/recording/screen_recording_service.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -316,6 +317,83 @@ static void screenshot_switch_event_cb(lv_event_t* e)
     }
 }
 
+static void screen_recording_switch_event_cb(lv_event_t* e)
+{
+    lv_obj_t* sw;
+    bool enabled;
+
+    if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+
+    sw = lv_event_get_target(e);
+    enabled = lv_obj_has_state(sw, LV_STATE_CHECKED);
+    if (!user_cfg_screen_recording_save(enabled)) {
+        if (enabled) {
+            lv_obj_clear_state(sw, LV_STATE_CHECKED);
+        } else {
+            lv_obj_add_state(sw, LV_STATE_CHECKED);
+        }
+        return;
+    }
+    if (!enabled) {
+        screen_recording_service_request_stop();
+    }
+}
+
+static void performance_monitor_switch_event_cb(lv_event_t* e)
+{
+    lv_obj_t* sw;
+    bool enabled;
+
+    if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+
+    sw = lv_event_get_target(e);
+    enabled = lv_obj_has_state(sw, LV_STATE_CHECKED);
+    if (!user_cfg_performance_monitor_save(enabled)) {
+        if (enabled) {
+            lv_obj_clear_state(sw, LV_STATE_CHECKED);
+        } else {
+            lv_obj_add_state(sw, LV_STATE_CHECKED);
+        }
+        return;
+    }
+    lv_debug_overlay_set_enabled(enabled);
+}
+
+static lv_obj_t* debug_create_setting_switch(lv_obj_t* parent,
+                                             lv_coord_t group_x,
+                                             const char* label_text,
+                                             lv_color_t checked_color,
+                                             bool enabled,
+                                             lv_event_cb_t event_cb)
+{
+    lv_obj_t* label = lv_label_create(parent);
+    lv_obj_t* sw;
+
+    lv_label_set_text(label, label_text);
+    lv_obj_set_width(label, 96);
+    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_font(label, &lv_font_instrument_sans_medium_12, 0);
+    lv_obj_set_style_text_color(label, lv_color_hex(0xB8C1CC), 0);
+    lv_obj_set_pos(label, group_x, 7);
+
+    sw = lv_switch_create(parent);
+    lv_obj_set_size(sw, 46, 24);
+    lv_obj_set_pos(sw, group_x + 25, 31);
+    lv_obj_set_style_bg_color(sw, lv_color_hex(0x4A4F57), 0);
+    lv_obj_set_style_bg_color(sw, checked_color,
+                              LV_PART_INDICATOR | LV_STATE_CHECKED);
+    lv_obj_set_style_bg_color(sw, lv_color_hex(0xFFFFFF), LV_PART_KNOB);
+    if (enabled) {
+        lv_obj_add_state(sw, LV_STATE_CHECKED);
+    }
+    lv_obj_add_event_cb(sw, event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    return sw;
+}
+
 void page_10_back_btn_event_cb(lv_event_t* e) {
 
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
@@ -324,8 +402,6 @@ void page_10_back_btn_event_cb(lv_event_t* e) {
  }
 /* ========== 主创建函数 ========== */
 void ui_page_10_debug_create(void) {
-    lv_obj_t* screenshot_switch;
-
     // page_debug 已存在，清理后重新创建
     if (page_debug && lv_obj_is_valid(page_debug)) {
         lv_obj_clean(page_debug);  // 清理所有子对象
@@ -335,20 +411,24 @@ void ui_page_10_debug_create(void) {
     }
     debug_page_context_reset();
     lv_debug_overlay_init();
-    lv_debug_overlay_set_enabled(true);
 
     lv_obj_set_size(page_debug, 1280, 400);
+    lv_obj_set_pos(page_debug, 0, 0);
     lv_obj_set_style_bg_color(page_debug, lv_color_hex(0x1a1a1a), 0);
+    lv_obj_set_style_border_width(page_debug, 0, 0);
+    lv_obj_set_style_radius(page_debug, 0, 0);
+    lv_obj_set_style_pad_all(page_debug, 0, 0);
     lv_obj_clear_flag(page_debug, LV_OBJ_FLAG_SCROLLABLE);
 
     /* ================= 左侧输入区（宽度550） ================= */
     lv_obj_t* left_panel = lv_obj_create(page_debug);
     lv_obj_set_size(left_panel, 550, 375);
-    lv_obj_set_pos(left_panel, 5, 5);
+    lv_obj_set_pos(left_panel, 10, 10);
     lv_obj_set_style_bg_color(left_panel, lv_color_hex(0x2a2a2a), 0);
     lv_obj_set_style_border_color(left_panel, lv_color_hex(0x3a3a3a), 0);
     lv_obj_set_style_border_width(left_panel, 1, 0);
     lv_obj_set_style_radius(left_panel, 8, 0);
+    lv_obj_set_style_pad_all(left_panel, 0, 0);
     lv_obj_clear_flag(left_panel, LV_OBJ_FLAG_SCROLLABLE);
 
     // 标题
@@ -360,7 +440,7 @@ void ui_page_10_debug_create(void) {
     // 输入框
     g_debug_page.input = lv_textarea_create(left_panel);
     lv_obj_set_size(g_debug_page.input, 380, 50);
-    lv_obj_set_pos(g_debug_page.input, 15, 40);
+    lv_obj_set_pos(g_debug_page.input, 15, 75);
     lv_textarea_set_placeholder_text(g_debug_page.input, "FD DF XX XX 0A");
     lv_textarea_set_text(g_debug_page.input, "FD DF ");        // 默认固定前缀
     lv_textarea_set_cursor_pos(g_debug_page.input, LV_TEXTAREA_CURSOR_LAST); // 光标移动到末尾
@@ -375,7 +455,7 @@ void ui_page_10_debug_create(void) {
     // 发送按钮
     lv_obj_t* btn_send = lv_btn_create(left_panel);
     lv_obj_set_size(btn_send, 110, 90);
-    lv_obj_set_pos(btn_send, 405, 40);
+    lv_obj_set_pos(btn_send, 405, 75);
     lv_obj_set_style_bg_color(btn_send, lv_color_hex(0x00AA00), 0);
     lv_obj_add_event_cb(btn_send, btn_send_event_cb, LV_EVENT_CLICKED, NULL);
 
@@ -385,8 +465,8 @@ void ui_page_10_debug_create(void) {
     lv_obj_center(btn_send_label);
     // 发送按钮
     lv_obj_t* btn_sec = lv_btn_create(left_panel);
-    lv_obj_set_size(btn_sec, 110, 30);
-    lv_obj_set_pos(btn_sec, 160, 0);
+    lv_obj_set_pos(btn_sec, 135, 4);
+    lv_obj_set_size(btn_sec, 90, 30);
     lv_obj_set_style_bg_color(btn_sec, lv_color_hex(0x00AA00), 0);
     lv_obj_add_event_cb(btn_sec, page_06_back_btn_event_cb, LV_EVENT_CLICKED, NULL);
 
@@ -395,30 +475,24 @@ void ui_page_10_debug_create(void) {
     lv_obj_set_style_text_font(btn_esc_label, &lv_font_instrument_sans_bold_20, 0);
     lv_obj_center(btn_esc_label);
 
-    lv_obj_t* screenshot_label = lv_label_create(left_panel);
-    lv_label_set_text(screenshot_label, ui_text_get(UI_TEXT_WIDGET_SCREENSHOT_LABEL));
-    lv_obj_set_style_text_font(screenshot_label, &lv_font_instrument_sans_medium_12, 0);
-    lv_obj_set_style_text_color(screenshot_label, lv_color_hex(0xB8C1CC), 0);
-    lv_obj_set_pos(screenshot_label, 292, 9);
-
-    screenshot_switch = lv_switch_create(left_panel);
-    lv_obj_set_size(screenshot_switch, 52, 26);
-    lv_obj_set_pos(screenshot_switch, 445, 2);
-    lv_obj_set_style_bg_color(screenshot_switch, lv_color_hex(0x4A4F57), 0);
-    lv_obj_set_style_bg_color(screenshot_switch, lv_color_hex(0x18A66A),
-                              LV_PART_INDICATOR | LV_STATE_CHECKED);
-    lv_obj_set_style_bg_color(screenshot_switch, lv_color_hex(0xFFFFFF),
-                              LV_PART_KNOB);
-    if (user_cfg_screenshot_enabled()) {
-        lv_obj_add_state(screenshot_switch, LV_STATE_CHECKED);
-    }
-    lv_obj_add_event_cb(screenshot_switch, screenshot_switch_event_cb,
-                        LV_EVENT_VALUE_CHANGED, NULL);
+    debug_create_setting_switch(
+        left_panel, 235, ui_text_get(UI_TEXT_WIDGET_SCREENSHOT_LABEL),
+        lv_color_hex(0x18A66A), user_cfg_screenshot_enabled(),
+        screenshot_switch_event_cb);
+    debug_create_setting_switch(
+        left_panel, 335, ui_text_get(UI_TEXT_WIDGET_SCREEN_RECORDING_LABEL),
+        lv_color_hex(0xE53935), user_cfg_screen_recording_enabled(),
+        screen_recording_switch_event_cb);
+    debug_create_setting_switch(
+        left_panel, 435,
+        ui_text_get(UI_TEXT_WIDGET_PERFORMANCE_MONITOR_LABEL),
+        lv_color_hex(0x4A9EFF), user_cfg_performance_monitor_enabled(),
+        performance_monitor_switch_event_cb);
     
     // 清空输入按钮
     lv_obj_t* btn_clear_input = lv_btn_create(left_panel);
     lv_obj_set_size(btn_clear_input, 100, 35);
-    lv_obj_set_pos(btn_clear_input, 15, 100);
+    lv_obj_set_pos(btn_clear_input, 15, 130);
     lv_obj_set_style_bg_color(btn_clear_input, lv_color_hex(0x555555), 0);
     lv_obj_add_event_cb(btn_clear_input, btn_clear_input_event_cb, LV_EVENT_CLICKED, NULL);
 
@@ -429,7 +503,7 @@ void ui_page_10_debug_create(void) {
     // 快捷命令按钮（示例）
     lv_obj_t* btn_quick1 = lv_btn_create(left_panel);
     lv_obj_set_size(btn_quick1, 100, 35);
-    lv_obj_set_pos(btn_quick1, 125, 100);
+    lv_obj_set_pos(btn_quick1, 125, 130);
     lv_obj_set_style_bg_color(btn_quick1, lv_color_hex(0x4A9EFF), 0);
     lv_obj_add_event_cb(btn_quick1, btn_quick_cmd_event_cb, LV_EVENT_CLICKED, "FD DF");
 
@@ -441,8 +515,8 @@ void ui_page_10_debug_create(void) {
     g_debug_page.keyboard = lv_btnmatrix_create(left_panel);
     lv_btnmatrix_set_map(g_debug_page.keyboard, kb_hex_map);
     lv_btnmatrix_set_ctrl_map(g_debug_page.keyboard, kb_hex_ctrl_map);
-    lv_obj_set_size(g_debug_page.keyboard, 500, 200);
-    lv_obj_set_pos(g_debug_page.keyboard, 15, 145);
+    lv_obj_set_size(g_debug_page.keyboard, 500, 185);
+    lv_obj_set_pos(g_debug_page.keyboard, 15, 175);
     lv_obj_set_style_bg_color(g_debug_page.keyboard, lv_color_hex(0x1a1a1a), 0);
     lv_obj_set_style_border_width(g_debug_page.keyboard, 0, 0);
     lv_obj_add_event_cb(g_debug_page.keyboard, kb_hex_event_cb,
@@ -450,20 +524,22 @@ void ui_page_10_debug_create(void) {
 
     /* ================= 右侧日志区（宽度680） ================= */
     lv_obj_t* right_panel = lv_obj_create(page_debug);
-    lv_obj_set_size(right_panel, 680, 380);
-    lv_obj_set_pos(right_panel, 570, 5);
+    lv_obj_set_size(right_panel, 700, 375);
+    lv_obj_set_pos(right_panel, 570, 10);
     lv_obj_set_style_bg_color(right_panel, lv_color_hex(0x2a2a2a), 0);
     lv_obj_set_style_border_color(right_panel, lv_color_hex(0x3a3a3a), 0);
     lv_obj_set_style_border_width(right_panel, 1, 0);
     lv_obj_set_style_radius(right_panel, 8, 0);
+    lv_obj_set_style_pad_all(right_panel, 0, 0);
     lv_obj_clear_flag(right_panel, LV_OBJ_FLAG_SCROLLABLE);
 
     // 顶部栏
     lv_obj_t* top_bar = lv_obj_create(right_panel);
-    lv_obj_set_size(top_bar, 600, 40);
+    lv_obj_set_size(top_bar, 650, 40);
     lv_obj_set_pos(top_bar, 15, 10);
     lv_obj_set_style_bg_color(top_bar, lv_color_hex(0x1a1a1a), 0);
     lv_obj_set_style_border_width(top_bar, 0, 0);
+    lv_obj_set_style_pad_all(top_bar, 0, 0);
     lv_obj_clear_flag(top_bar, LV_OBJ_FLAG_SCROLLABLE);
 
     lv_obj_t* label_log = lv_label_create(top_bar);
@@ -481,7 +557,7 @@ void ui_page_10_debug_create(void) {
                                 lv_color_hex(0x00FF00), 0);
     lv_coord_t b_parent_h = lv_obj_get_height(top_bar);
     lv_coord_t b_label_h = lv_obj_get_height(label_log);
-    lv_obj_set_pos(g_debug_page.tx_count_label, 245,
+    lv_obj_set_pos(g_debug_page.tx_count_label, 175,
                    (b_parent_h - b_label_h) / 2);
     g_debug_page.rx_count_label = lv_label_create(top_bar);
     lv_label_set_text(g_debug_page.rx_count_label, "RX: 0");
@@ -489,12 +565,12 @@ void ui_page_10_debug_create(void) {
                                 lv_color_hex(0x4A9EFF), 0);
     lv_coord_t c_parent_h = lv_obj_get_height(top_bar);
     lv_coord_t c_label_h = lv_obj_get_height(label_log);
-    lv_obj_set_pos(g_debug_page.rx_count_label, 315,
+    lv_obj_set_pos(g_debug_page.rx_count_label, 240,
                    (c_parent_h - c_label_h) / 2);
     // 下载日志按钮
     lv_obj_t* btn_download_log = lv_btn_create(top_bar);
     lv_obj_set_size(btn_download_log, 100, 30);
-    lv_obj_set_pos(btn_download_log, 400, 5);
+    lv_obj_set_pos(btn_download_log, 310, 5);
     lv_obj_set_style_bg_color(btn_download_log, lv_color_hex(0x0066CC), 0);
     lv_obj_add_event_cb(btn_download_log, btn_download_log_event_cb, LV_EVENT_CLICKED, NULL);
 
@@ -505,7 +581,7 @@ void ui_page_10_debug_create(void) {
     // 清空日志按钮
     lv_obj_t* btn_clear_log = lv_btn_create(top_bar);
     lv_obj_set_size(btn_clear_log, 80, 30);
-    lv_obj_align(btn_clear_log, LV_ALIGN_RIGHT_MID, -5, 0);
+    lv_obj_set_pos(btn_clear_log, 420, 5);
     lv_obj_set_style_bg_color(btn_clear_log, lv_color_hex(0xAA0000), 0);
     lv_obj_add_event_cb(btn_clear_log, btn_clear_log_event_cb, LV_EVENT_CLICKED, NULL);
 
@@ -515,17 +591,17 @@ void ui_page_10_debug_create(void) {
 
     // 日志滚动区域
     g_debug_page.log_area = lv_obj_create(right_panel);
-    lv_obj_set_size(g_debug_page.log_area, 600, 290);
+    lv_obj_set_size(g_debug_page.log_area, 650, 300);
     lv_obj_set_pos(g_debug_page.log_area, 15, 60);
     lv_obj_set_style_bg_color(g_debug_page.log_area, lv_color_black(), 0);
     lv_obj_set_style_border_color(g_debug_page.log_area,
                                   lv_color_hex(0x444444), 0);
     lv_obj_set_style_radius(g_debug_page.log_area, 4, 0);
+    lv_obj_set_style_pad_all(g_debug_page.log_area, 5, 0);
     lv_obj_set_scroll_dir(g_debug_page.log_area, LV_DIR_VER);
 }
 
 void ui_page_10_debug_destroy(void) {
-    lv_debug_overlay_set_enabled(false);
     if (page_debug && lv_obj_is_valid(page_debug)) {
         lv_obj_clean(page_debug);  // 清空子对象，但不删除page_debug本身
         lv_obj_add_flag(page_debug, LV_OBJ_FLAG_HIDDEN);  // 隐藏page_debug

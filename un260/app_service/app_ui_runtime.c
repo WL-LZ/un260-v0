@@ -3,6 +3,7 @@
 #include "un260/app_service/app_setting_runtime.h"
 #include "un260/diagnostic/diagnostic.h"
 #include "un260/lv_components/lv_components.h"
+#include "un260/lv_components/lv_debug_overlay.h"
 #include "un260/lv_core/page_09_cis_cala.h"
 #include "un260/lv_core/page_28_get_image.h"
 #include "un260/lv_core/page_31_get_wave.h"
@@ -11,12 +12,20 @@
 #include "un260/lv_core/ui_upgrade_service.h"
 #include "un260/lv_system/counting_ui_runtime.h"
 #include "un260/lv_system/ui_screenshot.h"
+#include "un260/lv_system/ui_screen_recording.h"
+#include "un260/lv_system/user_cfg.h"
 
 #include <stdbool.h>
 
 #define APP_UI_UPGRADE_DETECT_INTERVAL_MS 500U
 
 static uint32_t g_upgrade_detect_tick;
+
+void app_ui_runtime_init(void)
+{
+    lv_debug_overlay_init();
+    lv_debug_overlay_set_enabled(user_cfg_performance_monitor_enabled());
+}
 
 static void app_ui_runtime_poll_upgrade(uint32_t now_ms)
 {
@@ -56,6 +65,7 @@ void app_ui_runtime_poll(uint32_t now_ms)
         show_communication_error_popup();
     }
     ui_screenshot_indicator_poll();
+    ui_screen_recording_indicator_poll();
     ui_count_end_anim_poll();
     app_ui_runtime_poll_upgrade(now_ms);
 }

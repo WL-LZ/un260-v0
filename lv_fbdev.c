@@ -175,6 +175,38 @@ int fbdev_get_pitch(void)
     return finfo.line_length;
 }
 
+int fbdev_get_visible_buffer(struct mpp_buf *buffer)
+{
+    struct fb_var_screeninfo current_vinfo;
+    uint32_t bytes_per_pixel;
+
+    if (buffer == NULL || g_fb < 0 || g_frame_phy[0] == 0U) {
+        errno = EINVAL;
+        return -1;
+    }
+    if (ioctl(g_fb, FBIOGET_VSCREENINFO, &current_vinfo) == -1) {
+        return -1;
+    }
+    bytes_per_pixel = current_vinfo.bits_per_pixel / 8U;
+    if (current_vinfo.xres == 0U || current_vinfo.yres == 0U ||
+        (bytes_per_pixel != 2U && bytes_per_pixel != 3U &&
+         bytes_per_pixel != 4U)) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    memset(buffer, 0, sizeof(*buffer));
+    buffer->buf_type = MPP_PHY_ADDR;
+    buffer->phy_addr[0] = g_frame_phy[0] +
+        current_vinfo.yoffset * finfo.line_length +
+        current_vinfo.xoffset * bytes_per_pixel;
+    buffer->stride[0] = finfo.line_length;
+    buffer->size.width = current_vinfo.xres;
+    buffer->size.height = current_vinfo.yres;
+    buffer->format = fbdev_get_fmt();
+    return 0;
+}
+
 static int bmp_write_u16(FILE *fp, uint16_t value)
 {
     uint8_t data[2] = {

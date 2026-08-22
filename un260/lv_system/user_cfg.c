@@ -11,8 +11,14 @@
 #define USER_PASSWORD_PATH UI_STATE_DIR "/password.cfg"
 #define SCREENSHOT_CFG_PATH UI_STATE_DIR "/screenshot.cfg"
 #define SCREENSHOT_CFG_TMP_PATH UI_STATE_DIR "/screenshot.cfg.tmp"
+#define SCREEN_RECORDING_CFG_PATH UI_STATE_DIR "/screen_recording.cfg"
+#define SCREEN_RECORDING_CFG_TMP_PATH UI_STATE_DIR "/screen_recording.cfg.tmp"
+#define PERFORMANCE_MONITOR_CFG_PATH UI_STATE_DIR "/performance_monitor.cfg"
+#define PERFORMANCE_MONITOR_CFG_TMP_PATH UI_STATE_DIR "/performance_monitor.cfg.tmp"
 
 static bool g_screenshot_enabled = true;
+static bool g_screen_recording_enabled = false;
+static bool g_performance_monitor_enabled = false;
 
 static char g_user_password[USER_PASSWORD_MAX_LEN + 1] = "1111";
 
@@ -98,46 +104,54 @@ const char *user_cfg_password_get(void)
     return g_user_password;
 }
 
-bool user_cfg_screenshot_load(void)
+static bool user_cfg_bool_load(const char *path, bool default_value,
+                               bool *value_out)
 {
     FILE* fp;
     int value;
 
-    fp = fopen(SCREENSHOT_CFG_PATH, "r");
+    if (path == NULL || value_out == NULL) {
+        return false;
+    }
+    fp = fopen(path, "r");
     if (fp == NULL) {
-        g_screenshot_enabled = true;
+        *value_out = default_value;
         return false;
     }
 
     if (fscanf(fp, "%d", &value) != 1 || (value != 0 && value != 1)) {
         fclose(fp);
-        g_screenshot_enabled = true;
+        *value_out = default_value;
         return false;
     }
 
     fclose(fp);
-    g_screenshot_enabled = value != 0;
+    *value_out = value != 0;
     return true;
 }
 
-bool user_cfg_screenshot_save(bool enabled)
+static bool user_cfg_bool_save(const char *path, const char *temp_path,
+                               bool enabled, bool *value_out)
 {
     FILE* fp;
     int fd;
     bool write_ok = true;
 
+    if (path == NULL || temp_path == NULL || value_out == NULL) {
+        return false;
+    }
     if (mkdir(UI_STATE_DIR, 0755) != 0 && errno != EEXIST) {
         return false;
     }
 
-    fp = fopen(SCREENSHOT_CFG_TMP_PATH, "w");
+    fp = fopen(temp_path, "w");
     if (fp == NULL) {
         return false;
     }
 
     if (fprintf(fp, "%d\n", enabled ? 1 : 0) < 0 || fflush(fp) != 0) {
         fclose(fp);
-        unlink(SCREENSHOT_CFG_TMP_PATH);
+        unlink(temp_path);
         return false;
     }
 
@@ -149,20 +163,68 @@ bool user_cfg_screenshot_save(bool enabled)
         write_ok = false;
     }
     if (!write_ok) {
-        unlink(SCREENSHOT_CFG_TMP_PATH);
+        unlink(temp_path);
         return false;
     }
 
-    if (rename(SCREENSHOT_CFG_TMP_PATH, SCREENSHOT_CFG_PATH) != 0) {
-        unlink(SCREENSHOT_CFG_TMP_PATH);
+    if (rename(temp_path, path) != 0) {
+        unlink(temp_path);
         return false;
     }
 
-    g_screenshot_enabled = enabled;
+    *value_out = enabled;
     return true;
+}
+
+bool user_cfg_screenshot_load(void)
+{
+    return user_cfg_bool_load(SCREENSHOT_CFG_PATH, true,
+                              &g_screenshot_enabled);
+}
+
+bool user_cfg_screenshot_save(bool enabled)
+{
+    return user_cfg_bool_save(SCREENSHOT_CFG_PATH, SCREENSHOT_CFG_TMP_PATH,
+                              enabled, &g_screenshot_enabled);
 }
 
 bool user_cfg_screenshot_enabled(void)
 {
     return g_screenshot_enabled;
+}
+
+bool user_cfg_screen_recording_load(void)
+{
+    return user_cfg_bool_load(SCREEN_RECORDING_CFG_PATH, false,
+                              &g_screen_recording_enabled);
+}
+
+bool user_cfg_screen_recording_save(bool enabled)
+{
+    return user_cfg_bool_save(SCREEN_RECORDING_CFG_PATH,
+                              SCREEN_RECORDING_CFG_TMP_PATH,
+                              enabled, &g_screen_recording_enabled);
+}
+
+bool user_cfg_screen_recording_enabled(void)
+{
+    return g_screen_recording_enabled;
+}
+
+bool user_cfg_performance_monitor_load(void)
+{
+    return user_cfg_bool_load(PERFORMANCE_MONITOR_CFG_PATH, false,
+                              &g_performance_monitor_enabled);
+}
+
+bool user_cfg_performance_monitor_save(bool enabled)
+{
+    return user_cfg_bool_save(PERFORMANCE_MONITOR_CFG_PATH,
+                              PERFORMANCE_MONITOR_CFG_TMP_PATH,
+                              enabled, &g_performance_monitor_enabled);
+}
+
+bool user_cfg_performance_monitor_enabled(void)
+{
+    return g_performance_monitor_enabled;
 }

@@ -68,6 +68,12 @@ const char *user_cfg_password_get(void);
 bool user_cfg_screenshot_load(void);
 bool user_cfg_screenshot_save(bool enabled);
 bool user_cfg_screenshot_enabled(void);
+bool user_cfg_screen_recording_load(void);
+bool user_cfg_screen_recording_save(bool enabled);
+bool user_cfg_screen_recording_enabled(void);
+bool user_cfg_performance_monitor_load(void);
+bool user_cfg_performance_monitor_save(bool enabled);
+bool user_cfg_performance_monitor_enabled(void);
 
  enum {
     MODE_NONE,

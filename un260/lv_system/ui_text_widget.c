@@ -127,6 +127,14 @@ static const ui_text_item_t g_ui_text_widget_group[UI_TEXT_MAX - UI_TEXT_WIDGET_
     [UI_TEXT_WIDGET_SCREENSHOT_INSERT_USB - UI_TEXT_WIDGET_BASE] = {"Please insert USB drive", "请插入U盘", "USB를 삽입해 주세요"},
     [UI_TEXT_WIDGET_SCREENSHOT_SAVE_FAILED - UI_TEXT_WIDGET_BASE] = {"Screenshot save failed", "截屏保存失败", "스크린샷 저장 실패"},
 
+    //录屏功能
+    [UI_TEXT_WIDGET_SCREEN_RECORDING_LABEL - UI_TEXT_WIDGET_BASE] = {"RECORD", "录屏", "화면 녹화"},
+    [UI_TEXT_WIDGET_SCREEN_RECORDING_STARTED - UI_TEXT_WIDGET_BASE] = {"Screen recording started", "录屏已开始", "화면 녹화를 시작했습니다"},
+    [UI_TEXT_WIDGET_SCREEN_RECORDING_STOPPING - UI_TEXT_WIDGET_BASE] = {"Saving screen recording...", "正在保存录屏…", "화면 녹화를 저장하는 중입니다..."},
+    [UI_TEXT_WIDGET_SCREEN_RECORDING_SAVED - UI_TEXT_WIDGET_BASE] = {"Screen recording saved to USB", "录屏已保存到U盘", "화면 녹화가 USB에 저장되었습니다"},
+    [UI_TEXT_WIDGET_SCREEN_RECORDING_FAILED - UI_TEXT_WIDGET_BASE] = {"Screen recording failed", "录屏失败", "화면 녹화에 실패했습니다"},
+    [UI_TEXT_WIDGET_PERFORMANCE_MONITOR_LABEL - UI_TEXT_WIDGET_BASE] = {"PERFORMANCE", "性能监视", "성능 모니터"},
+
     //pure页面
     [UI_TEXT_WIDGET_PURE_AMOUNT - UI_TEXT_WIDGET_BASE] = {"A M O U N T", "金 额", "금 액"},
     [UI_TEXT_WIDGET_PURE_PCS - UI_TEXT_WIDGET_BASE] = {"P C S", "张 数", "매 수"},

@@ -26,10 +26,13 @@ int main(void) {
     lv_port_indev_init();
     user_cfg_password_load();
     user_cfg_screenshot_load();
+    user_cfg_screen_recording_load();
+    user_cfg_performance_monitor_load();
     device_info_init(UI_VERSION);
     ui_history_data_init();
     ui_manager_switch(UI_PAGE_BOOT_ANIM);
     perf_stats_init();
+    app_ui_runtime_init();
 
     if (!app_serial_runtime_start()) {
         return -1;
