@@ -18,10 +18,8 @@
 #include <unistd.h>
 #include <video/mpp_types.h>
 
-#define SCREEN_RECORDING_FPS                 8U
 #define SCREEN_RECORDING_JPEG_QUALITY        75
 #define SCREEN_RECORDING_MAX_SECONDS         (30U * 60U)
-#define SCREEN_RECORDING_MAX_FRAMES          (SCREEN_RECORDING_FPS * SCREEN_RECORDING_MAX_SECONDS)
 #define SCREEN_RECORDING_MAX_FILE_BYTES      (0x70000000UL)
 #define SCREEN_RECORDING_MIN_FREE_BYTES      (32ULL * 1024ULL * 1024ULL)
 #define SCREEN_RECORDING_JPEG_BYTES_PER_PIXEL 2U
@@ -54,6 +52,8 @@ typedef struct {
     uint32_t width;
     uint32_t height;
     uint32_t max_frame_size;
+    uint32_t fps;
+    uint32_t max_frames;
 } avi_writer_t;
 
 typedef enum {
@@ -72,6 +72,7 @@ typedef struct {
     screen_recording_completion_info_t completion;
     char final_path[256];
     char temp_path[272];
+    uint32_t fps;
 } screen_recording_service_t;
 
 static screen_recording_service_t g_recording = {
@@ -131,7 +132,7 @@ static bool avi_writer_write_main_header(avi_writer_t *writer)
     FILE *fp = writer->fp;
 
     if (!write_fourcc(fp, "avih") || !write_u32(fp, 56U) ||
-        !write_u32(fp, 1000000U / SCREEN_RECORDING_FPS)) {
+        !write_u32(fp, 1000000U / writer->fps)) {
         return false;
     }
     writer->max_bytes_per_sec_pos = ftell(fp);
@@ -159,7 +160,7 @@ static bool avi_writer_write_stream_header(avi_writer_t *writer)
         !write_fourcc(fp, "vids") || !write_fourcc(fp, "MJPG") ||
         !write_u32(fp, 0U) || !write_u16(fp, 0U) || !write_u16(fp, 0U) ||
         !write_u32(fp, 0U) || !write_u32(fp, 1U) ||
-        !write_u32(fp, SCREEN_RECORDING_FPS) || !write_u32(fp, 0U)) {
+        !write_u32(fp, writer->fps) || !write_u32(fp, 0U)) {
         return false;
     }
     writer->stream_length_pos = ftell(fp);
@@ -196,7 +197,7 @@ static bool avi_writer_write_format(avi_writer_t *writer)
 }
 
 static bool avi_writer_open(avi_writer_t *writer, const char *path,
-                            uint32_t width, uint32_t height)
+                            uint32_t width, uint32_t height, uint32_t fps)
 {
     long hdrl_size_pos;
     long hdrl_data_pos;
@@ -207,6 +208,8 @@ static bool avi_writer_open(avi_writer_t *writer, const char *path,
     memset(writer, 0, sizeof(*writer));
     writer->width = width;
     writer->height = height;
+    writer->fps = fps;
+    writer->max_frames = fps * SCREEN_RECORDING_MAX_SECONDS;
     writer->fp = fopen(path, "wb+");
     if (writer->fp == NULL) {
         return false;
@@ -254,8 +257,8 @@ static bool avi_writer_reserve_index(avi_writer_t *writer)
         return true;
     }
     next_capacity = writer->index_capacity == 0U ? 256U : writer->index_capacity * 2U;
-    if (next_capacity > SCREEN_RECORDING_MAX_FRAMES) {
-        next_capacity = SCREEN_RECORDING_MAX_FRAMES;
+    if (next_capacity > writer->max_frames) {
+        next_capacity = writer->max_frames;
     }
     if (next_capacity <= writer->index_capacity) {
         return false;
@@ -349,7 +352,7 @@ static bool avi_writer_finish(avi_writer_t *writer)
          patch_u32(writer->fp, writer->total_frames_pos, frame_count) &&
          patch_u32(writer->fp, writer->stream_length_pos, frame_count) &&
          patch_u32(writer->fp, writer->max_bytes_per_sec_pos,
-                   writer->max_frame_size * SCREEN_RECORDING_FPS) &&
+                   writer->max_frame_size * writer->fps) &&
          patch_u32(writer->fp, writer->suggested_buffer_pos,
                    writer->max_frame_size) &&
          patch_u32(writer->fp, writer->stream_buffer_pos,
@@ -474,9 +477,9 @@ static void screen_recording_complete(screen_recording_completion_t result,
     pthread_mutex_unlock(&g_recording.lock);
 }
 
-static void screen_recording_sleep_until(struct timespec *deadline)
+static void screen_recording_sleep_until(struct timespec *deadline, uint32_t fps)
 {
-    const long frame_ns = 1000000000L / (long)SCREEN_RECORDING_FPS;
+    const long frame_ns = 1000000000L / (long)fps;
 
     deadline->tv_nsec += frame_ns;
     while (deadline->tv_nsec >= 1000000000L) {
@@ -502,6 +505,7 @@ static void *screen_recording_thread(void *arg)
     int width = 0;
     int height = 0;
     uint32_t frames = 0U;
+    uint32_t fps;
     const char *failure_stage = "initialization";
     int failure_errno = 0;
     int ge_mode = -1;
@@ -516,6 +520,7 @@ static void *screen_recording_thread(void *arg)
     pthread_mutex_lock(&g_recording.lock);
     snprintf(final_path, sizeof(final_path), "%s", g_recording.final_path);
     snprintf(temp_path, sizeof(temp_path), "%s", g_recording.temp_path);
+    fps = g_recording.fps;
     pthread_mutex_unlock(&g_recording.lock);
 
     if (fbdev_get_size(&width, &height) != 0 || width <= 0 || height <= 0 ||
@@ -577,7 +582,8 @@ static void *screen_recording_thread(void *arg)
             ge_registered_count++;
         }
     }
-    if (!avi_writer_open(&writer, temp_path, (uint32_t)width, (uint32_t)height)) {
+    if (!avi_writer_open(&writer, temp_path, (uint32_t)width,
+                         (uint32_t)height, fps)) {
         failure_stage = "avi-open";
         goto done;
     }
@@ -585,7 +591,7 @@ static void *screen_recording_thread(void *arg)
     screen_recording_set_active();
     clock_gettime(CLOCK_MONOTONIC, &deadline);
 
-    while (!screen_recording_stop_requested() && frames < SCREEN_RECORDING_MAX_FRAMES) {
+    while (!screen_recording_stop_requested() && frames < writer.max_frames) {
         avi_append_result_t append_result;
         int jpeg_len = 0;
 
@@ -612,11 +618,11 @@ static void *screen_recording_thread(void *arg)
             goto done;
         }
         frames++;
-        if ((frames % SCREEN_RECORDING_FPS) == 0U &&
+        if ((frames % fps) == 0U &&
             !screen_recording_has_space()) {
             break;
         }
-        screen_recording_sleep_until(&deadline);
+        screen_recording_sleep_until(&deadline, fps);
     }
 
     failure_stage = frames > 0U ? "avi-finalize" : "no-frame";
@@ -662,12 +668,15 @@ done:
     return NULL;
 }
 
-screen_recording_start_result_t screen_recording_service_start(void)
+screen_recording_start_result_t screen_recording_service_start(uint32_t fps)
 {
     char final_path[sizeof(g_recording.final_path)];
     char temp_path[sizeof(g_recording.temp_path)];
     int create_result;
 
+    if (fps != 8U && fps != 24U && fps != 60U) {
+        return SCREEN_RECORDING_START_FAILED;
+    }
     pthread_mutex_lock(&g_recording.lock);
     if (g_recording.state != SCREEN_RECORDING_IDLE ||
         g_recording.thread_joinable || g_recording.completion_pending) {
@@ -701,6 +710,7 @@ screen_recording_start_result_t screen_recording_service_start(void)
     snprintf(g_recording.final_path, sizeof(g_recording.final_path), "%s", final_path);
     snprintf(g_recording.temp_path, sizeof(g_recording.temp_path), "%s", temp_path);
     g_recording.stop_requested = false;
+    g_recording.fps = fps;
     g_recording.state = SCREEN_RECORDING_STARTING;
     create_result = pthread_create(&g_recording.thread, NULL,
                                    screen_recording_thread, NULL);

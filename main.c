@@ -15,6 +15,7 @@
 #include "un260/device_info/device_info.h"
 #include "un260/lv_system/user_cfg.h"
 #include "un260/lv_system/ui_history_data.h"
+#include "un260/gesture/gesture_service.h"
 #include "aic_ui/perf_stats.h"
 
 //-------------------- 主函数 --------------------
@@ -29,6 +30,8 @@ int main(void) {
     user_cfg_screenshot_load();
     user_cfg_screen_recording_load();
     user_cfg_performance_monitor_load();
+    user_cfg_gesture_load();
+    gesture_service_init();
     device_info_init(UI_VERSION);
     ui_history_data_init();
     ui_manager_switch(UI_PAGE_BOOT);

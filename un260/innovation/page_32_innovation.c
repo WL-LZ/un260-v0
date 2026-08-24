@@ -12,6 +12,8 @@
 #include "un260/lv_core/lv_page_manager.h"
 #include "un260/lv_core/page_01_main.h"
 #include "un260/lv_system/ui_text.h"
+#include "un260/gesture/gesture_guide.h"
+#include "un260/gesture/gesture_service.h"
 #include "un260/machine_state/machine_state.h"
 
 #define INNOVATION_BG             0xE8EFF3
@@ -44,6 +46,8 @@ typedef struct {
     lv_obj_t *feature_scroll;
     lv_obj_t *feature_hint_top;
     lv_obj_t *feature_hint_bottom;
+    lv_obj_t *gesture_button;
+    lv_obj_t *gesture_label;
     lv_timer_t *refresh_timer;
     uint8_t target_passes;
     bool pending_start_after_add_off;
@@ -66,9 +70,47 @@ static innovation_page_context_t g_page = {
 };
 static lv_obj_t *g_handle_touch;
 static lv_obj_t *g_prompt;
+static lv_obj_t *g_transition_surface;
 static innovation_handle_gesture_t g_handle_gesture;
 static bool g_page_transitioning;
 static void innovation_preview_preload_async(void *user_data);
+static lv_obj_t *innovation_label(lv_obj_t *parent, const char *text,
+                                  const lv_font_t *font, uint32_t color);
+static lv_obj_t *innovation_box(lv_obj_t *parent, lv_coord_t x, lv_coord_t y,
+                                lv_coord_t width, lv_coord_t height,
+                                uint32_t color, lv_coord_t radius);
+
+static void innovation_transition_surface_delete(void)
+{
+    if (g_transition_surface != NULL && lv_obj_is_valid(g_transition_surface)) {
+        lv_obj_del(g_transition_surface);
+    }
+    g_transition_surface = NULL;
+}
+
+static lv_obj_t *innovation_transition_surface_create(lv_coord_t y)
+{
+    lv_obj_t *header;
+    lv_obj_t *label;
+
+    innovation_transition_surface_delete();
+    g_transition_surface = innovation_box(lv_scr_act(), 0, y, 1280, 400,
+                                           INNOVATION_BG, 0);
+    header = innovation_box(g_transition_surface, 16, 12, 1248, 50,
+                            INNOVATION_CARD, 18);
+    label = innovation_label(header, ui_text_get(UI_TEXT_INNOVATION_CENTER_TITLE),
+                             &lv_font_instrument_sans_bold_20,
+                             INNOVATION_TEXT);
+    lv_obj_set_pos(label, 22, 13);
+    innovation_box(g_transition_surface, 16, 72, 238, 314,
+                   INNOVATION_CARD, 22);
+    innovation_box(g_transition_surface, 266, 72, 998, 314,
+                   INNOVATION_CARD, 22);
+    lv_obj_clear_flag(g_transition_surface, LV_OBJ_FLAG_CLICKABLE |
+                                            LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_move_foreground(g_transition_surface);
+    return g_transition_surface;
+}
 
 static void innovation_refresh_pause(void)
 {
@@ -379,9 +421,15 @@ static void innovation_transition_commit_async(void *user_data)
     (void)user_data;
     g_page_transitioning = false;
     g_handle_gesture.preview_active = false;
+    if (g_page.root != NULL && lv_obj_is_valid(g_page.root)) {
+        lv_obj_set_y(g_page.root, 0);
+        lv_obj_clear_flag(g_page.root, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_move_foreground(g_page.root);
+    }
     if (!ui_manager_adopt_precreated_page(UI_PAGE_INNOVATION_CENTER)) {
         ui_manager_push_page(UI_PAGE_INNOVATION_CENTER);
     }
+    innovation_transition_surface_delete();
     innovation_refresh_resume();
 }
 
@@ -390,10 +438,7 @@ static void innovation_transition_cancel_async(void *user_data)
     (void)user_data;
     g_page_transitioning = false;
     g_handle_gesture.preview_active = false;
-    if (g_page.root != NULL && lv_obj_is_valid(g_page.root)) {
-        lv_obj_set_y(g_page.root, -400);
-        lv_obj_add_flag(g_page.root, LV_OBJ_FLAG_HIDDEN);
-    }
+    innovation_transition_surface_delete();
 }
 
 static void innovation_transition_back_async(void *user_data)
@@ -401,6 +446,7 @@ static void innovation_transition_back_async(void *user_data)
     (void)user_data;
     g_page_transitioning = false;
     if (!ui_manager_pop_page()) ui_manager_switch(UI_PAGE_MAIN);
+    innovation_transition_surface_delete();
     lv_async_call(innovation_preview_preload_async, NULL);
 }
 
@@ -428,11 +474,11 @@ static void innovation_transition_animate(lv_coord_t destination,
 {
     lv_anim_t animation;
 
-    if (g_page.root == NULL || !lv_obj_is_valid(g_page.root)) return;
-    lv_anim_del(g_page.root, innovation_transition_set_y);
+    if (g_transition_surface == NULL || !lv_obj_is_valid(g_transition_surface)) return;
+    lv_anim_del(g_transition_surface, innovation_transition_set_y);
     lv_anim_init(&animation);
-    lv_anim_set_var(&animation, g_page.root);
-    lv_anim_set_values(&animation, lv_obj_get_y(g_page.root), destination);
+    lv_anim_set_var(&animation, g_transition_surface);
+    lv_anim_set_values(&animation, lv_obj_get_y(g_transition_surface), destination);
     lv_anim_set_time(&animation, duration);
     lv_anim_set_path_cb(&animation, lv_anim_path_ease_out);
     lv_anim_set_exec_cb(&animation, innovation_transition_set_y);
@@ -450,9 +496,8 @@ static bool innovation_handle_preview_begin(void)
     if (g_page.root == NULL || !lv_obj_is_valid(g_page.root)) return false;
     innovation_refresh_pause();
     innovation_page_refresh();
-    lv_obj_set_y(g_page.root, -400);
-    lv_obj_clear_flag(g_page.root, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_move_foreground(g_page.root);
+    lv_obj_add_flag(g_page.root, LV_OBJ_FLAG_HIDDEN);
+    if (innovation_transition_surface_create(-400) == NULL) return false;
     g_handle_gesture.preview_active = true;
     return true;
 }
@@ -478,7 +523,8 @@ static int innovation_handle_drag_update(lv_indev_t *indev)
           g_handle_gesture.last_render_y - dy >= 2))) {
         g_handle_gesture.last_render_tick = lv_tick_get();
         g_handle_gesture.last_render_y = dy;
-        lv_obj_set_y(g_page.root, (lv_coord_t)(-400 + dy));
+        if (g_transition_surface != NULL && lv_obj_is_valid(g_transition_surface))
+            lv_obj_set_y(g_transition_surface, (lv_coord_t)(-400 + dy));
     }
     return dy;
 }
@@ -608,9 +654,16 @@ static void innovation_back_cb(lv_event_t *event)
     if (g_page_transitioning) return;
     g_page_transitioning = true;
     innovation_refresh_pause();
+    innovation_prompt_close();
+    if (innovation_transition_surface_create(0) == NULL) {
+        g_page_transitioning = false;
+        innovation_refresh_resume();
+        return;
+    }
+    lv_obj_add_flag(g_page.root, LV_OBJ_FLAG_HIDDEN);
     page_01_main_reveal_for_transition();
-    lv_obj_move_foreground(g_page.root);
-    innovation_transition_animate(-400, 170,
+    lv_obj_move_foreground(g_transition_surface);
+    innovation_transition_animate(-400, 210,
                                   innovation_transition_back_ready);
 }
 
@@ -708,6 +761,33 @@ static void innovation_guide_cb(lv_event_t *event)
     innovation_prompt_single(ui_text_get(UI_TEXT_INNOVATION_GUIDE_TITLE),
         ui_text_get(UI_TEXT_INNOVATION_GUIDE_BODY),
         ui_text_get(UI_TEXT_INNOVATION_GOT_IT), INNOVATION_BLUE, NULL);
+}
+
+static void innovation_gesture_button_refresh(void)
+{
+    bool enabled = gesture_service_enabled();
+
+    if (g_page.gesture_label != NULL && lv_obj_is_valid(g_page.gesture_label)) {
+        innovation_label_set_if_changed(g_page.gesture_label,
+            ui_text_get(enabled ? UI_TEXT_GESTURE_TOGGLE_ON :
+                                  UI_TEXT_GESTURE_TOGGLE_OFF));
+    }
+    if (g_page.gesture_button != NULL && lv_obj_is_valid(g_page.gesture_button)) {
+        lv_obj_set_style_bg_color(g_page.gesture_button,
+            lv_color_hex(enabled ? INNOVATION_GREEN : 0x8D99A3),
+            LV_PART_MAIN | LV_STATE_DEFAULT);
+    }
+}
+
+static void innovation_gesture_toggle_cb(lv_event_t *event)
+{
+    bool enable;
+
+    LV_UNUSED(event);
+    enable = !gesture_service_enabled();
+    if (!gesture_service_set_enabled(enable)) return;
+    innovation_gesture_button_refresh();
+    if (enable) gesture_guide_show();
 }
 
 static void innovation_page_refresh_timer_cb(lv_timer_t *timer)
@@ -903,6 +983,12 @@ void ui_page_32_innovation_create(lv_obj_t *parent)
     lv_obj_set_pos(label, 358, 18);
     innovation_button(header, 1018, 7, 94, 36, 0x8D99A3,
                       ui_text_get(UI_TEXT_INNOVATION_GUIDE), innovation_guide_cb);
+    g_page.gesture_button = innovation_button(header, 824, 7, 184, 36,
+        gesture_service_enabled() ? INNOVATION_GREEN : 0x8D99A3,
+        ui_text_get(gesture_service_enabled() ? UI_TEXT_GESTURE_TOGGLE_ON :
+                                               UI_TEXT_GESTURE_TOGGLE_OFF),
+        innovation_gesture_toggle_cb);
+    g_page.gesture_label = lv_damped_button_get_label(g_page.gesture_button);
     innovation_button(header, 1122, 7, 108, 36, INNOVATION_BLUE,
                       ui_text_get(UI_TEXT_INNOVATION_BACK), innovation_back_cb);
 
@@ -1025,6 +1111,8 @@ void ui_page_32_innovation_create(lv_obj_t *parent)
 
 void ui_page_32_innovation_destroy(void)
 {
+    innovation_prompt_close();
+    gesture_guide_close(false);
     if (g_page.refresh_timer != NULL) {
         lv_timer_del(g_page.refresh_timer);
         g_page.refresh_timer = NULL;

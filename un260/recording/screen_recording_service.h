@@ -31,7 +31,7 @@ typedef struct {
     uint32_t frames;
 } screen_recording_completion_info_t;
 
-screen_recording_start_result_t screen_recording_service_start(void);
+screen_recording_start_result_t screen_recording_service_start(uint32_t fps);
 void screen_recording_service_request_stop(void);
 screen_recording_state_t screen_recording_service_state(void);
 bool screen_recording_service_poll_completion(

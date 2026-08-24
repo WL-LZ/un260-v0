@@ -133,6 +133,12 @@ static const ui_text_item_t g_ui_text_widget_group[UI_TEXT_MAX - UI_TEXT_WIDGET_
     [UI_TEXT_WIDGET_SCREEN_RECORDING_STOPPING - UI_TEXT_WIDGET_BASE] = {"Saving screen recording...", "正在保存录屏…", "화면 녹화를 저장하는 중입니다..."},
     [UI_TEXT_WIDGET_SCREEN_RECORDING_SAVED - UI_TEXT_WIDGET_BASE] = {"Screen recording saved to USB", "录屏已保存到U盘", "화면 녹화가 USB에 저장되었습니다"},
     [UI_TEXT_WIDGET_SCREEN_RECORDING_FAILED - UI_TEXT_WIDGET_BASE] = {"Screen recording failed", "录屏失败", "화면 녹화에 실패했습니다"},
+    [UI_TEXT_WIDGET_SCREEN_RECORDING_FPS_TITLE - UI_TEXT_WIDGET_BASE] = {"SELECT RECORDING FRAME RATE", "选择录屏帧率", "녹화 프레임 속도 선택"},
+    [UI_TEXT_WIDGET_SCREEN_RECORDING_FPS_HINT - UI_TEXT_WIDGET_BASE] = {"24 FPS is recommended for smooth recording and stable UI performance.", "推荐24帧，可兼顾录屏流畅度与界面性能。", "부드러운 녹화와 안정적인 UI 성능을 위해 24 FPS를 권장합니다."},
+    [UI_TEXT_WIDGET_SCREEN_RECORDING_FPS_8 - UI_TEXT_WIDGET_BASE] = {"8 FPS", "8 FPS", "8 FPS"},
+    [UI_TEXT_WIDGET_SCREEN_RECORDING_FPS_24 - UI_TEXT_WIDGET_BASE] = {"24 FPS", "24 FPS", "24 FPS"},
+    [UI_TEXT_WIDGET_SCREEN_RECORDING_FPS_60 - UI_TEXT_WIDGET_BASE] = {"60 FPS", "60 FPS", "60 FPS"},
+    [UI_TEXT_WIDGET_SCREEN_RECORDING_CANCEL - UI_TEXT_WIDGET_BASE] = {"CANCEL", "取消", "취소"},
     [UI_TEXT_WIDGET_PERFORMANCE_MONITOR_LABEL - UI_TEXT_WIDGET_BASE] = {"PERFORMANCE", "性能监视", "성능 모니터"},
 
     //pure页面

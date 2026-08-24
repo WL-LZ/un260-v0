@@ -66,6 +66,8 @@ add_executable(${PROJECT_NAME} main.c
     un260/counting/counting_reject_sn_reply.c
     un260/innovation/multi_pass_verification.c
     un260/innovation/page_32_innovation.c
+    un260/gesture/gesture_service.c
+    un260/gesture/gesture_guide.c
     un260/device_info/device_info.c
     un260/data_collection/data_collection.c
     un260/diagnostic/diagnostic.c

@@ -15,10 +15,13 @@
 #define SCREEN_RECORDING_CFG_TMP_PATH UI_STATE_DIR "/screen_recording.cfg.tmp"
 #define PERFORMANCE_MONITOR_CFG_PATH UI_STATE_DIR "/performance_monitor.cfg"
 #define PERFORMANCE_MONITOR_CFG_TMP_PATH UI_STATE_DIR "/performance_monitor.cfg.tmp"
+#define GESTURE_CFG_PATH UI_STATE_DIR "/gestures.cfg"
+#define GESTURE_CFG_TMP_PATH UI_STATE_DIR "/gestures.cfg.tmp"
 
 static bool g_screenshot_enabled = true;
 static bool g_screen_recording_enabled = false;
 static bool g_performance_monitor_enabled = false;
+static bool g_gesture_enabled = false;
 
 static char g_user_password[USER_PASSWORD_MAX_LEN + 1] = "1111";
 
@@ -227,4 +230,20 @@ bool user_cfg_performance_monitor_save(bool enabled)
 bool user_cfg_performance_monitor_enabled(void)
 {
     return g_performance_monitor_enabled;
+}
+
+bool user_cfg_gesture_load(void)
+{
+    return user_cfg_bool_load(GESTURE_CFG_PATH, false, &g_gesture_enabled);
+}
+
+bool user_cfg_gesture_save(bool enabled)
+{
+    return user_cfg_bool_save(GESTURE_CFG_PATH, GESTURE_CFG_TMP_PATH,
+                              enabled, &g_gesture_enabled);
+}
+
+bool user_cfg_gesture_enabled(void)
+{
+    return g_gesture_enabled;
 }

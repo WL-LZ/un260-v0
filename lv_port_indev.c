@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdbool.h>
+#include <string.h>
 #if USE_BSD_EVDEV
 #include <dev/evdev/input.h>
 #else
@@ -41,6 +42,21 @@ int evdev_button;
 int evdev_key_val;
 static bool evdev_press_cancelled;
 static lv_obj_t *evdev_pressed_obj;
+static lv_port_pointer_observer_t g_pointer_observer;
+static void *g_pointer_observer_data;
+static uint8_t g_touch_count;
+
+#define EVDEV_MT_SLOT_COUNT 10
+typedef struct {
+    int x;
+    int y;
+    bool active;
+    bool has_x;
+    bool has_y;
+} evdev_mt_slot_t;
+
+static evdev_mt_slot_t g_mt_slots[EVDEV_MT_SLOT_COUNT];
+static int g_mt_slot;
 
 /**********************
  *      MACROS
@@ -71,6 +87,25 @@ static void evdev_feedback(lv_indev_drv_t *drv, uint8_t event_code)
     } else if(event_code == LV_EVENT_RELEASED) {
         evdev_pressed_obj = NULL;
     }
+
+    if(g_pointer_observer != NULL) {
+        lv_point_t point;
+        lv_indev_get_point(indev, &point);
+        g_pointer_observer(indev, (lv_event_code_t)event_code, &point,
+                           g_touch_count, g_pointer_observer_data);
+    }
+}
+
+void lv_port_indev_set_pointer_observer(lv_port_pointer_observer_t observer,
+                                        void *user_data)
+{
+    g_pointer_observer = observer;
+    g_pointer_observer_data = user_data;
+}
+
+uint8_t lv_port_indev_touch_count(void)
+{
+    return g_touch_count;
 }
 
 void lv_port_indev_set_drag_obj(lv_obj_t *obj, bool enable)
@@ -138,6 +173,9 @@ bool evdev_set_file(char* dev_name)
      evdev_button = LV_INDEV_STATE_REL;
      evdev_press_cancelled = false;
      evdev_pressed_obj = NULL;
+     g_touch_count = 0;
+     g_mt_slot = 0;
+     memset(g_mt_slots, 0, sizeof(g_mt_slots));
 
      return true;
 }
@@ -149,6 +187,7 @@ void evdev_read(lv_indev_drv_t * drv, lv_indev_data_t * data)
 {
 #if USE_TSLIB == 0
     struct input_event in;
+    bool mt_seen = false;
 
     while(read(evdev_fd, &in, sizeof(struct input_event)) > 0) {
         if(in.type == EV_REL) {
@@ -177,34 +216,40 @@ void evdev_read(lv_indev_drv_t * drv, lv_indev_data_t * data)
 				#else
 					evdev_root_y = in.value;
 				#endif
-            else if(in.code == ABS_MT_POSITION_X)
-                                #if EVDEV_SWAP_AXES
-                                        evdev_root_y = in.value;
-                                #else
-                                        evdev_root_x = in.value;
-                                #endif
-            else if(in.code == ABS_MT_POSITION_Y)
-                                #if EVDEV_SWAP_AXES
-                                        evdev_root_x = in.value;
-                                #else
-                                        evdev_root_y = in.value;
-                                #endif
+            else if(in.code == ABS_MT_SLOT) {
+                if(in.value >= 0 && in.value < EVDEV_MT_SLOT_COUNT)
+                    g_mt_slot = in.value;
+                mt_seen = true;
+            }
+            else if(in.code == ABS_MT_POSITION_X) {
+                g_mt_slots[g_mt_slot].x = in.value;
+                g_mt_slots[g_mt_slot].has_x = true;
+                mt_seen = true;
+            }
+            else if(in.code == ABS_MT_POSITION_Y) {
+                g_mt_slots[g_mt_slot].y = in.value;
+                g_mt_slots[g_mt_slot].has_y = true;
+                mt_seen = true;
+            }
             else if(in.code == ABS_MT_TRACKING_ID) {
-                                if(in.value == -1) {
-                                    evdev_button = LV_INDEV_STATE_REL;
-                                    evdev_press_cancelled = false;
-                                    evdev_pressed_obj = NULL;
-                                } else if(in.value == 0)
-                                    evdev_button = LV_INDEV_STATE_PR;
+                g_mt_slots[g_mt_slot].active = in.value >= 0;
+                if(in.value < 0) {
+                    g_mt_slots[g_mt_slot].has_x = false;
+                    g_mt_slots[g_mt_slot].has_y = false;
+                }
+                mt_seen = true;
             }
         } else if(in.type == EV_KEY) {
             if(in.code == BTN_MOUSE || in.code == BTN_TOUCH) {
                 if(in.value == 0) {
                     evdev_button = LV_INDEV_STATE_REL;
+                    g_touch_count = 0;
                     evdev_press_cancelled = false;
                     evdev_pressed_obj = NULL;
-                } else if(in.value == 1)
+                } else if(in.value == 1) {
                     evdev_button = LV_INDEV_STATE_PR;
+                    if(g_touch_count == 0) g_touch_count = 1;
+                }
             } else if(drv->type == LV_INDEV_TYPE_KEYPAD) {
 #if USE_XKB
                 data->key = xkb_process_key(in.code, in.value != 0);
@@ -253,6 +298,37 @@ void evdev_read(lv_indev_drv_t * drv, lv_indev_data_t * data)
         }
     }
 
+    if(mt_seen) {
+        int x_sum = 0;
+        int y_sum = 0;
+        uint8_t active = 0;
+        int i;
+
+        for(i = 0; i < EVDEV_MT_SLOT_COUNT; i++) {
+            if(g_mt_slots[i].active && g_mt_slots[i].has_x &&
+               g_mt_slots[i].has_y) {
+                x_sum += g_mt_slots[i].x;
+                y_sum += g_mt_slots[i].y;
+                active++;
+            }
+        }
+        g_touch_count = active;
+        if(active > 0) {
+#if EVDEV_SWAP_AXES
+            evdev_root_x = y_sum / active;
+            evdev_root_y = x_sum / active;
+#else
+            evdev_root_x = x_sum / active;
+            evdev_root_y = y_sum / active;
+#endif
+            evdev_button = LV_INDEV_STATE_PR;
+        } else {
+            evdev_button = LV_INDEV_STATE_REL;
+            evdev_press_cancelled = false;
+            evdev_pressed_obj = NULL;
+        }
+    }
+
     if(drv->type == LV_INDEV_TYPE_KEYPAD) {
         /* No data retrieved */
         data->key = evdev_key_val;
@@ -276,8 +352,11 @@ void evdev_read(lv_indev_drv_t * drv, lv_indev_data_t * data)
             evdev_button = LV_INDEV_STATE_REL;
             evdev_press_cancelled = false;
             evdev_pressed_obj = NULL;
-        } else
+            g_touch_count = 0;
+        } else {
             evdev_button = LV_INDEV_STATE_PR;
+            g_touch_count = 1;
+        }
     }
 
 #endif

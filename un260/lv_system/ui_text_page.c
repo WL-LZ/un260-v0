@@ -350,5 +350,13 @@ const ui_text_item_t g_ui_text_page_group[UI_TEXT_PAGE_MAX] = {
     [UI_TEXT_INNOVATION_READY_TITLE] = {"MULTI-PASS VERIFY READY", "多次复核已就绪", "다중 검증 준비 완료"},
     [UI_TEXT_INNOVATION_READY_BODY] = {"Count normally. A pass is saved after denomination, reject and serial details finish. ADD stays OFF.", "请正常点钞。面额、拒钞和冠字号明细接收完成后才会保存本次结果，ADD保持关闭。", "정상 계수하십시오. 권종, 거부 및 일련번호 상세 완료 후 저장되며 ADD는 꺼진 상태입니다."},
     [UI_TEXT_INNOVATION_START_PASS1] = {"START PASS 1", "开始第1次", "1회 시작"},
-    [UI_TEXT_INNOVATION_COMPARISON_FMT] = {"%s\nAccepted %+d   Reject %+d   Input %+d   Amount %+.0f\nDenom differences %d   Serial missing %d / extra %d%s%s", "%s\n正常 %+d   拒钞 %+d   进钞 %+d   金额 %+.0f\n面额差异 %d   冠字号缺少 %d / 多出 %d%s%s", "%s\n정상 %+d   거부 %+d   입력 %+d   금액 %+.0f\n권종 차이 %d   일련번호 누락 %d / 추가 %d%s%s"}
+    [UI_TEXT_INNOVATION_COMPARISON_FMT] = {"%s\nAccepted %+d   Reject %+d   Input %+d   Amount %+.0f\nDenom differences %d   Serial missing %d / extra %d%s%s", "%s\n正常 %+d   拒钞 %+d   进钞 %+d   金额 %+.0f\n面额差异 %d   冠字号缺少 %d / 多出 %d%s%s", "%s\n정상 %+d   거부 %+d   입력 %+d   금액 %+.0f\n권종 차이 %d   일련번호 누락 %d / 추가 %d%s%s"},
+    [UI_TEXT_GESTURE_TOGGLE_ON] = {"GESTURES ON", "手势已开启", "제스처 켜짐"},
+    [UI_TEXT_GESTURE_TOGGLE_OFF] = {"GESTURES OFF", "手势已关闭", "제스처 꺼짐"},
+    [UI_TEXT_GESTURE_GUIDE_TITLE] = {"SYSTEM GESTURES", "系统手势", "시스템 제스처"},
+    [UI_TEXT_GESTURE_HOME_TITLE] = {"RETURN TO MAIN", "返回主界面", "메인 화면으로"},
+    [UI_TEXT_GESTURE_HOME_BODY] = {"Swipe up with one finger from the bottom edge on any normal page.", "在任意普通页面，从屏幕底边单指向上滑动。", "일반 화면에서 아래쪽 가장자리부터 한 손가락으로 위로 밉니다."},
+    [UI_TEXT_GESTURE_EXIT_TITLE] = {"EXIT CURRENT PAGE", "退出当前页面", "현재 화면 나가기"},
+    [UI_TEXT_GESTURE_EXIT_BODY] = {"Swipe upward with three fingers from anywhere to return to the previous page.", "在任意位置三指向上滑动，返回上一个页面。", "어디서든 세 손가락으로 위로 밀어 이전 화면으로 돌아갑니다."},
+    [UI_TEXT_GESTURE_GOT_IT] = {"GOT IT", "知道了", "확인"}
 };

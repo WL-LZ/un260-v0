@@ -77,6 +77,9 @@ bool user_cfg_screen_recording_enabled(void);
 bool user_cfg_performance_monitor_load(void);
 bool user_cfg_performance_monitor_save(bool enabled);
 bool user_cfg_performance_monitor_enabled(void);
+bool user_cfg_gesture_load(void);
+bool user_cfg_gesture_save(bool enabled);
+bool user_cfg_gesture_enabled(void);
 
  enum {
     MODE_NONE,
