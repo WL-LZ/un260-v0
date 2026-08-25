@@ -51,6 +51,7 @@ bool ui_manager_adopt_precreated_page(ui_page_t page); // 接管已创建页面�
 bool ui_manager_pop_page(void); // 页面堆栈：返回上一页
 void ui_manager_clear_stack(void); // 清空页面堆栈
 ui_page_t ui_manager_get_current_page(void); // 获取当前页
+const char *ui_manager_page_name(ui_page_t page); // 获取页面诊断名称
 
 #ifdef __cplusplus
 }

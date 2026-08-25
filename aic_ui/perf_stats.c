@@ -1,6 +1,9 @@
 #include "perf_stats.h"
 
 #include <stddef.h>
+#include <string.h>
+
+#include "un260/lv_drivers/uart_io.h"
 
 #include "cpu_mem.h"
 #include "lv_port_disp.h"
@@ -46,6 +49,275 @@ static void perf_time_sample(perf_time_accumulator_t *time,
     time->count = 0;
 }
 
+typedef struct {
+    uint64_t total_us;
+    uint64_t pixels;
+    uint32_t max_us;
+    uint32_t count;
+} perf_profile_op_accumulator_t;
+
+#define PERF_PROFILE_EVENT_CAPACITY 8
+
+typedef struct {
+    const char *page_name;
+    const char *event;
+    uint32_t elapsed_us;
+} perf_profile_event_sample_t;
+
+typedef struct {
+    bool enabled;
+    uint32_t window_started_ms;
+    uint32_t frame_sequence;
+    uint32_t page_id;
+    const char *page_name;
+    uint32_t page_switches;
+    uint32_t frames;
+    uint64_t invalid_area_total;
+    uint64_t invalid_pixels_total;
+    uint32_t full_screen_frames;
+    uint64_t mirror_pixels_total;
+    perf_time_accumulator_t active_handler;
+    perf_time_accumulator_t loop;
+    perf_time_accumulator_t flush;
+    perf_time_accumulator_t pan;
+    perf_time_accumulator_t vsync;
+    perf_time_accumulator_t mirror;
+    perf_profile_op_accumulator_t ge[PERF_PROFILE_GE_COUNT];
+    bool pending_switch_valid;
+    perf_profile_page_switch_sample_t pending_switch;
+    uint8_t pending_event_count;
+    perf_profile_event_sample_t pending_events[PERF_PROFILE_EVENT_CAPACITY];
+} perf_profile_state_t;
+
+static perf_profile_state_t g_profile;
+
+static uint32_t perf_time_average_us(const perf_time_accumulator_t *time)
+{
+    if (time->count == 0) {
+        return 0;
+    }
+    return (uint32_t)(time->total_us / time->count);
+}
+
+static void perf_profile_reset_window(uint32_t now_ms)
+{
+    g_profile.window_started_ms = now_ms;
+    g_profile.frames = 0;
+    g_profile.page_switches = 0;
+    g_profile.invalid_area_total = 0;
+    g_profile.invalid_pixels_total = 0;
+    g_profile.full_screen_frames = 0;
+    g_profile.mirror_pixels_total = 0;
+    g_profile.active_handler = (perf_time_accumulator_t){0};
+    g_profile.loop = (perf_time_accumulator_t){0};
+    g_profile.flush = (perf_time_accumulator_t){0};
+    g_profile.pan = (perf_time_accumulator_t){0};
+    g_profile.vsync = (perf_time_accumulator_t){0};
+    g_profile.mirror = (perf_time_accumulator_t){0};
+    memset(g_profile.ge, 0, sizeof(g_profile.ge));
+}
+
+void perf_profile_set_enabled(bool enabled)
+{
+    if (g_profile.enabled == enabled) {
+        return;
+    }
+
+    g_profile.enabled = enabled;
+    if (enabled) {
+        g_profile.page_id = UINT32_MAX;
+        g_profile.page_name = "INVALID";
+    }
+    g_profile.pending_switch_valid = false;
+    g_profile.pending_event_count = 0;
+    perf_profile_reset_window(0);
+}
+
+bool perf_profile_is_enabled(void)
+{
+    return g_profile.enabled;
+}
+
+uint32_t perf_profile_frame_sequence(void)
+{
+    return g_profile.frame_sequence;
+}
+
+void perf_profile_set_page_context(uint32_t page_id, const char *page_name)
+{
+    if (!g_profile.enabled) {
+        return;
+    }
+
+    if (g_profile.page_id != UINT32_MAX && g_profile.page_id != page_id) {
+        g_profile.page_switches++;
+    }
+    g_profile.page_id = page_id;
+    g_profile.page_name = page_name != NULL ? page_name : "INVALID";
+}
+
+void perf_profile_report_active_handler_us(uint32_t elapsed_us)
+{
+    if (g_profile.enabled) {
+        perf_time_report(&g_profile.active_handler, elapsed_us);
+    }
+}
+
+void perf_profile_report_flush(const perf_profile_flush_sample_t *sample)
+{
+    if (!g_profile.enabled || sample == NULL) {
+        return;
+    }
+
+    g_profile.frame_sequence++;
+    g_profile.frames++;
+    g_profile.invalid_area_total += sample->invalid_area_count;
+    g_profile.invalid_pixels_total += sample->invalid_pixels;
+    g_profile.mirror_pixels_total += sample->mirror_pixels;
+    if (sample->full_screen) {
+        g_profile.full_screen_frames++;
+    }
+    perf_time_report(&g_profile.flush, sample->total_us);
+    perf_time_report(&g_profile.pan, sample->pan_us);
+    perf_time_report(&g_profile.vsync, sample->vsync_us);
+    perf_time_report(&g_profile.mirror, sample->mirror_us);
+}
+
+void perf_profile_report_ge(perf_profile_ge_op_t op, uint64_t pixels,
+                            uint32_t elapsed_us)
+{
+    perf_profile_op_accumulator_t *acc;
+
+    if (!g_profile.enabled || op >= PERF_PROFILE_GE_COUNT) {
+        return;
+    }
+
+    acc = &g_profile.ge[op];
+    acc->count++;
+    acc->pixels += pixels;
+    acc->total_us += elapsed_us;
+    if (elapsed_us > acc->max_us) {
+        acc->max_us = elapsed_us;
+    }
+}
+
+void perf_profile_report_page_switch(
+    const perf_profile_page_switch_sample_t *sample)
+{
+    if (!g_profile.enabled || sample == NULL) {
+        return;
+    }
+
+    g_profile.pending_switch = *sample;
+    g_profile.pending_switch_valid = true;
+}
+
+void perf_profile_report_event_us(const char *page_name, const char *event,
+                                  uint32_t elapsed_us)
+{
+    perf_profile_event_sample_t *sample;
+
+    if (!g_profile.enabled || event == NULL ||
+        g_profile.pending_event_count >= PERF_PROFILE_EVENT_CAPACITY) {
+        return;
+    }
+
+    sample = &g_profile.pending_events[g_profile.pending_event_count++];
+    sample->page_name = page_name != NULL ? page_name : "INVALID";
+    sample->event = event;
+    sample->elapsed_us = elapsed_us;
+}
+
+static void perf_profile_emit_pending_events(void)
+{
+    uint8_t i;
+
+    if (g_profile.pending_switch_valid) {
+        const perf_profile_page_switch_sample_t *sample =
+            &g_profile.pending_switch;
+
+        uart_debug_printf(
+            "PERF_SWITCH route=%s from=%s(%u) to=%s(%u) "
+            "prep=%u notify=%u leave=%s:%u enter=%s:%u commit=%u total=%u\n",
+            sample->route != NULL ? sample->route : "UNKNOWN",
+            sample->from_name != NULL ? sample->from_name : "INVALID",
+            sample->from_id,
+            sample->to_name != NULL ? sample->to_name : "INVALID",
+            sample->to_id,
+            sample->prepare_us, sample->notify_us,
+            sample->leave_action != NULL ? sample->leave_action : "NONE",
+            sample->leave_us,
+            sample->enter_action != NULL ? sample->enter_action : "NONE",
+            sample->enter_us, sample->commit_us, sample->total_us);
+        g_profile.pending_switch_valid = false;
+    }
+
+    for (i = 0; i < g_profile.pending_event_count; i++) {
+        const perf_profile_event_sample_t *sample =
+            &g_profile.pending_events[i];
+
+        uart_debug_printf("PERF_EVENT page=%s event=%s us=%u\n",
+                          sample->page_name, sample->event,
+                          sample->elapsed_us);
+    }
+    g_profile.pending_event_count = 0;
+}
+
+void perf_profile_poll(uint32_t now_ms)
+{
+    uint32_t elapsed_ms;
+    uint32_t fps;
+    uint32_t inv_avg;
+    uint64_t pixels_avg;
+    const char *activity;
+
+    if (!g_profile.enabled) {
+        return;
+    }
+    perf_profile_emit_pending_events();
+    if (g_profile.window_started_ms == 0) {
+        perf_profile_reset_window(now_ms);
+        return;
+    }
+
+    elapsed_ms = now_ms - g_profile.window_started_ms;
+    if (elapsed_ms < 1000) {
+        return;
+    }
+
+    fps = elapsed_ms > 0 ?
+        (uint32_t)(((uint64_t)g_profile.frames * 1000ULL) / elapsed_ms) : 0;
+    inv_avg = g_profile.frames > 0 ?
+        (uint32_t)(g_profile.invalid_area_total / g_profile.frames) : 0;
+    pixels_avg = g_profile.frames > 0 ?
+        g_profile.invalid_pixels_total / g_profile.frames : 0;
+    activity = g_profile.page_switches > 0 ? "SWITCH" :
+               (g_profile.frames > 0 ? "RENDER" : "IDLE");
+
+    uart_debug_printf(
+        "PERF page=%s(%u) act=%s fps=%u n=%u inv=%u/%llu/%u h=%u/%u loop=%u/%u "
+        "out=%u/%u/%u/%u/%u ge=%u:%llu,%u:%llu,%u:%llu\n",
+        g_profile.page_name, g_profile.page_id, activity,
+        fps, g_profile.frames, inv_avg, (unsigned long long)pixels_avg,
+        g_profile.full_screen_frames,
+        perf_time_average_us(&g_profile.active_handler),
+        g_profile.active_handler.max_us,
+        perf_time_average_us(&g_profile.loop), g_profile.loop.max_us,
+        perf_time_average_us(&g_profile.flush), g_profile.flush.max_us,
+        perf_time_average_us(&g_profile.pan),
+        perf_time_average_us(&g_profile.vsync),
+        perf_time_average_us(&g_profile.mirror),
+        g_profile.ge[PERF_PROFILE_GE_FILL].count,
+        (unsigned long long)g_profile.ge[PERF_PROFILE_GE_FILL].total_us,
+        g_profile.ge[PERF_PROFILE_GE_BLIT].count,
+        (unsigned long long)g_profile.ge[PERF_PROFILE_GE_BLIT].total_us,
+        g_profile.ge[PERF_PROFILE_GE_ROTATE].count,
+        (unsigned long long)g_profile.ge[PERF_PROFILE_GE_ROTATE].total_us);
+
+    perf_profile_reset_window(now_ms);
+}
+
+
 void perf_stats_init(void)
 {
     g_perf_stats.fps = 0;
@@ -62,6 +334,7 @@ void perf_stats_init(void)
     g_lvgl_time = (perf_time_accumulator_t){0};
     g_loop_time = (perf_time_accumulator_t){0};
     g_main_refresh_time = (perf_time_accumulator_t){0};
+    memset(&g_profile, 0, sizeof(g_profile));
     g_cpu_prev_valid = (cpu_occupy_get(&g_cpu_prev) == 0);
 }
 
@@ -73,6 +346,9 @@ void perf_stats_report_lvgl_time_us(uint32_t elapsed_us)
 void perf_stats_report_loop_time_us(uint32_t elapsed_us)
 {
     perf_time_report(&g_loop_time, elapsed_us);
+    if (g_profile.enabled) {
+        perf_time_report(&g_profile.loop, elapsed_us);
+    }
 }
 
 void perf_stats_report_main_refresh_time_us(uint32_t elapsed_us)

@@ -18,6 +18,8 @@
 #include "mpp_ge.h"
 #include "mpp_decoder.h"
 #include "lv_fbdev.h"
+#include "aic_ui/perf_stats.h"
+#include "un260/lv_system/app_clock.h"
 
 #define PI 3.141592653589
 #define SIN(x) (sin((x)* PI / 180.0))
@@ -191,6 +193,8 @@ static int ge_run_blit(lv_draw_ctx_t * draw_ctx, const lv_draw_img_dsc_t *draw_d
                     struct mpp_frame *frame, const lv_area_t *clip_area, const lv_area_t *coords)
 {
     int ret;
+    bool profile_enabled = perf_profile_is_enabled();
+    uint64_t profile_started_us = 0;
     lv_coord_t blend_w;
     lv_coord_t blend_h;
     int src_crop_x;
@@ -352,6 +356,9 @@ static int ge_run_blit(lv_draw_ctx_t * draw_ctx, const lv_draw_img_dsc_t *draw_d
     blt.ctrl.src_alpha_mode = 2;
     blt.ctrl.src_global_alpha = draw_dsc->opa;
 
+    if (profile_enabled) {
+        profile_started_us = app_clock_monotonic_us();
+    }
     ret = mpp_ge_bitblt(g_ge, &blt);
     if (ret < 0) {
         LV_LOG_ERROR("bitblt fail");
@@ -368,6 +375,14 @@ static int ge_run_blit(lv_draw_ctx_t * draw_ctx, const lv_draw_img_dsc_t *draw_d
         return LV_RES_INV;
     }
 
+    if (profile_enabled) {
+        perf_profile_report_ge(
+            PERF_PROFILE_GE_BLIT,
+            (uint64_t)dst_crop_w * (uint64_t)dst_crop_h,
+            app_clock_elapsed_us32(profile_started_us,
+                                   app_clock_monotonic_us()));
+    }
+
     return LV_RES_OK;
 }
 
@@ -376,6 +391,8 @@ static int ge_run_rotate(lv_draw_ctx_t * draw_ctx, const lv_draw_img_dsc_t *draw
 
 {
     int ret;
+    bool profile_enabled = perf_profile_is_enabled();
+    uint64_t profile_started_us = 0;
     struct ge_rotation rot = { 0 };
     lv_color_t * dest_buf = draw_ctx->buf;
     lv_coord_t dest_width = lv_area_get_width(draw_ctx->buf_area);
@@ -443,6 +460,9 @@ static int ge_run_rotate(lv_draw_ctx_t * draw_ctx, const lv_draw_img_dsc_t *draw
     rot.ctrl.src_alpha_mode = 2;
     rot.ctrl.src_global_alpha = draw_dsc->opa;
 
+    if (profile_enabled) {
+        profile_started_us = app_clock_monotonic_us();
+    }
     ret = mpp_ge_rotate(g_ge, &rot);
     if (ret < 0) {
         LV_LOG_ERROR("rotate fail");
@@ -457,6 +477,14 @@ static int ge_run_rotate(lv_draw_ctx_t * draw_ctx, const lv_draw_img_dsc_t *draw
     if (ret < 0) {
         LV_LOG_ERROR("sync fail");
         return LV_RES_INV;
+    }
+
+    if (profile_enabled) {
+        perf_profile_report_ge(
+            PERF_PROFILE_GE_ROTATE,
+            (uint64_t)blend_width * (uint64_t)blend_height,
+            app_clock_elapsed_us32(profile_started_us,
+                                   app_clock_monotonic_us()));
     }
 
     return LV_RES_OK;
@@ -480,6 +508,8 @@ static int ge_run_fill(lv_draw_ctx_t * draw_ctx, unsigned int color, unsigned ch
                        int blend_enable, const lv_area_t *blend_area)
 {
     int ret;
+    bool profile_enabled = perf_profile_is_enabled();
+    uint64_t profile_started_us = 0;
     struct ge_fillrect fill = { 0 };
     lv_color_t * dest_buf = draw_ctx->buf;
     lv_coord_t dest_width = lv_area_get_width(draw_ctx->buf_area);
@@ -536,7 +566,10 @@ static int ge_run_fill(lv_draw_ctx_t * draw_ctx, unsigned int color, unsigned ch
     fill.ctrl.src_alpha_mode = 1;
     fill.ctrl.src_global_alpha = opa;
 
-    ret =  mpp_ge_fillrect(g_ge, &fill);
+    if (profile_enabled) {
+        profile_started_us = app_clock_monotonic_us();
+    }
+    ret = mpp_ge_fillrect(g_ge, &fill);
     if (ret < 0) {
         LV_LOG_ERROR("fillrect1 fail");
         return LV_RES_INV;
@@ -550,6 +583,14 @@ static int ge_run_fill(lv_draw_ctx_t * draw_ctx, unsigned int color, unsigned ch
     if (ret < 0) {
         LV_LOG_ERROR("sync fail");
         return LV_RES_INV;
+    }
+
+    if (profile_enabled) {
+        perf_profile_report_ge(
+            PERF_PROFILE_GE_FILL,
+            (uint64_t)blend_width * (uint64_t)blend_height,
+            app_clock_elapsed_us32(profile_started_us,
+                                   app_clock_monotonic_us()));
     }
 
     return LV_RES_OK;

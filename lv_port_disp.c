@@ -21,6 +21,8 @@
 #include "lv_ge2d.h"
 #include "mpp_ge.h"
 #include "lv_fbdev.h"
+#include "aic_ui/perf_stats.h"
+#include "un260/lv_system/app_clock.h"
 
 static int draw_fps = 0;
 static struct mpp_ge *g_ge = NULL;
@@ -243,13 +245,25 @@ void disp_draw_buf(lv_disp_drv_t * drv, lv_color_t * color_p)
 }
 #endif
 
-static void fbdev_flush(lv_disp_drv_t * drv, const lv_area_t * area, lv_color_t *color_p)
+static void fbdev_flush(lv_disp_drv_t * drv, const lv_area_t * area,
+                        lv_color_t *color_p)
 {
     lv_disp_t * disp = _lv_refr_get_disp_refreshing();
     lv_disp_draw_buf_t * draw_buf = lv_disp_get_draw_buf(disp);
+    bool profile_enabled = perf_profile_is_enabled();
+    perf_profile_flush_sample_t profile_sample;
+    uint64_t profile_started_us = 0;
+
+    LV_UNUSED(area);
+    if (profile_enabled) {
+        profile_sample = (perf_profile_flush_sample_t){0};
+        profile_started_us = app_clock_monotonic_us();
+    }
 
     if (!disp->driver->direct_mode || draw_buf->flushing_last) {
         struct fb_var_screeninfo var = {0};
+        int pan_result;
+        uint64_t stage_started_us = 0;
 
         if (ioctl(g_fb, FBIOGET_VSCREENINFO, &var) < 0) {
             LV_LOG_WARN("ioctl FBIOGET_VSCREENINFO");
@@ -263,13 +277,11 @@ static void fbdev_flush(lv_disp_drv_t * drv, const lv_area_t * area, lv_color_t 
         fbdev_get_size(&disp_w, &disp_h);
         var.xoffset = 0;
         var.yoffset = g_fb_id * disp_h;
-        // copy draw buf to display buffer
         disp_draw_buf(drv, color_p);
         g_fb_id++;
         if (g_fb_id >= g_fb_num)
             g_fb_id = 0;
 #else
-        // swap triple frame buffer
         if (buf_next) {
             if (draw_buf->buf1 == color_p)
                 draw_buf->buf1 = (lv_color_t *)buf_next;
@@ -291,24 +303,72 @@ static void fbdev_flush(lv_disp_drv_t * drv, const lv_area_t * area, lv_color_t 
             var.yoffset = disp_drv.ver_res;
         }
 #endif
-        if (ioctl(g_fb, FBIOPAN_DISPLAY, &var) == 0) {
+
+        if (profile_enabled) {
+            stage_started_us = app_clock_monotonic_us();
+        }
+        pan_result = ioctl(g_fb, FBIOPAN_DISPLAY, &var);
+        if (profile_enabled) {
+            profile_sample.pan_us = app_clock_elapsed_us32(
+                stage_started_us, app_clock_monotonic_us());
+        }
+
+        if (pan_result == 0) {
             if (!g_triple_fb) {
                 int zero = 0;
+
+                if (profile_enabled) {
+                    stage_started_us = app_clock_monotonic_us();
+                }
                 if (ioctl(g_fb, AICFB_WAIT_FOR_VSYNC, &zero) < 0) {
                     LV_LOG_WARN("ioctl AICFB_WAIT_FOR_VSYNC fail");
                     return;
+                }
+                if (profile_enabled) {
+                    profile_sample.vsync_us = app_clock_elapsed_us32(
+                        stage_started_us, app_clock_monotonic_us());
                 }
             }
         } else {
             LV_LOG_WARN("pan display err");
         }
 
+        if (profile_enabled) {
+            for (int i = 0; i < disp->inv_p; i++) {
+                if (disp->inv_area_joined[i] == 0) {
+                    uint64_t pixels =
+                        (uint64_t)lv_area_get_width(&disp->inv_areas[i]) *
+                        (uint64_t)lv_area_get_height(&disp->inv_areas[i]);
+
+                    profile_sample.invalid_area_count++;
+                    profile_sample.invalid_pixels += pixels;
+                }
+            }
+            profile_sample.full_screen =
+                profile_sample.invalid_pixels >=
+                (uint64_t)drv->hor_res * (uint64_t)drv->ver_res;
+        }
+
         if (drv->direct_mode == 1) {
+            if (profile_enabled) {
+                stage_started_us = app_clock_monotonic_us();
+            }
             for (int i = 0; i < disp->inv_p; i++) {
                 if (disp->inv_area_joined[i] == 0) {
                     sync_disp_buf(drv, color_p, &disp->inv_areas[i]);
                 }
             }
+            if (profile_enabled) {
+                profile_sample.mirror_us = app_clock_elapsed_us32(
+                    stage_started_us, app_clock_monotonic_us());
+                profile_sample.mirror_pixels = profile_sample.invalid_pixels;
+            }
+        }
+
+        if (profile_enabled) {
+            profile_sample.total_us = app_clock_elapsed_us32(
+                profile_started_us, app_clock_monotonic_us());
+            perf_profile_report_flush(&profile_sample);
         }
 
         cal_frame_rate();
@@ -318,6 +378,7 @@ static void fbdev_flush(lv_disp_drv_t * drv, const lv_area_t * area, lv_color_t 
         lv_disp_flush_ready(drv);
     }
 }
+
 
 void lv_port_disp_init(void)
 {

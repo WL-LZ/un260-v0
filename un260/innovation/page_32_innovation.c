@@ -15,6 +15,8 @@
 #include "un260/gesture/gesture_guide.h"
 #include "un260/gesture/gesture_service.h"
 #include "un260/machine_state/machine_state.h"
+#include "un260/lv_system/app_clock.h"
+#include "aic_ui/perf_stats.h"
 
 #define INNOVATION_BG             0xE8EFF3
 #define INNOVATION_CARD           0xFFFFFF
@@ -92,6 +94,8 @@ static lv_obj_t *innovation_transition_surface_create(lv_coord_t y)
 {
     lv_obj_t *header;
     lv_obj_t *label;
+    uint64_t started_us = perf_profile_is_enabled() ?
+        app_clock_monotonic_us() : 0;
 
     innovation_transition_surface_delete();
     g_transition_surface = innovation_box(lv_scr_act(), 0, y, 1280, 400,
@@ -109,6 +113,10 @@ static lv_obj_t *innovation_transition_surface_create(lv_coord_t y)
     lv_obj_clear_flag(g_transition_surface, LV_OBJ_FLAG_CLICKABLE |
                                             LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_move_foreground(g_transition_surface);
+    if (started_us != 0) {
+        perf_profile_report_event_us("INNOVATION", "SURFACE_CREATE",
+            app_clock_elapsed_us32(started_us, app_clock_monotonic_us()));
+    }
     return g_transition_surface;
 }
 
@@ -418,6 +426,9 @@ static void innovation_transition_set_y(void *object, int32_t value)
 
 static void innovation_transition_commit_async(void *user_data)
 {
+    uint64_t started_us = perf_profile_is_enabled() ?
+        app_clock_monotonic_us() : 0;
+
     (void)user_data;
     g_page_transitioning = false;
     g_handle_gesture.preview_active = false;
@@ -431,6 +442,10 @@ static void innovation_transition_commit_async(void *user_data)
     }
     innovation_transition_surface_delete();
     innovation_refresh_resume();
+    if (started_us != 0) {
+        perf_profile_report_event_us("INNOVATION", "OPEN_COMMIT",
+            app_clock_elapsed_us32(started_us, app_clock_monotonic_us()));
+    }
 }
 
 static void innovation_transition_cancel_async(void *user_data)
@@ -443,11 +458,18 @@ static void innovation_transition_cancel_async(void *user_data)
 
 static void innovation_transition_back_async(void *user_data)
 {
+    uint64_t started_us = perf_profile_is_enabled() ?
+        app_clock_monotonic_us() : 0;
+
     (void)user_data;
     g_page_transitioning = false;
     if (!ui_manager_pop_page()) ui_manager_switch(UI_PAGE_MAIN);
     innovation_transition_surface_delete();
     lv_async_call(innovation_preview_preload_async, NULL);
+    if (started_us != 0) {
+        perf_profile_report_event_us("INNOVATION", "BACK_COMMIT",
+            app_clock_elapsed_us32(started_us, app_clock_monotonic_us()));
+    }
 }
 
 static void innovation_transition_open_ready(lv_anim_t *animation)
@@ -488,6 +510,9 @@ static void innovation_transition_animate(lv_coord_t destination,
 
 static bool innovation_handle_preview_begin(void)
 {
+    uint64_t started_us = perf_profile_is_enabled() ?
+        app_clock_monotonic_us() : 0;
+
     if (g_page_transitioning || g_handle_gesture.preview_active) return false;
 
     if (g_page.root == NULL || !lv_obj_is_valid(g_page.root)) {
@@ -499,6 +524,10 @@ static bool innovation_handle_preview_begin(void)
     lv_obj_add_flag(g_page.root, LV_OBJ_FLAG_HIDDEN);
     if (innovation_transition_surface_create(-400) == NULL) return false;
     g_handle_gesture.preview_active = true;
+    if (started_us != 0) {
+        perf_profile_report_event_us("INNOVATION", "PREVIEW_PREPARE",
+            app_clock_elapsed_us32(started_us, app_clock_monotonic_us()));
+    }
     return true;
 }
 
@@ -622,13 +651,20 @@ void page_32_innovation_handle_attach(lv_obj_t *main_page)
 
 static void innovation_preview_preload_async(void *user_data)
 {
+    uint64_t started_us;
+
     (void)user_data;
     if (ui_manager_get_current_page() != UI_PAGE_MAIN ||
         g_handle_touch == NULL || !lv_obj_is_valid(g_handle_touch) ||
-        (g_page.root != NULL && lv_obj_is_valid(g_page.root))) {
+          (g_page.root != NULL && lv_obj_is_valid(g_page.root))) {
         return;
     }
+    started_us = perf_profile_is_enabled() ? app_clock_monotonic_us() : 0;
     ui_page_32_innovation_create(lv_scr_act());
+    if (started_us != 0) {
+        perf_profile_report_event_us("INNOVATION", "PRELOAD_CREATE",
+            app_clock_elapsed_us32(started_us, app_clock_monotonic_us()));
+    }
     if (g_page.root == NULL || !lv_obj_is_valid(g_page.root)) return;
     innovation_refresh_pause();
     lv_obj_set_y(g_page.root, -400);
@@ -650,6 +686,9 @@ void page_32_innovation_handle_detach(void)
 
 static void innovation_back_cb(lv_event_t *event)
 {
+    uint64_t started_us = perf_profile_is_enabled() ?
+        app_clock_monotonic_us() : 0;
+
     (void)event;
     if (g_page_transitioning) return;
     g_page_transitioning = true;
@@ -665,6 +704,10 @@ static void innovation_back_cb(lv_event_t *event)
     lv_obj_move_foreground(g_transition_surface);
     innovation_transition_animate(-400, 210,
                                   innovation_transition_back_ready);
+    if (started_us != 0) {
+        perf_profile_report_event_us("INNOVATION", "BACK_PREPARE",
+            app_clock_elapsed_us32(started_us, app_clock_monotonic_us()));
+    }
 }
 
 static void innovation_target_minus_cb(lv_event_t *event)
@@ -955,6 +998,8 @@ void ui_page_32_innovation_create(lv_obj_t *parent)
     lv_obj_t *card;
     lv_obj_t *label;
     int i;
+    uint64_t started_us = perf_profile_is_enabled() ?
+        app_clock_monotonic_us() : 0;
 
     if (g_page.root != NULL && lv_obj_is_valid(g_page.root)) {
         lv_obj_set_y(g_page.root, 0);
@@ -962,6 +1007,10 @@ void ui_page_32_innovation_create(lv_obj_t *parent)
         lv_obj_move_foreground(g_page.root);
         innovation_page_refresh();
         innovation_refresh_resume();
+        if (started_us != 0) {
+            perf_profile_report_event_us("INNOVATION", "PAGE_RESUME",
+                app_clock_elapsed_us32(started_us, app_clock_monotonic_us()));
+        }
         return;
     }
     ui_page_32_innovation_destroy();
@@ -1107,6 +1156,10 @@ void ui_page_32_innovation_create(lv_obj_t *parent)
     innovation_page_refresh();
     lv_obj_update_layout(g_page.feature_scroll);
     innovation_feature_hint_refresh();
+    if (started_us != 0) {
+        perf_profile_report_event_us("INNOVATION", "PAGE_CREATE",
+            app_clock_elapsed_us32(started_us, app_clock_monotonic_us()));
+    }
 }
 
 void ui_page_32_innovation_destroy(void)

@@ -5,6 +5,8 @@
 #include "un260/counting/counting_data_store_internal.h"
 #include "un260/protocol/protocol_send.h"
 #include "un260/lv_core/page_01_main.h"
+#include "un260/lv_system/app_clock.h"
+#include "aic_ui/perf_stats.h"
 #include"lv_page_declear.h"
 
 #define UI_PAGE_STACK_CAPACITY 10
@@ -40,6 +42,42 @@ static void ui_manager_create_debug(lv_obj_t *parent)
     LV_UNUSED(parent);
     ui_page_10_debug_create();
 }
+
+static const char *const g_page_names[UI_PAGE_COUNT] = {
+    [UI_PAGE_BOOT_ANIM] = "BOOT_ANIM",
+    [UI_PAGE_MAIN] = "MAIN",
+    [UI_PAGE_LIST] = "LIST",
+    [UI_PAGE_MENU] = "MENU",
+    [UI_PAGE_SETTING] = "SETTINGS",
+    [UI_PAGE_DETAIL] = "DETAIL",
+    [UI_PAGE_SET_PASSAGE] = "PASSWORD",
+    [UI_PAGE_CURR] = "CURRENCY",
+    [UI_PAGE_BOOT] = "SELF_TEST",
+    [UI_PAGE_CIS_CALIB] = "CIS_CALIB",
+    [UI_PAGE_DEBUG] = "DEBUG",
+    [UI_PAGE_TIMESET] = "TIME_SET",
+    [UI_PAGE_SENSOR] = "SENSOR",
+    [UI_PAGE_UPGRADE] = "UPGRADE",
+    [UI_PAGE_MAIN_UPGRADE] = "MAIN_UPGRADE",
+    [UI_PAGE_IMAGE_UPGRADE] = "IMAGE_UPGRADE",
+    [UI_PAGE_UI_UPGRADE] = "UI_UPGRADE",
+    [UI_PAGE_MOTOR_TEST] = "MOTOR_TEST",
+    [UI_PAGE_PURE] = "PURE",
+    [UI_PAGE_HISTORY] = "HISTORY",
+    [UI_PAGE_PRINT_SETTING] = "PRINT_SETTINGS",
+    [UI_PAGE_LANGUAGE_SETTING] = "LANGUAGE",
+    [UI_PAGE_DOUBLE_NOTE_SETTING] = "DOUBLE_NOTE",
+    [UI_PAGE_FLAP_SETTING] = "FLAP",
+    [UI_PAGE_REJECT_POCKET_SETTING] = "REJECT_POCKET",
+    [UI_PAGE_SERIAL_NUMBER_SETTING] = "SERIAL_NUMBER",
+    [UI_PAGE_AGING_SETTING] = "AGING",
+    [UI_PAGE_CFD_LEVEL_SETTING] = "CFD_LEVEL",
+    [UI_PAGE_IMAGE_GET] = "IMAGE_GET",
+    [UI_PAGE_PASSWORD_CHANGE] = "PASSWORD_CHANGE",
+    [UI_PAGE_FACTORY_SETTING] = "FACTORY",
+    [UI_PAGE_WAVE_GET] = "WAVE",
+    [UI_PAGE_INNOVATION_CENTER] = "INNOVATION",
+};
 
 static const ui_page_registration_t g_page_registry[UI_PAGE_COUNT] = {
     [UI_PAGE_BOOT_ANIM] = { ui_page_00_boot_anim_create, ui_page_00_boot_anim_destroy },
@@ -83,27 +121,35 @@ static bool ui_manager_page_is_registered(ui_page_t page)
 }
 
 //销毁当前页面
-static void destroy_current_page(void)
+static const char *destroy_current_page(void)
 {
     if (g_page_manager.current == UI_PAGE_MAIN) {
         if (page_01_main_is_created()) {
             page_01_main_suspend();
-            return; // 直接返回，不执行销毁
+            return "SUSPEND";
         }
     }
     if (g_page_manager.current >= UI_PAGE_BOOT_ANIM &&
         g_page_manager.current < UI_PAGE_COUNT &&
         g_page_registry[g_page_manager.current].destroy != NULL) {
         g_page_registry[g_page_manager.current].destroy();
+        return "DESTROY";
     }
+    return "NONE";
 }
 
-static void create_new_page(ui_page_t page)
+static const char *create_new_page(ui_page_t page)
 {
     if (page == UI_PAGE_MAIN && page_01_main_resume()) {
-        return; // 直接返回，不执行创建
+        return "RESUME";
     }
     g_page_registry[page].create(lv_scr_act());
+    return "CREATE";
+}
+
+static uint32_t ui_manager_profile_elapsed_us(uint64_t started_us)
+{
+    return app_clock_elapsed_us32(started_us, app_clock_monotonic_us());
 }
 
 typedef struct {
@@ -136,13 +182,48 @@ static void ui_manager_notify_page_switch(ui_page_t from, ui_page_t to)
 void ui_manager_switch(ui_page_t page)
 {
     ui_page_t from = g_page_manager.current;
+    perf_profile_page_switch_sample_t sample = {
+        .from_id = (uint32_t)from,
+        .from_name = ui_manager_page_name(from),
+        .to_id = (uint32_t)page,
+        .to_name = ui_manager_page_name(page),
+        .route = "NORMAL",
+        .leave_action = "NONE",
+        .enter_action = "NONE",
+    };
+    bool profile_enabled;
+    uint64_t total_started_us = 0;
+    uint64_t phase_started_us = 0;
 
     if (page == g_page_manager.current) return;
     if (!ui_manager_page_is_registered(page)) return;
+
+    profile_enabled = perf_profile_is_enabled();
+    if (profile_enabled) {
+        total_started_us = app_clock_monotonic_us();
+        phase_started_us = total_started_us;
+    }
     ui_manager_notify_page_switch(from, page);
-    destroy_current_page();
-    create_new_page(page);
+    if (profile_enabled) {
+        sample.notify_us = ui_manager_profile_elapsed_us(phase_started_us);
+        phase_started_us = app_clock_monotonic_us();
+    }
+    sample.leave_action = destroy_current_page();
+    if (profile_enabled) {
+        sample.leave_us = ui_manager_profile_elapsed_us(phase_started_us);
+        phase_started_us = app_clock_monotonic_us();
+    }
+    sample.enter_action = create_new_page(page);
+    if (profile_enabled) {
+        sample.enter_us = ui_manager_profile_elapsed_us(phase_started_us);
+        phase_started_us = app_clock_monotonic_us();
+    }
     g_page_manager.current = page;
+    if (profile_enabled) {
+        sample.commit_us = ui_manager_profile_elapsed_us(phase_started_us);
+        sample.total_us = ui_manager_profile_elapsed_us(total_started_us);
+        perf_profile_report_page_switch(&sample);
+    }
 }
 
 void ui_manager_init(void) {
@@ -184,8 +265,25 @@ bool ui_manager_adopt_precreated_page(ui_page_t page)
 {
     int i;
     ui_page_t from = g_page_manager.current;
+    perf_profile_page_switch_sample_t sample = {
+        .from_id = (uint32_t)from,
+        .from_name = ui_manager_page_name(from),
+        .to_id = (uint32_t)page,
+        .to_name = ui_manager_page_name(page),
+        .route = "ADOPT",
+        .leave_action = "NONE",
+        .enter_action = "ADOPT",
+    };
+    bool profile_enabled;
+    uint64_t total_started_us = 0;
+    uint64_t phase_started_us = 0;
 
     if (page == from || !ui_manager_page_is_registered(page)) return false;
+    profile_enabled = perf_profile_is_enabled();
+    if (profile_enabled) {
+        total_started_us = app_clock_monotonic_us();
+        phase_started_us = total_started_us;
+    }
     if (from != UI_PAGE_INVALID) {
         if (g_page_manager.stack_top < UI_PAGE_STACK_CAPACITY - 1) {
             g_page_manager.stack[++g_page_manager.stack_top] = from;
@@ -196,9 +294,26 @@ bool ui_manager_adopt_precreated_page(ui_page_t page)
             g_page_manager.stack[UI_PAGE_STACK_CAPACITY - 1] = from;
         }
     }
+    if (profile_enabled) {
+        sample.prepare_us = ui_manager_profile_elapsed_us(phase_started_us);
+        phase_started_us = app_clock_monotonic_us();
+    }
     ui_manager_notify_page_switch(from, page);
-    destroy_current_page();
+    if (profile_enabled) {
+        sample.notify_us = ui_manager_profile_elapsed_us(phase_started_us);
+        phase_started_us = app_clock_monotonic_us();
+    }
+    sample.leave_action = destroy_current_page();
+    if (profile_enabled) {
+        sample.leave_us = ui_manager_profile_elapsed_us(phase_started_us);
+        phase_started_us = app_clock_monotonic_us();
+    }
     g_page_manager.current = page;
+    if (profile_enabled) {
+        sample.commit_us = ui_manager_profile_elapsed_us(phase_started_us);
+        sample.total_us = ui_manager_profile_elapsed_us(total_started_us);
+        perf_profile_report_page_switch(&sample);
+    }
     return true;
 }
 
@@ -228,6 +343,15 @@ void ui_manager_clear_stack(void)
     g_page_manager.stack_top = -1;
 }
 
+
+const char *ui_manager_page_name(ui_page_t page)
+{
+    if (page < UI_PAGE_BOOT_ANIM || page >= UI_PAGE_COUNT ||
+        g_page_names[page] == NULL) {
+        return "INVALID";
+    }
+    return g_page_names[page];
+}
 
 // 读取当前页
 ui_page_t ui_manager_get_current_page(void) {

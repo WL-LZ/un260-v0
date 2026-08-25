@@ -30,12 +30,14 @@ int main(void) {
     user_cfg_screenshot_load();
     user_cfg_screen_recording_load();
     user_cfg_performance_monitor_load();
+    user_cfg_performance_profile_load();
     user_cfg_gesture_load();
     gesture_service_init();
     device_info_init(UI_VERSION);
     ui_history_data_init();
     ui_manager_switch(UI_PAGE_BOOT);
     perf_stats_init();
+    perf_profile_set_enabled(user_cfg_performance_profile_enabled());
     app_ui_runtime_init();
     ui_page_00_boot_anim_create(lv_layer_top());
 
@@ -49,12 +51,18 @@ int main(void) {
         uint64_t lvgl_start_us;
         uint64_t lvgl_end_us;
         uint64_t loop_end_us;
+        uint32_t profile_frame_seq;
 
+        profile_frame_seq = perf_profile_frame_sequence();
         lvgl_start_us = app_clock_monotonic_us();
         lv_timer_handler();
         lvgl_end_us = app_clock_monotonic_us();
         perf_stats_report_lvgl_time_us(
             app_clock_elapsed_us32(lvgl_start_us, lvgl_end_us));
+        if (perf_profile_frame_sequence() != profile_frame_seq) {
+            perf_profile_report_active_handler_us(
+                app_clock_elapsed_us32(lvgl_start_us, lvgl_end_us));
+        }
         app_command_runtime_process_frames();
 
         /* Frame handlers may start protocol timeouts.  Refresh the loop time
@@ -69,9 +77,14 @@ int main(void) {
             now, current_page == UI_PAGE_BOOT &&
                  !ui_page_00_boot_anim_is_active());
 
+        current_page = ui_manager_get_current_page();
+        perf_profile_set_page_context(
+            (uint32_t)current_page, ui_manager_page_name(current_page));
+
         loop_end_us = app_clock_monotonic_us();
         perf_stats_report_loop_time_us(
             app_clock_elapsed_us32(loop_start_us, loop_end_us));
+        perf_profile_poll(app_clock_uptime_ms());
         usleep(1000);
     }
     app_setting_runtime_stop();

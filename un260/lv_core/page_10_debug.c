@@ -26,6 +26,7 @@
 #include "un260/lv_system/ui_export_data.h"
 #include "un260/lv_system/ui_text.h"
 #include "un260/recording/screen_recording_service.h"
+#include "aic_ui/perf_stats.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -363,6 +364,28 @@ static void performance_monitor_switch_event_cb(lv_event_t* e)
     lv_debug_overlay_set_enabled(enabled);
 }
 
+static void performance_profile_switch_event_cb(lv_event_t* e)
+{
+    lv_obj_t* sw;
+    bool enabled;
+
+    if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+
+    sw = lv_event_get_target(e);
+    enabled = lv_obj_has_state(sw, LV_STATE_CHECKED);
+    if (!user_cfg_performance_profile_save(enabled)) {
+        if (enabled) {
+            lv_obj_clear_state(sw, LV_STATE_CHECKED);
+        } else {
+            lv_obj_add_state(sw, LV_STATE_CHECKED);
+        }
+        return;
+    }
+    perf_profile_set_enabled(enabled);
+}
+
 static lv_obj_t* debug_create_setting_switch(lv_obj_t* parent,
                                              lv_coord_t group_x,
                                              const char* label_text,
@@ -374,15 +397,16 @@ static lv_obj_t* debug_create_setting_switch(lv_obj_t* parent,
     lv_obj_t* sw;
 
     lv_label_set_text(label, label_text);
-    lv_obj_set_width(label, 96);
+    lv_obj_set_size(label, 76, 28);
+    lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_font(label, &lv_font_instrument_sans_medium_12, 0);
+    lv_obj_set_style_text_font(label, &lv_font_instrument_sans_medium_10, 0);
     lv_obj_set_style_text_color(label, lv_color_hex(0xB8C1CC), 0);
-    lv_obj_set_pos(label, group_x, 7);
+    lv_obj_set_pos(label, group_x, 3);
 
     sw = lv_switch_create(parent);
-    lv_obj_set_size(sw, 46, 24);
-    lv_obj_set_pos(sw, group_x + 25, 31);
+    lv_obj_set_size(sw, 46, 22);
+    lv_obj_set_pos(sw, group_x + 15, 38);
     lv_obj_set_style_bg_color(sw, lv_color_hex(0x4A4F57), 0);
     lv_obj_set_style_bg_color(sw, checked_color,
                               LV_PART_INDICATOR | LV_STATE_CHECKED);
@@ -465,8 +489,8 @@ void ui_page_10_debug_create(void) {
     lv_obj_center(btn_send_label);
     // 发送按钮
     lv_obj_t* btn_sec = lv_btn_create(left_panel);
-    lv_obj_set_pos(btn_sec, 135, 4);
-    lv_obj_set_size(btn_sec, 90, 30);
+    lv_obj_set_pos(btn_sec, 120, 4);
+    lv_obj_set_size(btn_sec, 78, 30);
     lv_obj_set_style_bg_color(btn_sec, lv_color_hex(0x00AA00), 0);
     lv_obj_add_event_cb(btn_sec, page_06_back_btn_event_cb, LV_EVENT_CLICKED, NULL);
 
@@ -476,18 +500,23 @@ void ui_page_10_debug_create(void) {
     lv_obj_center(btn_esc_label);
 
     debug_create_setting_switch(
-        left_panel, 235, ui_text_get(UI_TEXT_WIDGET_SCREENSHOT_LABEL),
+        left_panel, 207, ui_text_get(UI_TEXT_WIDGET_SCREENSHOT_LABEL),
         lv_color_hex(0x18A66A), user_cfg_screenshot_enabled(),
         screenshot_switch_event_cb);
     debug_create_setting_switch(
-        left_panel, 335, ui_text_get(UI_TEXT_WIDGET_SCREEN_RECORDING_LABEL),
+        left_panel, 289, ui_text_get(UI_TEXT_WIDGET_SCREEN_RECORDING_LABEL),
         lv_color_hex(0xE53935), user_cfg_screen_recording_enabled(),
         screen_recording_switch_event_cb);
     debug_create_setting_switch(
-        left_panel, 435,
+        left_panel, 371,
         ui_text_get(UI_TEXT_WIDGET_PERFORMANCE_MONITOR_LABEL),
         lv_color_hex(0x4A9EFF), user_cfg_performance_monitor_enabled(),
         performance_monitor_switch_event_cb);
+    debug_create_setting_switch(
+        left_panel, 453,
+        ui_text_get(UI_TEXT_WIDGET_PERFORMANCE_PROFILE_LABEL),
+        lv_color_hex(0x00A7C4), user_cfg_performance_profile_enabled(),
+        performance_profile_switch_event_cb);
     
     // 清空输入按钮
     lv_obj_t* btn_clear_input = lv_btn_create(left_panel);
